@@ -1,0 +1,17 @@
+**PROJETO OEE – SICFAR**
+
+1. **Formação da Equipe de Projeto**
+
+A atividade de Formação da Equipe de Projeto tem como objetivo a definição clara dos responsáveis por cada uma das frentes estratégicas do projeto de OEE: Tecnologia da Informação (TI), Produção, Qualidade, Engenharia, DEM, Manutenção BP e Internas (SPPV, Líquidos, CPHD e SPP/Bombonas). Essa etapa é fundamental para garantir o alinhamento entre as áreas envolvidas e formar um time multifuncional coeso, comprometido e orientado a resultados.
+
+A equipe de Produção será responsável por validar a aplicabilidade prática do sistema na rotina operacional. Sua contribuição será essencial na escolha da célula piloto, apontamentos manuais, análise de perdas e feedback sobre a usabilidade da ferramenta no chão de fábrica. A visão prática dessa área ajudará a garantir que o sistema reflita fielmente a realidade produtiva. Esse núcleo será liberado por Sávio Correia Rafael, juntamente com os Gestores de Produção Maxwell Cruz Cortez, Marília Lopes Pernambuco, Marina Oliveira Honorato, Camila Kely Saldanha Feitosa, Kellyanne Diniz, Augusto César Garoufo de Andrade e Suely Cavalcante Sales.
+
+Na frente de Qualidade, o foco estará na verificação dos indicadores relacionados à conformidade de processos e produtos, além da validação da classificação de paradas e desvios. A área contribuirá com uma visão analítica importante para garantir que os dados reflitam critérios padronizados e auditáveis, com os mesmos participantes da equipe de Produção.
+
+A Engenharia terá como responsabilidade apoiar na definição de parâmetros técnicos (ex: tempo de ciclo ideal, capacidade nominal, eficiência) e na identificação de oportunidades de melhoria a partir dos relatórios gerados. Também será fundamental no suporte à parametrização das regras de negócio e no acompanhamento de KPIs técnicos como MTBF e MTTR. Essa etapa será liderada por Sávio Correia Rafael, que alinhado com os núcleos de Manutenção Interna (Alexandro Xavier Gonçalves Alencar e Joélio Alves de Lavor), PMO (Francisco Mozart Bernardo Meirelles e Francisco Josemar Alves de Oliveira), DEM (Alyson Gomes Gonçalves) e Manutenção BottelPack (José Luciano Neto e Francisco Ruan de Morais Dias) criarão as ferramentas necessárias para melhor interface possível para o projeto.
+
+Para a frente de TI, o papel será garantir a infraestrutura necessária para o funcionamento do sistema SicFar, incluindo a integração com bases de dados (CLPs, ERP e apontamentos manuais), validação técnica e suporte à criação de dashboards e relatórios. É um agente crítico para assegurar a confiabilidade e a automação da coleta de dados. Liderado por Cícero Emanuel da Silva, juntamente à sua equipe de suporte técnico à ser definida durante o andamento do projeto.
+
+Complementarmente, o projeto contará com o suporte técnico do Consultor Rafael Gusmão, que atuará como referência metodológica e técnica em todas as etapas. Caberá ao consultor a validação dos principais marcos do projeto antes da transição para as fases subsequentes. Essa atuação garantirá a qualidade, coerência e integridade das entregas, fortalecendo a governança do projeto.
+
+A conclusão desta etapa resultará em uma equipe estruturada, com papéis e responsabilidades bem definidos, preparada para conduzir as próximas fases do projeto de forma colaborativa, assertiva e orientada à entrega de valor.
