@@ -1,4 +1,4 @@
-# Sistema OEE - SicFar
+# SICFAR SysOEE
 
 Sistema de monitoramento de **OEE (Overall Equipment Effectiveness)** para a plataforma SicFar da Farmace, focado em maximizar a eficiência operacional de linhas de produção farmacêutica.
 
