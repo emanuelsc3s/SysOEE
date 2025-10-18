@@ -1,4 +1,4 @@
-SICFAR SysOEE
+# SICFAR SysOEE
 
 Este diretório contém os resumos estruturados de todas as atividades e especificações do Projeto OEE (Overall Equipment Effectiveness) para implementação no sistema SicFar da Farmace.
 
