@@ -13,7 +13,9 @@ export default {
       'sm': '640px',    // Tablets pequenos (portrait)
       'md': '768px',    // Tablets médios
       'tab': '800px',   // Samsung Galaxy Tab A7 Lite (landscape) - NOVO
-      'tab-prod': '1000px', // Samsung Galaxy Tab A7 Lite (resolução CSS efetiva 1000x400)
+      // Breakpoint específico para 1000-1023px (Galaxy Tab A7 Lite com DPR 2.0)
+      // Usa range para NÃO afetar resoluções ≥1024px
+      'tab-prod': { 'min': '1000px', 'max': '1023px' },
       'lg': '1024px',   // Tablets grandes / Laptops pequenos
       'xl': '1280px',   // Desktops
       '2xl': '1536px',  // Desktops grandes
