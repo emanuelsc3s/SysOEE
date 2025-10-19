@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Meta tag viewport otimizada para tablets com alto DPI
+      - width=device-width: usa a largura CSS do dispositivo (não a física)
+      - initial-scale=1.0: sem zoom inicial
+      - maximum-scale=5.0: permite zoom até 5x (acessibilidade)
+      - user-scalable=yes: permite zoom manual (acessibilidade)
+      - viewport-fit=cover: suporte para notch/safe areas
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover"
+    />
     <meta name="description" content="Sistema OEE para SicFar - Monitoramento de eficiência operacional pharma-native" />
     <title>SysOEE - Sistema OEE para SicFar</title>
   </head>

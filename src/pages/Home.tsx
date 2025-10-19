@@ -134,7 +134,7 @@ export default function Home() {
       <BrandingSection />
 
       {/* Seção de Conteúdo (75% - Lado Direito) */}
-      <div className="flex-1 md:w-3/4 lg:w-3/4 flex flex-col bg-muted md:pb-20">
+      <div className="flex-1 md:w-3/4 lg:w-3/4 flex flex-col bg-muted md:pb-20 tab-prod:pb-12">
         {/* Header Mobile (visível apenas em mobile) */}
         <div className="md:hidden bg-gradient-to-br from-primary via-primary/95 to-accent p-4">
           <div className="flex items-center justify-between">
@@ -146,31 +146,31 @@ export default function Home() {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-6 md:px-6 md:py-10 md:snap-y md:snap-mandatory md:scroll-smooth">
+        <main className="flex-1 px-4 py-6 md:px-6 md:py-10 tab:px-8 tab:py-12 tab-prod:px-4 tab-prod:py-3 md:snap-y md:snap-mandatory md:scroll-smooth">
           {/* Container centralizado com largura máxima */}
           <div className="max-w-7xl mx-auto">
             {/* Seção de Saudação e Avatar */}
-            <section className="mb-8 md:snap-start">
+            <section className="mb-8 tab-prod:mb-3 md:snap-start">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-primary">
+                  <h2 className="text-2xl md:text-3xl tab:text-4xl tab-prod:text-xl font-bold text-primary">
                     {saudacao}, bem-vindo!
                   </h2>
-                  <p className="text-muted-foreground mt-1">
+                  <p className="text-muted-foreground mt-1 text-sm tab:text-base tab-prod:text-xs tab-prod:mt-0.5">
                     Olá, {user.name}. Selecione um módulo para começar.
                   </p>
                 </div>
 
                 {/* Dropdown Menu com Avatar */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
-                    <Avatar className="h-10 w-10">
+                  <DropdownMenuTrigger className="flex items-center space-x-2 tab-prod:space-x-1 cursor-pointer hover:opacity-80 transition-opacity">
+                    <Avatar className="h-10 w-10 tab-prod:h-8 tab-prod:w-8">
                       {user.photoUrl && <AvatarImage src={user.photoUrl} alt={user.name} />}
-                      <AvatarFallback className="bg-primary text-white">
+                      <AvatarFallback className="bg-primary text-white tab-prod:text-xs">
                         {user.initials}
                       </AvatarFallback>
                     </Avatar>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <ChevronDown className="h-4 w-4 tab-prod:h-3 tab-prod:w-3 text-muted-foreground" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
@@ -192,9 +192,9 @@ export default function Home() {
               </div>
             </section>
 
-            {/* Grid de Cards de Navegação */}
-            <section className="mb-10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 auto-rows-fr">
+            {/* Grid de Cards de Navegação - Otimizado para tablets */}
+            <section className="mb-10 tab-prod:mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 tab:grid-cols-3 tab-prod:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 tab-prod:gap-2 auto-rows-fr">
                 {navigationItems.map((item) => (
                   <NavigationCard
                     key={item.path}
@@ -209,10 +209,10 @@ export default function Home() {
         </main>
 
         {/* Footer Fixo */}
-        <footer className="fixed bottom-0 right-0 md:left-[25%] w-full md:w-[75%] px-4 py-4 md:px-6 border-t border-border bg-card z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground">
+        <footer className="fixed bottom-0 right-0 md:left-[25%] w-full md:w-[75%] px-4 py-4 md:px-6 tab-prod:px-3 tab-prod:py-2 border-t border-border bg-card z-10">
+          <div className="flex flex-col md:flex-row items-center justify-between text-sm tab-prod:text-[10px] text-muted-foreground">
             <p>© 2025 - <span className="text-primary">SICFAR</span> Módulo de <span className="text-primary">OEE</span>. Todos os direitos reservados a <span className="text-primary">FARMACE</span>.</p>
-            <p className="mt-2 md:mt-0">
+            <p className="mt-2 md:mt-0 tab-prod:mt-0">
               Versão 1.0.0 | <span className="text-primary">MVP</span>
             </p>
           </div>

@@ -7,6 +7,17 @@ export default {
     './src/**/*.{ts,tsx,js,jsx}',
   ],
   theme: {
+    // Breakpoints customizados para melhor suporte a tablets
+    screens: {
+      'xs': '475px',    // Smartphones grandes
+      'sm': '640px',    // Tablets pequenos (portrait)
+      'md': '768px',    // Tablets médios
+      'tab': '800px',   // Samsung Galaxy Tab A7 Lite (landscape) - NOVO
+      'tab-prod': '1000px', // Samsung Galaxy Tab A7 Lite (resolução CSS efetiva 1000x400)
+      'lg': '1024px',   // Tablets grandes / Laptops pequenos
+      'xl': '1280px',   // Desktops
+      '2xl': '1536px',  // Desktops grandes
+    },
     extend: {
       colors: {
         border: 'hsl(var(--border))',

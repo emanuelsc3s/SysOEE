@@ -42,7 +42,7 @@ export function NavigationCard({
         // Layout e dimensões fixas com aspect ratio
         'flex flex-col items-center justify-center',
         'aspect-[4/3] w-full',
-        'p-4 sm:p-6',
+        'p-4 sm:p-6 tab-prod:p-2',
         // Cursor e transições
         'cursor-pointer transition-all duration-300',
         // Background e bordas
@@ -56,17 +56,17 @@ export function NavigationCard({
       )}
     >
       {/* Ícone */}
-      <div className="mb-3 text-primary flex-shrink-0">
+      <div className="mb-3 tab-prod:mb-1.5 text-primary flex-shrink-0 tab-prod:scale-75">
         {icon}
       </div>
 
       {/* Título */}
-      <p className="font-medium text-center text-foreground text-sm md:text-base">
+      <p className="font-medium text-center text-foreground text-sm md:text-base tab-prod:text-xs tab-prod:leading-tight">
         {title}
       </p>
 
       {/* Barra decorativa inferior */}
-      <div className="absolute bottom-0 left-0 w-full h-1.5 bg-primary"></div>
+      <div className="absolute bottom-0 left-0 w-full h-1.5 tab-prod:h-1 bg-primary"></div>
     </div>
   )
 }
