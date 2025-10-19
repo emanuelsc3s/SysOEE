@@ -3,19 +3,21 @@
  * Exibe as OPs em andamento organizadas por fase de produção
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { FaseProducao, Setor, Turno } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Filter, 
+import {
+  ArrowLeft,
+  Filter,
   RefreshCw,
   Factory,
   Users,
-  Calendar
+  Calendar,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -35,11 +37,16 @@ const FASES: FaseProducao[] = [
 
 export default function Operacao() {
   const navigate = useNavigate()
-  
+
   // Estados para filtros (futura implementação)
   const [setorFiltro, setSetorFiltro] = useState<Setor | 'Todos'>('Todos')
   const [turnoFiltro, setTurnoFiltro] = useState<Turno | 'Todos'>('Todos')
   const [dataAtual] = useState(new Date().toLocaleDateString('pt-BR'))
+
+  // Ref e estados para controle de scroll horizontal
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
 
   /**
    * Agrupa as OPs por fase
@@ -83,12 +90,71 @@ export default function Operacao() {
   }, [])
 
   /**
+   * Verifica se pode rolar para esquerda ou direita
+   */
+  const checkScrollability = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollLeft, scrollWidth, clientWidth } = container
+
+    // Pode rolar para esquerda se não estiver no início
+    setCanScrollLeft(scrollLeft > 0)
+
+    // Pode rolar para direita se não estiver no final
+    // Adiciona margem de 1px para evitar problemas de arredondamento
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
+  }, [])
+
+  /**
+   * Rola o container horizontalmente
+   * @param direction - Direção do scroll ('left' ou 'right')
+   */
+  const handleScroll = (direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Largura de scroll: 1.5 colunas (320px * 1.5 + gap)
+    const scrollAmount = 500
+    const newScrollLeft = direction === 'left'
+      ? container.scrollLeft - scrollAmount
+      : container.scrollLeft + scrollAmount
+
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth'
+    })
+  }
+
+  /**
    * Simula atualização dos dados
    */
   const handleRefresh = () => {
     // TODO: Implementar atualização real dos dados
     console.log('Atualizando dados...')
   }
+
+  /**
+   * Configura listeners de scroll e verifica scrollability inicial
+   */
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Verifica scrollability inicial
+    checkScrollability()
+
+    // Adiciona listener de scroll
+    container.addEventListener('scroll', checkScrollability)
+
+    // Adiciona listener de resize para recalcular ao redimensionar janela
+    window.addEventListener('resize', checkScrollability)
+
+    return () => {
+      container.removeEventListener('scroll', checkScrollability)
+      window.removeEventListener('resize', checkScrollability)
+    }
+  }, [checkScrollability])
 
   return (
     <div className="min-h-screen bg-muted">
@@ -171,16 +237,54 @@ export default function Operacao() {
 
       {/* Kanban Board */}
       <div className="max-w-[1920px] mx-auto p-4">
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-4 min-w-max">
-            {FASES.map((fase) => (
-              <div key={fase} className="w-[320px] flex-shrink-0">
-                <KanbanColumn
-                  fase={fase}
-                  ops={opsPorFase[fase]}
-                />
-              </div>
-            ))}
+        <div className="relative">
+          {/* Botão de navegação esquerda - sticky para ficar sempre visível */}
+          {canScrollLeft && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleScroll('left')}
+              className="sticky left-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-left"
+              style={{ marginTop: '200px' }}
+              aria-label="Rolar para esquerda"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+          )}
+
+          {/* Botão de navegação direita - sticky para ficar sempre visível */}
+          {canScrollRight && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleScroll('right')}
+              className="sticky right-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-right"
+              style={{ marginTop: '200px' }}
+              aria-label="Rolar para direita"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </Button>
+          )}
+
+          {/* Container de scroll */}
+          <div
+            ref={scrollContainerRef}
+            className="overflow-x-auto overflow-y-visible pb-6 scrollbar-enhanced clear-both"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) hsl(var(--muted) / 0.5)'
+            }}
+          >
+            <div className="flex gap-4 min-w-max">
+              {FASES.map((fase) => (
+                <div key={fase} className="w-[320px] flex-shrink-0">
+                  <KanbanColumn
+                    fase={fase}
+                    ops={opsPorFase[fase]}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
