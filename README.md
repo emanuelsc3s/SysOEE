@@ -37,6 +37,10 @@ O Sistema OEE é uma solução completa para monitoramento e análise da eficiê
 ```
 SysOEE/
 ├── docs/
+│   ├── design/                       # 🎨 Design system e especificações visuais
+│   │   ├── home-design-system.md    # Design da Home
+│   │   └── base-css.md              # Sistema de cores e estilos
+│   │
 │   ├── project/                      # 📊 Resumos estruturados (COMECE AQUI)
 │   │   ├── README.md                # Índice navegável
 │   │   ├── 00-Visao-Geral-Projeto.md
@@ -59,16 +63,43 @@ SysOEE/
 │   │
 │   └── database/                     # 🗄️ Modelagem de dados (futuro)
 │
-├── src/                              # 💻 Código-fonte (futuro)
-│   ├── backend/
-│   ├── frontend/
-│   └── database/
+├── src/                              # 💻 Código-fonte
+│   ├── components/
+│   │   ├── ui/                      # Componentes Shadcn/UI
+│   │   ├── branding/                # BrandingSection
+│   │   └── navigation/              # NavigationCard
+│   ├── pages/                       # Páginas da aplicação
+│   │   ├── Home.tsx                # Página inicial ✅
+│   │   ├── Dashboard.tsx           # Dashboard OEE 🚧
+│   │   └── Placeholder.tsx         # Páginas em desenvolvimento
+│   ├── lib/                         # Utilitários
+│   ├── assets/                      # Imagens e recursos
+│   └── styles/                      # CSS global
 │
+├── scripts/                          # Scripts de build e desenvolvimento
 ├── CLAUDE.md                         # 🤖 Guia para Claude Code
 └── README.md                         # 📖 Este arquivo
 ```
 
 ## 🚀 Início Rápido
+
+### Executar o Projeto
+
+```bash
+# Instalar dependências
+npm install
+
+# Executar em modo desenvolvimento
+npm run dev
+
+# Build para produção
+npm run build
+
+# Preview do build de produção
+npm run preview
+```
+
+O servidor de desenvolvimento estará disponível em `http://localhost:3000/`
 
 ### Para Novos Desenvolvedores
 
@@ -187,10 +218,23 @@ Todos os dados devem ser:
 
 ## 🛠️ Tecnologias
 
-### A Definir
-- Back-end: (em análise)
-- Front-end: (em análise)
-- Banco de Dados: (em análise)
+### Stack Implementada (MVP)
+
+#### Frontend
+- **Framework**: React 18.3.1 + Vite 7.1.4
+- **Linguagem**: TypeScript 5.5.3
+- **Estilização**: Tailwind CSS 3.4.11 + Shadcn/UI
+- **Componentes**: Radix UI (via Shadcn)
+- **Ícones**: Lucide React 0.462.0
+- **Formulários**: React Hook Form 7.53.0 + Zod 3.23.8
+- **Roteamento**: React Router DOM 6.26.2
+- **Gráficos**: Recharts 2.12.7
+- **State Management**: TanStack React Query 5.56.2
+
+#### Backend
+- **BaaS**: Supabase 2.49.4 (PostgreSQL + Auth + Storage)
+
+#### A Definir
 - Integração CLPs: Protocolo/API (em análise)
 - Integração TOTVS: API (em análise)
 
