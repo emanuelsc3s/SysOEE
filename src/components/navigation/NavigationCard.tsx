@@ -39,8 +39,10 @@ export function NavigationCard({
     <div
       onClick={handleClick}
       className={cn(
-        // Layout e dimensões
-        'flex flex-col items-center justify-center h-40 p-8',
+        // Layout e dimensões fixas com aspect ratio
+        'flex flex-col items-center justify-center',
+        'aspect-[4/3] w-full',
+        'p-4 sm:p-6',
         // Cursor e transições
         'cursor-pointer transition-all duration-300',
         // Background e bordas
@@ -54,12 +56,12 @@ export function NavigationCard({
       )}
     >
       {/* Ícone */}
-      <div className="mb-4 text-primary">
+      <div className="mb-3 text-primary flex-shrink-0">
         {icon}
       </div>
 
       {/* Título */}
-      <p className="font-medium text-center text-foreground text-base">
+      <p className="font-medium text-center text-foreground text-sm md:text-base">
         {title}
       </p>
 

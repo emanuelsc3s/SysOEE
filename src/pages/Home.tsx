@@ -24,6 +24,24 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 /**
+ * Retorna a saudação apropriada baseada no horário atual
+ * Bom dia: 00:00 - 11:59
+ * Boa tarde: 12:00 - 17:59
+ * Boa noite: 18:00 - 23:59
+ */
+const getSaudacao = (): string => {
+  const hora = new Date().getHours()
+
+  if (hora >= 0 && hora < 12) {
+    return 'Bom dia'
+  } else if (hora >= 12 && hora < 18) {
+    return 'Boa tarde'
+  } else {
+    return 'Boa noite'
+  }
+}
+
+/**
  * Página Home do Sistema OEE SicFar
  * Layout split-screen: 25% branding + 75% conteúdo
  * Segue especificações do home-design-system.md e PRD
@@ -36,6 +54,9 @@ export default function Home() {
     initials: 'UD',
     photoUrl: null,
   }
+
+  // Obtém a saudação baseada no horário
+  const saudacao = getSaudacao()
 
   // Definição dos módulos de navegação
   const navigationItems = [
@@ -113,7 +134,7 @@ export default function Home() {
       <BrandingSection />
 
       {/* Seção de Conteúdo (75% - Lado Direito) */}
-      <div className="flex-1 md:w-3/4 lg:w-3/4 flex flex-col bg-muted">
+      <div className="flex-1 md:w-3/4 lg:w-3/4 flex flex-col bg-muted md:pb-20">
         {/* Header Mobile (visível apenas em mobile) */}
         <div className="md:hidden bg-gradient-to-br from-primary via-primary/95 to-accent p-4">
           <div className="flex items-center justify-between">
@@ -125,70 +146,70 @@ export default function Home() {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-6 md:px-6 md:py-10">
-          {/* Seção de Saudação e Avatar */}
-          <section className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-primary">
-                  Bem-vindo!
-                </h2>
-                <p className="text-muted-foreground mt-1">
-                  Olá, {user.name}. Selecione um módulo para começar.
-                </p>
+        <main className="flex-1 px-4 py-6 md:px-6 md:py-10 md:snap-y md:snap-mandatory md:scroll-smooth">
+          {/* Container centralizado com largura máxima */}
+          <div className="max-w-7xl mx-auto">
+            {/* Seção de Saudação e Avatar */}
+            <section className="mb-8 md:snap-start">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-primary">
+                    {saudacao}, bem-vindo!
+                  </h2>
+                  <p className="text-muted-foreground mt-1">
+                    Olá, {user.name}. Selecione um módulo para começar.
+                  </p>
+                </div>
+
+                {/* Dropdown Menu com Avatar */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
+                    <Avatar className="h-10 w-10">
+                      {user.photoUrl && <AvatarImage src={user.photoUrl} alt={user.name} />}
+                      <AvatarFallback className="bg-primary text-white">
+                        {user.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Perfil</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Configurações</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive">
+                      <span>Sair</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
+            </section>
 
-              {/* Dropdown Menu com Avatar */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
-                  <Avatar className="h-10 w-10">
-                    {user.photoUrl && <AvatarImage src={user.photoUrl} alt={user.name} />}
-                    <AvatarFallback className="bg-primary text-white">
-                      {user.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Users className="mr-2 h-4 w-4" />
-                    <span>Perfil</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Configurações</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <span>Sair</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </section>
-
-          {/* Grid de Cards de Navegação */}
-          <section className="mb-10">
-            <h3 className="text-lg font-semibold text-foreground mb-6">
-              Módulos do Sistema
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {navigationItems.map((item) => (
-                <NavigationCard
-                  key={item.path}
-                  title={item.title}
-                  icon={item.icon}
-                  path={item.path}
-                />
-              ))}
-            </div>
-          </section>
+            {/* Grid de Cards de Navegação */}
+            <section className="mb-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 auto-rows-fr">
+                {navigationItems.map((item) => (
+                  <NavigationCard
+                    key={item.path}
+                    title={item.title}
+                    icon={item.icon}
+                    path={item.path}
+                  />
+                ))}
+              </div>
+            </section>
+          </div>
         </main>
 
-        {/* Footer */}
-        <footer className="px-4 py-6 md:px-6 border-t border-border bg-card">
+        {/* Footer Fixo */}
+        <footer className="fixed bottom-0 right-0 md:left-[25%] w-full md:w-[75%] px-4 py-4 md:px-6 border-t border-border bg-card z-10">
           <div className="flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground">
             <p>© 2025 Farmace/SicFar. Todos os direitos reservados.</p>
             <p className="mt-2 md:mt-0">
