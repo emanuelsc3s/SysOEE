@@ -4,10 +4,14 @@ import { Shield, TrendingUp, Users } from 'lucide-react'
  * Seção de branding (lado esquerdo 25% da Home)
  * Contém gradiente, círculos animados, logo e features list
  * Segue especificações do branding-section.md
+ *
+ * Posicionamento: Fixed para permanecer visível durante scroll
+ * Altura: 100vh (toda a altura da viewport)
+ * Centralização: Conteúdo centralizado verticalmente usando flexbox
  */
 export function BrandingSection() {
   return (
-    <div className="hidden md:flex md:w-1/4 lg:w-1/4 bg-gradient-to-br from-primary via-primary/95 to-brand-primary sticky top-0 relative">
+    <div className="hidden md:flex md:fixed md:left-0 md:top-0 md:h-screen md:w-1/4 lg:w-1/4 bg-gradient-to-br from-primary via-primary/95 to-brand-primary">
       {/* Background Pattern - Círculos Animados */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-20 h-20 md:w-32 md:h-32 border-2 border-white rounded-full animate-pulse"></div>
@@ -16,9 +20,9 @@ export function BrandingSection() {
         <div className="absolute bottom-32 right-8 md:right-16 w-16 h-16 md:w-24 md:h-24 border-2 border-white rounded-full animate-pulse delay-700"></div>
       </div>
 
-      {/* Content */}
-      <div className="z-10 px-4 md:px-6 lg:px-8 tab-prod:px-4 text-white md:min-h-0 md:h-[calc(100svh-4rem)] md:supports-[height:100dvh]:h-[calc(100dvh-4rem)] flex">
-        <div className="w-full grid min-h-full place-content-center">
+      {/* Content - Centralizado verticalmente */}
+      <div className="relative z-10 h-full flex items-center justify-center px-4 md:px-6 lg:px-8 tab-prod:px-4 text-white">
+        <div className="w-full">
           {/* Logo/Icon */}
           <div className="mb-6 md:mb-8 tab-prod:mb-3 text-center">
             <img

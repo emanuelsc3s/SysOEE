@@ -130,11 +130,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Seção de Branding (25% - Lado Esquerdo) */}
+      {/* Seção de Branding (25% - Lado Esquerdo) - Fixed */}
       <BrandingSection />
 
-      {/* Seção de Conteúdo (75% - Lado Direito) */}
-      <div className="flex-1 md:w-3/4 lg:w-3/4 flex flex-col bg-muted md:pb-20 tab-prod:pb-12">
+      {/* Seção de Conteúdo (75% - Lado Direito) - Com margem para compensar branding fixa */}
+      <div className="flex-1 md:ml-[25%] md:w-3/4 lg:w-3/4 flex flex-col bg-muted md:pb-20 tab-prod:pb-12">
         {/* Header Mobile (visível apenas em mobile) */}
         <div className="md:hidden bg-gradient-to-br from-primary via-primary/95 to-accent p-4">
           <div className="flex items-center justify-between">
