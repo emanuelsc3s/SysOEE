@@ -211,7 +211,7 @@ export default function Home() {
         {/* Footer Fixo */}
         <footer className="fixed bottom-0 right-0 md:left-[25%] w-full md:w-[75%] px-4 py-4 md:px-6 border-t border-border bg-card z-10">
           <div className="flex flex-col md:flex-row items-center justify-between text-sm text-muted-foreground">
-            <p>© 2025 Farmace/SicFar. Todos os direitos reservados.</p>
+            <p>© 2025 - <span className="text-primary">SICFAR</span> Módulo de <span className="text-primary">OEE</span>. Todos os direitos reservados a <span className="text-primary">FARMACE</span>.</p>
             <p className="mt-2 md:mt-0">
               Versão 1.0.0 | <span className="text-primary">MVP</span>
             </p>

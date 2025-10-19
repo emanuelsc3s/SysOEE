@@ -37,9 +37,15 @@ export function BrandingSection() {
           </div>
 
           {/* Description */}
-          <div className="mb-8 md:mb-12">
-            <p className="text-white/80 text-sm md:text-lg leading-relaxed mb-4 md:mb-6">
-              Monitoramento de eficiência operacional pharma-native com compliance ALCOA+ e BPF embarcados
+          <div className="mb-8 md:mb-12 text-center">
+            {/* Título Principal com Efeito Visual */}
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6 text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500 hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)]">
+              SysOEE
+            </h1>
+
+            {/* Texto Descritivo */}
+            <p className="text-white/80 text-sm md:text-lg leading-relaxed">
+              Monitoramento de Eficiência Operacional de Equipamentos com compliance ALCOA+ e BPF ANVISA.
             </p>
           </div>
 
@@ -63,7 +69,7 @@ export function BrandingSection() {
               </div>
               <div>
                 <h3 className="font-semibold text-white text-sm md:text-base">Gestão em Tempo Real</h3>
-                <p className="text-white/70 text-xs md:text-sm">Dashboards interativos e análise preditiva</p>
+                <p className="text-white/70 text-xs md:text-sm">Controle Interativo e Análise Preditiva</p>
               </div>
             </div>
 
