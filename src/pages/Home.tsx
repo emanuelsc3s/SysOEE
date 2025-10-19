@@ -1,7 +1,8 @@
-import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  FileText, 
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Activity,
+  FileText,
   AlertCircle,
   Settings,
   Users,
@@ -71,6 +72,12 @@ export default function Home() {
       icon: <ClipboardList size={40} />,
       path: '/ordem-producao',
       description: 'Gestão de ordens de produção ativas'
+    },
+    {
+      title: 'Operação',
+      icon: <Activity size={40} />,
+      path: '/operacao',
+      description: 'Visualizar quais equipamentos estão atualmente em operação'
     },
     {
       title: 'Apontamento',
