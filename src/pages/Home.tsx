@@ -153,7 +153,7 @@ export default function Home() {
             <section className="mb-8 tab-prod:mb-3 md:snap-start">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl md:text-3xl tab:text-4xl tab-prod:text-xl font-bold text-primary">
+                  <h2 className="text-2xl md:text-3xl tab:text-4xl tab-prod:text-xl font-bold text-[hsl(211.8947_94.0594%_28%)]">
                     {saudacao}, bem-vindo!
                   </h2>
                   <p className="text-muted-foreground mt-1 text-sm tab:text-base tab-prod:text-xs tab-prod:mt-0.5">

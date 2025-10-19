@@ -7,7 +7,8 @@ import { Shield, TrendingUp, Users } from 'lucide-react'
  *
  * Posicionamento: Fixed para permanecer visível durante scroll
  * Altura: 100vh (toda a altura da viewport)
- * Centralização: Conteúdo centralizado verticalmente usando flexbox
+ * Layout: Todo conteúdo alinhado ao topo (logomarca, título, descrição e features)
+ * Alinhamento: Logomarca alinhada com div de saudação em resoluções >= 1000x400
  */
 export function BrandingSection() {
   return (
@@ -20,36 +21,36 @@ export function BrandingSection() {
         <div className="absolute bottom-32 right-8 md:right-16 w-16 h-16 md:w-24 md:h-24 border-2 border-white rounded-full animate-pulse delay-700"></div>
       </div>
 
-      {/* Content - Centralizado verticalmente */}
-      <div className="relative z-10 h-full flex items-center justify-center px-4 md:px-6 lg:px-8 tab-prod:px-4 text-white">
-        <div className="w-full">
+      {/* Content - Layout com todo conteúdo alinhado ao topo */}
+      <div className="relative z-10 h-full px-4 md:px-6 lg:px-8 tab-prod:px-4 text-white">
+        {/* Todo conteúdo alinhado ao topo */}
+        <div className="pt-8 md:pt-12 tab-prod:pt-6 text-center min-[1000px]:min-h-[400px]:pt-16">
           {/* Logo/Icon */}
-          <div className="mb-6 md:mb-8 tab-prod:mb-3 text-center">
+          <div className="mb-4 tab-prod:mb-2">
             <img
               src="/logo-farmace.png"
               alt="SysOEE Logo"
-              className="mb-4 tab-prod:mb-2 mx-auto tab-prod:max-h-12"
+              className="mx-auto tab-prod:max-h-12"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 const fallback = document.createElement('div');
-                fallback.className = 'w-20 h-20 tab-prod:w-12 tab-prod:h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4 tab-prod:mb-2 backdrop-blur-sm';
+                fallback.className = 'w-20 h-20 tab-prod:w-12 tab-prod:h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mx-auto';
                 fallback.innerHTML = '<span class="text-white font-bold text-lg md:text-xl tab-prod:text-sm">OEE</span>';
                 target.parentElement?.insertBefore(fallback, target);
               }}
             />
           </div>
 
-          {/* Description */}
-          <div className="mb-8 md:mb-12 tab-prod:mb-4 text-center">
-            {/* Título Principal com Efeito Visual */}
-            <h1 className="text-2xl md:text-3xl lg:text-4xl tab-prod:text-xl font-bold mb-4 md:mb-6 tab-prod:mb-2 text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500 hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)]">
-              SysOEE
-            </h1>
+          {/* Título Principal com Efeito Visual */}
+          <h1 className="text-2xl md:text-3xl lg:text-4xl tab-prod:text-xl font-bold mb-6 md:mb-8 tab-prod:mb-4 text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500 hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)]">
+            SysOEE
+          </h1>
 
-            {/* Texto Descritivo */}
+          {/* Texto Descritivo */}
+          <div className="mb-8 md:mb-12 tab-prod:mb-4">
             <p className="text-white/80 text-sm md:text-lg tab-prod:text-xs leading-relaxed tab-prod:leading-snug">
-              Monitoramento de Eficiência Operacional de Equipamentos com compliance ALCOA+ e BPF ANVISA.
+              Monitoramento da Eficiência Operacional de Equipamentos.
             </p>
           </div>
 
@@ -60,7 +61,7 @@ export function BrandingSection() {
               <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
                 <Shield className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
               </div>
-              <div>
+              <div className="text-left">
                 <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Compliance Regulatório</h3>
                 <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">ALCOA+ e CFR 21 Part 11</p>
               </div>
@@ -71,7 +72,7 @@ export function BrandingSection() {
               <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
                 <TrendingUp className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
               </div>
-              <div>
+              <div className="text-left">
                 <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Gestão em Tempo Real</h3>
                 <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">Controle Interativo e Análise Preditiva</p>
               </div>
@@ -82,7 +83,7 @@ export function BrandingSection() {
               <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
                 <Users className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
               </div>
-              <div>
+              <div className="text-left">
                 <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Colaboração Integrada</h3>
                 <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">37 linhas de produção conectadas</p>
               </div>

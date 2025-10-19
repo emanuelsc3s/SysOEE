@@ -19,6 +19,11 @@ A **BrandingSection** é um componente de apresentação visual que aparece no l
 ### Características Principais
 - Layout fixo/sticky no lado esquerdo (25% da largura em desktop)
 - Gradiente de marca com padrão de círculos animados
+- **Todo conteúdo alinhado ao topo** (sem centralização vertical)
+- **Logomarca posicionada no topo** da seção
+- **Título "SysOEE" logo abaixo da logomarca**
+- **Descrição e features logo abaixo do título**
+- **Alinhamento com div de saudação** em resoluções >= 1000x400px
 - Seção de features com ícones e descrições
 - Efeito glassmorphism nos elementos interativos
 - Totalmente responsivo (oculto em mobile)
@@ -58,19 +63,28 @@ A **BrandingSection** é um componente de apresentação visual que aparece no l
 
 ### Content Container
 ```tsx
-<div className="z-10 px-4 md:px-6 lg:px-8 text-white md:min-h-0 md:h-[calc(100svh-4rem)] md:supports-[height:100dvh]:h-[calc(100dvh-4rem)] flex">
-  <div className="w-full grid min-h-full place-content-center">
-    {/* Conteúdo aqui */}
+<div className="relative z-10 h-full px-4 md:px-6 lg:px-8 tab-prod:px-4 text-white">
+  {/* Todo conteúdo alinhado ao topo */}
+  <div className="pt-8 md:pt-12 tab-prod:pt-6 text-center min-[1000px]:min-h-[400px]:pt-16">
+    {/* Logo */}
+    {/* Título */}
+    {/* Descrição */}
+    {/* Features */}
   </div>
 </div>
 ```
 
 **Propriedades:**
 - `z-10` - Sobrepõe o background pattern
-- `px-4 md:px-6 lg:px-8` - Padding horizontal responsivo
+- `h-full` - Ocupa toda a altura disponível
+- `px-4 md:px-6 lg:px-8 tab-prod:px-4` - Padding horizontal responsivo
 - `text-white` - Texto branco para contraste com fundo escuro
-- `h-[calc(100svh-4rem)]` - Altura dinâmica considerando viewport
-- `grid place-content-center` - Centralização vertical e horizontal do conteúdo
+
+**Container de Conteúdo:**
+- `pt-8 md:pt-12 tab-prod:pt-6` - Padding superior responsivo
+- `min-[1000px]:min-h-[400px]:pt-16` - Padding maior em resoluções >= 1000x400px para alinhamento com div de saudação
+- `text-center` - Centralização horizontal de todo o conteúdo
+- **Sem centralização vertical** - Todo conteúdo flui naturalmente do topo para baixo
 
 ---
 
@@ -182,84 +196,82 @@ body {
 
 ## 🧩 Componentes
 
-### 1. Logo Section
+### 1. Seção Completa de Conteúdo (Alinhada ao Topo)
 
 ```tsx
-<div className="mb-6 md:mb-8 text-center">
-  <img 
-    src="/APFarmaHome.png" 
-    alt="APFAR Logo"
-    className="mb-4 mx-auto"
-    onError={(e) => {
-      const target = e.target as HTMLImageElement;
-      target.style.display = 'none';
-      const fallback = document.createElement('div');
-      fallback.className = 'w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-sm';
-      fallback.innerHTML = '<span class="text-white font-bold text-lg md:text-xl">AF</span>';
-      target.parentElement?.insertBefore(fallback, target);
-    }}
-  />
+<div className="pt-8 md:pt-12 tab-prod:pt-6 text-center min-[1000px]:min-h-[400px]:pt-16">
+  {/* Logo/Icon */}
+  <div className="mb-4 tab-prod:mb-2">
+    <img
+      src="/logo-farmace.png"
+      alt="SysOEE Logo"
+      className="mx-auto tab-prod:max-h-12"
+      onError={(e) => {
+        const target = e.target as HTMLImageElement;
+        target.style.display = 'none';
+        const fallback = document.createElement('div');
+        fallback.className = 'w-20 h-20 tab-prod:w-12 tab-prod:h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mx-auto';
+        fallback.innerHTML = '<span class="text-white font-bold text-lg md:text-xl tab-prod:text-sm">OEE</span>';
+        target.parentElement?.insertBefore(fallback, target);
+      }}
+    />
+  </div>
+
+  {/* Título Principal com Efeito Visual */}
+  <h1 className="text-2xl md:text-3xl lg:text-4xl tab-prod:text-xl font-bold mb-6 md:mb-8 tab-prod:mb-4 text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500 hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)]">
+    SysOEE
+  </h1>
+
+  {/* Texto Descritivo */}
+  <div className="mb-8 md:mb-12 tab-prod:mb-4">
+    <p className="text-white/80 text-sm md:text-lg tab-prod:text-xs leading-relaxed tab-prod:leading-snug">
+      Monitoramento de Eficiência Operacional de Equipamentos com compliance ALCOA+ e BPF ANVISA.
+    </p>
+  </div>
+
+  {/* Features */}
+  <div className="space-y-4 md:space-y-6 tab-prod:space-y-2">
+    {/* Feature items aqui */}
+  </div>
 </div>
 ```
 
 **Características:**
-- Centralizado com `text-center` e `mx-auto`
-- Margem inferior: `mb-6` (24px) em mobile, `md:mb-8` (32px) em desktop
+- **Todo conteúdo em um único container** alinhado ao topo
+- Padding superior responsivo: `pt-8` (32px) em mobile, `md:pt-12` (48px) em desktop, `tab-prod:pt-6` (24px) em tablets de produção
+- **Padding especial em resoluções >= 1000x400px**: `min-[1000px]:min-h-[400px]:pt-16` (64px) para alinhamento com div de saudação
+- Centralizado horizontalmente com `text-center` e `mx-auto`
+- Logomarca com margem inferior: `mb-4` (16px), `tab-prod:mb-2` (8px)
+- Título com margem inferior: `mb-6` (24px) em mobile, `md:mb-8` (32px) em desktop, `tab-prod:mb-4` (16px)
+- Descrição com margem inferior: `mb-8` (32px) em mobile, `md:mb-12` (48px) em desktop, `tab-prod:mb-4` (16px)
+- Features com espaçamento vertical: `space-y-4` (16px) em mobile, `md:space-y-6` (24px) em desktop, `tab-prod:space-y-2` (8px)
 - Fallback com glassmorphism se imagem falhar
-- Fallback: 80x80px, fundo branco semi-transparente, bordas arredondadas
+- Fallback: 80x80px (ou 48x48px em tab-prod), fundo branco semi-transparente, bordas arredondadas
+- **Efeito shimmer** no título com drop-shadow animado
 
-### 2. Description Section
+### 2. Feature Items
 
 ```tsx
-<div className="mb-8 md:mb-12">
-  <p className="text-white/80 text-sm md:text-lg leading-relaxed mb-4 md:mb-6">
-    Gerencie todo o processo licitatório de forma eficiente, 
-    desde a participação em pregões até o cumprimento de contratos.
-  </p>
+<div className="flex items-center space-x-3 md:space-x-4 tab-prod:space-x-2 group">
+  <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
+    <Shield className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
+  </div>
+  <div>
+    <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Compliance Regulatório</h3>
+    <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">ALCOA+ e CFR 21 Part 11</p>
+  </div>
 </div>
 ```
 
 **Características:**
-- Margem inferior: `mb-8` (32px) em mobile, `md:mb-12` (48px) em desktop
-- Texto com opacidade reduzida para hierarquia visual
-- Line-height relaxado para melhor legibilidade
-
-### 3. Features List
-
-```tsx
-<div className="space-y-4 md:space-y-6">
-  {/* Feature Item */}
-</div>
-```
-
-**Espaçamento entre itens:**
-- `space-y-4` (16px) em mobile
-- `md:space-y-6` (24px) em desktop
-
-### 4. Feature Item
-
-```tsx
-<div className="flex items-center space-x-3 md:space-x-4 group">
-  {/* Icon Container */}
-  <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
-    <Shield className="w-4 h-4 md:w-5 md:h-5 text-white" />
-  </div>
-  
-  {/* Text Content */}
-  <div>
-    <h3 className="font-semibold text-white text-sm md:text-base">Segurança Garantida</h3>
-    <p className="text-white/70 text-xs md:text-sm">Seus dados protegidos com tecnologia de ponta</p>
-  </div>
-</div>
-```
-
-**Estrutura:**
 - Container flex com alinhamento vertical centralizado
-- Espaçamento horizontal: `space-x-3` (12px) em mobile, `md:space-x-4` (16px) em desktop
+- Espaçamento horizontal: `space-x-3` (12px) em mobile, `md:space-x-4` (16px) em desktop, `tab-prod:space-x-2` (8px)
 - Grupo para efeitos hover coordenados
+- Icon container com glassmorphism
+- Tamanhos responsivos para ícones e textos
 
 **Icon Container (Glassmorphism):**
-- Tamanho: 32x32px em mobile, 40x40px em desktop
+- Tamanho: 32x32px em mobile, 40x40px em desktop, 28x28px em tab-prod
 - Fundo: `bg-white/20` (branco com 20% de opacidade)
 - Bordas: `rounded-lg` (8px)
 - Efeito blur: `backdrop-blur-sm`
@@ -267,9 +279,13 @@ body {
 - Transição: `transition-all duration-300` (300ms)
 
 **Ícones:**
-- Tamanho: 16x16px em mobile, 20x20px em desktop
+- Tamanho: 16x16px em mobile, 20x20px em desktop, 14x14px em tab-prod
 - Cor: `text-white`
 - Biblioteca: Lucide React (Shield, TrendingUp, Users)
+
+**Textos:**
+- Título: `text-sm md:text-base tab-prod:text-xs` (14px → 16px → 12px)
+- Descrição: `text-xs md:text-sm tab-prod:text-[10px]` (12px → 14px → 10px)
 
 ---
 
@@ -317,7 +333,8 @@ screens: {
   'md': '768px',
   'lg': '1024px',
   'xl': '1280px',
-  '2xl': '1400px'
+  '2xl': '1400px',
+  'tab-prod': '1000px'  // Breakpoint customizado para tablets de produção
 }
 ```
 
@@ -330,7 +347,12 @@ screens: {
 #### Tablet/Desktop (≥ 768px)
 - **Visibilidade:** `md:flex` - Componente visível
 - **Largura:** `md:w-1/4` (25% da largura da tela)
-- **Posicionamento:** `sticky top-0` (fixo durante scroll)
+- **Posicionamento:** `md:fixed md:left-0 md:top-0 md:h-screen` (fixo durante scroll)
+
+#### Resoluções >= 1000x400px
+- **Layout especial**: Logomarca e título fixos no topo
+- **Padding superior aumentado**: `min-[1000px]:min-h-[400px]:pt-16` (64px)
+- **Alinhamento**: Logomarca alinhada aproximadamente na mesma altura da div de saudação da página principal
 
 ### Ajustes Responsivos Detalhados
 
@@ -362,17 +384,24 @@ md:w-24 md:h-24 /* 96x96px em desktop */
 
 #### Espaçamentos
 ```css
+/* Padding superior da seção de logomarca/título */
+pt-8 md:pt-12 tab-prod:pt-6                    /* 32px → 48px → 24px */
+min-[1000px]:min-h-[400px]:pt-16               /* 64px em >= 1000x400 */
+
 /* Logo margin-bottom */
-mb-6 md:mb-8    /* 24px → 32px */
+mb-4 tab-prod:mb-2                             /* 16px → 8px */
+
+/* Título margin-bottom */
+mb-6 md:mb-8 tab-prod:mb-4                     /* 24px → 32px → 16px */
 
 /* Description margin-bottom */
-mb-8 md:mb-12   /* 32px → 48px */
+mb-8 md:mb-12 tab-prod:mb-4                    /* 32px → 48px → 16px */
 
 /* Features spacing */
-space-y-4 md:space-y-6  /* 16px → 24px */
+space-y-4 md:space-y-6 tab-prod:space-y-2      /* 16px → 24px → 8px */
 
 /* Feature items spacing */
-space-x-3 md:space-x-4  /* 12px → 16px */
+space-x-3 md:space-x-4 tab-prod:space-x-2      /* 12px → 16px → 8px */
 ```
 
 #### Tipografia
@@ -397,12 +426,22 @@ text-xs md:text-sm      /* 12px → 14px */
 ### Arquivo: BrandingSection.tsx
 
 ```tsx
-import { Shield, Users, TrendingUp } from "lucide-react";
+import { Shield, TrendingUp, Users } from 'lucide-react'
 
+/**
+ * Seção de branding (lado esquerdo 25% da Home)
+ * Contém gradiente, círculos animados, logo e features list
+ * Segue especificações do branding-section.md
+ *
+ * Posicionamento: Fixed para permanecer visível durante scroll
+ * Altura: 100vh (toda a altura da viewport)
+ * Layout: Todo conteúdo alinhado ao topo (logomarca, título, descrição e features)
+ * Alinhamento: Logomarca alinhada com div de saudação em resoluções >= 1000x400
+ */
 export function BrandingSection() {
   return (
-    <div className="hidden md:flex md:w-1/4 lg:w-1/4 bg-gradient-to-br from-brand-primary via-brand-primary/95 to-brand-secondary sticky top-0 relative">
-      {/* Background Pattern */}
+    <div className="hidden md:flex md:fixed md:left-0 md:top-0 md:h-screen md:w-1/4 lg:w-1/4 bg-gradient-to-br from-primary via-primary/95 to-brand-primary">
+      {/* Background Pattern - Círculos Animados */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-20 h-20 md:w-32 md:h-32 border-2 border-white rounded-full animate-pulse"></div>
         <div className="absolute top-32 right-10 md:right-20 w-12 h-12 md:w-20 md:h-20 border-2 border-white rounded-full animate-pulse delay-300"></div>
@@ -410,70 +449,78 @@ export function BrandingSection() {
         <div className="absolute bottom-32 right-8 md:right-16 w-16 h-16 md:w-24 md:h-24 border-2 border-white rounded-full animate-pulse delay-700"></div>
       </div>
 
-      {/* Content */}
-      <div className="z-10 px-4 md:px-6 lg:px-8 text-white md:min-h-0 md:h-[calc(100svh-4rem)] md:supports-[height:100dvh]:h-[calc(100dvh-4rem)] flex">
-        <div className="w-full grid min-h-full place-content-center">
+      {/* Content - Layout com todo conteúdo alinhado ao topo */}
+      <div className="relative z-10 h-full px-4 md:px-6 lg:px-8 tab-prod:px-4 text-white">
+        {/* Todo conteúdo alinhado ao topo */}
+        <div className="pt-8 md:pt-12 tab-prod:pt-6 text-center min-[1000px]:min-h-[400px]:pt-16">
           {/* Logo/Icon */}
-          <div className="mb-6 md:mb-8 text-center">
-            <img 
-              src="/APFarmaHome.png" 
-              alt="APFAR Logo"
-              className="mb-4 mx-auto"
+          <div className="mb-4 tab-prod:mb-2">
+            <img
+              src="/logo-farmace.png"
+              alt="SysOEE Logo"
+              className="mx-auto tab-prod:max-h-12"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 const fallback = document.createElement('div');
-                fallback.className = 'w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-sm';
-                fallback.innerHTML = '<span class="text-white font-bold text-lg md:text-xl">AF</span>';
+                fallback.className = 'w-20 h-20 tab-prod:w-12 tab-prod:h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mx-auto';
+                fallback.innerHTML = '<span class="text-white font-bold text-lg md:text-xl tab-prod:text-sm">OEE</span>';
                 target.parentElement?.insertBefore(fallback, target);
               }}
             />
           </div>
 
-          {/* Description */}
-          <div className="mb-8 md:mb-12">
-            <p className="text-white/80 text-sm md:text-lg leading-relaxed mb-4 md:mb-6">
-              Gerencie todo o processo licitatório de forma eficiente, 
-              desde a participação em pregões até o cumprimento de contratos.
+          {/* Título Principal com Efeito Visual */}
+          <h1 className="text-2xl md:text-3xl lg:text-4xl tab-prod:text-xl font-bold mb-6 md:mb-8 tab-prod:mb-4 text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all duration-500 hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)]">
+            SysOEE
+          </h1>
+
+          {/* Texto Descritivo */}
+          <div className="mb-8 md:mb-12 tab-prod:mb-4">
+            <p className="text-white/80 text-sm md:text-lg tab-prod:text-xs leading-relaxed tab-prod:leading-snug">
+              Monitoramento de Eficiência Operacional de Equipamentos com compliance ALCOA+ e BPF ANVISA.
             </p>
           </div>
 
           {/* Features */}
-          <div className="space-y-4 md:space-y-6">
-            <div className="flex items-center space-x-3 md:space-x-4 group">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
-                <Shield className="w-4 h-4 md:w-5 md:h-5 text-white" />
+          <div className="space-y-4 md:space-y-6 tab-prod:space-y-2">
+            {/* Feature 1: Compliance */}
+            <div className="flex items-center space-x-3 md:space-x-4 tab-prod:space-x-2 group">
+              <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
+                <Shield className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm md:text-base">Segurança Garantida</h3>
-                <p className="text-white/70 text-xs md:text-sm">Seus dados protegidos com tecnologia de ponta</p>
+                <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Compliance Regulatório</h3>
+                <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">ALCOA+ e CFR 21 Part 11</p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-3 md:space-x-4 group">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
-                <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-white" />
+
+            {/* Feature 2: Gestão em Tempo Real */}
+            <div className="flex items-center space-x-3 md:space-x-4 tab-prod:space-x-2 group">
+              <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
+                <TrendingUp className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm md:text-base">Gestão Inteligente</h3>
-                <p className="text-white/70 text-xs md:text-sm">Dashboards e relatórios em tempo real</p>
+                <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Gestão em Tempo Real</h3>
+                <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">Controle Interativo e Análise Preditiva</p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-3 md:space-x-4 group">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
-                <Users className="w-4 h-4 md:w-5 md:h-5 text-white" />
+
+            {/* Feature 3: Colaboração */}
+            <div className="flex items-center space-x-3 md:space-x-4 tab-prod:space-x-2 group">
+              <div className="w-8 h-8 md:w-10 md:h-10 tab-prod:w-7 tab-prod:h-7 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all duration-300">
+                <Users className="w-4 h-4 md:w-5 md:h-5 tab-prod:w-3.5 tab-prod:h-3.5 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm md:text-base">Colaboração</h3>
-                <p className="text-white/70 text-xs md:text-sm">Trabalhe em equipe de forma sincronizada</p>
+                <h3 className="font-semibold text-white text-sm md:text-base tab-prod:text-xs">Colaboração Integrada</h3>
+                <p className="text-white/70 text-xs md:text-sm tab-prod:text-[10px]">37 linhas de produção conectadas</p>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 ```
 
@@ -546,6 +593,57 @@ export default {
   }
 }
 ```
+
+---
+
+## 🎯 Layout e Posicionamento
+
+### Estrutura Vertical
+
+O componente BrandingSection utiliza um **layout simples alinhado ao topo**, sem centralização vertical. Todo o conteúdo flui naturalmente de cima para baixo.
+
+#### Seção Única - Todo Conteúdo Alinhado ao Topo
+- **Posicionamento**: Topo da seção de branding
+- **Conteúdo** (em ordem vertical):
+  1. Logomarca da Farmace (`/logo-farmace.png`)
+  2. Título "SysOEE" com efeito shimmer
+  3. Texto descritivo do sistema
+  4. Lista de features (Compliance, Gestão em Tempo Real, Colaboração)
+- **Comportamento**:
+  - Todo conteúdo permanece alinhado ao topo
+  - Padding superior aumentado em resoluções >= 1000x400px
+  - Logomarca alinhada aproximadamente na mesma altura da div de saudação ("Boa noite, bem-vindo!") da página principal
+  - **Sem centralização vertical** - conteúdo flui naturalmente com margens entre os elementos
+
+### Alinhamento com a Página Principal
+
+A logomarca e o título "SysOEE" na BrandingSection são posicionados para alinhar visualmente com a div de saudação da página principal:
+
+```tsx
+// Referência da div de saudação (página principal)
+<div className="flex items-center justify-between">
+  <div>
+    <h2 className="text-2xl md:text-3xl tab:text-4xl tab-prod:text-xl font-bold text-primary">
+      Boa noite, bem-vindo!
+    </h2>
+    <p className="text-muted-foreground mt-1 text-sm tab:text-base tab-prod:text-xs tab-prod:mt-0.5">
+      Olá, Usuário Demo. Selecione um módulo para começar.
+    </p>
+  </div>
+  {/* avatar e dropdown */}
+</div>
+```
+
+O padding superior da seção de logomarca/título (`pt-8 md:pt-12 tab-prod:pt-6 min-[1000px]:min-h-[400px]:pt-16`) foi ajustado para criar esse alinhamento visual.
+
+### Responsividade do Layout
+
+| Resolução | Comportamento |
+|-----------|---------------|
+| < 768px | Componente oculto (`hidden`) |
+| 768px - 999px | Layout padrão com padding `pt-8 md:pt-12` |
+| >= 1000px com altura >= 400px | Padding superior aumentado para `pt-16` (64px) |
+| Tablets de produção | Espaçamentos reduzidos (`tab-prod:pt-6`, `tab-prod:mb-2`, etc.) |
 
 ---
 
