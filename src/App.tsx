@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
+import Operacao from './pages/Operacao'
 import Placeholder from './pages/Placeholder'
 
 /**
@@ -13,19 +14,22 @@ function App() {
       <Routes>
         {/* Página Home */}
         <Route path="/" element={<Home />} />
-        
+
         {/* Dashboard com gráficos OEE */}
         <Route path="/dashboard" element={<Dashboard />} />
-        
+
+        {/* Página de Operação - Kanban de OPs */}
+        <Route path="/operacao" element={<Operacao />} />
+
         {/* Páginas placeholder para módulos em desenvolvimento */}
-        <Route 
-          path="/ordem-producao" 
+        <Route
+          path="/ordem-producao"
           element={
-            <Placeholder 
-              title="Ordem de Produção" 
+            <Placeholder
+              title="Ordem de Produção"
               description="Gestão de ordens de produção ativas e histórico de produção."
             />
-          } 
+          }
         />
         <Route 
           path="/apontamento" 
