@@ -6,16 +6,16 @@
 import { OrdemProducao } from '@/types/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Calendar, 
-  Package, 
-  Factory, 
-  TrendingUp, 
-  AlertTriangle, 
+import {
+  Calendar,
+  Package,
+  Factory,
+  AlertTriangle,
   CheckCircle2,
-  Clock,
-  Users
+  Clock
 } from 'lucide-react'
+import { useDraggable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 
 interface OPCardProps {
   op: OrdemProducao
@@ -68,8 +68,26 @@ export default function OPCard({ op }: OPCardProps) {
   const progresso = calcularProgresso(op.produzido, op.quantidadeTeorica)
   const temPerdas = op.perdas > 0
 
+  // Configura o card como arrastável
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: op.op,
+  })
+
+  // Estilo de transformação durante o arrasto
+  const style = {
+    transform: CSS.Translate.toString(transform),
+  }
+
   return (
-    <Card className="w-full hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary tab-prod:border-l-2">
+    <Card
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 cursor-grab active:cursor-grabbing ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      }`}
+    >
       <CardHeader className="pb-3 tab-prod:pb-1 tab-prod:px-2 tab-prod:pt-2">
         <div className="flex items-start justify-between gap-2 tab-prod:gap-1">
           <CardTitle className="text-lg font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">

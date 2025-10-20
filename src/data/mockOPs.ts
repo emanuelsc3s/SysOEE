@@ -3,7 +3,7 @@
  * Baseado nos dados TSV fornecidos com campos adicionais gerados
  */
 
-import { OrdemProducao, FaseProducao, Turno, Setor } from '@/types/operacao'
+import { OrdemProducao, FaseProducao, Turno } from '@/types/operacao'
 
 /**
  * Equipamentos por setor (baseado nas especificações do projeto)
@@ -70,28 +70,31 @@ function gerarHoras(): string {
 
 /**
  * Determina o setor baseado no código do SKU ou descrição
+ * (Função reservada para uso futuro)
  */
+/*
 function determinarSetor(sku: string, descricao: string): Setor {
   const desc = descricao.toUpperCase()
-  
+
   // Líquidos: produtos com "ML" em volumes maiores ou "GOTAS"
   if (desc.includes('GOTAS') || desc.includes('XAROPE')) {
     return 'Líquidos'
   }
-  
+
   // CPHD: produtos de hemodiálise
   if (desc.includes('HEMODIALISE') || desc.includes('CONCENTRADO')) {
     return 'CPHD'
   }
-  
+
   // SPPV: soluções em vidro
   if (desc.includes('VIDRO') || (desc.includes('SOL.') && desc.includes('ML'))) {
     return 'SPPV'
   }
-  
+
   // SPEP: soluções parenterais em plástico (padrão)
   return 'SPEP'
 }
+*/
 
 /**
  * Dados mock das Ordens de Produção

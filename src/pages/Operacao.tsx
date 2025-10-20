@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { FaseProducao, Setor, Turno, OrdemProducao } from '@/types/operacao'
+import { FaseProducao, OrdemProducao } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,17 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners
+} from '@dnd-kit/core'
+import OPCard from '@/components/operacao/OPCard'
 
 /**
  * Todas as fases do Kanban na ordem do processo
@@ -142,14 +153,26 @@ export default function Operacao() {
   const [ops, setOps] = useState<OrdemProducao[]>(() => carregarOPs())
 
   // Estados para filtros (futura implementação)
-  const [setorFiltro, setSetorFiltro] = useState<Setor | 'Todos'>('Todos')
-  const [turnoFiltro, setTurnoFiltro] = useState<Turno | 'Todos'>('Todos')
+  // const [setorFiltro, setSetorFiltro] = useState<Setor | 'Todos'>('Todos')
+  // const [turnoFiltro, setTurnoFiltro] = useState<Turno | 'Todos'>('Todos')
   const [dataAtual] = useState(new Date().toLocaleDateString('pt-BR'))
 
   // Ref e estados para controle de scroll horizontal
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+
+  // Estados para controle de drag-and-drop
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Requer movimento de 8px para iniciar o drag
+      },
+    })
+  )
 
   /**
    * Agrupa as OPs por fase
@@ -241,6 +264,60 @@ export default function Operacao() {
     const opsAtualizadas = carregarOPs()
     setOps(opsAtualizadas)
   }
+
+  /**
+   * Manipula o início do arrasto
+   */
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    setActiveId(active.id as string)
+    console.log('🎯 Iniciando arrasto da OP:', active.id)
+  }
+
+  /**
+   * Manipula o fim do arrasto
+   */
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    // Limpa o estado de arrasto
+    setActiveId(null)
+
+    // Se não há destino válido, cancela
+    if (!over) {
+      console.log('❌ Arrasto cancelado - sem destino válido')
+      return
+    }
+
+    const opId = active.id as string
+    const novaFase = over.id as FaseProducao
+
+    console.log(`📦 Movendo OP ${opId} para fase "${novaFase}"`)
+
+    // Atualiza o estado das OPs
+    setOps((opsAtuais) => {
+      const opsAtualizadas = opsAtuais.map((op) => {
+        if (op.op === opId) {
+          console.log(`✅ OP ${opId}: "${op.fase}" → "${novaFase}"`)
+          return { ...op, fase: novaFase }
+        }
+        return op
+      })
+
+      // Salva no localStorage
+      salvarOPs(opsAtualizadas)
+
+      return opsAtualizadas
+    })
+  }
+
+  /**
+   * Encontra a OP que está sendo arrastada (para o DragOverlay)
+   */
+  const activeOP = useMemo(() => {
+    if (!activeId) return null
+    return ops.find((op) => op.op === activeId)
+  }, [activeId, ops])
 
   /**
    * Configura listeners de scroll e verifica scrollability inicial
@@ -343,67 +420,83 @@ export default function Operacao() {
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="max-w-[1920px] mx-auto px-2 pb-2 tab-prod:px-1 tab-prod:pb-1">
-        <div className="relative">
-          {/* Botão de navegação esquerda - sticky para ficar sempre visível */}
-          {canScrollLeft && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleScroll('left')}
-              className="sticky left-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-left tab-prod:h-8 tab-prod:w-8 tab-prod:left-1"
-              aria-label="Rolar para esquerda"
+      {/* Kanban Board com Drag and Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="max-w-[1920px] mx-auto px-2 pb-2 tab-prod:px-1 tab-prod:pb-1">
+          <div className="relative">
+            {/* Botão de navegação esquerda - sticky para ficar sempre visível */}
+            {canScrollLeft && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleScroll('left')}
+                className="sticky left-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-left tab-prod:h-8 tab-prod:w-8 tab-prod:left-1"
+                aria-label="Rolar para esquerda"
+              >
+                <ChevronLeft className="h-6 w-6 tab-prod:h-4 tab-prod:w-4" />
+              </Button>
+            )}
+
+            {/* Botão de navegação direita - sticky para ficar sempre visível */}
+            {canScrollRight && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleScroll('right')}
+                className="sticky right-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-right tab-prod:h-8 tab-prod:w-8 tab-prod:right-1"
+                aria-label="Rolar para direita"
+              >
+                <ChevronRight className="h-6 w-6 tab-prod:h-4 tab-prod:w-4" />
+              </Button>
+            )}
+
+            {/* Container de scroll */}
+            <div
+              ref={scrollContainerRef}
+              className="overflow-x-auto overflow-y-visible pb-6 scrollbar-enhanced clear-both tab-prod:pb-3"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) hsl(var(--muted) / 0.5)'
+              }}
             >
-              <ChevronLeft className="h-6 w-6 tab-prod:h-4 tab-prod:w-4" />
-            </Button>
-          )}
+              {/*
+                Largura das colunas otimizada para diferentes resoluções:
+                - Desktop (≥1024px): 320px (padrão)
+                - Tablet 1000-1023px: 243px (4 colunas visíveis em 1000px)
 
-          {/* Botão de navegação direita - sticky para ficar sempre visível */}
-          {canScrollRight && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleScroll('right')}
-              className="sticky right-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-right tab-prod:h-8 tab-prod:w-8 tab-prod:right-1"
-              aria-label="Rolar para direita"
-            >
-              <ChevronRight className="h-6 w-6 tab-prod:h-4 tab-prod:w-4" />
-            </Button>
-          )}
-
-          {/* Container de scroll */}
-          <div
-            ref={scrollContainerRef}
-            className="overflow-x-auto overflow-y-visible pb-6 scrollbar-enhanced clear-both tab-prod:pb-3"
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) hsl(var(--muted) / 0.5)'
-            }}
-          >
-            {/*
-              Largura das colunas otimizada para diferentes resoluções:
-              - Desktop (≥1024px): 320px (padrão)
-              - Tablet 1000-1023px: 243px (4 colunas visíveis em 1000px)
-
-              Cálculo para 1000px:
-              - Largura disponível: 1000px - (2px padding × 2) = 996px
-              - 3 gaps × 8px = 24px
-              - Largura por coluna: (996 - 24) / 4 = 243px
-            */}
-            <div className="flex gap-4 min-w-max tab-prod:gap-2">
-              {FASES.map((fase) => (
-                <div key={fase} className="w-[320px] flex-shrink-0 tab-prod:w-[243px]">
-                  <KanbanColumn
-                    fase={fase}
-                    ops={opsPorFase[fase]}
-                  />
-                </div>
-              ))}
+                Cálculo para 1000px:
+                - Largura disponível: 1000px - (2px padding × 2) = 996px
+                - 3 gaps × 8px = 24px
+                - Largura por coluna: (996 - 24) / 4 = 243px
+              */}
+              <div className="flex gap-4 min-w-max tab-prod:gap-2">
+                {FASES.map((fase) => (
+                  <div key={fase} className="w-[320px] flex-shrink-0 tab-prod:w-[243px]">
+                    <KanbanColumn
+                      fase={fase}
+                      ops={opsPorFase[fase]}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Overlay visual durante o arrasto */}
+        <DragOverlay>
+          {activeOP ? (
+            <div className="opacity-80 rotate-3 scale-105">
+              <OPCard op={activeOP} />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Legenda de Cores (opcional) */}
       <div className="max-w-[1920px] mx-auto px-4 pb-6 tab-prod:px-2 tab-prod:pb-3">

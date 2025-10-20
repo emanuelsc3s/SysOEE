@@ -6,6 +6,7 @@
 import { OrdemProducao, FaseProducao } from '@/types/operacao'
 import OPCard from './OPCard'
 import { Badge } from '@/components/ui/badge'
+import { useDroppable } from '@dnd-kit/core'
 
 interface KanbanColumnProps {
   fase: FaseProducao
@@ -45,8 +46,18 @@ function getCorBadge(fase: FaseProducao): string {
 }
 
 export default function KanbanColumn({ fase, ops }: KanbanColumnProps) {
+  // Configura a coluna como área de drop
+  const { setNodeRef, isOver } = useDroppable({
+    id: fase,
+  })
+
   return (
-    <div className={`flex flex-col rounded-lg border-2 ${getCorFase(fase)} min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border`}>
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col rounded-lg border-2 ${getCorFase(fase)} min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border transition-all duration-200 ${
+        isOver ? 'ring-4 ring-primary/50 scale-[1.02]' : ''
+      }`}
+    >
       {/* Cabeçalho da Coluna */}
       <div className="p-4 border-b-2 border-inherit sticky top-0 bg-inherit z-10 tab-prod:p-1.5 tab-prod:border-b">
         <div className="flex items-center justify-between gap-2 tab-prod:gap-1">
@@ -62,8 +73,10 @@ export default function KanbanColumn({ fase, ops }: KanbanColumnProps) {
       {/* Lista de Cards */}
       <div className="flex-1 p-3 space-y-3 overflow-y-auto tab-prod:p-1.5 tab-prod:space-y-1.5">
         {ops.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-16 tab-prod:text-[10px]">
-            Nenhuma OP nesta fase
+          <div className={`flex items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-16 tab-prod:text-[10px] transition-all ${
+            isOver ? 'text-primary font-semibold' : ''
+          }`}>
+            {isOver ? 'Solte aqui' : 'Nenhuma OP nesta fase'}
           </div>
         ) : (
           ops.map((op) => (
