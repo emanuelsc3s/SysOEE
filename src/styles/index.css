@@ -290,6 +290,17 @@
     scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted) / 0.5);
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    /* Permite scroll horizontal sem interferir no drag vertical */
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: none;
+  }
+
+  /* Previne seleção de texto durante drag */
+  .dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
   }
 }
 

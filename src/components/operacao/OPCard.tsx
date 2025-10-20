@@ -12,7 +12,8 @@ import {
   Factory,
   AlertTriangle,
   CheckCircle2,
-  Clock
+  Clock,
+  GripVertical
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -83,16 +84,24 @@ export default function OPCard({ op }: OPCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 cursor-grab active:cursor-grabbing ${
+      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
     >
       <CardHeader className="pb-3 tab-prod:pb-1 tab-prod:px-2 tab-prod:pt-2">
         <div className="flex items-start justify-between gap-2 tab-prod:gap-1">
-          <CardTitle className="text-lg font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
-            OP {op.op}
-          </CardTitle>
+          {/* Handle de Drag - Área específica para arrastar */}
+          <div
+            {...listeners}
+            className="flex items-center gap-2 cursor-grab active:cursor-grabbing touch-none tab-prod:gap-1"
+            title="Arraste para mover o card"
+          >
+            <GripVertical className="h-5 w-5 text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 tab-prod:h-3 tab-prod:w-3" />
+            <CardTitle className="text-lg font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
+              OP {op.op}
+            </CardTitle>
+          </div>
+
           <div className="flex flex-col gap-1 items-end tab-prod:gap-0">
             <Badge className={`text-xs ${getCorSetor(op.setor)} tab-prod:text-[9px] tab-prod:px-0.5 tab-prod:py-0 tab-prod:leading-tight`}>
               {op.setor}

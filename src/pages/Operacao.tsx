@@ -166,6 +166,9 @@ export default function Operacao() {
   // Estados para controle de drag-and-drop
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  // Ref para armazenar a posição de scroll antes do drag
+  const scrollPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+
   // Estados para controle do diálogo de conclusão
   const [dialogoConclusaoAberto, setDialogoConclusaoAberto] = useState(false)
   const [opPendenteConclusao, setOpPendenteConclusao] = useState<{
@@ -173,11 +176,13 @@ export default function Operacao() {
     faseOriginal: FaseProducao
   } | null>(null)
 
-  // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques)
+  // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques e scroll)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Requer movimento de 8px para iniciar o drag
+        distance: 15, // Requer movimento de 15px para iniciar o drag (evita conflito com scroll)
+        delay: 0,
+        tolerance: 5,
       },
     })
   )
@@ -279,6 +284,16 @@ export default function Operacao() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event
     setActiveId(active.id as string)
+
+    // Salva a posição de scroll atual
+    scrollPositionRef.current = {
+      x: window.scrollX,
+      y: window.scrollY
+    }
+
+    // Adiciona classe ao body para prevenir seleção de texto e scroll
+    document.body.classList.add('dragging')
+
     console.log('🎯 Iniciando arrasto da OP:', active.id)
   }
 
@@ -290,6 +305,12 @@ export default function Operacao() {
 
     // Limpa o estado de arrasto
     setActiveId(null)
+
+    // Remove classe do body
+    document.body.classList.remove('dragging')
+
+    // Restaura a posição de scroll
+    window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y)
 
     // Se não há destino válido, cancela
     if (!over) {
@@ -502,6 +523,7 @@ export default function Operacao() {
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        autoScroll={false}
       >
         <div className="max-w-[1920px] mx-auto px-2 pb-2 tab-prod:px-1 tab-prod:pb-1">
           <div className="relative">
