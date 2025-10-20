@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -23,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
 
 /**
  * Retorna a saudação apropriada baseada no horário atual
@@ -48,6 +51,11 @@ const getSaudacao = (): string => {
  * Segue especificações do home-design-system.md e PRD
  */
 export default function Home() {
+  const navigate = useNavigate()
+
+  // Estado para controlar o modal de seleção de operação
+  const [modalOperacaoAberto, setModalOperacaoAberto] = useState(false)
+
   // Mock de dados do usuário (será substituído por autenticação real)
   const user = {
     name: 'Usuário Demo',
@@ -58,6 +66,36 @@ export default function Home() {
 
   // Obtém a saudação baseada no horário
   const saudacao = getSaudacao()
+
+  /**
+   * Abre o modal de seleção de tipo de operação
+   */
+  const handleAbrirModalOperacao = () => {
+    setModalOperacaoAberto(true)
+  }
+
+  /**
+   * Fecha o modal de seleção
+   */
+  const handleFecharModalOperacao = () => {
+    setModalOperacaoAberto(false)
+  }
+
+  /**
+   * Navega para a página de Operação (visualização por Ordem de Produção)
+   */
+  const handleSelecionarOrdemProducao = () => {
+    setModalOperacaoAberto(false)
+    navigate('/operacao')
+  }
+
+  /**
+   * Exibe alerta informando que a funcionalidade está em desenvolvimento
+   */
+  const handleSelecionarEquipamento = () => {
+    setModalOperacaoAberto(false)
+    alert('⚙️ Funcionalidade em Desenvolvimento\n\nA visualização por equipamento estará disponível em breve.')
+  }
 
   // Definição dos módulos de navegação
   const navigationItems = [
@@ -77,7 +115,9 @@ export default function Home() {
       title: 'Operação',
       icon: <Activity size={40} />,
       path: '/operacao',
-      description: 'Visualizar quais equipamentos estão atualmente em operação'
+      description: 'Visualizar quais equipamentos estão atualmente em operação',
+      // Intercepta o clique para abrir o modal de seleção
+      onClick: handleAbrirModalOperacao
     },
     {
       title: 'Apontamento',
@@ -208,6 +248,7 @@ export default function Home() {
                     title={item.title}
                     icon={item.icon}
                     path={item.path}
+                    onClick={item.onClick}
                   />
                 ))}
               </div>
@@ -225,6 +266,14 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      {/* Modal de Seleção de Tipo de Operação */}
+      <ModalSelecaoOperacao
+        aberto={modalOperacaoAberto}
+        onFechar={handleFecharModalOperacao}
+        onSelecionarOrdemProducao={handleSelecionarOrdemProducao}
+        onSelecionarEquipamento={handleSelecionarEquipamento}
+      />
     </div>
   )
 }
