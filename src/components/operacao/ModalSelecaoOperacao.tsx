@@ -135,7 +135,7 @@ export function ModalSelecaoOperacao({
 }: ModalSelecaoOperacaoProps) {
   return (
     <Dialog open={aberto} onOpenChange={onFechar}>
-      <DialogContent className="sm:max-w-[700px] tab-prod:max-w-[900px] tab-prod:p-3">
+      <DialogContent className="sm:max-w-[700px] tab-prod:max-w-[500px] tab-prod:p-3">
         <DialogHeader className="tab-prod:space-y-1">
           <DialogTitle className="text-2xl tab-prod:text-lg font-bold text-primary">
             Selecione o Tipo de Visualização
@@ -146,7 +146,7 @@ export function ModalSelecaoOperacao({
         </DialogHeader>
 
         {/* Grid de opções - Otimizado para tablet de produção */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 tab-prod:gap-2 mt-4 tab-prod:mt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 tab-prod:gap-2 mt-4 tab-prod:mt-2 mb-4 tab-prod:mb-3">
           {/* Opção 1: Por Ordem de Produção */}
           <OpcaoCard
             titulo="Por Ordem de Produção"
@@ -164,13 +164,6 @@ export function ModalSelecaoOperacao({
             onClick={onSelecionarEquipamento}
             cor="secondary"
           />
-        </div>
-
-        {/* Nota informativa - Otimizada para tablet de produção */}
-        <div className="mt-4 tab-prod:mt-2 p-3 tab-prod:p-2 bg-muted rounded-md border border-border">
-          <p className="text-xs tab-prod:text-[9px] text-muted-foreground tab-prod:leading-tight">
-            <strong>Nota:</strong> A visualização por equipamento está em desenvolvimento e será disponibilizada em breve.
-          </p>
         </div>
       </DialogContent>
     </Dialog>
