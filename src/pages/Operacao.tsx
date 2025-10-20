@@ -160,9 +160,9 @@ export default function Operacao() {
     <div className="min-h-screen bg-muted">
       {/* Header */}
       <div className="bg-card border-b border-border sticky top-0 z-20 shadow-sm">
-        <div className="max-w-[1920px] mx-auto px-4 py-4">
+        <div className="max-w-[1920px] mx-auto px-2 py-2">
           {/* Linha 1: Título e Ações */}
-          <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center justify-between gap-4 mb-2">
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -236,7 +236,7 @@ export default function Operacao() {
       </div>
 
       {/* Kanban Board */}
-      <div className="max-w-[1920px] mx-auto p-4">
+      <div className="max-w-[1920px] mx-auto px-2 pb-2">
         <div className="relative">
           {/* Botão de navegação esquerda - sticky para ficar sempre visível */}
           {canScrollLeft && (
@@ -245,7 +245,6 @@ export default function Operacao() {
               size="icon"
               onClick={() => handleScroll('left')}
               className="sticky left-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-left"
-              style={{ marginTop: '200px' }}
               aria-label="Rolar para esquerda"
             >
               <ChevronLeft className="h-6 w-6" />
@@ -259,7 +258,6 @@ export default function Operacao() {
               size="icon"
               onClick={() => handleScroll('right')}
               className="sticky right-2 top-[50vh] -translate-y-1/2 z-20 h-12 w-12 rounded-full bg-card/95 backdrop-blur-sm shadow-lg border-2 hover:bg-card hover:scale-110 transition-all duration-200 float-right"
-              style={{ marginTop: '200px' }}
               aria-label="Rolar para direita"
             >
               <ChevronRight className="h-6 w-6" />
