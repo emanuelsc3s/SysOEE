@@ -18,7 +18,6 @@ interface KanbanColumnProps {
 function getCorFase(fase: FaseProducao): string {
   const cores: Record<FaseProducao, string> = {
     'Planejado': 'bg-slate-50 border-slate-200',
-    'Parada': 'bg-red-50 border-red-200',
     'Emissão de Dossiê': 'bg-blue-50 border-blue-200',
     'Pesagem': 'bg-purple-50 border-purple-200',
     'Preparação': 'bg-indigo-50 border-indigo-200',
@@ -35,7 +34,6 @@ function getCorFase(fase: FaseProducao): string {
 function getCorBadge(fase: FaseProducao): string {
   const cores: Record<FaseProducao, string> = {
     'Planejado': 'bg-slate-600 text-white',
-    'Parada': 'bg-red-600 text-white',
     'Emissão de Dossiê': 'bg-blue-600 text-white',
     'Pesagem': 'bg-purple-600 text-white',
     'Preparação': 'bg-indigo-600 text-white',

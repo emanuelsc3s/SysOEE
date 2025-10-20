@@ -8,7 +8,6 @@
  */
 export type FaseProducao =
   | 'Planejado'
-  | 'Parada'
   | 'Emissão de Dossiê'
   | 'Pesagem'
   | 'Preparação'

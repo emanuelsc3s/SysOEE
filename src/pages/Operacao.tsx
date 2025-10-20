@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { FaseProducao, Setor, Turno } from '@/types/operacao'
+import { FaseProducao, Setor, Turno, OrdemProducao } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,6 @@ import { useNavigate } from 'react-router-dom'
  */
 const FASES: FaseProducao[] = [
   'Planejado',
-  'Parada',
   'Emissão de Dossiê',
   'Pesagem',
   'Preparação',
@@ -35,8 +34,112 @@ const FASES: FaseProducao[] = [
   'Concluído'
 ]
 
+/**
+ * Chave para armazenamento no localStorage
+ */
+const STORAGE_KEY = 'sysoee_operacao_ops'
+
+/**
+ * Gera dados mock iniciais com distribuição garantida em todas as fases
+ */
+function gerarDadosMockIniciais(): OrdemProducao[] {
+  // Cria uma cópia dos dados mock originais
+  const opsBase = [...mockOPs]
+
+  // Distribui as OPs entre as fases de forma equilibrada
+  const opsPorFase = Math.ceil(opsBase.length / FASES.length)
+
+  return opsBase.map((op, index) => {
+    // Calcula qual fase esta OP deve estar baseado no índice
+    const faseIndex = Math.floor(index / opsPorFase)
+    const fase = FASES[Math.min(faseIndex, FASES.length - 1)]
+
+    return {
+      ...op,
+      fase
+    }
+  })
+}
+
+/**
+ * Migra OPs antigas removendo fases inválidas (como "Parada")
+ */
+function migrarOPsAntigas(ops: OrdemProducao[]): OrdemProducao[] {
+  const fasesValidas: FaseProducao[] = [
+    'Planejado',
+    'Emissão de Dossiê',
+    'Pesagem',
+    'Preparação',
+    'Envase',
+    'Embalagem',
+    'Concluído'
+  ]
+
+  let migradas = 0
+  const opsMigradas = ops.map(op => {
+    // Se a fase não é válida, move para "Planejado"
+    if (!fasesValidas.includes(op.fase)) {
+      console.warn(`🔄 Migrando OP ${op.op} de fase inválida "${op.fase}" para "Planejado"`)
+      migradas++
+      return { ...op, fase: 'Planejado' as FaseProducao }
+    }
+    return op
+  })
+
+  if (migradas > 0) {
+    console.log(`✅ Migração concluída: ${migradas} OPs atualizadas`)
+  }
+
+  return opsMigradas
+}
+
+/**
+ * Carrega OPs do localStorage ou gera dados iniciais
+ */
+function carregarOPs(): OrdemProducao[] {
+  try {
+    const dadosSalvos = localStorage.getItem(STORAGE_KEY)
+
+    if (dadosSalvos) {
+      let ops = JSON.parse(dadosSalvos) as OrdemProducao[]
+      console.log('✅ Dados carregados do localStorage:', ops.length, 'OPs')
+
+      // Migra OPs antigas se necessário
+      ops = migrarOPsAntigas(ops)
+
+      // Salva dados migrados
+      salvarOPs(ops)
+
+      return ops
+    }
+  } catch (error) {
+    console.error('❌ Erro ao carregar dados do localStorage:', error)
+  }
+
+  // Se não há dados salvos ou houve erro, gera dados iniciais
+  console.log('🔄 Gerando dados mock iniciais...')
+  const opsIniciais = gerarDadosMockIniciais()
+  salvarOPs(opsIniciais)
+  return opsIniciais
+}
+
+/**
+ * Salva OPs no localStorage
+ */
+function salvarOPs(ops: OrdemProducao[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ops))
+    console.log('💾 Dados salvos no localStorage:', ops.length, 'OPs')
+  } catch (error) {
+    console.error('❌ Erro ao salvar dados no localStorage:', error)
+  }
+}
+
 export default function Operacao() {
   const navigate = useNavigate()
+
+  // Estado para as OPs (carregadas do localStorage ou geradas inicialmente)
+  const [ops, setOps] = useState<OrdemProducao[]>(() => carregarOPs())
 
   // Estados para filtros (futura implementação)
   const [setorFiltro, setSetorFiltro] = useState<Setor | 'Todos'>('Todos')
@@ -52,9 +155,8 @@ export default function Operacao() {
    * Agrupa as OPs por fase
    */
   const opsPorFase = useMemo(() => {
-    const grupos: Record<FaseProducao, typeof mockOPs> = {
+    const grupos: Record<FaseProducao, OrdemProducao[]> = {
       'Planejado': [],
-      'Parada': [],
       'Emissão de Dossiê': [],
       'Pesagem': [],
       'Preparação': [],
@@ -63,22 +165,27 @@ export default function Operacao() {
       'Concluído': []
     }
 
-    mockOPs.forEach((op) => {
-      grupos[op.fase].push(op)
+    ops.forEach((op) => {
+      // Valida se a fase da OP é válida (ignora fases antigas como "Parada")
+      if (grupos[op.fase]) {
+        grupos[op.fase].push(op)
+      } else {
+        console.warn(`OP ${op.op} possui fase inválida: "${op.fase}". Ignorando.`)
+      }
     })
 
     return grupos
-  }, [])
+  }, [ops])
 
   /**
    * Calcula estatísticas gerais
    */
   const estatisticas = useMemo(() => {
-    const totalOPs = mockOPs.length
-    const setoresAtivos = new Set(mockOPs.map(op => op.setor)).size
-    const turnosAtivos = new Set(mockOPs.map(op => op.turno)).size
-    const opsEmProducao = mockOPs.filter(
-      op => !['Planejado', 'Parada', 'Concluído'].includes(op.fase)
+    const totalOPs = ops.length
+    const setoresAtivos = new Set(ops.map(op => op.setor)).size
+    const turnosAtivos = new Set(ops.map(op => op.turno)).size
+    const opsEmProducao = ops.filter(
+      op => !['Planejado', 'Concluído'].includes(op.fase)
     ).length
 
     return {
@@ -87,7 +194,7 @@ export default function Operacao() {
       turnosAtivos,
       opsEmProducao
     }
-  }, [])
+  }, [ops])
 
   /**
    * Verifica se pode rolar para esquerda ou direita
@@ -127,11 +234,12 @@ export default function Operacao() {
   }
 
   /**
-   * Simula atualização dos dados
+   * Atualiza os dados do localStorage
    */
   const handleRefresh = () => {
-    // TODO: Implementar atualização real dos dados
-    console.log('Atualizando dados...')
+    console.log('🔄 Atualizando dados do localStorage...')
+    const opsAtualizadas = carregarOPs()
+    setOps(opsAtualizadas)
   }
 
   /**

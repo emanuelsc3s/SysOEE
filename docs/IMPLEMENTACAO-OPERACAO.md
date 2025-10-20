@@ -6,18 +6,17 @@ A página **Operação** foi implementada com sucesso, apresentando um layout Ka
 
 ## 🎯 Funcionalidades Implementadas
 
-### 1. Layout Kanban com 8 Colunas
+### 1. Layout Kanban com 7 Colunas
 
-As OPs são organizadas em 8 fases do processo produtivo:
+As OPs são organizadas em 7 fases do processo produtivo:
 
 1. **Planejado** - OPs aguardando início
-2. **Parada** - OPs temporariamente paradas
-3. **Emissão de Dossiê** - Documentação sendo preparada
-4. **Pesagem** - Fase de pesagem de matérias-primas
-5. **Preparação** - Preparação do processo
-6. **Envase** - Processo de envase
-7. **Embalagem** - Processo de embalagem
-8. **Concluído** - OPs finalizadas
+2. **Emissão de Dossiê** - Documentação sendo preparada
+3. **Pesagem** - Fase de pesagem de matérias-primas
+4. **Preparação** - Preparação do processo
+5. **Envase** - Processo de envase
+6. **Embalagem** - Processo de embalagem
+7. **Concluído** - OPs finalizadas
 
 ### 2. Cards de OP com Informações Completas
 
@@ -56,7 +55,6 @@ Cada card exibe:
 
 #### Cores por Fase (colunas):
 - **Planejado** - Cinza claro
-- **Parada** - Vermelho claro
 - **Emissão de Dossiê** - Azul claro
 - **Pesagem** - Roxo claro
 - **Preparação** - Índigo claro
@@ -69,7 +67,7 @@ Cada card exibe:
 O cabeçalho exibe:
 - Data atual
 - Total de OPs
-- OPs em produção (excluindo Planejado, Parada e Concluído)
+- OPs em produção (excluindo Planejado e Concluído)
 - Setores ativos
 - Turnos ativos
 

@@ -28,36 +28,33 @@ http://localhost:8081/operacao
 #### Linha 2: Estatísticas
 - **Data Atual** - Data de hoje
 - **OPs Totais** - Quantidade total de ordens
-- **Em Produção** - OPs nas fases ativas (excluindo Planejado, Parada, Concluído)
+- **Em Produção** - OPs nas fases ativas (excluindo Planejado e Concluído)
 - **Setores Ativos** - Quantidade de setores com OPs
 - **Turnos Ativos** - Quantidade de turnos operando
 
 ### Kanban Board (Área Principal)
 
-8 colunas representando as fases:
+7 colunas representando as fases:
 
 1. **Planejado** (Cinza)
    - OPs aguardando início de produção
 
-2. **Parada** (Vermelho)
-   - OPs temporariamente paradas
-
-3. **Emissão de Dossiê** (Azul)
+2. **Emissão de Dossiê** (Azul)
    - Documentação sendo preparada
 
-4. **Pesagem** (Roxo)
+3. **Pesagem** (Roxo)
    - Pesagem de matérias-primas
 
-5. **Preparação** (Índigo)
+4. **Preparação** (Índigo)
    - Preparação do processo
 
-6. **Envase** (Ciano)
+5. **Envase** (Ciano)
    - Processo de envase em andamento
 
-7. **Embalagem** (Verde-azulado)
+6. **Embalagem** (Verde-azulado)
    - Processo de embalagem
 
-8. **Concluído** (Verde)
+7. **Concluído** (Verde)
    - OPs finalizadas
 
 ### Cards de OP
@@ -117,7 +114,6 @@ Explicação das cores dos setores:
 | Fase | Cor de Fundo |
 |------|--------------|
 | Planejado | Cinza claro |
-| Parada | Vermelho claro |
 | Emissão de Dossiê | Azul claro |
 | Pesagem | Roxo claro |
 | Preparação | Índigo claro |
@@ -166,7 +162,7 @@ Explicação das cores dos setores:
 1. Acesse a página Operação
 2. Observe as estatísticas no header
 3. Identifique gargalos (colunas com muitas OPs)
-4. Verifique OPs na coluna "Parada"
+4. Verifique distribuição de OPs entre as fases
 
 ### 2. Monitoramento de Setor Específico
 **Objetivo**: Acompanhar apenas um setor (ex: SPEP)

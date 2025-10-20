@@ -32,7 +32,6 @@ const equipamentosPorSetor = {
  */
 const fases: FaseProducao[] = [
   'Planejado',
-  'Parada',
   'Emissão de Dossiê',
   'Pesagem',
   'Preparação',
