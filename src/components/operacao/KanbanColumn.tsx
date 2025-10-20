@@ -48,23 +48,23 @@ function getCorBadge(fase: FaseProducao): string {
 
 export default function KanbanColumn({ fase, ops }: KanbanColumnProps) {
   return (
-    <div className={`flex flex-col rounded-lg border-2 ${getCorFase(fase)} min-h-[600px] w-full`}>
+    <div className={`flex flex-col rounded-lg border-2 ${getCorFase(fase)} min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border`}>
       {/* Cabeçalho da Coluna */}
-      <div className="p-4 border-b-2 border-inherit sticky top-0 bg-inherit z-10">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-bold text-base text-foreground">
+      <div className="p-4 border-b-2 border-inherit sticky top-0 bg-inherit z-10 tab-prod:p-1.5 tab-prod:border-b">
+        <div className="flex items-center justify-between gap-2 tab-prod:gap-1">
+          <h3 className="font-bold text-base text-foreground tab-prod:text-xs tab-prod:leading-tight">
             {fase}
           </h3>
-          <Badge className={`${getCorBadge(fase)} font-semibold`}>
+          <Badge className={`${getCorBadge(fase)} font-semibold tab-prod:text-[10px] tab-prod:px-1 tab-prod:py-0 tab-prod:leading-tight`}>
             {ops.length}
           </Badge>
         </div>
       </div>
 
       {/* Lista de Cards */}
-      <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto tab-prod:p-1.5 tab-prod:space-y-1.5">
         {ops.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-16 tab-prod:text-[10px]">
             Nenhuma OP nesta fase
           </div>
         ) : (

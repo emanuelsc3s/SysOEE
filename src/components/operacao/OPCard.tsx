@@ -69,75 +69,76 @@ export default function OPCard({ op }: OPCardProps) {
   const temPerdas = op.perdas > 0
 
   return (
-    <Card className="w-full hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-lg font-bold text-primary">
+    <Card className="w-full hover:shadow-md transition-shadow duration-200 border-l-4 border-l-primary tab-prod:border-l-2">
+      <CardHeader className="pb-3 tab-prod:pb-1 tab-prod:px-2 tab-prod:pt-2">
+        <div className="flex items-start justify-between gap-2 tab-prod:gap-1">
+          <CardTitle className="text-lg font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
             OP {op.op}
           </CardTitle>
-          <div className="flex flex-col gap-1 items-end">
-            <Badge className={`text-xs ${getCorSetor(op.setor)}`}>
+          <div className="flex flex-col gap-1 items-end tab-prod:gap-0">
+            <Badge className={`text-xs ${getCorSetor(op.setor)} tab-prod:text-[9px] tab-prod:px-0.5 tab-prod:py-0 tab-prod:leading-tight`}>
               {op.setor}
             </Badge>
-            <Badge className={`text-xs ${getCorTurno(op.turno)}`}>
+            <Badge className={`text-xs ${getCorTurno(op.turno)} tab-prod:text-[9px] tab-prod:px-0.5 tab-prod:py-0 tab-prod:leading-tight`}>
               {op.turno}
             </Badge>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 tab-prod:space-y-1 tab-prod:px-2 tab-prod:pb-2">
         {/* Data de Emissão */}
-        <div className="flex items-center gap-2 text-sm">
-          <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-muted-foreground">Emissão:</span>
+        <div className="flex items-center gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+          <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+          <span className="text-muted-foreground tab-prod:hidden">Emissão:</span>
           <span className="font-medium">{op.dataEmissao}</span>
         </div>
 
         {/* Lote */}
-        <div className="flex items-center gap-2 text-sm">
-          <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-muted-foreground">Lote:</span>
+        <div className="flex items-center gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+          <Package className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+          <span className="text-muted-foreground tab-prod:hidden">Lote:</span>
           <span className="font-medium">{op.lote}</span>
         </div>
 
         {/* Produto */}
-        <div className="pt-2 pb-2 border-t border-b border-border">
-          <p className="text-sm font-semibold text-foreground line-clamp-2" title={op.produto}>
+        <div className="pt-2 pb-2 border-t border-b border-border tab-prod:pt-1 tab-prod:pb-1">
+          <p className="text-sm font-semibold text-foreground line-clamp-2 tab-prod:text-[10px] tab-prod:line-clamp-1 tab-prod:leading-tight" title={op.produto}>
             {op.produto}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 tab-prod:text-[9px] tab-prod:mt-0 tab-prod:leading-tight">
             SKU: {op.sku}
           </p>
         </div>
 
         {/* Equipamento */}
-        <div className="flex items-center gap-2 text-sm">
-          <Factory className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <span className="text-muted-foreground">Equipamento:</span>
+        <div className="flex items-center gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+          <Factory className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+          <span className="text-muted-foreground tab-prod:hidden">Equipamento:</span>
           <span className="font-medium">{op.equipamento}</span>
         </div>
 
         {/* Horas e Turno */}
-        <div className="flex items-center justify-between gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-muted-foreground">Horas:</span>
+        <div className="flex items-center justify-between gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+          <div className="flex items-center gap-2 tab-prod:gap-0.5">
+            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+            <span className="text-muted-foreground tab-prod:hidden">Horas:</span>
             <span className="font-medium">{op.horas}</span>
           </div>
         </div>
 
         {/* Quantidades */}
-        <div className="space-y-2 pt-2 border-t border-border">
-          <div className="flex items-center justify-between text-sm">
+        <div className="space-y-2 pt-2 border-t border-border tab-prod:space-y-0.5 tab-prod:pt-1">
+          <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
             <span className="text-muted-foreground">Teórico:</span>
             <span className="font-semibold">{formatarNumero(op.quantidadeTeorica)}</span>
           </div>
-          
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="text-muted-foreground">Produzido:</span>
+
+          <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
+            <div className="flex items-center gap-1 tab-prod:gap-0.5">
+              <CheckCircle2 className="h-4 w-4 text-green-600 tab-prod:h-2.5 tab-prod:w-2.5" />
+              <span className="text-muted-foreground tab-prod:hidden">Produzido:</span>
+              <span className="text-muted-foreground tab-prod:inline hidden">Prod:</span>
             </div>
             <span className="font-semibold text-green-700">
               {formatarNumero(op.produzido)} ({progresso}%)
@@ -145,9 +146,9 @@ export default function OPCard({ op }: OPCardProps) {
           </div>
 
           {temPerdas && (
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
+              <div className="flex items-center gap-1 tab-prod:gap-0.5">
+                <AlertTriangle className="h-4 w-4 text-orange-600 tab-prod:h-2.5 tab-prod:w-2.5" />
                 <span className="text-muted-foreground">Perdas:</span>
               </div>
               <span className="font-semibold text-orange-700">
@@ -157,9 +158,9 @@ export default function OPCard({ op }: OPCardProps) {
           )}
 
           {/* Barra de Progresso */}
-          <div className="pt-2">
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div 
+          <div className="pt-2 tab-prod:pt-0.5">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden tab-prod:h-1">
+              <div
                 className="bg-primary h-full transition-all duration-300 rounded-full"
                 style={{ width: `${progresso}%` }}
               />
@@ -167,9 +168,9 @@ export default function OPCard({ op }: OPCardProps) {
           </div>
         </div>
 
-        {/* Informações Adicionais (se disponíveis) */}
+        {/* Informações Adicionais (se disponíveis) - Ocultar em tablet para economizar espaço */}
         {(op.dossie || op.anvisa) && (
-          <div className="pt-2 border-t border-border space-y-1">
+          <div className="pt-2 border-t border-border space-y-1 tab-prod:hidden">
             {op.dossie && (
               <p className="text-xs text-muted-foreground">
                 Dossiê: <span className="font-medium">{op.dossie}</span>
