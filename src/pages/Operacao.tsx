@@ -7,6 +7,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { FaseProducao, OrdemProducao } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
+import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -165,6 +166,13 @@ export default function Operacao() {
   // Estados para controle de drag-and-drop
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  // Estados para controle do diálogo de conclusão
+  const [dialogoConclusaoAberto, setDialogoConclusaoAberto] = useState(false)
+  const [opPendenteConclusao, setOpPendenteConclusao] = useState<{
+    op: OrdemProducao
+    faseOriginal: FaseProducao
+  } | null>(null)
+
   // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques)
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -292,6 +300,25 @@ export default function Operacao() {
     const opId = active.id as string
     const novaFase = over.id as FaseProducao
 
+    // Encontra a OP que está sendo movida
+    const opSendoMovida = ops.find((op) => op.op === opId)
+    if (!opSendoMovida) {
+      console.error('❌ OP não encontrada:', opId)
+      return
+    }
+
+    // Se está movendo para "Concluído", abre o diálogo de confirmação
+    if (novaFase === 'Concluído') {
+      console.log(`🔔 Interceptando movimento para "Concluído" - OP ${opId}`)
+      setOpPendenteConclusao({
+        op: opSendoMovida,
+        faseOriginal: opSendoMovida.fase,
+      })
+      setDialogoConclusaoAberto(true)
+      return
+    }
+
+    // Para outras fases, move normalmente
     console.log(`📦 Movendo OP ${opId} para fase "${novaFase}"`)
 
     // Atualiza o estado das OPs
@@ -318,6 +345,55 @@ export default function Operacao() {
     if (!activeId) return null
     return ops.find((op) => op.op === activeId)
   }, [activeId, ops])
+
+  /**
+   * Manipula o cancelamento do diálogo de conclusão
+   * Retorna a OP para a fase original (não move)
+   */
+  const handleCancelarConclusao = () => {
+    console.log('❌ Conclusão cancelada pelo usuário')
+    setDialogoConclusaoAberto(false)
+    setOpPendenteConclusao(null)
+  }
+
+  /**
+   * Manipula a confirmação do diálogo de conclusão
+   * Atualiza os dados da OP e move para "Concluído"
+   */
+  const handleConfirmarConclusao = (produzido: number, perdas: number) => {
+    if (!opPendenteConclusao) return
+
+    const { op } = opPendenteConclusao
+
+    console.log(`✅ Concluindo OP ${op.op}:`)
+    console.log(`   - Produzido: ${produzido}`)
+    console.log(`   - Perdas: ${perdas}`)
+    console.log(`   - Fase: "${op.fase}" → "Concluído"`)
+
+    // Atualiza o estado das OPs
+    setOps((opsAtuais) => {
+      const opsAtualizadas = opsAtuais.map((opAtual) => {
+        if (opAtual.op === op.op) {
+          return {
+            ...opAtual,
+            fase: 'Concluído' as FaseProducao,
+            produzido,
+            perdas,
+          }
+        }
+        return opAtual
+      })
+
+      // Salva no localStorage
+      salvarOPs(opsAtualizadas)
+
+      return opsAtualizadas
+    })
+
+    // Fecha o diálogo
+    setDialogoConclusaoAberto(false)
+    setOpPendenteConclusao(null)
+  }
 
   /**
    * Configura listeners de scroll e verifica scrollability inicial
@@ -520,6 +596,14 @@ export default function Operacao() {
           </div>
         </div>
       </div>
+
+      {/* Diálogo de Conclusão de OP */}
+      <DialogoConclusaoOP
+        op={opPendenteConclusao?.op || null}
+        aberto={dialogoConclusaoAberto}
+        onCancelar={handleCancelarConclusao}
+        onConfirmar={handleConfirmarConclusao}
+      />
     </div>
   )
 }
