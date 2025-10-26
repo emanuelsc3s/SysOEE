@@ -623,13 +623,13 @@ export default function Operacao() {
    * Manipula a confirmação do diálogo de conclusão
    * Atualiza os dados da OP e move para "Concluído"
    */
-  const handleConfirmarConclusao = (produzido: number, perdas: number) => {
+  const handleConfirmarConclusao = (quantidadeEmbaladaUnidades: number, perdas: number) => {
     if (!opPendenteConclusao) return
 
     const { op } = opPendenteConclusao
 
     console.log(`✅ Concluindo OP ${op.op}:`)
-    console.log(`   - Produzido: ${produzido}`)
+    console.log(`   - Quantidade Embalada (Unidades): ${quantidadeEmbaladaUnidades}`)
     console.log(`   - Perdas: ${perdas}`)
     console.log(`   - Fase: "${op.fase}" → "Concluído"`)
 
@@ -640,7 +640,7 @@ export default function Operacao() {
           return {
             ...opAtual,
             fase: 'Concluído' as FaseProducao,
-            produzido,
+            quantidadeEmbaladaUnidades,
             perdas,
           }
         }

@@ -58,9 +58,9 @@ function formatarNumero(num: number): string {
 /**
  * Calcula percentual de progresso
  */
-function calcularProgresso(produzido: number, teorico: number): number {
+function calcularProgresso(quantidadeEmbaladaUnidades: number, teorico: number): number {
   if (teorico === 0) return 0
-  return Math.min(Math.round((produzido / teorico) * 100), 100)
+  return Math.min(Math.round((quantidadeEmbaladaUnidades / teorico) * 100), 100)
 }
 
 /**
@@ -179,7 +179,7 @@ export default function OperacaoDetalheOP() {
     )
   }
 
-  const progresso = calcularProgresso(op.produzido, op.quantidadeTeorica)
+  const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
   const temPerdas = op.perdas > 0
 
   return (
@@ -307,7 +307,7 @@ export default function OperacaoDetalheOP() {
             <CardContent className="tab-prod:px-3 tab-prod:pb-3">
               <div className="flex items-center gap-1.5 sm:gap-2 tab-prod:gap-1.5">
                 <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-green-500 tab-prod:h-5 tab-prod:w-5" />
-                <p className="text-2xl sm:text-3xl font-bold text-green-600 tab-prod:text-xl">{formatarNumero(op.produzido)}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-green-600 tab-prod:text-xl">{formatarNumero(op.quantidadeEmbaladaUnidades)}</p>
               </div>
               <div className="mt-1.5 sm:mt-2 tab-prod:mt-1.5">
                 <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1 tab-prod:text-[10px] tab-prod:mb-0.5">

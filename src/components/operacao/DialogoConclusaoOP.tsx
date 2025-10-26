@@ -39,7 +39,7 @@ interface DialogoConclusaoOPProps {
   /** Callback ao cancelar (retorna OP para fase original) */
   onCancelar: () => void
   /** Callback ao confirmar conclusão com dados atualizados */
-  onConfirmar: (produzido: number, perdas: number) => void
+  onConfirmar: (quantidadeEmbaladaUnidades: number, perdas: number) => void
 }
 
 export default function DialogoConclusaoOP({
@@ -52,12 +52,12 @@ export default function DialogoConclusaoOP({
   const [etapa, setEtapa] = useState<'confirmacao' | 'dados'>('confirmacao')
 
   // Estados para os campos do formulário
-  const [quantidadeProduzida, setQuantidadeProduzida] = useState('')
+  const [quantidadeEmbalada, setQuantidadeEmbalada] = useState('')
   const [perdas, setPerdas] = useState('0')
 
   // Estados para validação
   const [erros, setErros] = useState<{
-    quantidadeProduzida?: string
+    quantidadeEmbalada?: string
     perdas?: string
   }>({})
 
@@ -66,7 +66,7 @@ export default function DialogoConclusaoOP({
    */
   const resetarEstado = () => {
     setEtapa('confirmacao')
-    setQuantidadeProduzida('')
+    setQuantidadeEmbalada('')
     setPerdas('0')
     setErros({})
   }
@@ -85,7 +85,7 @@ export default function DialogoConclusaoOP({
   const handleConfirmarPrimeiraEtapa = () => {
     // Pré-preenche com os valores atuais da OP (se existirem)
     if (op) {
-      setQuantidadeProduzida(op.produzido > 0 ? op.produzido.toString() : '')
+      setQuantidadeEmbalada(op.quantidadeEmbaladaUnidades > 0 ? op.quantidadeEmbaladaUnidades.toString() : '')
       setPerdas(op.perdas > 0 ? op.perdas.toString() : '0')
     }
     setEtapa('dados')
@@ -97,12 +97,12 @@ export default function DialogoConclusaoOP({
   const validarFormulario = (): boolean => {
     const novosErros: typeof erros = {}
 
-    // Valida quantidade produzida
-    const qtdProduzida = parseFloat(quantidadeProduzida)
-    if (!quantidadeProduzida || isNaN(qtdProduzida)) {
-      novosErros.quantidadeProduzida = 'Campo obrigatório'
-    } else if (qtdProduzida <= 0) {
-      novosErros.quantidadeProduzida = 'Deve ser maior que zero'
+    // Valida quantidade embalada
+    const qtdEmbalada = parseFloat(quantidadeEmbalada)
+    if (!quantidadeEmbalada || isNaN(qtdEmbalada)) {
+      novosErros.quantidadeEmbalada = 'Campo obrigatório'
+    } else if (qtdEmbalada <= 0) {
+      novosErros.quantidadeEmbalada = 'Deve ser maior que zero'
     }
 
     // Valida perdas
@@ -125,11 +125,11 @@ export default function DialogoConclusaoOP({
       return
     }
 
-    const qtdProduzida = parseFloat(quantidadeProduzida)
+    const qtdEmbalada = parseFloat(quantidadeEmbalada)
     const qtdPerdas = parseFloat(perdas)
 
     resetarEstado()
-    onConfirmar(qtdProduzida, qtdPerdas)
+    onConfirmar(qtdEmbalada, qtdPerdas)
   }
 
   /**
@@ -165,7 +165,7 @@ export default function DialogoConclusaoOP({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Na próxima etapa, você deverá informar a quantidade produzida e as perdas.
+                Na próxima etapa, você deverá informar a quantidade embalada (Unidades) e as perdas.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -189,48 +189,100 @@ export default function DialogoConclusaoOP({
               Dados de Produção - OP {op.op}
             </DialogTitle>
             <DialogDescription>
-              Informe a quantidade produzida e as perdas para concluir a OP.
+              Informe a quantidade embalada (Unidades) e as perdas para concluir a OP.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Informações da OP */}
+            {/* Informações do Produto */}
             <div className="bg-muted p-3 rounded-lg space-y-1 text-sm">
               <p className="font-semibold text-foreground">{op.produto}</p>
               <p className="text-muted-foreground">Lote: {op.lote}</p>
               <p className="text-muted-foreground">
-                Quantidade Teórica: {op.quantidadeTeorica.toLocaleString('pt-BR')}
+                Quantidade Teórica: {op.quantidadeTeorica?.toLocaleString('pt-BR')} ML
               </p>
             </div>
 
-            {/* Campo: Quantidade Produzida */}
+            {/* Referência: Quantidade Preparada (ML) */}
             <div className="space-y-2">
-              <Label htmlFor="quantidadeProduzida" className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                Quantidade Produzida *
+              <Label htmlFor="qtdPreparada" className="flex items-center gap-2">
+                Quantidade Preparada (ML)
               </Label>
               <Input
-                id="quantidadeProduzida"
+                id="qtdPreparada"
+                type="text"
+                value={op.quantidadePreparadaMl !== undefined ? op.quantidadePreparadaMl.toLocaleString('pt-BR') : '—'}
+                disabled
+              />
+            </div>
+
+            {/* Referência: Quantidade de Perda na Preparação (ML) */}
+            <div className="space-y-2">
+              <Label htmlFor="perdasPreparacao" className="flex items-center gap-2">
+                Quantidade de Perda na Preparação (ML)
+              </Label>
+              <Input
+                id="perdasPreparacao"
+                type="text"
+                value={op.perdasPreparacaoMl !== undefined ? op.perdasPreparacaoMl.toLocaleString('pt-BR') : '—'}
+                disabled
+              />
+            </div>
+
+            {/* Referência: Quantidade Envasada (Unidades) */}
+            <div className="space-y-2">
+              <Label htmlFor="qtdEnvasada" className="flex items-center gap-2">
+                Quantidade Envasada (Unidades)
+              </Label>
+              <Input
+                id="qtdEnvasada"
+                type="text"
+                value={op.quantidadeEnvasadaUnidades !== undefined ? op.quantidadeEnvasadaUnidades.toLocaleString('pt-BR') : '—'}
+                disabled
+              />
+            </div>
+
+            {/* Referência: Quantidade de Perda no Envase (Unidades) */}
+            <div className="space-y-2">
+              <Label htmlFor="perdasEnvase" className="flex items-center gap-2">
+                Quantidade de Perda no Envase (Unidades)
+              </Label>
+              <Input
+                id="perdasEnvase"
+                type="text"
+                value={op.perdasEnvaseUnidades !== undefined ? op.perdasEnvaseUnidades.toLocaleString('pt-BR') : '—'}
+                disabled
+              />
+            </div>
+
+            {/* Campo: Quantidade Embalada (Unidades) */}
+            <div className="space-y-2">
+              <Label htmlFor="quantidadeEmbalada" className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                Quantidade Embalada (Unidades) *
+              </Label>
+              <Input
+                id="quantidadeEmbalada"
                 type="number"
                 min="1"
                 step="1"
                 placeholder="Ex: 9500"
-                value={quantidadeProduzida}
+                value={quantidadeEmbalada}
                 onChange={(e) => {
-                  setQuantidadeProduzida(e.target.value)
+                  setQuantidadeEmbalada(e.target.value)
                   // Limpa erro ao digitar
-                  if (erros.quantidadeProduzida) {
-                    setErros({ ...erros, quantidadeProduzida: undefined })
+                  if (erros.quantidadeEmbalada) {
+                    setErros({ ...erros, quantidadeEmbalada: undefined })
                   }
                 }}
                 onKeyPress={handleKeyPress}
-                className={erros.quantidadeProduzida ? 'border-red-500' : ''}
+                className={erros.quantidadeEmbalada ? 'border-red-500' : ''}
                 autoFocus
               />
-              {erros.quantidadeProduzida && (
+              {erros.quantidadeEmbalada && (
                 <p className="text-sm text-red-500 flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
-                  {erros.quantidadeProduzida}
+                  {erros.quantidadeEmbalada}
                 </p>
               )}
             </div>

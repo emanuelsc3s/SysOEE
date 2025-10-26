@@ -56,8 +56,8 @@ export interface OrdemProducao {
   /** Quantidade de perdas */
   perdas: number
 
-  /** Quantidade já produzida */
-  produzido: number
+  /** Quantidade embalada na etapa de Embalagem (em Unidades) */
+  quantidadeEmbaladaUnidades: number
 
 
   /** Quantidade preparada na etapa de Preparação (em ML) */

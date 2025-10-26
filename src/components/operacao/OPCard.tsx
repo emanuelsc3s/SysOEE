@@ -52,9 +52,9 @@ function getCorSetor(setor: string): string {
 /**
  * Calcula a porcentagem de produção
  */
-function calcularProgresso(produzido: number, teorico: number): number {
+function calcularProgresso(quantidadeEmbaladaUnidades: number, teorico: number): number {
   if (teorico === 0) return 0
-  return Math.min(Math.round((produzido / teorico) * 100), 100)
+  return Math.min(Math.round((quantidadeEmbaladaUnidades / teorico) * 100), 100)
 }
 
 /**
@@ -68,7 +68,7 @@ function formatarNumero(num: number): string {
 
 export default function OPCard({ op }: OPCardProps) {
   const navigate = useNavigate()
-  const progresso = calcularProgresso(op.produzido, op.quantidadeTeorica)
+  const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
   const temPerdas = op.perdas > 0
 
   // Configura o card como arrastável
@@ -178,7 +178,7 @@ export default function OPCard({ op }: OPCardProps) {
               <span className="text-muted-foreground tab-prod:inline hidden">Prod:</span>
             </div>
             <span className="font-semibold text-green-700">
-              {formatarNumero(op.produzido)} ({progresso}%)
+              {formatarNumero(op.quantidadeEmbaladaUnidades)} ({progresso}%)
             </span>
           </div>
 
