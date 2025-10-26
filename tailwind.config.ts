@@ -83,21 +83,7 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		fontFamily: {
-  			sans: [
-  				'var(--font-sans)',
-  				'Inter',
-  				'sans-serif'
-  			],
-  			serif: [
-  				'var(--font-serif)',
-  				'Source Serif 4',
-  				'serif'
-  			],
-  			mono: [
-  				'var(--font-mono)',
-  				'JetBrains Mono',
-  				'monospace'
-  			]
+  			sans: ['Inter', 'sans-serif'],
   		},
   		keyframes: {
   			'accordion-down': {
