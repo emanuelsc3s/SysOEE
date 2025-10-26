@@ -8,6 +8,8 @@ import { FaseProducao, OrdemProducao } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
+import DialogoApontamentoEnvase from '@/components/operacao/DialogoApontamentoEnvase'
+
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -18,7 +20,12 @@ import {
   Users,
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertCircle,
+  ArrowRight,
+  MapPin,
+  Lock,
+  CheckCircle
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -29,9 +36,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners
+  pointerWithin
 } from '@dnd-kit/core'
 import OPCard from '@/components/operacao/OPCard'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
 
 /**
  * Todas as fases do Kanban na ordem do processo
@@ -45,6 +54,28 @@ const FASES: FaseProducao[] = [
   'Embalagem',
   'Concluído'
 ]
+
+/**
+ * Regras de transição permitidas entre fases (apenas fase seguinte, sem pulo de etapa)
+ */
+const TRANSICOES_VALIDAS: Record<FaseProducao, FaseProducao[]> = {
+  'Planejado': ['Emissão de Dossiê'],
+  'Emissão de Dossiê': ['Pesagem'],
+  'Pesagem': ['Preparação'],
+  'Preparação': ['Envase'],
+  'Envase': ['Embalagem'],
+  'Embalagem': ['Concluído'],
+  'Concluído': [],
+}
+
+/**
+ * Verifica se a transição de uma fase origem para uma fase destino é permitida
+ */
+function podeMoverParaFase(origem: FaseProducao, destino: FaseProducao): boolean {
+  if (origem === destino) return false
+  return TRANSICOES_VALIDAS[origem]?.includes(destino) ?? false
+}
+
 
 /**
  * Chave para armazenamento no localStorage
@@ -175,6 +206,23 @@ export default function Operacao() {
     op: OrdemProducao
     faseOriginal: FaseProducao
   } | null>(null)
+
+  // Estados para controle do diálogo de apontamento ao entrar em Envase
+  const [dialogoEnvaseAberto, setDialogoEnvaseAberto] = useState(false)
+  const [opPendenteEnvase, setOpPendenteEnvase] = useState<{
+    op: OrdemProducao
+    faseOriginal: FaseProducao
+  } | null>(null)
+
+  // Diálogo de erro para pulo de etapas
+  const [dialogoMovimentoInvalidoAberto, setDialogoMovimentoInvalidoAberto] = useState(false)
+  const [dadosMovimentoInvalido, setDadosMovimentoInvalido] = useState<{
+    opId: string
+    faseAtual: FaseProducao
+    faseDestino: FaseProducao
+    proximaFasePermitida: FaseProducao
+  } | null>(null)
+
 
   // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques e scroll)
   const sensors = useSensors(
@@ -328,6 +376,36 @@ export default function Operacao() {
       return
     }
 
+    // Evita ação se destino for a mesma fase
+    if (opSendoMovida.fase === novaFase) {
+      console.log('ℹ️ OP já está na fase de destino')
+      return
+    }
+
+    // Validação: permitir apenas movimentação para a fase imediatamente seguinte
+    const origemIndex = FASES.indexOf(opSendoMovida.fase)
+    const destinoIndex = FASES.indexOf(novaFase)
+
+    // Bloqueia pulo de etapa (tentativa de avançar mais de 1 fase)
+    if (destinoIndex > origemIndex + 1) {
+      console.warn(`❌ Movimento inválido (pulo de etapa): "${opSendoMovida.fase}" → "${novaFase}"`)
+      const proximaFase = FASES[origemIndex + 1]
+      setDadosMovimentoInvalido({
+        opId,
+        faseAtual: opSendoMovida.fase,
+        faseDestino: novaFase,
+        proximaFasePermitida: proximaFase
+      })
+      setDialogoMovimentoInvalidoAberto(true)
+      return
+    }
+
+    // Validação padrão de transição (inclui bloqueio de retorno para fases anteriores)
+    if (!podeMoverParaFase(opSendoMovida.fase, novaFase)) {
+      console.warn(`❌ Movimento inválido: "${opSendoMovida.fase}" → "${novaFase}" não é permitido pela sequência`)
+      return
+    }
+
     // Se está movendo para "Concluído", abre o diálogo de confirmação
     if (novaFase === 'Concluído') {
       console.log(`🔔 Interceptando movimento para "Concluído" - OP ${opId}`)
@@ -336,6 +414,17 @@ export default function Operacao() {
         faseOriginal: opSendoMovida.fase,
       })
       setDialogoConclusaoAberto(true)
+      return
+    }
+
+    // Se está movendo para "Envase", abre o diálogo de apontamento de preparação
+    if (novaFase === 'Envase') {
+      console.log(`🔔 Interceptando movimento para "Envase" - OP ${opId}`)
+      setOpPendenteEnvase({
+        op: opSendoMovida,
+        faseOriginal: opSendoMovida.fase,
+      })
+      setDialogoEnvaseAberto(true)
       return
     }
 
@@ -414,6 +503,56 @@ export default function Operacao() {
     // Fecha o diálogo
     setDialogoConclusaoAberto(false)
     setOpPendenteConclusao(null)
+  }
+
+
+  /**
+   * Manipula o cancelamento do dialogo de apontamento de Envase
+   * Retorna a OP para a fase original (nao move)
+   */
+  const handleCancelarEnvase = () => {
+    console.log('❌ Apontamento de Preparacao (para Envase) cancelado pelo usuario')
+    setDialogoEnvaseAberto(false)
+    setOpPendenteEnvase(null)
+  }
+
+  /**
+   * Manipula a confirmacao do apontamento ao entrar em Envase
+   * Atualiza os dados da OP (quantidade preparada e perdas da preparacao) e move para "Envase"
+   */
+  const handleConfirmarEnvase = (quantidadePreparadaMl: number, perdasPreparacaoMl: number) => {
+    if (!opPendenteEnvase) return
+
+    const { op } = opPendenteEnvase
+
+    console.log(`✅ Registrando apontamento de Preparacao para OP ${op.op}:`)
+    console.log(`   - Quantidade Preparada (ML): ${quantidadePreparadaMl}`)
+    console.log(`   - Perdas na Preparacao (ML): ${perdasPreparacaoMl}`)
+    console.log(`   - Fase: "${op.fase}" → "Envase"`)
+
+    // Atualiza o estado das OPs
+    setOps((opsAtuais) => {
+      const opsAtualizadas = opsAtuais.map((opAtual) => {
+        if (opAtual.op === op.op) {
+          return {
+            ...opAtual,
+            fase: 'Envase' as FaseProducao,
+            quantidadePreparadaMl,
+            perdasPreparacaoMl,
+          }
+        }
+        return opAtual
+      })
+
+      // Salva no localStorage
+      salvarOPs(opsAtualizadas)
+
+      return opsAtualizadas
+    })
+
+    // Fecha o dialogo
+    setDialogoEnvaseAberto(false)
+    setOpPendenteEnvase(null)
   }
 
   /**
@@ -520,7 +659,7 @@ export default function Operacao() {
       {/* Kanban Board com Drag and Drop */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         autoScroll={false}
@@ -618,6 +757,130 @@ export default function Operacao() {
           </div>
         </div>
       </div>
+
+      {/* Dialogo de Apontamento de Envase */}
+
+      {/* Diálogo para bloqueio de pulo de etapas */}
+      <Dialog open={dialogoMovimentoInvalidoAberto} onOpenChange={(open) => !open && setDialogoMovimentoInvalidoAberto(false)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Não é possível pular etapas</DialogTitle>
+                <DialogDescription className="mt-1">
+                  O processo produtivo deve seguir a sequência obrigatória
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {dadosMovimentoInvalido && (
+            <div className="space-y-6 py-4">
+              {/* Informações da OP */}
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Factory className="h-4 w-4 text-muted-foreground" />
+                  <span>Ordem de Produção: <span className="font-bold text-foreground">{dadosMovimentoInvalido.opId}</span></span>
+                </div>
+              </div>
+
+              {/* Visualização das fases */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Sequência do processo produtivo:</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {FASES.map((fase, index) => {
+                    const isFaseAtual = fase === dadosMovimentoInvalido.faseAtual
+                    const isFaseDestino = fase === dadosMovimentoInvalido.faseDestino
+                    const isProximaPermitida = fase === dadosMovimentoInvalido.proximaFasePermitida
+
+                    return (
+                      <div key={fase} className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            isFaseAtual ? 'default' :
+                            isProximaPermitida ? 'outline' :
+                            isFaseDestino ? 'destructive' :
+                            'secondary'
+                          }
+                          className={`
+                            relative px-3 py-1.5 text-xs font-medium transition-all
+                            ${isFaseAtual ? 'ring-2 ring-primary ring-offset-2' : ''}
+                            ${isProximaPermitida ? 'border-2 border-green-500 text-green-700 dark:text-green-400' : ''}
+                            ${isFaseDestino ? 'ring-2 ring-destructive ring-offset-2' : ''}
+                          `}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {isFaseAtual && <MapPin className="h-3 w-3" />}
+                            {isProximaPermitida && <CheckCircle className="h-3 w-3" />}
+                            {isFaseDestino && <Lock className="h-3 w-3" />}
+                            <span>{fase}</span>
+                          </div>
+                        </Badge>
+                        {index < FASES.length - 1 && (
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Legenda */}
+              <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Legenda:</p>
+                <div className="grid gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="px-2 py-0.5">
+                      <MapPin className="mr-1 h-3 w-3" />
+                      Fase atual
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">Onde a OP está agora</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="border-2 border-green-500 px-2 py-0.5 text-green-700 dark:text-green-400">
+                      <CheckCircle className="mr-1 h-3 w-3" />
+                      Próxima permitida
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">Para onde você pode mover</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="destructive" className="px-2 py-0.5">
+                      <Lock className="mr-1 h-3 w-3" />
+                      Destino bloqueado
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">Fase que você tentou pular</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mensagem de orientação */}
+              <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 p-4 dark:bg-amber-950/20">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  Para mover a OP <span className="font-bold">{dadosMovimentoInvalido.opId}</span>,
+                  arraste de <span className="font-bold">"{dadosMovimentoInvalido.faseAtual}"</span> para <span className="font-bold">"{dadosMovimentoInvalido.proximaFasePermitida}"</span>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setDialogoMovimentoInvalidoAberto(false)} className="w-full sm:w-auto">
+              Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DialogoApontamentoEnvase
+        op={opPendenteEnvase?.op || null}
+        aberto={dialogoEnvaseAberto}
+        onCancelar={handleCancelarEnvase}
+        onConfirmar={handleConfirmarEnvase}
+      />
+
 
       {/* Diálogo de Conclusão de OP */}
       <DialogoConclusaoOP

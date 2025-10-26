@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for file in 000-audit-triggers.sql 02-tables.sql 03-functions.sql 04-triggers.sql)",
+      "Bash(do echo \"=== Verificando $file ===\")",
+      "Bash(for table in tbsetor tblinha tbproduto tbloteinsumo tbvelocidadenominal tbcodigoparada tbturno tbusuario tbmetaoee tblote tbapontamentoparada tbapontamentoproducao tbapontamentoqualidade tboeecalculado)",
+      "Bash(do echo -n \"$table: \")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

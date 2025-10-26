@@ -31,49 +31,56 @@ export type Setor = 'SPEP' | 'SPPV' | 'Líquidos' | 'CPHD'
 export interface OrdemProducao {
   /** Número da Ordem de Produção */
   op: string
-  
+
   /** Data de emissão (formato DD/MM/YYYY) */
   dataEmissao: string
-  
+
   /** Número do lote */
   lote: string
-  
+
   /** Código do SKU */
   sku: string
-  
+
   /** Descrição do produto */
   produto: string
-  
+
   /** Equipamento/Linha de produção */
   equipamento: string
-  
+
   /** Fase atual no Kanban */
   fase: FaseProducao
-  
+
   /** Quantidade teórica planejada */
   quantidadeTeorica: number
-  
+
   /** Quantidade de perdas */
   perdas: number
-  
+
   /** Quantidade já produzida */
   produzido: number
-  
+
+
+  /** Quantidade preparada na etapa de Preparação (em ML) */
+  quantidadePreparadaMl?: number
+
+  /** Perda/desperdício relacionada à etapa de Preparação (em ML) */
+  perdasPreparacaoMl?: number
+
   /** Total de horas em operação (formato HH:MM) */
   horas: string
-  
+
   /** Turno de produção */
   turno: Turno
-  
+
   /** Número do dossiê */
   dossie?: string
-  
+
   /** Registro ANVISA */
   anvisa?: string
-  
+
   /** Código de barras GTIN */
   gtin?: string
-  
+
   /** Setor produtivo */
   setor: Setor
 }
