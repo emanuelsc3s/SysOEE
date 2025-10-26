@@ -9,6 +9,7 @@ import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
 import DialogoApontamentoEnvase from '@/components/operacao/DialogoApontamentoEnvase'
+import DialogoApontamentoEmbalagem from '@/components/operacao/DialogoApontamentoEmbalagem'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -269,6 +270,13 @@ export default function Operacao() {
     faseOriginal: FaseProducao
   } | null>(null)
 
+  // Estados para controle do diálogo de apontamento ao entrar em Embalagem
+  const [dialogoEmbalagemAberto, setDialogoEmbalagemAberto] = useState(false)
+  const [opPendenteEmbalagem, setOpPendenteEmbalagem] = useState<{
+    op: OrdemProducao
+    faseOriginal: FaseProducao
+  } | null>(null)
+
   // Diálogo de erro para pulo de etapas
   const [dialogoMovimentoInvalidoAberto, setDialogoMovimentoInvalidoAberto] = useState(false)
   const [dadosMovimentoInvalido, setDadosMovimentoInvalido] = useState<{
@@ -479,13 +487,6 @@ export default function Operacao() {
       return
     }
 
-    // Validação padrão de transição (apenas avanço sequencial)
-    if (!podeMoverParaFase(opSendoMovida.fase, novaFase)) {
-      console.warn(`❌ Movimento inválido: "${opSendoMovida.fase}" → "${novaFase}" não é permitido pela sequência`)
-      return
-    }
-
-    // Se está movendo para "Concluído", abre o diálogo de confirmação
     if (novaFase === 'Concluído') {
       console.log(`🔔 Interceptando movimento para "Concluído" - OP ${opId}`)
       setOpPendenteConclusao({
@@ -506,6 +507,24 @@ export default function Operacao() {
       setDialogoEnvaseAberto(true)
       return
     }
+
+    // Se está movendo para "Embalagem", abre o diálogo de apontamento de envase
+    if (novaFase === 'Embalagem') {
+      console.log(`🔔 Interceptando movimento para "Embalagem" - OP ${opId}`)
+      setOpPendenteEmbalagem({
+        op: opSendoMovida,
+        faseOriginal: opSendoMovida.fase,
+      })
+      setDialogoEmbalagemAberto(true)
+      return
+    }
+
+
+	    // Validação padrão de transição (apenas avanço sequencial)
+	    if (!podeMoverParaFase(opSendoMovida.fase, novaFase)) {
+	      console.warn(`❌ Movimento inválido: "${opSendoMovida.fase}" → "${novaFase}" não é permitido pela sequência`)
+	      return
+	    }
 
     // Para outras fases, move normalmente
     console.log(`📦 Movendo OP ${opId} para fase "${novaFase}"`)
@@ -711,6 +730,52 @@ export default function Operacao() {
     }
   }, [checkScrollability])
 
+  /**
+   * Manipula o cancelamento do dialogo de apontamento de Embalagem
+   * Retorna a OP para a fase original (nao move)
+   */
+  const handleCancelarEmbalagem = () => {
+    console.log('❌ Apontamento de Envase (para Embalagem) cancelado pelo usuario')
+    setDialogoEmbalagemAberto(false)
+    setOpPendenteEmbalagem(null)
+  }
+
+  /**
+   * Manipula a confirmacao do apontamento ao entrar em Embalagem
+   * Atualiza os dados da OP (quantidade envasada) e move para "Embalagem"
+   */
+  const handleConfirmarEmbalagem = (quantidadeEnvasadaUnidades: number, perdasEnvaseUnidades: number) => {
+    if (!opPendenteEmbalagem) return
+
+    const { op } = opPendenteEmbalagem
+
+    console.log(`✅ Registrando apontamento de Envase para OP ${op.op}:`)
+    console.log(`   - Quantidade Envasada (Unidades): ${quantidadeEnvasadaUnidades}`)
+    console.log(`   - Perdas no Envase (Unidades): ${perdasEnvaseUnidades}`)
+    console.log(`   - Fase: "${op.fase}" → "Embalagem"`)
+
+    setOps((opsAtuais) => {
+      const opsAtualizadas = opsAtuais.map((opAtual) => {
+        if (opAtual.op === op.op) {
+          return {
+            ...opAtual,
+            fase: 'Embalagem' as FaseProducao,
+            quantidadeEnvasadaUnidades,
+            perdasEnvaseUnidades,
+          }
+        }
+        return opAtual
+      })
+
+      salvarOPs(opsAtualizadas)
+      return opsAtualizadas
+    })
+
+    setDialogoEmbalagemAberto(false)
+    setOpPendenteEmbalagem(null)
+  }
+
+
   return (
     <div className="min-h-screen bg-muted">
       {/* Header */}
@@ -739,6 +804,8 @@ export default function Operacao() {
 
             <div className="flex items-center gap-2 tab-prod:gap-1">
               <Button
+
+
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
@@ -1118,6 +1185,16 @@ export default function Operacao() {
         aberto={dialogoEnvaseAberto}
         onCancelar={handleCancelarEnvase}
         onConfirmar={handleConfirmarEnvase}
+      />
+
+
+
+      {/* Diálogo de Apontamento de Embalagem */}
+      <DialogoApontamentoEmbalagem
+        op={opPendenteEmbalagem?.op || null}
+        aberto={dialogoEmbalagemAberto}
+        onCancelar={handleCancelarEmbalagem}
+        onConfirmar={handleConfirmarEmbalagem}
       />
 
 

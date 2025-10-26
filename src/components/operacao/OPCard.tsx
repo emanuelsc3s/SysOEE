@@ -82,7 +82,7 @@ export default function OPCard({ op }: OPCardProps) {
   }
 
   // Handler para navegação ao clicar no card (exceto na área de drag)
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = () => {
     // Não navega se estiver arrastando ou clicou na área de drag
     if (isDragging) return
     navigate(`/operacao/${op.op}`)

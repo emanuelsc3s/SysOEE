@@ -17,7 +17,6 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
-  FileText,
   TrendingDown,
   ClipboardList,
   HelpCircle,

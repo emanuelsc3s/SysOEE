@@ -66,6 +66,12 @@ export interface OrdemProducao {
   /** Perda/desperdício relacionada à etapa de Preparação (em ML) */
   perdasPreparacaoMl?: number
 
+  /** Quantidade envasada na etapa de Envase (em Unidades) */
+  quantidadeEnvasadaUnidades?: number
+
+  /** Perda/desperdício na etapa de Envase (em Unidades) */
+  perdasEnvaseUnidades?: number
+
   /** Total de horas em operação (formato HH:MM) */
   horas: string
 
