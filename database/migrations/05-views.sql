@@ -60,7 +60,10 @@ JOIN tbdepartamento d ON d.id = li.departamento_id
 JOIN tbsku sku ON sku.id = l.sku_id
 JOIN tbturno t ON t.id = l.turno_id
 LEFT JOIN tbusuario u_op ON u_op.id = l.created_by
-LEFT JOIN tbusuario u_sup ON u_sup.id = l.conferido_por_supervisor;
+LEFT JOIN tbusuario u_sup ON u_sup.id = l.conferido_por_supervisor
+WHERE l.deletado = 'N'
+  AND li.deletado = 'N'
+  AND d.deletado = 'N';
 
 COMMENT ON VIEW vw_diario_bordo IS 'Diário de Bordo completo para relatórios e impressão (PDF)';
 
@@ -147,10 +150,13 @@ LEFT JOIN LATERAL (
   SELECT *
   FROM tboeecalculado
   WHERE linha_id = li.id
+    AND deletado = 'N'
   ORDER BY data_referencia DESC
   LIMIT 1
 ) oee ON TRUE
-WHERE li.ativo = TRUE;
+WHERE li.ativo = TRUE
+  AND li.deletado = 'N'
+  AND d.deletado = 'N';
 
 COMMENT ON VIEW vw_dashboard_oee_linha IS 'Dashboard OEE em tempo real por linha (último lote concluído)';
 

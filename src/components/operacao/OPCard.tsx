@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { useNavigate } from 'react-router-dom'
 
 interface OPCardProps {
   op: OrdemProducao
@@ -66,6 +67,7 @@ function formatarNumero(num: number): string {
 }
 
 export default function OPCard({ op }: OPCardProps) {
+  const navigate = useNavigate()
   const progresso = calcularProgresso(op.produzido, op.quantidadeTeorica)
   const temPerdas = op.perdas > 0
 
@@ -79,12 +81,20 @@ export default function OPCard({ op }: OPCardProps) {
     transform: CSS.Translate.toString(transform),
   }
 
+  // Handler para navegação ao clicar no card (exceto na área de drag)
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Não navega se estiver arrastando ou clicou na área de drag
+    if (isDragging) return
+    navigate(`/operacao/${op.op}`)
+  }
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 ${
+      onClick={handleCardClick}
+      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 cursor-pointer ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
     >

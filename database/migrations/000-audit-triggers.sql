@@ -24,11 +24,14 @@
 /*
   CAMPOS OBRIGATÓRIOS EM TODAS AS TABELAS:
 
-  1. INTEGRAÇÃO COM TOTVS/SICFAR:
+  1. SOFT DELETE (NUNCA DELETE FÍSICO):
+     deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
+
+  2. INTEGRAÇÃO COM TOTVS/SICFAR:
      sync VARCHAR(1),
      sync_data TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'America/Fortaleza'),
 
-  2. AUDITORIA BÁSICA (ALCOA+):
+  3. AUDITORIA BÁSICA (ALCOA+):
      created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'America/Fortaleza'),
      created_by BIGINT REFERENCES tbusuario(id),
      updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'America/Fortaleza'),
@@ -38,7 +41,11 @@
 
   NOTAS:
   - Timezone: America/Fortaleza (sede da Farmace)
-  - Soft-delete via deleted_at (NUNCA fazer DELETE físico em dados de produção)
+  - Soft-delete via 2 campos: deletado='S'/'N' (flag) + deleted_at (timestamp)
+  - NUNCA fazer DELETE físico em dados de produção (ALCOA+ Compliance)
+  - Frontend TERÁ botão de exclusão visível, mas backend implementa soft-delete transparentemente
+  - Exclusões sempre via: UPDATE SET deletado='S', deleted_at=NOW(), deleted_by=user_id
+  - Usuário vê comportamento normal de exclusão, mas registro permanece no banco
   - created_by/updated_by referenciam tbusuario(id)
   - sync indica sincronização: S=sincronizado, N=pendente, NULL=não aplicável
 */
@@ -47,6 +54,7 @@
 -- COMENTÁRIOS PADRÃO
 -- =====================================================
 
+COMMENT ON COLUMN tbdepartamento.deletado IS 'Soft-delete flag: N=ativo, S=deletado (NUNCA usar DELETE físico)';
 COMMENT ON COLUMN tbdepartamento.sync IS 'Status de sincronização TOTVS: S=sincronizado, N=pendente, NULL=não aplicável';
 COMMENT ON COLUMN tbdepartamento.sync_data IS 'Data/hora da última sincronização com TOTVS';
 COMMENT ON COLUMN tbdepartamento.created_at IS 'Data/hora de criação do registro (ALCOA+)';

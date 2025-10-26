@@ -100,3 +100,37 @@ export interface DadosMockOP {
   GTIN: string
 }
 
+/**
+ * Tipo de movimentação no histórico de auditoria
+ */
+export type TipoMovimentacao = 'avanco' | 'retrocesso'
+
+/**
+ * Registro de movimentação de OP para auditoria (ALCOA+)
+ */
+export interface RegistroMovimentacao {
+  /** ID único do registro */
+  id: string
+
+  /** Número da OP movimentada */
+  op: string
+
+  /** Fase de origem */
+  faseOrigem: FaseProducao
+
+  /** Fase de destino */
+  faseDestino: FaseProducao
+
+  /** Tipo de movimentação */
+  tipo: TipoMovimentacao
+
+  /** Data e hora da movimentação (ISO 8601) */
+  dataHora: string
+
+  /** Usuário que realizou a movimentação */
+  usuario: string
+
+  /** Justificativa (obrigatória para retrocesso) */
+  justificativa?: string
+}
+

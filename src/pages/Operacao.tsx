@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { FaseProducao, OrdemProducao } from '@/types/operacao'
+import { FaseProducao, OrdemProducao, RegistroMovimentacao, TipoMovimentacao } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
@@ -12,6 +12,8 @@ import DialogoApontamentoEnvase from '@/components/operacao/DialogoApontamentoEn
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   ArrowLeft,
   Filter,
@@ -25,7 +27,9 @@ import {
   ArrowRight,
   MapPin,
   Lock,
-  CheckCircle
+  CheckCircle,
+  RotateCcw,
+  FileText
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -78,9 +82,60 @@ function podeMoverParaFase(origem: FaseProducao, destino: FaseProducao): boolean
 
 
 /**
- * Chave para armazenamento no localStorage
+ * Chaves para armazenamento no localStorage
  */
 const STORAGE_KEY = 'sysoee_operacao_ops'
+const STORAGE_KEY_HISTORICO = 'sysoee_operacao_historico_movimentacoes'
+
+/**
+ * Gera um ID único para registro de movimentação
+ */
+function gerarIdRegistro(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+}
+
+/**
+ * Registra uma movimentação no histórico de auditoria
+ */
+function registrarMovimentacao(
+  op: string,
+  faseOrigem: FaseProducao,
+  faseDestino: FaseProducao,
+  tipo: TipoMovimentacao,
+  justificativa?: string
+): void {
+  const registro: RegistroMovimentacao = {
+    id: gerarIdRegistro(),
+    op,
+    faseOrigem,
+    faseDestino,
+    tipo,
+    dataHora: new Date().toISOString(),
+    usuario: 'Usuário Atual', // TODO: Integrar com sistema de autenticação
+    justificativa
+  }
+
+  // Recupera histórico existente
+  const historicoStr = localStorage.getItem(STORAGE_KEY_HISTORICO)
+  const historico: RegistroMovimentacao[] = historicoStr ? JSON.parse(historicoStr) : []
+
+  // Adiciona novo registro
+  historico.push(registro)
+
+  // Salva no localStorage
+  localStorage.setItem(STORAGE_KEY_HISTORICO, JSON.stringify(historico))
+
+  console.log('📝 Movimentação registrada:', registro)
+}
+
+/**
+ * Verifica se uma movimentação é um retrocesso (volta para fase anterior)
+ */
+function isRetrocesso(faseOrigem: FaseProducao, faseDestino: FaseProducao): boolean {
+  const origemIndex = FASES.indexOf(faseOrigem)
+  const destinoIndex = FASES.indexOf(faseDestino)
+  return destinoIndex < origemIndex
+}
 
 /**
  * Gera dados mock iniciais com distribuição garantida em todas as fases
@@ -223,6 +278,15 @@ export default function Operacao() {
     proximaFasePermitida: FaseProducao
   } | null>(null)
 
+  // Estados para controle do diálogo de justificativa de retrocesso
+  const [dialogoRetrocessoAberto, setDialogoRetrocessoAberto] = useState(false)
+  const [dadosRetrocesso, setDadosRetrocesso] = useState<{
+    op: OrdemProducao
+    faseOrigem: FaseProducao
+    faseDestino: FaseProducao
+  } | null>(null)
+  const [justificativaRetrocesso, setJustificativaRetrocesso] = useState('')
+
 
   // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques e scroll)
   const sensors = useSensors(
@@ -351,6 +415,8 @@ export default function Operacao() {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
 
+    console.log('🎯 handleDragEnd chamado:', { activeId: active.id, overId: over?.id })
+
     // Limpa o estado de arrasto
     setActiveId(null)
 
@@ -386,6 +452,19 @@ export default function Operacao() {
     const origemIndex = FASES.indexOf(opSendoMovida.fase)
     const destinoIndex = FASES.indexOf(novaFase)
 
+    // Detecta se é um retrocesso (volta para fase anterior)
+    if (isRetrocesso(opSendoMovida.fase, novaFase)) {
+      console.log(`⚠️ Retrocesso detectado: "${opSendoMovida.fase}" → "${novaFase}" - solicitando justificativa`)
+      setDadosRetrocesso({
+        op: opSendoMovida,
+        faseOrigem: opSendoMovida.fase,
+        faseDestino: novaFase
+      })
+      setJustificativaRetrocesso('')
+      setDialogoRetrocessoAberto(true)
+      return
+    }
+
     // Bloqueia pulo de etapa (tentativa de avançar mais de 1 fase)
     if (destinoIndex > origemIndex + 1) {
       console.warn(`❌ Movimento inválido (pulo de etapa): "${opSendoMovida.fase}" → "${novaFase}"`)
@@ -400,7 +479,7 @@ export default function Operacao() {
       return
     }
 
-    // Validação padrão de transição (inclui bloqueio de retorno para fases anteriores)
+    // Validação padrão de transição (apenas avanço sequencial)
     if (!podeMoverParaFase(opSendoMovida.fase, novaFase)) {
       console.warn(`❌ Movimento inválido: "${opSendoMovida.fase}" → "${novaFase}" não é permitido pela sequência`)
       return
@@ -431,6 +510,9 @@ export default function Operacao() {
     // Para outras fases, move normalmente
     console.log(`📦 Movendo OP ${opId} para fase "${novaFase}"`)
 
+    // Registra a movimentação no histórico de auditoria
+    registrarMovimentacao(opId, opSendoMovida.fase, novaFase, 'avanco')
+
     // Atualiza o estado das OPs
     setOps((opsAtuais) => {
       const opsAtualizadas = opsAtuais.map((op) => {
@@ -446,6 +528,58 @@ export default function Operacao() {
 
       return opsAtualizadas
     })
+  }
+
+  /**
+   * Confirma o retrocesso com justificativa obrigatória
+   */
+  const confirmarRetrocesso = () => {
+    if (!dadosRetrocesso) return
+
+    // Valida justificativa (mínimo 10 caracteres)
+    if (!justificativaRetrocesso || justificativaRetrocesso.trim().length < 10) {
+      alert('Por favor, forneça uma justificativa com pelo menos 10 caracteres.')
+      return
+    }
+
+    const { op, faseOrigem, faseDestino } = dadosRetrocesso
+
+    console.log(`🔄 Retrocesso confirmado: OP ${op.op} de "${faseOrigem}" para "${faseDestino}"`)
+    console.log(`📝 Justificativa: ${justificativaRetrocesso}`)
+
+    // Registra a movimentação no histórico de auditoria com justificativa
+    registrarMovimentacao(op.op, faseOrigem, faseDestino, 'retrocesso', justificativaRetrocesso)
+
+    // Atualiza o estado das OPs
+    setOps((opsAtuais) => {
+      const opsAtualizadas = opsAtuais.map((opAtual) => {
+        if (opAtual.op === op.op) {
+          console.log(`✅ OP ${op.op}: "${opAtual.fase}" → "${faseDestino}" (retrocesso)`)
+          return { ...opAtual, fase: faseDestino }
+        }
+        return opAtual
+      })
+
+      // Salva no localStorage
+      salvarOPs(opsAtualizadas)
+
+      return opsAtualizadas
+    })
+
+    // Fecha o diálogo e limpa os dados
+    setDialogoRetrocessoAberto(false)
+    setDadosRetrocesso(null)
+    setJustificativaRetrocesso('')
+  }
+
+  /**
+   * Cancela o retrocesso
+   */
+  const cancelarRetrocesso = () => {
+    console.log('❌ Retrocesso cancelado pelo usuário')
+    setDialogoRetrocessoAberto(false)
+    setDadosRetrocesso(null)
+    setJustificativaRetrocesso('')
   }
 
   /**
@@ -869,6 +1003,111 @@ export default function Operacao() {
           <DialogFooter>
             <Button onClick={() => setDialogoMovimentoInvalidoAberto(false)} className="w-full sm:w-auto">
               Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Justificativa para Retrocesso */}
+      <Dialog open={dialogoRetrocessoAberto} onOpenChange={(open) => !open && cancelarRetrocesso()}>
+        <DialogContent className="sm:max-w-[650px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10">
+                <RotateCcw className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Retrocesso de Fase Detectado</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Justificativa obrigatória para auditoria (ALCOA+)
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {dadosRetrocesso && (
+            <div className="space-y-6 py-4">
+              {/* Informações da OP */}
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="flex items-center gap-2 text-sm font-medium mb-3">
+                  <Factory className="h-4 w-4 text-muted-foreground" />
+                  <span>Ordem de Produção: <span className="font-bold text-foreground">{dadosRetrocesso.op.op}</span></span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <p><span className="font-medium">Produto:</span> {dadosRetrocesso.op.produto}</p>
+                  <p><span className="font-medium">Lote:</span> {dadosRetrocesso.op.lote}</p>
+                </div>
+              </div>
+
+              {/* Visualização do movimento */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Movimento solicitado:</p>
+                <div className="flex items-center justify-center gap-3">
+                  <Badge variant="default" className="px-4 py-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{dadosRetrocesso.faseOrigem}</span>
+                    </div>
+                  </Badge>
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <RotateCcw className="h-5 w-5" />
+                    <span className="text-sm font-semibold">Retrocesso</span>
+                  </div>
+                  <Badge variant="outline" className="border-2 border-amber-500 px-4 py-2 text-sm text-amber-700 dark:text-amber-400">
+                    <div className="flex items-center gap-2">
+                      <ArrowRight className="h-4 w-4" />
+                      <span>{dadosRetrocesso.faseDestino}</span>
+                    </div>
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Alerta de auditoria */}
+              <div className="rounded-lg border-l-4 border-l-amber-500 bg-amber-50 p-4 dark:bg-amber-950/20">
+                <div className="flex items-start gap-3">
+                  <FileText className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                      Registro de Auditoria Obrigatório
+                    </p>
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                      Conforme princípios ALCOA+, todo retrocesso de fase deve ser justificado e registrado
+                      com data/hora e usuário responsável para rastreabilidade completa.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campo de justificativa */}
+              <div className="space-y-2">
+                <Label htmlFor="justificativa" className="text-sm font-semibold">
+                  Justificativa do Retrocesso <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="justificativa"
+                  placeholder="Descreva o motivo do retrocesso de forma clara e detalhada (mínimo 10 caracteres)..."
+                  value={justificativaRetrocesso}
+                  onChange={(e) => setJustificativaRetrocesso(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  {justificativaRetrocesso.length} / mínimo 10 caracteres
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={cancelarRetrocesso}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmarRetrocesso}
+              disabled={!justificativaRetrocesso || justificativaRetrocesso.trim().length < 10}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Confirmar Retrocesso
             </Button>
           </DialogFooter>
         </DialogContent>

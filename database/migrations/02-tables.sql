@@ -17,19 +17,17 @@
 -- Departamentos da empresa (SPEP, SPPV, CPHD, Líquidos, etc)
 -- ----------------------------------------------------
 CREATE TABLE tbdepartamento (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  codigo VARCHAR(10) NOT NULL UNIQUE,
-  nome VARCHAR(100) NOT NULL,
-  descricao TEXT,
+  departamento_id SERIAL PRIMARY KEY,
+  erp_codigo VARCHAR(10),
+  departamento TEXT NOT NULL,
 
   -- Gestão do departamento
-  gerente_id BIGINT REFERENCES tbusuario(id) ON DELETE SET NULL,
+  gerente_id BIGINT REFERENCES tbusuario(id),
   gerente_email VARCHAR(100),
-  aprovador_pedido_id BIGINT REFERENCES tbusuario(id) ON DELETE SET NULL,
 
   -- Status
-  ativo BOOLEAN NOT NULL DEFAULT TRUE,
-  bloqueado BOOLEAN NOT NULL DEFAULT FALSE,
+  bloqueado VARCHAR(3) NOT NULL DEFAULT 'Não' CHECK (deletado IN ('Sim', 'Não')),
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -70,6 +68,7 @@ CREATE TABLE tblinha (
   meta_oee_padrao DECIMAL(5,2) CHECK (meta_oee_padrao >= 0 AND meta_oee_padrao <= 100),
 
   ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -106,7 +105,7 @@ CREATE TABLE tbproduto (
   peso_liquido NUMERIC(10,4),
   estoque_minimo NUMERIC(10,4),
   foto BYTEA,
-  deletado CHAR(1),
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
   comissao NUMERIC(10,2),
   estoque_id INTEGER,
   tipoproduto_id INTEGER,
@@ -145,6 +144,7 @@ CREATE TABLE tbloteinsumo (
   data_validade DATE,
   fornecedor VARCHAR(200),
   status status_insumo_enum NOT NULL DEFAULT 'EM_ESTOQUE',
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -182,6 +182,8 @@ CREATE TABLE tbvelocidadenominal (
   -- Aprovação (Diretoria)
   aprovado_por BIGINT REFERENCES tbusuario(id),
   aprovado_em TIMESTAMPTZ,
+
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -232,6 +234,7 @@ CREATE TABLE tbcodigoparada (
   tempo_minimo_registro INTEGER DEFAULT 1,  -- Minutos (padrão: registrar todas)
 
   ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -265,6 +268,7 @@ CREATE TABLE tbturno (
   hora_fim TIME NOT NULL,
   duracao_horas DECIMAL(4,2) NOT NULL CHECK (duracao_horas > 0),
   ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -299,6 +303,7 @@ CREATE TABLE tbusuario (
   linha_id UUID REFERENCES tblinha(id) ON DELETE SET NULL,
 
   ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),  -- 'S' = sincronizado, 'N' = pendente, NULL = não aplicável
@@ -335,6 +340,7 @@ CREATE TABLE tbmetaoee (
   aprovado_em TIMESTAMPTZ,
 
   ativo BOOLEAN NOT NULL DEFAULT TRUE,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -386,6 +392,7 @@ CREATE TABLE tblote (
 
   status status_lote_enum NOT NULL DEFAULT 'EM_ANDAMENTO',
   observacoes TEXT,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração TOTVS
   origem_totvs_op VARCHAR(50),  -- Número da Ordem de Produção
@@ -443,6 +450,7 @@ CREATE TABLE tbapontamentoparada (
   ) STORED,
 
   observacao TEXT,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- ALCOA+: Atribuível + Contemporâneo
   criado_por_operador BIGINT NOT NULL REFERENCES tbusuario(id),
@@ -490,6 +498,7 @@ CREATE TABLE tbapontamentoproducao (
   clp_timestamp TIMESTAMPTZ,  -- Timestamp original do CLP (ALCOA+: Original)
 
   observacao TEXT,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -532,6 +541,7 @@ CREATE TABLE tbapontamentoqualidade (
   totvs_timestamp TIMESTAMPTZ,
 
   observacao TEXT,
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),
@@ -606,6 +616,7 @@ CREATE TABLE tboeecalculado (
   -- Cache control
   calculado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   recalcular BOOLEAN DEFAULT FALSE,  -- Flag para invalidar cache
+  deletado VARCHAR(1) NOT NULL DEFAULT 'N' CHECK (deletado IN ('S', 'N')),
 
   -- Integração com TOTVS/SICFAR
   sync VARCHAR(1),

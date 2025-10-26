@@ -65,6 +65,14 @@ Execute os scripts **NESTA ORDEM** no Supabase SQL Editor:
 ### ALCOA+ Compliance
 Todos os campos de auditoria (`created_at`, `created_by`, `updated_at`, `updated_by`) são obrigatórios nas tabelas principais.
 
+### Soft Delete (NUNCA DELETE físico)
+- **TODAS as tabelas** possuem campo `deletado VARCHAR(1) DEFAULT 'N'` ('S'=deletado, 'N'=ativo)
+- **NUNCA** fazer `DELETE FROM` em tabelas de produção (ALCOA+ Compliance)
+- Exclusões via `UPDATE SET deletado='S', deleted_at=NOW(), deleted_by=user_id`
+- Frontend **TERÁ** botões de exclusão normais (UX padrão)
+- Backend implementa soft-delete **transparentemente** (usuário não precisa saber)
+- Views filtram automaticamente `WHERE deletado='N'`
+
 ### Sistema de Autenticação
 A tabela `tbusuario` usa `BIGSERIAL` como ID primário e gerencia sua própria autenticação (não depende de Supabase Auth).
 
