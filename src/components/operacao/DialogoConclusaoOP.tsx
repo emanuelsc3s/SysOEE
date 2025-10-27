@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertTriangle, CheckCircle2, Package } from 'lucide-react'
+import TimelineEtapasOP from './TimelineEtapasOP'
 
 interface DialogoConclusaoOPProps {
   /** OP que está sendo concluída */
@@ -182,7 +183,7 @@ export default function DialogoConclusaoOP({
 
       {/* Segunda Etapa: Dados de Produção */}
       <Dialog open={aberto && etapa === 'dados'} onOpenChange={(open) => !open && handleCancelar()}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
@@ -193,7 +194,15 @@ export default function DialogoConclusaoOP({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          {/* Layout de duas colunas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            {/* Coluna Esquerda: Timeline */}
+            <div className="border-r pr-6 md:border-r-border md:pr-6 border-r-0 pr-0 pb-6 border-b md:border-b-0 md:pb-0">
+              <TimelineEtapasOP op={op} />
+            </div>
+
+            {/* Coluna Direita: Formulário */}
+            <div className="space-y-4">
             {/* Informações do Produto */}
             <div className="bg-muted p-3 rounded-lg space-y-1 text-sm">
               <p className="font-semibold text-foreground">{op.produto}</p>
@@ -319,6 +328,7 @@ export default function DialogoConclusaoOP({
               <p className="text-xs text-muted-foreground">
                 Informe 0 (zero) se não houver perdas
               </p>
+            </div>
             </div>
           </div>
 

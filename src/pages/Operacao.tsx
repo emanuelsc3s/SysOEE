@@ -642,6 +642,7 @@ export default function Operacao() {
             fase: 'Concluído' as FaseProducao,
             quantidadeEmbaladaUnidades,
             perdas,
+            dataHoraEmbalagem: new Date().toISOString(), // Registra timestamp da conclusão
           }
         }
         return opAtual
@@ -692,6 +693,7 @@ export default function Operacao() {
             fase: 'Envase' as FaseProducao,
             quantidadePreparadaMl,
             perdasPreparacaoMl,
+            dataHoraPreparacao: new Date().toISOString(), // Registra timestamp da conclusão
           }
         }
         return opAtual
@@ -762,6 +764,7 @@ export default function Operacao() {
             fase: 'Embalagem' as FaseProducao,
             quantidadeEnvasadaUnidades,
             perdasEnvaseUnidades,
+            dataHoraEnvase: new Date().toISOString(), // Registra timestamp da conclusão
           }
         }
         return opAtual

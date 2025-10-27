@@ -72,6 +72,15 @@ export interface OrdemProducao {
   /** Perda/desperdício na etapa de Envase (em Unidades) */
   perdasEnvaseUnidades?: number
 
+  /** Data e hora de conclusão da etapa de Preparação (ISO 8601) */
+  dataHoraPreparacao?: string
+
+  /** Data e hora de conclusão da etapa de Envase (ISO 8601) */
+  dataHoraEnvase?: string
+
+  /** Data e hora de conclusão da etapa de Embalagem (ISO 8601) */
+  dataHoraEmbalagem?: string
+
   /** Total de horas em operação (formato HH:MM) */
   horas: string
 
