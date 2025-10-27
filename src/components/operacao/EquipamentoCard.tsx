@@ -13,8 +13,6 @@ import {
   Package,
   AlertTriangle,
   CheckCircle2,
-  PlayCircle,
-  PauseCircle,
   XCircle,
   TrendingUp
 } from 'lucide-react'
@@ -49,18 +47,6 @@ function getCorTurno(turno: string): string {
   return cores[turno] || 'bg-gray-100 text-gray-800 border-gray-200'
 }
 
-/**
- * Retorna o ícone baseado no status
- */
-function getIconeStatus(status: string) {
-  const icones: Record<string, React.ReactNode> = {
-    'Em Produção': <PlayCircle className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />,
-    'Disponível': <CheckCircle2 className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />,
-    'Paradas': <PauseCircle className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />,
-    'Não Disponível': <XCircle className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />
-  }
-  return icones[status] || null
-}
 
 /**
  * Retorna a cor da borda lateral baseado no status

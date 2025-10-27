@@ -128,7 +128,7 @@ export default function TimelineEtapasOP({ op }: TimelineEtapasOPProps) {
         )}
 
         {/* Etapas */}
-        {etapasConcluidas.map((etapa, index) => (
+        {etapasConcluidas.map((etapa) => (
           <div key={etapa.nome} className="relative flex gap-4">
             {/* Marcador da etapa */}
             <div className="flex-shrink-0 relative z-10">

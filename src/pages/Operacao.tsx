@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { FaseProducao, OrdemProducao, RegistroMovimentacao, TipoMovimentacao } from '@/types/operacao'
+import { FaseProducao, OrdemProducao, RegistroMovimentacao, TipoMovimentacao, Turno } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
