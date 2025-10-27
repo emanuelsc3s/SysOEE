@@ -7,18 +7,21 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  AlertCircle, 
-  Clock, 
-  User, 
-  CheckCircle2, 
-  ChevronDown, 
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  AlertCircle,
+  Clock,
+  User,
+  CheckCircle2,
+  ChevronDown,
   ChevronUp,
   XCircle,
   Loader2
 } from 'lucide-react'
-import { 
-  buscarParadasEmAndamento, 
+import {
+  buscarParadasEmAndamento,
   buscarParadasFinalizadas,
   finalizarParada,
   calcularTempoDecorrido,
@@ -52,6 +55,16 @@ export function CardParadasAtivas({
   const [mostrarHistorico, setMostrarHistorico] = useState(false)
   const [finalizandoId, setFinalizandoId] = useState<string | null>(null)
   const [temposDecorridos, setTemposDecorridos] = useState<Record<string, number>>({})
+
+  // Estados do modal de confirmação de finalização
+  const [modalFinalizacaoAberto, setModalFinalizacaoAberto] = useState(false)
+  const [paradaParaFinalizar, setParadaParaFinalizar] = useState<string | null>(null)
+  const [dataFinalizacao, setDataFinalizacao] = useState<string>('')
+  const [horaFinalizacao, setHoraFinalizacao] = useState<string>('')
+  const [errosFinalizacao, setErrosFinalizacao] = useState<{
+    dataFinalizacao?: string
+    horaFinalizacao?: string
+  }>({})
 
   /**
    * Carrega paradas do localStorage
@@ -104,28 +117,88 @@ export function CardParadasAtivas({
   }
 
   /**
-   * Finaliza uma parada
+   * Abre modal de confirmação de finalização
    */
-  const handleFinalizarParada = async (paradaId: string) => {
-    setFinalizandoId(paradaId)
-    
-    try {
+  const handleFinalizarParada = (paradaId: string) => {
+    // Inicializa data e hora com valores atuais
+    const agora = new Date()
+    const dataAtual = agora.toISOString().split('T')[0] // YYYY-MM-DD
+    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 8) // HH:MM:SS
+
+    setParadaParaFinalizar(paradaId)
+    setDataFinalizacao(dataAtual)
+    setHoraFinalizacao(horaAtual)
+    setErrosFinalizacao({})
+    setModalFinalizacaoAberto(true)
+  }
+
+  /**
+   * Valida data e hora de finalização
+   */
+  const validarFinalizacao = (parada: ParadaLocalStorage): boolean => {
+    const novosErros: typeof errosFinalizacao = {}
+
+    if (!dataFinalizacao) {
+      novosErros.dataFinalizacao = 'Data de finalização é obrigatória'
+    }
+
+    if (!horaFinalizacao) {
+      novosErros.horaFinalizacao = 'Hora de finalização é obrigatória'
+    }
+
+    if (dataFinalizacao && horaFinalizacao) {
+      // Valida se data/hora não é futura
+      const dataHoraFinalizacao = new Date(`${dataFinalizacao}T${horaFinalizacao}`)
       const agora = new Date()
-      const horaFim = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}:${String(agora.getSeconds()).padStart(2, '0')}`
-      
-      const paradaAtualizada = finalizarParada(paradaId, horaFim, usuarioId)
-      
+
+      if (dataHoraFinalizacao > agora) {
+        novosErros.dataFinalizacao = 'Data/hora de finalização não pode ser futura'
+      }
+
+      // Valida se data/hora não é anterior ao início da parada
+      const dataHoraInicio = new Date(`${parada.data_parada}T${parada.hora_inicio}`)
+
+      if (dataHoraFinalizacao < dataHoraInicio) {
+        novosErros.dataFinalizacao = 'Data/hora de finalização não pode ser anterior ao início da parada'
+      }
+    }
+
+    setErrosFinalizacao(novosErros)
+    return Object.keys(novosErros).length === 0
+  }
+
+  /**
+   * Confirma finalização da parada com data/hora validada
+   */
+  const confirmarFinalizacao = async () => {
+    if (!paradaParaFinalizar) return
+
+    // Busca a parada para validação
+    const parada = paradasAtivas.find(p => p.id === paradaParaFinalizar)
+    if (!parada) return
+
+    // Valida data e hora
+    if (!validarFinalizacao(parada)) {
+      return
+    }
+
+    setFinalizandoId(paradaParaFinalizar)
+    setModalFinalizacaoAberto(false)
+
+    try {
+      const paradaAtualizada = finalizarParada(paradaParaFinalizar, horaFinalizacao, usuarioId)
+
       if (paradaAtualizada) {
         console.log('✅ Parada finalizada:', paradaAtualizada)
-        
+
         // Recarrega paradas
         carregarParadas()
-        
+
         // Callback
         if (onParadaFinalizada) {
           onParadaFinalizada()
         }
-        
+
         // Feedback visual
         alert(`✅ Parada finalizada com sucesso!\n\nDuração: ${formatarDuracao(paradaAtualizada.duracao_minutos || 0)}`)
       } else {
@@ -136,7 +209,19 @@ export function CardParadasAtivas({
       alert('❌ Erro ao finalizar parada. Tente novamente.')
     } finally {
       setFinalizandoId(null)
+      setParadaParaFinalizar(null)
     }
+  }
+
+  /**
+   * Cancela finalização
+   */
+  const cancelarFinalizacao = () => {
+    setModalFinalizacaoAberto(false)
+    setParadaParaFinalizar(null)
+    setDataFinalizacao('')
+    setHoraFinalizacao('')
+    setErrosFinalizacao({})
   }
 
   // Se não há paradas, não exibe o card
@@ -291,6 +376,125 @@ export function CardParadasAtivas({
           </div>
         )}
       </CardContent>
+
+      {/* Dialog: Confirmação de Finalização de Parada */}
+      <Dialog open={modalFinalizacaoAberto} onOpenChange={setModalFinalizacaoAberto}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-orange-500" />
+              Confirmar Finalização de Parada
+            </DialogTitle>
+            <DialogDescription>
+              Informe a data e hora exatas em que a parada foi finalizada.
+              <br />
+              <span className="text-xs text-muted-foreground mt-1 block">
+                ⚠️ Princípio ALCOA+: Registro contemporâneo e exato
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Data de Finalização */}
+            <div className="space-y-2">
+              <Label htmlFor="dataFinalizacao">
+                Data de Finalização *
+              </Label>
+              <Input
+                id="dataFinalizacao"
+                type="date"
+                value={dataFinalizacao}
+                onChange={(e) => {
+                  setDataFinalizacao(e.target.value)
+                  if (errosFinalizacao.dataFinalizacao) {
+                    setErrosFinalizacao({ ...errosFinalizacao, dataFinalizacao: undefined })
+                  }
+                }}
+                className={errosFinalizacao.dataFinalizacao ? 'border-red-500' : ''}
+              />
+              {errosFinalizacao.dataFinalizacao && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errosFinalizacao.dataFinalizacao}
+                </p>
+              )}
+            </div>
+
+            {/* Hora de Finalização */}
+            <div className="space-y-2">
+              <Label htmlFor="horaFinalizacao">
+                Hora de Finalização *
+              </Label>
+              <Input
+                id="horaFinalizacao"
+                type="time"
+                step="1"
+                value={horaFinalizacao}
+                onChange={(e) => {
+                  setHoraFinalizacao(e.target.value)
+                  if (errosFinalizacao.horaFinalizacao) {
+                    setErrosFinalizacao({ ...errosFinalizacao, horaFinalizacao: undefined })
+                  }
+                }}
+                className={errosFinalizacao.horaFinalizacao ? 'border-red-500' : ''}
+              />
+              {errosFinalizacao.horaFinalizacao && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" />
+                  {errosFinalizacao.horaFinalizacao}
+                </p>
+              )}
+            </div>
+
+            {/* Informações da Parada */}
+            {paradaParaFinalizar && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                <p className="text-sm font-medium text-blue-900">
+                  Parada a ser finalizada:
+                </p>
+                <p className="text-xs text-blue-700">
+                  {obterDescricaoParada(
+                    paradasAtivas.find(p => p.id === paradaParaFinalizar)?.codigo_parada_id || ''
+                  )}
+                </p>
+                <p className="text-xs text-blue-600">
+                  Início: {paradasAtivas.find(p => p.id === paradaParaFinalizar)?.data_parada} às{' '}
+                  {paradasAtivas.find(p => p.id === paradaParaFinalizar)?.hora_inicio}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelarFinalizacao}
+              disabled={finalizandoId !== null}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmarFinalizacao}
+              disabled={finalizandoId !== null}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {finalizandoId ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Finalizando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Confirmar Finalização
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
