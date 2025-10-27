@@ -6,7 +6,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { StatusEquipamento, Equipamento } from '@/types/equipamento'
 import { Setor } from '@/types/operacao'
-import { mockEquipamentos } from '@/data/mockEquipamentos'
+import {
+  buscarTodosEquipamentos,
+  inicializarDados
+} from '@/services/localStorage/equipamento.storage'
 import KanbanColumnEquipamento from '@/components/operacao/KanbanColumnEquipamento'
 
 import { Button } from '@/components/ui/button'
@@ -36,7 +39,15 @@ export default function OperacaoPorEquipamento() {
   const navigate = useNavigate()
 
   // Estado para os equipamentos
-  const [equipamentos] = useState<Equipamento[]>(mockEquipamentos)
+  const [equipamentos, setEquipamentos] = useState<Equipamento[]>([])
+
+  /**
+   * Carrega equipamentos do localStorage
+   */
+  const carregarEquipamentos = useCallback(() => {
+    const equipamentosStorage = buscarTodosEquipamentos()
+    setEquipamentos(equipamentosStorage)
+  }, [])
 
   // Estados para filtros (futura implementação)
   const [setorFiltro] = useState<Setor | 'Todos'>('Todos')
@@ -129,12 +140,22 @@ export default function OperacaoPorEquipamento() {
   }
 
   /**
-   * Atualiza os dados (futura integração com API)
+   * Atualiza os dados do localStorage
    */
   const handleRefresh = () => {
     console.log('🔄 Atualizando dados dos equipamentos...')
-    // TODO: Implementar refresh de dados da API
+    carregarEquipamentos()
   }
+
+  /**
+   * Inicializa dados no primeiro carregamento
+   */
+  useEffect(() => {
+    // Inicializa dados no localStorage se não existirem
+    inicializarDados()
+    // Carrega equipamentos
+    carregarEquipamentos()
+  }, [carregarEquipamentos])
 
   /**
    * Configura listeners de scroll e verifica scrollability inicial
@@ -242,7 +263,7 @@ export default function OperacaoPorEquipamento() {
       </div>
 
       {/* Kanban Board de Equipamentos */}
-      <div className="max-w-[1920px] mx-auto px-2 pb-2 tab-prod:px-1 tab-prod:pb-1">
+      <div className="max-w-[1920px] mx-auto px-2 pb-2 pt-4 tab-prod:px-1 tab-prod:pb-1 tab-prod:pt-2">
         <div className="relative">
           {/* Botão de navegação esquerda */}
           {canScrollLeft && (

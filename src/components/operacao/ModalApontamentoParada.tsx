@@ -1,0 +1,801 @@
+/**
+ * Modal de Apontamento de Parada de Produção
+ * Permite registrar paradas contemporâneas seguindo princípios ALCOA+
+ * Seleção simplificada de tipo de parada
+ *
+ * Versão 3.0: Formulário simplificado com dropdown único
+ */
+
+import { useState, useEffect } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import {
+  AlertTriangle,
+  Clock,
+  Pause,
+  AlertCircle,
+  User,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Plus
+} from 'lucide-react'
+import { CodigoParada, Turno, CriarApontamentoParadaDTO } from '@/types/parada'
+import {
+  buscarParadasEmAndamento,
+  buscarParadasFinalizadas,
+  finalizarParada as finalizarParadaLS,
+  calcularTempoDecorrido,
+  formatarDuracao,
+  ParadaLocalStorage
+} from '@/services/localStorage/parada.storage'
+
+interface ModalApontamentoParadaProps {
+  /** Controla se o modal está aberto */
+  aberto: boolean
+  /** Callback chamado quando o modal é fechado */
+  onFechar: () => void
+  /** Callback chamado quando a parada é registrada com sucesso */
+  onConfirmar: (dados: CriarApontamentoParadaDTO) => void
+  /** Número da OP em execução */
+  numeroOP: string
+  /** ID da linha de produção */
+  linhaId: string
+  /** ID do lote (opcional) */
+  loteId?: string | null
+  /** Lista de códigos de parada disponíveis */
+  codigosParada: CodigoParada[]
+  /** Lista de turnos disponíveis */
+  turnos: Turno[]
+  /** ID do usuário logado */
+  usuarioId: number
+}
+
+/**
+ * Modal de Apontamento de Parada
+ * Otimizado para tablet de produção (1000x400px)
+ */
+export function ModalApontamentoParada({
+  aberto,
+  onFechar,
+  onConfirmar,
+  numeroOP,
+  linhaId,
+  loteId,
+  codigosParada,
+  turnos,
+  usuarioId,
+}: ModalApontamentoParadaProps) {
+  // Estados de controle de abas
+  const [abaAtiva, setAbaAtiva] = useState<string>('em-andamento')
+
+  // Estados de paradas
+  const [paradasAtivas, setParadasAtivas] = useState<ParadaLocalStorage[]>([])
+  const [paradasFinalizadas, setParadasFinalizadas] = useState<ParadaLocalStorage[]>([])
+  const [temposDecorridos, setTemposDecorridos] = useState<Record<string, number>>({})
+  const [finalizandoId, setFinalizandoId] = useState<string | null>(null)
+
+  // Estado do Alert Dialog de validação
+  const [alertParadasAtivasAberto, setAlertParadasAtivasAberto] = useState(false)
+
+  // Estado do Alert Dialog de sucesso ao registrar parada
+  const [alertSucessoAberto, setAlertSucessoAberto] = useState(false)
+  const [mensagemSucesso, setMensagemSucesso] = useState<string>('')
+
+  // Estados do formulário
+  const [tipoParadaSelecionado, setTipoParadaSelecionado] = useState<string>('')
+  const [turnoSelecionado, setTurnoSelecionado] = useState<string>('')
+  const [dataParada, setDataParada] = useState<string>('')
+  const [horaInicio, setHoraInicio] = useState<string>('')
+  const [observacao, setObservacao] = useState<string>('')
+
+  // Estados de validação
+  const [erros, setErros] = useState<{
+    tipoParada?: string
+    turno?: string
+    dataParada?: string
+    horaInicio?: string
+  }>({})
+
+  // Inicializa data e hora com valores atuais (contemporaneidade)
+  useEffect(() => {
+    if (aberto) {
+      const agora = new Date()
+      const dataAtual = agora.toISOString().split('T')[0] // YYYY-MM-DD
+      const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5) // HH:MM
+      
+      setDataParada(dataAtual)
+      setHoraInicio(horaAtual)
+
+      // Detecta turno atual automaticamente
+      const turnoAtual = detectarTurnoAtual(turnos, horaAtual)
+      if (turnoAtual) {
+        setTurnoSelecionado(turnoAtual.id)
+      }
+    }
+  }, [aberto, turnos])
+
+  // Reseta formulário ao fechar
+  useEffect(() => {
+    if (!aberto) {
+      resetarFormulario()
+    }
+  }, [aberto])
+
+  /**
+   * Carrega paradas do localStorage
+   */
+  const carregarParadas = () => {
+    if (!loteId) return
+
+    const ativas = buscarParadasEmAndamento(loteId)
+    const finalizadas = buscarParadasFinalizadas(loteId)
+    setParadasAtivas(ativas)
+    setParadasFinalizadas(finalizadas)
+
+    // Define aba inicial baseado em paradas ativas
+    if (ativas.length > 0) {
+      setAbaAtiva('em-andamento')
+    } else {
+      setAbaAtiva('nova-parada')
+    }
+  }
+
+  /**
+   * Carrega paradas ao abrir o modal
+   */
+  useEffect(() => {
+    if (aberto && loteId) {
+      carregarParadas()
+    }
+  }, [aberto, loteId])
+
+  /**
+   * Atualiza tempos decorridos a cada segundo
+   */
+  useEffect(() => {
+    if (!aberto || paradasAtivas.length === 0) return
+
+    const interval = setInterval(() => {
+      const novosTempos: Record<string, number> = {}
+      paradasAtivas.forEach(parada => {
+        novosTempos[parada.id] = calcularTempoDecorrido(parada.hora_inicio)
+      })
+      setTemposDecorridos(novosTempos)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [aberto, paradasAtivas])
+
+  /**
+   * Detecta o turno atual baseado na hora
+   */
+  const detectarTurnoAtual = (turnos: Turno[], hora: string): Turno | null => {
+    const horaAtual = hora.split(':').map(Number)
+    const minutosAtual = horaAtual[0] * 60 + horaAtual[1]
+
+    for (const turno of turnos) {
+      const inicio = turno.hora_inicio.split(':').map(Number)
+      const fim = turno.hora_fim.split(':').map(Number)
+      const minutosInicio = inicio[0] * 60 + inicio[1]
+      const minutosFim = fim[0] * 60 + fim[1]
+
+      // Turno que cruza meia-noite
+      if (minutosInicio > minutosFim) {
+        if (minutosAtual >= minutosInicio || minutosAtual < minutosFim) {
+          return turno
+        }
+      } else {
+        if (minutosAtual >= minutosInicio && minutosAtual < minutosFim) {
+          return turno
+        }
+      }
+    }
+    return null
+  }
+
+  /**
+   * Lista de tipos de parada disponíveis
+   */
+  const tiposParada = [
+    'Sem Programação PMP',
+    'Atendimento Regulatório e Inovação',
+    'Eventos de Força Maior',
+    'Manutenção Planejada',
+    'Início de Produção',
+    'Fim Produção',
+    'CIP/SIP',
+    'Teste de Filtro',
+    'Troca de Formato/Produto',
+    'Limpeza Planejada de Componentes',
+    'Qualificação na Linha',
+    'Validação na Linha',
+    'Treinamento/ Reuniões/Eventos',
+    'Refeições',
+    'Falha Sistema de Água Gelada',
+    'Falha no Sistema HVAC',
+    'Falta de Energia',
+    'Falta de Ar Comprimido',
+    'Falta de Gases',
+    'Falta de Vapor',
+    'Falta de Água Bruta',
+    'Falta de WFI (CIP/SIP)',
+    'Falta de Internet/Sistemas',
+    'Falta de Solução/Produto',
+    'Falta Matéria Prima',
+    'Falta Material Embalagem',
+    'Falta Materiais GGF',
+    'Aguardando Análise de Amostras',
+    'Aguardando Dossiê/RG',
+    'Interrupção devido Etapa Posterior',
+    'Ausência de Espaço na Expedição',
+  ]
+
+  /**
+   * Reseta todos os campos do formulário
+   */
+  const resetarFormulario = () => {
+    setTipoParadaSelecionado('')
+    setTurnoSelecionado('')
+    setDataParada('')
+    setHoraInicio('')
+    setObservacao('')
+    setErros({})
+  }
+
+  /**
+   * Busca descrição do código de parada
+   * Se for um ID temporário, extrai o nome do tipo de parada
+   */
+  const obterDescricaoParada = (codigoParadaId: string): string => {
+    // Se for um ID temporário (formato: temp-nome-da-parada)
+    if (codigoParadaId.startsWith('temp-')) {
+      // Remove o prefixo 'temp-' e converte hífens de volta para espaços
+      const descricao = codigoParadaId
+        .substring(5) // Remove 'temp-'
+        .split('-')
+        .map(palavra => palavra.charAt(0).toUpperCase() + palavra.slice(1))
+        .join(' ')
+      return descricao
+    }
+
+    // Busca no cadastro de códigos de parada (quando implementado)
+    const codigo = codigosParada.find(c => c.id === codigoParadaId)
+    if (!codigo) return 'Código não encontrado'
+
+    // Retorna o nível 2 (Grande Parada) como descrição principal
+    return codigo.nivel_2_grande_parada
+  }
+
+  /**
+   * Calcula o total de minutos de todas as paradas
+   */
+  const calcularTotalMinutosParadas = (paradas: ParadaLocalStorage[]): number => {
+    return paradas.reduce((total, parada) => total + (parada.duracao_minutos || 0), 0)
+  }
+
+  /**
+   * Formata duração total para o formato "hhh:mm" (sem segundos)
+   */
+  const formatarDuracaoTotal = (minutos: number): string => {
+    const horas = Math.floor(minutos / 60)
+    const mins = Math.floor(minutos % 60)
+    return `${horas}:${String(mins).padStart(2, '0')}`
+  }
+
+  /**
+   * Finaliza uma parada
+   */
+  const handleFinalizarParada = async (paradaId: string) => {
+    setFinalizandoId(paradaId)
+    try {
+      const agora = new Date()
+      const horaFim = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}:${String(agora.getSeconds()).padStart(2, '0')}`
+
+      const paradaAtualizada = finalizarParadaLS(paradaId, horaFim, usuarioId)
+
+      if (paradaAtualizada) {
+        // Recarrega paradas
+        carregarParadas()
+
+        // Exibe modal de sucesso
+        setMensagemSucesso(`Parada finalizada com sucesso!\n\nDuração: ${formatarDuracao(paradaAtualizada.duracao_minutos || 0)}`)
+        setAlertSucessoAberto(true)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao finalizar parada:', error)
+      // Mantém alert para erro (não é sucesso)
+      alert('❌ Erro ao finalizar parada. Tente novamente.')
+    } finally {
+      setFinalizandoId(null)
+    }
+  }
+
+  /**
+   * Valida se pode registrar nova parada
+   * Exibe alert se houver paradas ativas
+   */
+  const handleNovaParada = () => {
+    if (paradasAtivas.length > 0) {
+      setAlertParadasAtivasAberto(true)
+    } else {
+      setAbaAtiva('nova-parada')
+    }
+  }
+
+  /**
+   * Valida o formulário
+   */
+  const validarFormulario = (): boolean => {
+    const novosErros: typeof erros = {}
+
+    if (!tipoParadaSelecionado) novosErros.tipoParada = 'Selecione o tipo de parada'
+    if (!turnoSelecionado) novosErros.turno = 'Selecione o turno'
+    if (!dataParada) novosErros.dataParada = 'Informe a data da parada'
+    if (!horaInicio) novosErros.horaInicio = 'Informe a hora de início'
+
+    // Valida que data/hora não seja futura
+    const agora = new Date()
+    const dataHoraParada = new Date(`${dataParada}T${horaInicio}:00`)
+    if (dataHoraParada > agora) {
+      novosErros.dataParada = 'Data/hora não pode ser futura'
+      novosErros.horaInicio = 'Data/hora não pode ser futura'
+    }
+
+    setErros(novosErros)
+    return Object.keys(novosErros).length === 0
+  }
+
+  /**
+   * Salva o apontamento de parada
+   * Usa o tipo de parada selecionado diretamente como código
+   */
+  const handleSalvar = async () => {
+    if (!validarFormulario()) return
+
+    // Gera um ID temporário baseado no tipo de parada
+    // Quando implementarmos o cadastro de paradas, isso será substituído
+    const codigoParadaId = `temp-${tipoParadaSelecionado.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-')}`
+
+    const dados: CriarApontamentoParadaDTO = {
+      linha_id: linhaId,
+      lote_id: loteId || null,
+      codigo_parada_id: codigoParadaId,
+      turno_id: turnoSelecionado,
+      data_parada: dataParada,
+      hora_inicio: `${horaInicio}:00`, // Adiciona segundos
+      observacao: observacao.trim() || null,
+      criado_por_operador: usuarioId,
+    }
+
+    // Aguarda o salvamento completar antes de recarregar
+    await onConfirmar(dados)
+
+    // Exibe modal de sucesso
+    setMensagemSucesso(`Parada registrada com sucesso!\n\nTipo: ${tipoParadaSelecionado}\nInício: ${horaInicio}`)
+    setAlertSucessoAberto(true)
+
+    // Reseta formulário e volta para aba de paradas ativas
+    resetarFormulario()
+
+    // Pequeno delay para garantir que localStorage foi atualizado
+    setTimeout(() => {
+      carregarParadas()
+      setAbaAtiva('em-andamento')
+    }, 100)
+  }
+
+  return (
+    <Dialog open={aberto} onOpenChange={onFechar}>
+      <DialogContent className="sm:max-w-[900px] tab-prod:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl tab-prod:text-lg">
+            <Pause className="h-5 w-5 text-orange-500" />
+            Controle de Paradas - OP {numeroOP}
+          </DialogTitle>
+          <DialogDescription className="text-sm tab-prod:text-xs">
+            Gerencie paradas em andamento e registre novas paradas
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Tabs */}
+        <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
+          <TabsList className={`grid w-full ${paradasAtivas.length > 0 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            <TabsTrigger value="em-andamento" className="text-xs sm:text-sm">
+              <AlertCircle className="h-4 w-4 mr-1" />
+              Em Andamento ({paradasAtivas.length})
+            </TabsTrigger>
+            {paradasAtivas.length === 0 && (
+              <TabsTrigger value="nova-parada" className="text-xs sm:text-sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Nova Parada
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="historico" className="text-xs sm:text-sm">
+              <Clock className="h-4 w-4 mr-1" />
+              Histórico ({paradasFinalizadas.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Aba 1: Paradas em Andamento */}
+          <TabsContent value="em-andamento" className="space-y-4 mt-4">
+            {paradasAtivas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
+                <h3 className="text-lg font-semibold text-green-700">
+                  ✅ Nenhuma parada em andamento
+                </h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  A produção está operando normalmente
+                </p>
+                <Button
+                  onClick={handleNovaParada}
+                  className="mt-6"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Registrar Nova Parada
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-orange-500" />
+                    Paradas Ativas ({paradasAtivas.length})
+                  </h3>
+                  <Button
+                    onClick={handleNovaParada}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Parada
+                  </Button>
+                </div>
+
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {paradasAtivas.map((parada) => (
+                    <div
+                      key={parada.id}
+                      className="border border-orange-200 bg-orange-50 rounded-lg p-4 space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">
+                            {obterDescricaoParada(parada.codigo_parada_id)}
+                          </h4>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Início: {parada.hora_inicio.substring(0, 5)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              Op. {parada.criado_por_operador}
+                            </span>
+                          </div>
+                          {parada.observacao && (
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              Obs: {parada.observacao}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="destructive" className="ml-4">
+                          ⏱️ {formatarDuracao(temposDecorridos[parada.id] || 0)}
+                        </Badge>
+                      </div>
+                      <Button
+                        onClick={() => handleFinalizarParada(parada.id)}
+                        disabled={finalizandoId === parada.id}
+                        size="sm"
+                        className="w-full"
+                      >
+                        {finalizandoId === parada.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Finalizando...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Finalizar Parada
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          {/* Aba 2: Nova Parada */}
+          <TabsContent value="nova-parada" className="space-y-4 mt-4">
+            <div className="space-y-4 tab-prod:space-y-3">
+          {/* Informações da OP */}
+          <div className="bg-muted p-3 rounded-md">
+            <p className="text-sm text-muted-foreground">
+              <strong>OP:</strong> {numeroOP}
+            </p>
+          </div>
+
+          {/* Alerta de Contemporaneidade */}
+          <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 p-3 rounded-md">
+            <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
+            <div className="text-xs text-blue-800">
+              <strong>Registro Contemporâneo (ALCOA+):</strong> A data e hora foram pré-preenchidas com o momento atual.
+              Ajuste apenas se necessário (tolerância de 5 minutos).
+            </div>
+          </div>
+
+          {/* Tipo de Parada */}
+          <div className="space-y-2">
+            <Label htmlFor="tipoParada" className="flex items-center gap-2">
+              Tipo de Parada *
+            </Label>
+            <Select
+              value={tipoParadaSelecionado}
+              onValueChange={(value) => {
+                setTipoParadaSelecionado(value)
+                if (erros.tipoParada) setErros({ ...erros, tipoParada: undefined })
+              }}
+            >
+              <SelectTrigger className={erros.tipoParada ? 'border-red-500' : ''}>
+                <SelectValue placeholder="Selecione o tipo de parada" />
+              </SelectTrigger>
+              <SelectContent>
+                {tiposParada.map((tipo) => (
+                  <SelectItem key={tipo} value={tipo}>
+                    {tipo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {erros.tipoParada && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {erros.tipoParada}
+              </p>
+            )}
+          </div>
+
+          {/* Separador */}
+          <div className="border-t pt-4" />
+
+          {/* Grid de Data/Hora e Turno */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Data da Parada */}
+            <div className="space-y-2">
+              <Label htmlFor="dataParada">Data da Parada *</Label>
+              <Input
+                id="dataParada"
+                type="date"
+                value={dataParada}
+                onChange={(e) => {
+                  setDataParada(e.target.value)
+                  if (erros.dataParada) setErros({ ...erros, dataParada: undefined })
+                }}
+                className={erros.dataParada ? 'border-red-500' : ''}
+              />
+              {erros.dataParada && (
+                <p className="text-sm text-red-500">{erros.dataParada}</p>
+              )}
+            </div>
+
+            {/* Hora de Início */}
+            <div className="space-y-2">
+              <Label htmlFor="horaInicio">Hora de Início *</Label>
+              <Input
+                id="horaInicio"
+                type="time"
+                value={horaInicio}
+                onChange={(e) => {
+                  setHoraInicio(e.target.value)
+                  if (erros.horaInicio) setErros({ ...erros, horaInicio: undefined })
+                }}
+                className={erros.horaInicio ? 'border-red-500' : ''}
+              />
+              {erros.horaInicio && (
+                <p className="text-sm text-red-500">{erros.horaInicio}</p>
+              )}
+            </div>
+
+            {/* Turno */}
+            <div className="space-y-2">
+              <Label htmlFor="turno">Turno *</Label>
+              <Select
+                value={turnoSelecionado}
+                onValueChange={(value) => {
+                  setTurnoSelecionado(value)
+                  if (erros.turno) setErros({ ...erros, turno: undefined })
+                }}
+              >
+                <SelectTrigger className={erros.turno ? 'border-red-500' : ''}>
+                  <SelectValue placeholder="Selecione o turno" />
+                </SelectTrigger>
+                <SelectContent>
+                  {turnos.map((turno) => (
+                    <SelectItem key={turno.id} value={turno.id}>
+                      {turno.nome} ({turno.hora_inicio.substring(0, 5)} - {turno.hora_fim.substring(0, 5)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {erros.turno && (
+                <p className="text-sm text-red-500">{erros.turno}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div className="space-y-2">
+            <Label htmlFor="observacao">Observações</Label>
+            <Textarea
+              id="observacao"
+              placeholder="Descreva detalhes sobre a parada (opcional)"
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">
+              Máximo de 500 caracteres
+            </p>
+          </div>
+
+          {/* Botões do formulário */}
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setAbaAtiva('em-andamento')}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvar} className="bg-orange-500 hover:bg-orange-600">
+              <Pause className="h-4 w-4 mr-2" />
+              Registrar Parada
+            </Button>
+          </div>
+        </div>
+          </TabsContent>
+
+          {/* Aba 3: Histórico */}
+          <TabsContent value="historico" className="space-y-4 mt-4">
+            {paradasFinalizadas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Clock className="h-16 w-16 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-600">
+                  Nenhuma parada finalizada
+                </h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  O histórico de paradas aparecerá aqui
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-gray-500" />
+                    Paradas Finalizadas ({paradasFinalizadas.length}) - Total em Horas: {formatarDuracaoTotal(calcularTotalMinutosParadas(paradasFinalizadas))}
+                  </h3>
+                </div>
+
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {paradasFinalizadas.map((parada) => (
+                    <div
+                      key={parada.id}
+                      className="border border-gray-200 bg-gray-50 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm">
+                            {obterDescricaoParada(parada.codigo_parada_id)}
+                          </h4>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Início: {parada.hora_inicio.substring(0, 5)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <XCircle className="h-3 w-3" />
+                              Fim: {parada.hora_fim?.substring(0, 5)}
+                            </span>
+                            <span className="flex items-center gap-1 font-semibold text-gray-700">
+                              Duração: {formatarDuracao(parada.duracao_minutos || 0)}
+                            </span>
+                          </div>
+                          {parada.observacao && (
+                            <p className="text-xs text-muted-foreground mt-2 italic">
+                              Obs: {parada.observacao}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onFechar}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+
+      {/* Alert Dialog: Validação de Paradas Ativas */}
+      <AlertDialog open={alertParadasAtivasAberto} onOpenChange={setAlertParadasAtivasAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              ⚠️ Paradas em Andamento
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Existem <strong>{paradasAtivas.length}</strong> parada(s) em andamento.
+              Finalize todas as paradas ativas antes de registrar uma nova parada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setAlertParadasAtivasAberto(false)}>
+              Entendi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alert Dialog: Sucesso ao Registrar Parada */}
+      <AlertDialog open={alertSucessoAberto} onOpenChange={setAlertSucessoAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              ✅ Parada Registrada com Sucesso
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base whitespace-pre-line">
+              {mensagemSucesso}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => setAlertSucessoAberto(false)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Dialog>
+  )
+}
+

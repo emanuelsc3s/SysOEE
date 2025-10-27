@@ -25,13 +25,12 @@ interface OPCardProps {
 
 /**
  * Retorna a cor do badge baseado no turno
+ * Sistema utiliza apenas 2 turnos
  */
 function getCorTurno(turno: string): string {
   const cores: Record<string, string> = {
     '1º Turno': 'bg-blue-100 text-blue-800 border-blue-200',
     '2º Turno': 'bg-green-100 text-green-800 border-green-200',
-    '3º Turno': 'bg-purple-100 text-purple-800 border-purple-200',
-    'Administrativo': 'bg-gray-100 text-gray-800 border-gray-200'
   }
   return cores[turno] || 'bg-gray-100 text-gray-800 border-gray-200'
 }
@@ -53,7 +52,13 @@ function getCorSetor(setor: string): string {
  * Calcula a porcentagem de produção
  */
 function calcularProgresso(quantidadeEmbaladaUnidades: number, teorico: number): number {
-  if (teorico === 0) return 0
+  // Trata valores inválidos como zero
+  if (quantidadeEmbaladaUnidades == null || isNaN(quantidadeEmbaladaUnidades) || !isFinite(quantidadeEmbaladaUnidades)) {
+    return 0
+  }
+  if (teorico == null || isNaN(teorico) || !isFinite(teorico) || teorico === 0) {
+    return 0
+  }
   return Math.min(Math.round((quantidadeEmbaladaUnidades / teorico) * 100), 100)
 }
 
@@ -61,6 +66,10 @@ function calcularProgresso(quantidadeEmbaladaUnidades: number, teorico: number):
  * Formata número com separador de milhares
  */
 function formatarNumero(num: number): string {
+  // Trata valores inválidos como zero
+  if (num == null || isNaN(num) || !isFinite(num)) {
+    return '0'
+  }
   return new Intl.NumberFormat('pt-BR', {
     maximumFractionDigits: 0
   }).format(num)
@@ -69,7 +78,7 @@ function formatarNumero(num: number): string {
 export default function OPCard({ op }: OPCardProps) {
   const navigate = useNavigate()
   const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
-  const temPerdas = op.perdas > 0
+  const temPerdas = op.perdas != null && !isNaN(op.perdas) && op.perdas > 0
 
   // Configura o card como arrastável
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({

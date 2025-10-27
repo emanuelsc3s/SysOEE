@@ -39,13 +39,12 @@ function getCorSetor(setor: string): string {
 
 /**
  * Retorna a cor do badge baseado no turno
+ * Sistema utiliza apenas 2 turnos
  */
 function getCorTurno(turno: string): string {
   const cores: Record<string, string> = {
     '1º Turno': 'bg-blue-100 text-blue-800 border-blue-200',
     '2º Turno': 'bg-green-100 text-green-800 border-green-200',
-    '3º Turno': 'bg-purple-100 text-purple-800 border-purple-200',
-    'Administrativo': 'bg-gray-100 text-gray-800 border-gray-200'
   }
   return cores[turno] || 'bg-gray-100 text-gray-800 border-gray-200'
 }

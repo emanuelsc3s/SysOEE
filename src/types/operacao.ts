@@ -17,8 +17,9 @@ export type FaseProducao =
 
 /**
  * Turnos de produção
+ * Sistema utiliza apenas 2 turnos de 8 horas cada
  */
-export type Turno = '1º Turno' | '2º Turno' | '3º Turno' | 'Administrativo'
+export type Turno = '1º Turno' | '2º Turno'
 
 /**
  * Setores produtivos

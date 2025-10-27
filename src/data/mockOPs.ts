@@ -42,8 +42,9 @@ const fases: FaseProducao[] = [
 
 /**
  * Turnos disponíveis
+ * Sistema utiliza apenas 2 turnos de 8 horas cada
  */
-const turnos: Turno[] = ['1º Turno', '2º Turno', '3º Turno', 'Administrativo']
+const turnos: Turno[] = ['1º Turno', '2º Turno']
 
 /**
  * Gera um número aleatório entre min e max (inclusive)

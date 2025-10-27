@@ -161,7 +161,7 @@ function gerarDadosMockIniciais(): OrdemProducao[] {
 }
 
 /**
- * Migra OPs antigas removendo fases inválidas (como "Parada")
+ * Migra OPs antigas removendo fases e turnos inválidos
  */
 function migrarOPsAntigas(ops: OrdemProducao[]): OrdemProducao[] {
   const fasesValidas: FaseProducao[] = [
@@ -174,19 +174,33 @@ function migrarOPsAntigas(ops: OrdemProducao[]): OrdemProducao[] {
     'Concluído'
   ]
 
-  let migradas = 0
+  const turnosValidos: Turno[] = ['1º Turno', '2º Turno']
+
+  let migradasFase = 0
+  let migradasTurno = 0
+
   const opsMigradas = ops.map(op => {
+    let opAtualizada = { ...op }
+
     // Se a fase não é válida, move para "Planejado"
     if (!fasesValidas.includes(op.fase)) {
       console.warn(`🔄 Migrando OP ${op.op} de fase inválida "${op.fase}" para "Planejado"`)
-      migradas++
-      return { ...op, fase: 'Planejado' as FaseProducao }
+      migradasFase++
+      opAtualizada.fase = 'Planejado' as FaseProducao
     }
-    return op
+
+    // Se o turno não é válido, define como "1º Turno"
+    if (!turnosValidos.includes(op.turno)) {
+      console.warn(`🔄 Migrando OP ${op.op} de turno inválido "${op.turno}" para "1º Turno"`)
+      migradasTurno++
+      opAtualizada.turno = '1º Turno' as Turno
+    }
+
+    return opAtualizada
   })
 
-  if (migradas > 0) {
-    console.log(`✅ Migração concluída: ${migradas} OPs atualizadas`)
+  if (migradasFase > 0 || migradasTurno > 0) {
+    console.log(`✅ Migração concluída: ${migradasFase} fases e ${migradasTurno} turnos atualizados`)
   }
 
   return opsMigradas
