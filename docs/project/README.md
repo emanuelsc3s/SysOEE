@@ -85,6 +85,31 @@ Este diretório contém os resumos estruturados de todas as atividades e especif
   - Infraestrutura para impressão
   - Requisitos críticos do sistema
 
+## Expansões Regulatórias e de Qualidade
+
+### Requisitos Complementares Identificados
+- [**13 - Gestão de Treinamentos de Operadores**](13-Gestao-Treinamentos.md)
+  - Integração de operadores com registro de treinamentos em POPs
+  - Validação de competências antes de executar atividades
+  - Conformidade com ALCOA+ (Atribuível)
+  - Bloqueio de sistema para operadores não qualificados
+  - Rastreabilidade de treinamentos vigentes
+
+- [**14 - Eventos de Desvio de Qualidade**](14-Eventos-Desvio-Qualidade.md)
+  - Abertura e investigação de desvios de qualidade
+  - Workflow completo (Abertura → Investigação → CAPA → Encerramento)
+  - Vinculação de desvios com paradas, refugo e retrabalho
+  - Impacto de desvios no OEE
+  - Conformidade regulatória (BPF, ALCOA+)
+
+- [**15 - Controle em Processo (IPC)**](15-Controle-Processo.md) ⚠️ **Levantamento Pendente**
+  - Registro de controles em processo (pH, volume, aspecto, etc.)
+  - Especificações por etapa produtiva
+  - Ações automáticas em caso de não conformidade
+  - Integração com desvios de qualidade
+  - Impacto de controles OOS (Out of Specification) no OEE
+  - **Status**: Requer levantamento com área de Qualidade
+
 ## Observações Importantes
 
 ### Atividade 06
@@ -103,6 +128,7 @@ Todos os marcos e entregas são validados pelo **Consultor Rafael Gusmão** ante
 3. **Para gestão de pessoas**: Consulte os documentos 01, 11 e 12
 4. **Para planejamento**: Consulte os documentos 03, 10
 5. **Para referência de termos**: Use o documento 04
+6. **Para requisitos regulatórios e de qualidade**: Consulte os documentos 13, 14 e 15
 
 ## Documentos Fonte
 Os resumos foram criados a partir dos documentos originais localizados em:
@@ -111,5 +137,6 @@ Os resumos foram criados a partir dos documentos originais localizados em:
 ---
 
 **Data de criação dos resumos**: 18 de Outubro de 2025
+**Última atualização**: 27 de Outubro de 2025 (Adição de docs 13, 14, 15)
 **Idioma**: Português Brasileiro
 **Projeto**: OEE - SicFar - Farmace
