@@ -162,7 +162,7 @@ export function ModalSelecaoOperacao({
             descricao="Visualização dos equipamentos e linhas de produção com status de operação em tempo real"
             icone={<Wrench className="w-8 h-8 tab-prod:w-5 tab-prod:h-5" />}
             onClick={onSelecionarEquipamento}
-            cor="secondary"
+            cor="primary"
           />
         </div>
       </DialogContent>

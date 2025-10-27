@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
 import Operacao from './pages/Operacao'
+import OperacaoPorEquipamento from './pages/OperacaoPorEquipamento'
 import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
 import Placeholder from './pages/Placeholder'
 
@@ -21,6 +22,9 @@ function App() {
 
         {/* Página de Operação - Kanban de OPs */}
         <Route path="/operacao" element={<Operacao />} />
+
+        {/* Página de Operação - Por Equipamento */}
+        <Route path="/operacao-equipamento" element={<OperacaoPorEquipamento />} />
 
         {/* Página de Detalhes de OP */}
         <Route path="/operacao/:numeroOP" element={<OperacaoDetalheOP />} />

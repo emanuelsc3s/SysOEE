@@ -90,11 +90,11 @@ export default function Home() {
   }
 
   /**
-   * Exibe alerta informando que a funcionalidade está em desenvolvimento
+   * Navega para a página de Operação (visualização por Equipamento)
    */
   const handleSelecionarEquipamento = () => {
     setModalOperacaoAberto(false)
-    alert('⚙️ Funcionalidade em Desenvolvimento\n\nA visualização por equipamento estará disponível em breve.')
+    navigate('/operacao-equipamento')
   }
 
   // Definição dos módulos de navegação
