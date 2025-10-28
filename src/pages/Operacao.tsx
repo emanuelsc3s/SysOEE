@@ -446,7 +446,7 @@ export default function Operacao() {
     document.body.classList.remove('dragging')
 
     // Restaura a posição de scroll
-    window.scrollTo(scrollPositionRef.current.x, scrollPositionRef.current.y)
+
 
     // Se não há destino válido, cancela
     if (!over) {
