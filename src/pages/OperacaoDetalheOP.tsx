@@ -143,7 +143,7 @@ export default function OperacaoDetalheOP() {
     if (modalParadaAberto && codigosParada.length === 0) {
       carregarDadosParada()
     }
-  }, [modalParadaAberto])
+  }, [modalParadaAberto, codigosParada.length])
 
   /**
    * Carrega códigos de parada e turnos do Supabase

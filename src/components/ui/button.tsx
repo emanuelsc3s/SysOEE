@@ -54,4 +54,5 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
+// eslint-disable-next-line react-refresh/only-export-components -- Exportamos tokens (buttonVariants) usados por diversos componentes; aviso apenas em desenvolvimento.
 export { Button, buttonVariants }

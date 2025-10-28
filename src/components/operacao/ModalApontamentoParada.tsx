@@ -6,7 +6,7 @@
  * Versão 3.0: Formulário simplificado com dropdown único
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -163,7 +163,7 @@ export function ModalApontamentoParada({
   /**
    * Carrega paradas do localStorage
    */
-  const carregarParadas = () => {
+  const carregarParadas = useCallback(() => {
     if (!loteId) return
 
     const ativas = buscarParadasEmAndamento(loteId)
@@ -177,7 +177,7 @@ export function ModalApontamentoParada({
     } else {
       setAbaAtiva('nova-parada')
     }
-  }
+  }, [loteId])
 
   /**
    * Carrega paradas ao abrir o modal
@@ -186,7 +186,7 @@ export function ModalApontamentoParada({
     if (aberto && loteId) {
       carregarParadas()
     }
-  }, [aberto, loteId])
+  }, [aberto, loteId, carregarParadas])
 
   /**
    * Atualiza tempos decorridos a cada segundo

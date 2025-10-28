@@ -3,7 +3,7 @@
  * Exibe lista de paradas em andamento e histórico de paradas finalizadas
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -69,12 +69,12 @@ export function CardParadasAtivas({
   /**
    * Carrega paradas do localStorage
    */
-  const carregarParadas = () => {
+  const carregarParadas = useCallback(() => {
     const ativas = buscarParadasEmAndamento(loteId)
     const finalizadas = buscarParadasFinalizadas(loteId)
     setParadasAtivas(ativas)
     setParadasFinalizadas(finalizadas)
-  }
+  }, [loteId])
 
   /**
    * Atualiza tempos decorridos a cada segundo
@@ -96,7 +96,7 @@ export function CardParadasAtivas({
    */
   useEffect(() => {
     carregarParadas()
-  }, [loteId])
+  }, [loteId, carregarParadas])
 
   /**
    * Busca descrição do código de parada

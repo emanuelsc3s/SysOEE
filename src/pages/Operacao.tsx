@@ -180,7 +180,7 @@ function migrarOPsAntigas(ops: OrdemProducao[]): OrdemProducao[] {
   let migradasTurno = 0
 
   const opsMigradas = ops.map(op => {
-    let opAtualizada = { ...op }
+    const opAtualizada = { ...op }
 
     // Se a fase não é válida, move para "Planejado"
     if (!fasesValidas.includes(op.fase)) {
