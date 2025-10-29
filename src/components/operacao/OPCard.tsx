@@ -3,6 +3,7 @@
  * Exibe informações detalhadas de uma OP em formato de card
  */
 
+import { useState, useRef } from 'react'
 import { OrdemProducao } from '@/types/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +17,10 @@ import {
   Eye,
   Paperclip,
   Pause,
-  FileSignature // Ícone para Assinatura Eletrônica
+  FileSignature, // Ícone para Assinatura Eletrônica
+  FileText, // Ícone para Dossiê
+  ChevronUp, // Seta para cima (navegação)
+  ChevronDown // Seta para baixo (navegação)
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -82,6 +86,11 @@ export default function OPCard({ op }: OPCardProps) {
   const navigate = useNavigate()
   const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
   const temPerdas = op.perdas != null && !isNaN(op.perdas) && op.perdas > 0
+
+  // Estado para controlar a rolagem dos botões
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [canScrollUp, setCanScrollUp] = useState(false)
+  const [canScrollDown, setCanScrollDown] = useState(true)
 
   // Configura o card como arrastável
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -264,68 +273,136 @@ export default function OPCard({ op }: OPCardProps) {
           </div>
         )}
 
-        {/* Botões de Ação */}
+        {/* Botões de Ação com Rolagem */}
         <div className="pt-3 border-t border-border tab-prod:pt-2">
-          <div className="grid grid-cols-4 gap-2 tab-prod:gap-1">
-            {/* Botão Detalhes */}
-            <Button
+          <div className="relative flex items-center gap-1">
+            {/* Botão Rolar para Esquerda - Visível apenas em desktop */}
+            <button
               onClick={(e) => {
-                e.stopPropagation() // Previne navegação do card
-                console.log('Detalhes clicado para OP:', op.op)
-                // TODO: Implementar visualização de detalhes
+                e.stopPropagation()
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollBy({ left: -100, behavior: 'smooth' })
+                }
               }}
-              variant="outline"
-              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
-              size="sm"
+              className={`flex-shrink-0 w-5 h-10 flex items-center justify-center bg-background/50 backdrop-blur-sm border-0 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-200 tab-prod:hidden ${
+                !canScrollUp ? 'opacity-0 pointer-events-none w-0' : 'opacity-60 hover:opacity-100'
+              }`}
+              aria-label="Rolar para esquerda"
             >
-              <Eye className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-              <span className="text-[10px] tab-prod:text-[9px] font-medium">Detalhes</span>
-            </Button>
+              <ChevronUp className="h-3 w-3 -rotate-90" />
+            </button>
 
-            {/* Botão Anexos */}
-            <Button
-              onClick={(e) => {
-                e.stopPropagation() // Previne navegação do card
-                console.log('Anexos clicado para OP:', op.op)
-                // TODO: Implementar visualização de anexos
+            {/* Container de Rolagem dos Botões */}
+            <div
+              ref={scrollContainerRef}
+              onScroll={(e) => {
+                const target = e.currentTarget
+                // Para desktop (horizontal scroll)
+                setCanScrollUp(target.scrollLeft > 0)
+                setCanScrollDown(
+                  target.scrollLeft < target.scrollWidth - target.clientWidth - 1
+                )
+                // Para tablet (vertical scroll)
+                if (target.scrollHeight > target.clientHeight) {
+                  setCanScrollUp(target.scrollTop > 0)
+                  setCanScrollDown(
+                    target.scrollTop < target.scrollHeight - target.clientHeight - 1
+                  )
+                }
               }}
-              variant="outline"
-              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
-              size="sm"
+              className="flex-1 flex gap-2 overflow-x-auto overflow-y-hidden tab-prod:gap-1 tab-prod:overflow-y-auto tab-prod:overflow-x-hidden tab-prod:flex-col tab-prod:max-h-32 scrollbar-none"
             >
-              <Paperclip className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-              <span className="text-[10px] tab-prod:text-[9px] font-medium">Anexos</span>
-            </Button>
+              {/* Botão Detalhes */}
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  console.log('Detalhes clicado para OP:', op.op)
+                  // TODO: Implementar visualização de detalhes
+                }}
+                variant="outline"
+                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                size="sm"
+              >
+                <Eye className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Detalhes</span>
+              </Button>
 
-            {/* Botão Paradas */}
-            <Button
-              onClick={(e) => {
-                e.stopPropagation() // Previne navegação do card
-                console.log('Paradas clicado para OP:', op.op)
-                // TODO: Implementar visualização de paradas
-              }}
-              variant="outline"
-              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
-              size="sm"
-            >
-              <Pause className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-              <span className="text-[10px] tab-prod:text-[9px] font-medium">Paradas</span>
-            </Button>
+              {/* Botão Anexos */}
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  console.log('Anexos clicado para OP:', op.op)
+                  // TODO: Implementar visualização de anexos
+                }}
+                variant="outline"
+                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                size="sm"
+              >
+                <Paperclip className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Anexos</span>
+              </Button>
 
-            {/* Botão Assinatura Eletrônica */}
-            <Button
+              {/* Botão Paradas */}
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  console.log('Paradas clicado para OP:', op.op)
+                  // TODO: Implementar visualização de paradas
+                }}
+                variant="outline"
+                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                size="sm"
+              >
+                <Pause className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Paradas</span>
+              </Button>
+
+              {/* Botão Assinatura Eletrônica */}
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  console.log('Assinatura clicado para OP:', op.op)
+                  // TODO: Implementar assinatura eletrônica do supervisor
+                }}
+                variant="outline"
+                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                size="sm"
+              >
+                <FileSignature className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Assinar</span>
+              </Button>
+
+              {/* Botão Dossiê */}
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  console.log('Dossiê clicado para OP:', op.op)
+                  // TODO: Implementar visualização do dossiê
+                }}
+                variant="outline"
+                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                size="sm"
+              >
+                <FileText className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Dossiê</span>
+              </Button>
+            </div>
+
+            {/* Botão Rolar para Direita - Visível apenas em desktop */}
+            <button
               onClick={(e) => {
-                e.stopPropagation() // Previne navegação do card
-                console.log('Assinatura clicado para OP:', op.op)
-                // TODO: Implementar assinatura eletrônica do supervisor
+                e.stopPropagation()
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollBy({ left: 100, behavior: 'smooth' })
+                }
               }}
-              variant="outline"
-              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
-              size="sm"
+              className={`flex-shrink-0 w-5 h-10 flex items-center justify-center bg-background/50 backdrop-blur-sm border-0 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-200 tab-prod:hidden ${
+                !canScrollDown ? 'opacity-0 pointer-events-none w-0' : 'opacity-60 hover:opacity-100'
+              }`}
+              aria-label="Rolar para direita"
             >
-              <FileSignature className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-              <span className="text-[10px] tab-prod:text-[9px] font-medium">Assinar</span>
-            </Button>
+              <ChevronDown className="h-3 w-3 rotate-90" />
+            </button>
           </div>
         </div>
       </CardContent>

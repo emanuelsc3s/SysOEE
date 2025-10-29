@@ -297,5 +297,16 @@
     -moz-user-select: none !important;
     -ms-user-select: none !important;
   }
+
+  /* Oculta completamente a scrollbar */
+  .scrollbar-none {
+    /* Para navegadores Webkit (Chrome, Safari, Edge) */
+    -ms-overflow-style: none;  /* IE e Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
 }
 
