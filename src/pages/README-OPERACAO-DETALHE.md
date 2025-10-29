@@ -73,7 +73,6 @@ Exibe as informações principais da Ordem de Produção:
 #### 3. Card de Informações Regulatórias (Opcional)
 Exibido apenas se a OP possuir essas informações:
 - **Dossiê**: Número do dossiê de produção
-- **Registro ANVISA**: Número de registro na ANVISA
 - **GTIN**: Código de barras GTIN do produto
 
 ### Rodapé Fixo com Botões de Ação

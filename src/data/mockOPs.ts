@@ -148,7 +148,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: 'DS.056/25',
-    anvisa: '1108500300027',
     setor: 'SPPV'
   },
   {
@@ -165,7 +164,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: 'DS.055/25',
-    anvisa: '1108500300027',
     setor: 'SPPV'
   },
   {
@@ -182,7 +180,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: 'DS.054/25',
-    anvisa: '1108500300086',
     setor: 'SPPV'
   },
   {
@@ -199,7 +196,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: 'DS.043/25',
-    anvisa: '1108500300086',
     setor: 'SPPV'
   },
   {
@@ -216,7 +212,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: 'DS.052/25',
-    anvisa: '1108500300019',
     setor: 'SPPV'
   },
   {
@@ -233,7 +228,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '10113D/25',
-    anvisa: '1108500110066',
     setor: 'SPEP'
   },
   {
@@ -250,7 +244,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '10112D/25',
-    anvisa: '1108500110066',
     setor: 'SPEP'
   },
   {
@@ -267,7 +260,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '10111D/25',
-    anvisa: '1108500110066',
     setor: 'SPEP'
   },
   {
@@ -284,7 +276,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '10110D',
-    anvisa: '1108500110066',
     setor: 'SPEP'
   },
   {
@@ -301,7 +292,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '0025H/25',
-    anvisa: '1108500010215',
     setor: 'SPEP'
   },
   {
@@ -318,7 +308,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '20042G/25',
-    anvisa: '1108500010037',
     setor: 'SPEP'
   },
   {
@@ -335,7 +324,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '20041G/25',
-    anvisa: '1108500010037',
     setor: 'SPEP'
   },
   {
@@ -352,7 +340,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '20040G/25',
-    anvisa: '1108500010037',
     setor: 'SPEP'
   },
   {
@@ -369,7 +356,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '16060F/25',
-    anvisa: '1108500010207',
     setor: 'SPEP'
   },
   {
@@ -386,7 +372,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '16059F/25',
-    anvisa: '1108500010207',
     setor: 'SPEP'
   },
   {
@@ -403,7 +388,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '12096E/25',
-    anvisa: '1108500010193',
     setor: 'SPEP'
   },
   {
@@ -420,7 +404,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '12095E/25',
-    anvisa: '1108500010193',
     setor: 'SPEP'
   },
   {
@@ -437,7 +420,6 @@ export const mockOPs: OrdemProducao[] = [
     horas: gerarHoras(),
     turno: randomItem(turnos),
     dossie: '12094E/25',
-    anvisa: '1108500010193',
     setor: 'SPEP'
   }
 ]

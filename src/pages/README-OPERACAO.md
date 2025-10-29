@@ -82,7 +82,6 @@ Cada card exibe:
 
 #### Informações Adicionais (quando disponíveis)
 - **Dossiê** - Número do dossiê
-- **ANVISA** - Registro ANVISA
 
 ### Legenda (Rodapé)
 

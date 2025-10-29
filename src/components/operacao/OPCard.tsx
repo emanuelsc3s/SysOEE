@@ -8,12 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Calendar,
-  Package,
   Factory,
   AlertTriangle,
   CheckCircle2,
-  Clock,
-  GripVertical
+  Clock
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -108,19 +106,58 @@ export default function OPCard({ op }: OPCardProps) {
       }`}
     >
       <CardHeader className="pb-3 tab-prod:pb-1 tab-prod:px-2 tab-prod:pt-2">
-        <div className="flex items-start justify-between gap-2 tab-prod:gap-1">
+        <div className="flex items-center justify-between gap-2 tab-prod:gap-1">
           {/* Handle de Drag - Área específica para arrastar */}
           <div
             {...listeners}
-            className="flex items-start gap-2 cursor-grab active:cursor-grabbing touch-none tab-prod:gap-1"
+            className="flex items-stretch gap-2 cursor-grab active:cursor-grabbing touch-none tab-prod:gap-1"
             title="Arraste para mover o card"
           >
-            <GripVertical className="h-5 w-5 text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 tab-prod:h-3 tab-prod:w-3" />
+            {/* Gripper customizado com 4 colunas × 6 linhas de pontos */}
+            <svg
+              className="w-6 text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 self-stretch tab-prod:w-4"
+              viewBox="0 0 28 48"
+              fill="none"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Coluna 1 (cx="5") - 6 linhas */}
+              <circle cx="5" cy="4" r="1.5" fill="currentColor" />
+              <circle cx="5" cy="12" r="1.5" fill="currentColor" />
+              <circle cx="5" cy="20" r="1.5" fill="currentColor" />
+              <circle cx="5" cy="28" r="1.5" fill="currentColor" />
+              <circle cx="5" cy="36" r="1.5" fill="currentColor" />
+              <circle cx="5" cy="44" r="1.5" fill="currentColor" />
+
+              {/* Coluna 2 (cx="11") - 6 linhas */}
+              <circle cx="11" cy="4" r="1.5" fill="currentColor" />
+              <circle cx="11" cy="12" r="1.5" fill="currentColor" />
+              <circle cx="11" cy="20" r="1.5" fill="currentColor" />
+              <circle cx="11" cy="28" r="1.5" fill="currentColor" />
+              <circle cx="11" cy="36" r="1.5" fill="currentColor" />
+              <circle cx="11" cy="44" r="1.5" fill="currentColor" />
+
+              {/* Coluna 3 (cx="17") - 6 linhas */}
+              <circle cx="17" cy="4" r="1.5" fill="currentColor" />
+              <circle cx="17" cy="12" r="1.5" fill="currentColor" />
+              <circle cx="17" cy="20" r="1.5" fill="currentColor" />
+              <circle cx="17" cy="28" r="1.5" fill="currentColor" />
+              <circle cx="17" cy="36" r="1.5" fill="currentColor" />
+              <circle cx="17" cy="44" r="1.5" fill="currentColor" />
+
+              {/* Coluna 4 (cx="23") - 6 linhas */}
+              <circle cx="23" cy="4" r="1.5" fill="currentColor" />
+              <circle cx="23" cy="12" r="1.5" fill="currentColor" />
+              <circle cx="23" cy="20" r="1.5" fill="currentColor" />
+              <circle cx="23" cy="28" r="1.5" fill="currentColor" />
+              <circle cx="23" cy="36" r="1.5" fill="currentColor" />
+              <circle cx="23" cy="44" r="1.5" fill="currentColor" />
+            </svg>
             <div className="flex flex-col">
-              <CardTitle className="tracking-tight text-base font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
+              <CardTitle className="text-sm font-bold text-primary leading-normal tab-prod:text-xs tab-prod:leading-tight">
                 OP {op.op}
               </CardTitle>
-              <span className="tracking-tight text-base font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
+              <span className="text-sm font-bold text-primary leading-normal tab-prod:text-xs tab-prod:leading-tight">
                 Lote: {op.lote}
               </span>
             </div>
@@ -148,7 +185,7 @@ export default function OPCard({ op }: OPCardProps) {
 
         {/* Produto */}
         <div className="pt-2 pb-2 border-t border-b border-border tab-prod:pt-1 tab-prod:pb-1">
-          <p className="text-sm font-semibold text-foreground line-clamp-2 tab-prod:text-[10px] tab-prod:line-clamp-1 tab-prod:leading-tight" title={op.produto}>
+          <p className="text-sm font-semibold text-foreground truncate tab-prod:text-[10px]" title={op.produto}>
             {op.produto}
           </p>
           <p className="text-xs text-muted-foreground mt-1 tab-prod:text-[9px] tab-prod:mt-0 tab-prod:leading-tight">
@@ -214,18 +251,11 @@ export default function OPCard({ op }: OPCardProps) {
         </div>
 
         {/* Informações Adicionais (se disponíveis) - Ocultar em tablet para economizar espaço */}
-        {(op.dossie || op.anvisa) && (
+        {op.dossie && (
           <div className="pt-2 border-t border-border space-y-1 tab-prod:hidden">
-            {op.dossie && (
-              <p className="text-xs text-muted-foreground">
-                Dossiê: <span className="font-medium">{op.dossie}</span>
-              </p>
-            )}
-            {op.anvisa && (
-              <p className="text-xs text-muted-foreground">
-                ANVISA: <span className="font-medium">{op.anvisa}</span>
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Dossiê: <span className="font-medium">{op.dossie}</span>
+            </p>
           </div>
         )}
       </CardContent>

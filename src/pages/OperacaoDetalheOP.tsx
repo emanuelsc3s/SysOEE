@@ -415,7 +415,7 @@ export default function OperacaoDetalheOP() {
         </div>
 
         {/* Informações Adicionais (se disponíveis) */}
-        {(op.dossie || op.anvisa || op.gtin) && (
+        {(op.dossie || op.gtin) && (
           <Card>
             <CardHeader className="tab-prod:px-3 tab-prod:pt-3 tab-prod:pb-2">
               <CardTitle className="text-base sm:text-lg tab-prod:text-base">Informações Regulatórias</CardTitle>
@@ -427,12 +427,7 @@ export default function OperacaoDetalheOP() {
                   <p className="font-semibold text-sm sm:text-base tab-prod:text-sm">{op.dossie}</p>
                 </div>
               )}
-              {op.anvisa && (
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground tab-prod:text-xs">Registro ANVISA</p>
-                  <p className="font-semibold text-sm sm:text-base tab-prod:text-sm">{op.anvisa}</p>
-                </div>
-              )}
+
               {op.gtin && (
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground tab-prod:text-xs">GTIN</p>

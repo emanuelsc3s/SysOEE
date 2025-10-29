@@ -91,9 +91,6 @@ export interface OrdemProducao {
   /** Número do dossiê */
   dossie?: string
 
-  /** Registro ANVISA */
-  anvisa?: string
-
   /** Código de barras GTIN */
   gtin?: string
 
@@ -112,7 +109,6 @@ export interface DadosMockOP {
   TEORICO: string
   DOSSIE: string
   LOTE: string
-  ANVISA: string
   GTIN: string
 }
 
