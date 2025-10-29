@@ -6,12 +6,17 @@
 import { OrdemProducao } from '@/types/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Calendar,
   Factory,
   AlertTriangle,
   CheckCircle2,
-  Clock
+  Clock,
+  Eye,
+  Paperclip,
+  Pause,
+  FileSignature // Ícone para Assinatura Eletrônica
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -258,6 +263,71 @@ export default function OPCard({ op }: OPCardProps) {
             </p>
           </div>
         )}
+
+        {/* Botões de Ação */}
+        <div className="pt-3 border-t border-border tab-prod:pt-2">
+          <div className="grid grid-cols-4 gap-2 tab-prod:gap-1">
+            {/* Botão Detalhes */}
+            <Button
+              onClick={(e) => {
+                e.stopPropagation() // Previne navegação do card
+                console.log('Detalhes clicado para OP:', op.op)
+                // TODO: Implementar visualização de detalhes
+              }}
+              variant="outline"
+              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
+              size="sm"
+            >
+              <Eye className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+              <span className="text-[10px] tab-prod:text-[9px] font-medium">Detalhes</span>
+            </Button>
+
+            {/* Botão Anexos */}
+            <Button
+              onClick={(e) => {
+                e.stopPropagation() // Previne navegação do card
+                console.log('Anexos clicado para OP:', op.op)
+                // TODO: Implementar visualização de anexos
+              }}
+              variant="outline"
+              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
+              size="sm"
+            >
+              <Paperclip className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+              <span className="text-[10px] tab-prod:text-[9px] font-medium">Anexos</span>
+            </Button>
+
+            {/* Botão Paradas */}
+            <Button
+              onClick={(e) => {
+                e.stopPropagation() // Previne navegação do card
+                console.log('Paradas clicado para OP:', op.op)
+                // TODO: Implementar visualização de paradas
+              }}
+              variant="outline"
+              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
+              size="sm"
+            >
+              <Pause className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+              <span className="text-[10px] tab-prod:text-[9px] font-medium">Paradas</span>
+            </Button>
+
+            {/* Botão Assinatura Eletrônica */}
+            <Button
+              onClick={(e) => {
+                e.stopPropagation() // Previne navegação do card
+                console.log('Assinatura clicado para OP:', op.op)
+                // TODO: Implementar assinatura eletrônica do supervisor
+              }}
+              variant="outline"
+              className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 tab-prod:h-12 tab-prod:gap-0.5"
+              size="sm"
+            >
+              <FileSignature className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+              <span className="text-[10px] tab-prod:text-[9px] font-medium">Assinar</span>
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
