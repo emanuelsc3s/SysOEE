@@ -146,3 +146,34 @@ export interface RegistroMovimentacao {
   justificativa?: string
 }
 
+/**
+ * Interface para Assinatura de Aprovação da Supervisão
+ * Seguindo princípios ALCOA+ (Atribuível, Contemporâneo, Durável)
+ */
+export interface AssinaturaSupervisao {
+  /** ID único da assinatura */
+  id: string
+
+  /** Número da OP assinada */
+  op: string
+
+  /** Nome completo do supervisor */
+  nomeSupervisor: string
+
+  /** Número do crachá/matrícula do supervisor */
+  numeroCracha: string
+
+  /** Data e hora da assinatura (ISO 8601) */
+  dataHoraAssinatura: string
+
+  /** Assinatura em formato base64 (imagem PNG) */
+  assinaturaBase64: string
+
+  /** ID do usuário supervisor (referência ao sistema de autenticação) */
+  supervisorId: number
+
+  /** Campos de auditoria ALCOA+ */
+  created_at: string
+  created_by: number
+}
+

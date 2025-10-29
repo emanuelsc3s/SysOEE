@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef } from 'react'
-import { OrdemProducao } from '@/types/operacao'
+import { OrdemProducao, AssinaturaSupervisao } from '@/types/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,12 +19,15 @@ import {
   Pause,
   FileSignature, // Ícone para Assinatura Eletrônica
   FileText, // Ícone para Dossiê
-  ChevronUp, // Seta para cima (navegação)
-  ChevronDown // Seta para baixo (navegação)
+  ChevronLeft, // Seta para esquerda (navegação do carrossel)
+  ChevronRight // Seta para direita (navegação do carrossel)
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useNavigate } from 'react-router-dom'
+import { ModalAssinaturaSupervisao } from './ModalAssinaturaSupervisao'
+import { toast } from 'sonner'
+import { salvarAssinatura } from '@/services/localStorage/assinatura.storage'
 
 interface OPCardProps {
   op: OrdemProducao
@@ -92,6 +95,9 @@ export default function OPCard({ op }: OPCardProps) {
   const [canScrollUp, setCanScrollUp] = useState(false)
   const [canScrollDown, setCanScrollDown] = useState(true)
 
+  // Estado para controlar o modal de assinatura
+  const [modalAssinaturaAberto, setModalAssinaturaAberto] = useState(false)
+
   // Configura o card como arrastável
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: op.op,
@@ -102,11 +108,43 @@ export default function OPCard({ op }: OPCardProps) {
     transform: CSS.Translate.toString(transform),
   }
 
-  // Handler para navegação ao clicar no card (exceto na área de drag)
-  const handleCardClick = () => {
-    // Não navega se estiver arrastando ou clicou na área de drag
-    if (isDragging) return
+  // Handler para navegação ao clicar no botão Detalhes
+  const handleDetalhesClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     navigate(`/operacao/${op.op}`)
+  }
+
+  // Handler para abrir o modal de assinatura
+  const handleAbrirModalAssinatura = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setModalAssinaturaAberto(true)
+  }
+
+  // Handler para confirmar a assinatura
+  const handleConfirmarAssinatura = (assinatura: AssinaturaSupervisao) => {
+    try {
+      console.log('Assinatura confirmada:', assinatura)
+
+      // Salva a assinatura no localStorage
+      salvarAssinatura(assinatura)
+
+      // Exibe notificação de sucesso
+      toast.success('Assinatura registrada com sucesso!', {
+        description: `OP ${op.op} assinada por ${assinatura.nomeSupervisor}`,
+        duration: 5000,
+      })
+
+      // Fecha o modal
+      setModalAssinaturaAberto(false)
+    } catch (error) {
+      console.error('Erro ao salvar assinatura:', error)
+
+      // Exibe notificação de erro
+      toast.error('Erro ao registrar assinatura', {
+        description: 'Não foi possível salvar a assinatura. Tente novamente.',
+        duration: 5000,
+      })
+    }
   }
 
   return (
@@ -114,8 +152,7 @@ export default function OPCard({ op }: OPCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      onClick={handleCardClick}
-      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 cursor-pointer ${
+      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
     >
@@ -275,8 +312,8 @@ export default function OPCard({ op }: OPCardProps) {
 
         {/* Botões de Ação com Rolagem */}
         <div className="pt-3 border-t border-border tab-prod:pt-2">
-          <div className="relative flex items-center gap-1">
-            {/* Botão Rolar para Esquerda - Visível apenas em desktop */}
+          <div className="relative flex items-center">
+            {/* Botão Rolar para Esquerda - Posicionamento Absoluto */}
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -284,15 +321,15 @@ export default function OPCard({ op }: OPCardProps) {
                   scrollContainerRef.current.scrollBy({ left: -100, behavior: 'smooth' })
                 }
               }}
-              className={`flex-shrink-0 w-5 h-10 flex items-center justify-center bg-background/50 backdrop-blur-sm border-0 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-200 tab-prod:hidden ${
-                !canScrollUp ? 'opacity-0 pointer-events-none w-0' : 'opacity-60 hover:opacity-100'
+              className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 w-5 h-10 flex items-center justify-center bg-background/50 backdrop-blur-sm border-0 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-200 tab-prod:hidden ${
+                !canScrollUp ? 'opacity-0 pointer-events-none' : 'opacity-60 hover:opacity-100'
               }`}
               aria-label="Rolar para esquerda"
             >
-              <ChevronUp className="h-3 w-3 -rotate-90" />
+              <ChevronLeft className="h-3 w-3" />
             </button>
 
-            {/* Container de Rolagem dos Botões */}
+            {/* Container de Rolagem dos Botões - Ocupa 100% da largura */}
             <div
               ref={scrollContainerRef}
               onScroll={(e) => {
@@ -310,15 +347,11 @@ export default function OPCard({ op }: OPCardProps) {
                   )
                 }
               }}
-              className="flex-1 flex gap-2 overflow-x-auto overflow-y-hidden tab-prod:gap-1 tab-prod:overflow-y-auto tab-prod:overflow-x-hidden tab-prod:flex-col tab-prod:max-h-32 scrollbar-none"
+              className="w-full flex gap-2 overflow-x-auto overflow-y-hidden tab-prod:gap-1 tab-prod:overflow-y-auto tab-prod:overflow-x-hidden tab-prod:flex-col tab-prod:max-h-32 scrollbar-none"
             >
               {/* Botão Detalhes */}
               <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  console.log('Detalhes clicado para OP:', op.op)
-                  // TODO: Implementar visualização de detalhes
-                }}
+                onClick={handleDetalhesClick}
                 variant="outline"
                 className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
                 size="sm"
@@ -357,21 +390,6 @@ export default function OPCard({ op }: OPCardProps) {
                 <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Paradas</span>
               </Button>
 
-              {/* Botão Assinatura Eletrônica */}
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  console.log('Assinatura clicado para OP:', op.op)
-                  // TODO: Implementar assinatura eletrônica do supervisor
-                }}
-                variant="outline"
-                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
-                size="sm"
-              >
-                <FileSignature className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Assinar</span>
-              </Button>
-
               {/* Botão Dossiê */}
               <Button
                 onClick={(e) => {
@@ -386,9 +404,20 @@ export default function OPCard({ op }: OPCardProps) {
                 <FileText className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
                 <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Dossiê</span>
               </Button>
+
+              {/* Botão Assinatura Eletrônica */}
+              <Button
+                onClick={handleAbrirModalAssinatura}
+                variant="outline"
+                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                size="sm"
+              >
+                <FileSignature className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Assinar</span>
+              </Button>
             </div>
 
-            {/* Botão Rolar para Direita - Visível apenas em desktop */}
+            {/* Botão Rolar para Direita - Posicionamento Absoluto */}
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -396,16 +425,24 @@ export default function OPCard({ op }: OPCardProps) {
                   scrollContainerRef.current.scrollBy({ left: 100, behavior: 'smooth' })
                 }
               }}
-              className={`flex-shrink-0 w-5 h-10 flex items-center justify-center bg-background/50 backdrop-blur-sm border-0 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-200 tab-prod:hidden ${
-                !canScrollDown ? 'opacity-0 pointer-events-none w-0' : 'opacity-60 hover:opacity-100'
+              className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 w-5 h-10 flex items-center justify-center bg-background/50 backdrop-blur-sm border-0 rounded-md hover:bg-primary/10 hover:text-primary transition-all duration-200 tab-prod:hidden ${
+                !canScrollDown ? 'opacity-0 pointer-events-none' : 'opacity-60 hover:opacity-100'
               }`}
               aria-label="Rolar para direita"
             >
-              <ChevronDown className="h-3 w-3 rotate-90" />
+              <ChevronRight className="h-3 w-3" />
             </button>
           </div>
         </div>
       </CardContent>
+
+      {/* Modal de Assinatura de Aprovação da Supervisão */}
+      <ModalAssinaturaSupervisao
+        aberto={modalAssinaturaAberto}
+        onFechar={() => setModalAssinaturaAberto(false)}
+        op={op}
+        onConfirmar={handleConfirmarAssinatura}
+      />
     </Card>
   )
 }
