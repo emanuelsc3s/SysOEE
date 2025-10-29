@@ -112,13 +112,18 @@ export default function OPCard({ op }: OPCardProps) {
           {/* Handle de Drag - Área específica para arrastar */}
           <div
             {...listeners}
-            className="flex items-center gap-2 cursor-grab active:cursor-grabbing touch-none tab-prod:gap-1"
+            className="flex items-start gap-2 cursor-grab active:cursor-grabbing touch-none tab-prod:gap-1"
             title="Arraste para mover o card"
           >
             <GripVertical className="h-5 w-5 text-muted-foreground/50 hover:text-muted-foreground transition-colors flex-shrink-0 tab-prod:h-3 tab-prod:w-3" />
-            <CardTitle className="text-lg font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
-              OP {op.op}
-            </CardTitle>
+            <div className="flex flex-col">
+              <CardTitle className="tracking-tight text-base font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
+                OP {op.op}
+              </CardTitle>
+              <span className="tracking-tight text-base font-bold text-primary tab-prod:text-xs tab-prod:leading-tight">
+                Lote: {op.lote}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1 items-end tab-prod:gap-0">
@@ -140,12 +145,6 @@ export default function OPCard({ op }: OPCardProps) {
           <span className="font-medium">{op.dataEmissao}</span>
         </div>
 
-        {/* Lote */}
-        <div className="flex items-center gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
-          <Package className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
-          <span className="text-muted-foreground tab-prod:hidden">Lote:</span>
-          <span className="font-medium">{op.lote}</span>
-        </div>
 
         {/* Produto */}
         <div className="pt-2 pb-2 border-t border-b border-border tab-prod:pt-1 tab-prod:pb-1">
