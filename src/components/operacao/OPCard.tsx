@@ -110,6 +110,13 @@ export default function OPCard({ op }: OPCardProps) {
   const etapasQueOcultamApontar: FaseProducao[] = ['Planejado', 'Emissão de Dossiê', 'Pesagem']
   const deveOcultarApontar = etapasQueOcultamApontar.includes(op.fase)
 
+  // Define as etapas que devem ocultar o botão Paradas
+  const etapasQueOcultamParadas: FaseProducao[] = ['Planejado', 'Emissão de Dossiê']
+  const deveOcultarParadas = etapasQueOcultamParadas.includes(op.fase)
+
+  // Define se deve ocultar a seção de Horas
+  const deveOcultarHoras = op.fase === 'Planejado'
+
   // Configura o card como arrastável
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: op.op,
@@ -262,14 +269,16 @@ export default function OPCard({ op }: OPCardProps) {
           <span className="font-medium">{op.equipamento}</span>
         </div>
 
-        {/* Horas e Turno */}
-        <div className="flex items-center justify-between gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
-          <div className="flex items-center gap-2 tab-prod:gap-0.5">
-            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
-            <span className="text-muted-foreground tab-prod:hidden">Horas:</span>
-            <span className="font-medium">{op.horas}</span>
+        {/* Horas e Turno - Oculto na etapa: Planejado */}
+        {!deveOcultarHoras && (
+          <div className="flex items-center justify-between gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+            <div className="flex items-center gap-2 tab-prod:gap-0.5">
+              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+              <span className="text-muted-foreground tab-prod:hidden">Horas:</span>
+              <span className="font-medium">{op.horas}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Quantidades */}
         <div className="space-y-2 pt-2 border-t border-border tab-prod:space-y-0.5 tab-prod:pt-1">
@@ -407,20 +416,22 @@ export default function OPCard({ op }: OPCardProps) {
                 <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Anexos</span>
               </Button>
 
-              {/* Botão Paradas */}
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  console.log('Paradas clicado para OP:', op.op)
-                  // TODO: Implementar visualização de paradas
-                }}
-                variant="outline"
-                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
-                size="sm"
-              >
-                <Pause className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Paradas</span>
-              </Button>
+              {/* Botão Paradas - Oculto nas etapas: Planejado, Emissão de Dossiê */}
+              {!deveOcultarParadas && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('Paradas clicado para OP:', op.op)
+                    // TODO: Implementar visualização de paradas
+                  }}
+                  variant="outline"
+                  className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                  size="sm"
+                >
+                  <Pause className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                  <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Paradas</span>
+                </Button>
+              )}
 
               {/* Botão Dossiê */}
               <Button

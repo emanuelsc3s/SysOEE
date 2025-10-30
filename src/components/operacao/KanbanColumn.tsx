@@ -13,7 +13,7 @@ import {
   Scale,
   Beaker,
   Droplet,
-  Zap,
+  Flame,
   Package,
   CheckCircle2,
   LucideIcon
@@ -33,7 +33,7 @@ const ICONES_FASES: Record<FaseProducao, LucideIcon> = {
   'Pesagem': Scale,
   'Preparação': Beaker,
   'Envase': Droplet,
-  'Esterilização': Zap,
+  'Esterilização': Flame,
   'Embalagem': Package,
   'Concluído': CheckCircle2
 }

@@ -816,10 +816,10 @@ export default function Operacao() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-primary tab-prod:text-xl">
-                  Operação - Kanban de Produção
+                  Operação - Etapas de Produção
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1 tab-prod:text-xs tab-prod:mt-0">
-                  Visualização em tempo real das ordens de produção
+                  Visualização de etapas em tempo real das ordens de produção
                 </p>
               </div>
             </div>

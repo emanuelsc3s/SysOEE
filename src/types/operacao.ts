@@ -86,7 +86,7 @@ export const FASES_CONFIG: Record<FaseProducao, ConfigFase> = {
   },
   'Esterilização': {
     cor: '#9F7AEA',
-    icone: 'Zap',
+    icone: 'Flame',
     badgeClass: 'bg-violet-600 text-white',
     borderClass: 'border-t-violet-600',
     textClass: 'text-violet-700'
