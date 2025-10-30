@@ -65,6 +65,9 @@ export function ModalAssinaturaSupervisao({
 
   // Estado para controlar o modo tela cheia
   const [modoTelaCheia, setModoTelaCheia] = useState(false)
+
+  // Estado para armazenar backup da assinatura ao alternar entre modos
+  const [assinaturaBackup, setAssinaturaBackup] = useState<string | null>(null)
   
   // Mock de dados do supervisor (será substituído por autenticação real)
   // TODO: Integrar com sistema de autenticação (useAuth hook)
@@ -115,12 +118,49 @@ export function ModalAssinaturaSupervisao({
 
   // Ativa o modo tela cheia
   const handleAtivarTelaCheia = () => {
+    // Salva o conteúdo atual do canvas antes de ativar tela cheia
+    if (sigCanvas.current) {
+      console.log('[DEBUG] handleAtivarTelaCheia - Canvas ref existe')
+      console.log('[DEBUG] isEmpty:', sigCanvas.current.isEmpty())
+
+      // Sempre salvar, mesmo se isEmpty() retornar true (pode estar incorreto)
+      const dataURL = sigCanvas.current.toDataURL()
+      console.log('[DEBUG] dataURL length:', dataURL.length)
+      console.log('[DEBUG] dataURL preview:', dataURL.substring(0, 100))
+      setAssinaturaBackup(dataURL)
+    } else {
+      console.log('[DEBUG] handleAtivarTelaCheia - Canvas ref NÃO existe')
+    }
     setModoTelaCheia(true)
   }
 
   // Desativa o modo tela cheia
   const handleDesativarTelaCheia = () => {
+    console.log('[DEBUG] handleDesativarTelaCheia - Iniciando')
+    // Salva o conteúdo atual do canvas antes de desativar tela cheia
+    if (sigCanvas.current) {
+      console.log('[DEBUG] handleDesativarTelaCheia - Canvas ref existe')
+      console.log('[DEBUG] isEmpty:', sigCanvas.current.isEmpty())
+
+      // Sempre salvar, mesmo se isEmpty() retornar true (pode estar incorreto)
+      const dataURL = sigCanvas.current.toDataURL()
+      console.log('[DEBUG] dataURL length:', dataURL.length)
+      console.log('[DEBUG] dataURL preview:', dataURL.substring(0, 100))
+      setAssinaturaBackup(dataURL)
+    } else {
+      console.log('[DEBUG] handleDesativarTelaCheia - Canvas ref NÃO existe')
+    }
     setModoTelaCheia(false)
+  }
+
+  // Limpa a assinatura no modo tela cheia
+  const handleLimparTelaCheia = () => {
+    if (sigCanvas.current) {
+      sigCanvas.current.clear()
+      setAssinaturaVazia(true)
+      setAssinaturaBackup(null)
+      setErro(null)
+    }
   }
   
   // Detecta quando o usuário começa a desenhar
@@ -179,25 +219,91 @@ export function ModalAssinaturaSupervisao({
       handleLimpar()
       setErro(null)
       setModoTelaCheia(false)
+      setAssinaturaBackup(null)
     }
   }, [aberto])
+
+  // Restaura o conteúdo do canvas após alternar entre modos
+  useEffect(() => {
+    console.log('[DEBUG] useEffect restauração - modoTelaCheia:', modoTelaCheia)
+    console.log('[DEBUG] useEffect restauração - assinaturaBackup:', assinaturaBackup ? `${assinaturaBackup.length} chars` : 'null')
+    console.log('[DEBUG] useEffect restauração - sigCanvas.current:', sigCanvas.current ? 'existe' : 'null')
+
+    if (assinaturaBackup) {
+      console.log('[DEBUG] Iniciando restauração com polling')
+
+      let tentativas = 0
+      const maxTentativas = 20 // Máximo de 1 segundo (20 x 50ms)
+      let timerId: NodeJS.Timeout | null = null
+      let cancelado = false
+
+      // Função de polling para verificar quando o canvas está disponível
+      const checkCanvas = () => {
+        if (cancelado) {
+          console.log('[DEBUG] Polling cancelado')
+          return
+        }
+
+        tentativas++
+        console.log(`[DEBUG] Tentativa ${tentativas}/${maxTentativas} - sigCanvas.current:`, sigCanvas.current ? 'existe' : 'null')
+
+        if (sigCanvas.current) {
+          console.log('[DEBUG] Canvas encontrado! Executando fromDataURL')
+          sigCanvas.current.fromDataURL(assinaturaBackup)
+          setAssinaturaVazia(false)
+          console.log('[DEBUG] Restauração concluída com sucesso')
+        } else if (tentativas < maxTentativas) {
+          console.log('[DEBUG] Canvas ainda não disponível, tentando novamente em 50ms')
+          timerId = setTimeout(checkCanvas, 50)
+        } else {
+          console.log('[DEBUG] ERRO: Canvas não ficou disponível após', maxTentativas * 50, 'ms')
+        }
+      }
+
+      // Inicia o polling após um pequeno delay inicial
+      timerId = setTimeout(checkCanvas, 50)
+
+      // Cleanup: cancela o polling se o componente for desmontado
+      return () => {
+        cancelado = true
+        if (timerId) {
+          clearTimeout(timerId)
+        }
+      }
+    }
+  }, [modoTelaCheia, assinaturaBackup])
   
   return (
     <Dialog open={aberto} onOpenChange={(open) => !open && handleCancelar()}>
       {/* Modo Tela Cheia - Renderizado FORA do DialogContent */}
       {modoTelaCheia ? (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          {/* Botão para sair da tela cheia */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleDesativarTelaCheia}
-            className="absolute top-4 right-4 z-10 bg-white hover:bg-gray-100 gap-2 shadow-lg"
-          >
-            <Minimize2 className="h-4 w-4" />
-            Sair da Tela Cheia
-          </Button>
+          {/* Botões de controle no modo tela cheia */}
+          <div className="absolute top-4 right-4 z-10 flex gap-2">
+            {/* Botão Limpar */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleLimparTelaCheia}
+              className="bg-white hover:bg-gray-100 gap-2 shadow-lg"
+            >
+              <Eraser className="h-4 w-4" />
+              Limpar
+            </Button>
+
+            {/* Botão Sair da Tela Cheia */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDesativarTelaCheia}
+              className="bg-white hover:bg-gray-100 gap-2 shadow-lg"
+            >
+              <Minimize2 className="h-4 w-4" />
+              Sair da Tela Cheia
+            </Button>
+          </div>
 
           {/* Canvas de assinatura em tela cheia */}
           <div className="w-[80vw] h-[80vh] border-4 border-primary rounded-lg bg-white overflow-hidden shadow-2xl">
