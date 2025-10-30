@@ -38,7 +38,7 @@ export interface ConfigFase {
   icone: string
   /** Classes Tailwind para badge */
   badgeClass: string
-  /** Classes Tailwind para borda superior */
+  /** Classes Tailwind para borda superior dos cards de OP */
   borderClass: string
   /** Classes Tailwind para texto */
   textClass: string

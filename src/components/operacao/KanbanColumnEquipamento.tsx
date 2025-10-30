@@ -36,7 +36,7 @@ export default function KanbanColumnEquipamento({ status, equipamentos }: Kanban
 
   return (
     <div
-      className={`flex flex-col rounded-lg bg-white/50 border border-border ${config.borderClass} border-l-4 min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border-l-[3px] transition-all duration-300`}
+      className={`flex flex-col rounded-lg bg-white/50 border border-border min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded transition-all duration-300`}
     >
       {/* Cabeçalho da Coluna */}
       <div className="p-4 border-b border-border/50 sticky top-0 bg-white/80 backdrop-blur-sm z-10 tab-prod:p-2">

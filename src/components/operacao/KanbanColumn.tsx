@@ -51,7 +51,7 @@ export default function KanbanColumn({ fase, ops }: KanbanColumnProps) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-lg bg-white/50 border border-border ${config.borderClass} border-l-4 min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border-l-[3px] transition-all duration-300 ${
+      className={`flex flex-col rounded-lg bg-white/50 border border-border min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded transition-all duration-300 ${
         isOver ? 'ring-2 ring-primary/30 scale-[1.01] bg-white/80' : ''
       }`}
     >
