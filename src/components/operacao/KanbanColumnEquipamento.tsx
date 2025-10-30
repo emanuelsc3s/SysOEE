@@ -1,11 +1,18 @@
 /**
  * Componente KanbanColumnEquipamento - Coluna do Kanban de Equipamentos
- * Representa uma etapa operacional com seus equipamentos
+ * Representa uma etapa operacional com seus equipamentos (Redesign 2025)
  */
 
-import { Equipamento, StatusEquipamento } from '@/types/equipamento'
+import { Equipamento, StatusEquipamento, STATUS_CONFIG } from '@/types/equipamento'
 import EquipamentoCard from './EquipamentoCard'
 import { Badge } from '@/components/ui/badge'
+import {
+  CheckCircle,
+  Play,
+  Pause,
+  XCircle,
+  LucideIcon
+} from 'lucide-react'
 
 interface KanbanColumnEquipamentoProps {
   status: StatusEquipamento
@@ -13,69 +20,48 @@ interface KanbanColumnEquipamentoProps {
 }
 
 /**
- * Retorna a cor de fundo da coluna baseado no status
+ * Mapeamento de ícones para cada status
  */
-function getCorStatus(status: StatusEquipamento): string {
-  const cores: Record<StatusEquipamento, string> = {
-    'Disponível': 'bg-blue-50 border-blue-200',
-    'Não Disponível': 'bg-red-50 border-red-200',
-    'Paradas': 'bg-orange-50 border-orange-200',
-    'Em Produção': 'bg-green-50 border-green-200'
-  }
-  return cores[status]
-}
-
-/**
- * Retorna a cor do badge de contagem baseado no status
- */
-function getCorBadge(status: StatusEquipamento): string {
-  const cores: Record<StatusEquipamento, string> = {
-    'Disponível': 'bg-blue-600 text-white',
-    'Não Disponível': 'bg-red-600 text-white',
-    'Paradas': 'bg-orange-600 text-white',
-    'Em Produção': 'bg-green-600 text-white'
-  }
-  return cores[status]
-}
-
-/**
- * Retorna o ícone baseado no status
- */
-function getIconeStatus(status: StatusEquipamento): string {
-  const icones: Record<StatusEquipamento, string> = {
-    'Disponível': '✓',
-    'Não Disponível': '✕',
-    'Paradas': '⏸',
-    'Em Produção': '▶'
-  }
-  return icones[status]
+const ICONES_STATUS: Record<StatusEquipamento, LucideIcon> = {
+  'Disponível': CheckCircle,
+  'Em Produção': Play,
+  'Paradas': Pause,
+  'Não Disponível': XCircle
 }
 
 export default function KanbanColumnEquipamento({ status, equipamentos }: KanbanColumnEquipamentoProps) {
+  // Obtém configuração do status
+  const config = STATUS_CONFIG[status]
+  const IconeStatus = ICONES_STATUS[status]
+
   return (
     <div
-      className={`flex flex-col rounded-lg border-2 ${getCorStatus(status)} min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border transition-all duration-200`}
+      className={`flex flex-col rounded-lg bg-white/50 border border-border ${config.borderClass} border-l-4 min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border-l-[3px] transition-all duration-300`}
     >
       {/* Cabeçalho da Coluna */}
-      <div className="p-4 border-b-2 border-inherit sticky top-0 bg-inherit z-10 tab-prod:p-1.5 tab-prod:border-b">
-        <div className="flex items-center justify-between gap-2 tab-prod:gap-1">
+      <div className="p-4 border-b border-border/50 sticky top-0 bg-white/80 backdrop-blur-sm z-10 tab-prod:p-2">
+        <div className="flex items-center justify-between gap-3 tab-prod:gap-1.5">
           <div className="flex items-center gap-2 tab-prod:gap-1">
-            <span className="text-xl tab-prod:text-sm">{getIconeStatus(status)}</span>
-            <h3 className="font-bold text-base text-foreground tab-prod:text-xs tab-prod:leading-tight">
+            <IconeStatus
+              className={`h-5 w-5 flex-shrink-0 tab-prod:h-4 tab-prod:w-4 ${config.textClass}`}
+              strokeWidth={2}
+            />
+            <h3 className={`font-bold text-base leading-tight tab-prod:text-xs ${config.textClass}`}>
               {status}
             </h3>
           </div>
-          <Badge className={`${getCorBadge(status)} font-semibold tab-prod:text-[10px] tab-prod:px-1 tab-prod:py-0 tab-prod:leading-tight`}>
+          <Badge className={`${config.badgeClass} font-semibold rounded-full shadow-sm tab-prod:text-[10px] tab-prod:px-1.5 tab-prod:py-0.5`}>
             {equipamentos.length}
           </Badge>
         </div>
       </div>
 
       {/* Lista de Cards */}
-      <div className="flex-1 p-3 space-y-3 overflow-y-auto tab-prod:p-1.5 tab-prod:space-y-1.5">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto tab-prod:p-2 tab-prod:space-y-2">
         {equipamentos.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-16 tab-prod:text-[10px]">
-            Nenhum equipamento nesta etapa
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-24 tab-prod:text-xs">
+            <IconeStatus className="h-8 w-8 mb-2 opacity-30 tab-prod:h-6 tab-prod:w-6" />
+            <span>Nenhum equipamento</span>
           </div>
         ) : (
           equipamentos.map((equipamento) => (

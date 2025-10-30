@@ -12,6 +12,7 @@ export type FaseProducao =
   | 'Pesagem'
   | 'Preparação'
   | 'Envase'
+  | 'Esterilização'
   | 'Embalagem'
   | 'Concluído'
 
@@ -25,6 +26,86 @@ export type Turno = '1º Turno' | '2º Turno'
  * Setores produtivos
  */
 export type Setor = 'SPEP' | 'SPPV' | 'Líquidos' | 'CPHD'
+
+/**
+ * Configuração visual das fases do Kanban
+ * Centraliza cores, ícones e estilos para manter consistência
+ */
+export interface ConfigFase {
+  /** Cor principal da fase (hex) - integrada com brand colors */
+  cor: string
+  /** Nome do ícone Lucide React */
+  icone: string
+  /** Classes Tailwind para badge */
+  badgeClass: string
+  /** Classes Tailwind para borda esquerda */
+  borderClass: string
+  /** Classes Tailwind para texto */
+  textClass: string
+}
+
+/**
+ * Configuração de cores e estilos para cada fase do Kanban
+ * Integra cores de marca da empresa (#242f65, #62a183, #ee8b60)
+ */
+export const FASES_CONFIG: Record<FaseProducao, ConfigFase> = {
+  'Planejado': {
+    cor: '#8B94A5',
+    icone: 'ClipboardList',
+    badgeClass: 'bg-slate-600 text-white',
+    borderClass: 'border-l-slate-500',
+    textClass: 'text-slate-700'
+  },
+  'Emissão de Dossiê': {
+    cor: '#242f65', // brand.primary
+    icone: 'FileText',
+    badgeClass: 'bg-[#242f65] text-white',
+    borderClass: 'border-l-[#242f65]',
+    textClass: 'text-[#242f65]'
+  },
+  'Pesagem': {
+    cor: '#8B5CF6',
+    icone: 'Scale',
+    badgeClass: 'bg-purple-600 text-white',
+    borderClass: 'border-l-purple-600',
+    textClass: 'text-purple-700'
+  },
+  'Preparação': {
+    cor: '#ee8b60', // brand.tertiary
+    icone: 'Beaker',
+    badgeClass: 'bg-[#ee8b60] text-white',
+    borderClass: 'border-l-[#ee8b60]',
+    textClass: 'text-[#ee8b60]'
+  },
+  'Envase': {
+    cor: '#0891B2',
+    icone: 'Droplet',
+    badgeClass: 'bg-cyan-600 text-white',
+    borderClass: 'border-l-cyan-600',
+    textClass: 'text-cyan-700'
+  },
+  'Esterilização': {
+    cor: '#9F7AEA',
+    icone: 'Zap',
+    badgeClass: 'bg-violet-600 text-white',
+    borderClass: 'border-l-violet-600',
+    textClass: 'text-violet-700'
+  },
+  'Embalagem': {
+    cor: '#62a183', // brand.secondary
+    icone: 'Package',
+    badgeClass: 'bg-[#62a183] text-white',
+    borderClass: 'border-l-[#62a183]',
+    textClass: 'text-[#62a183]'
+  },
+  'Concluído': {
+    cor: '#16A34A',
+    icone: 'CheckCircle2',
+    badgeClass: 'bg-green-600 text-white',
+    borderClass: 'border-l-green-600',
+    textClass: 'text-green-700'
+  }
+}
 
 /**
  * Interface para Ordem de Produção

@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef } from 'react'
-import { OrdemProducao, AssinaturaSupervisao } from '@/types/operacao'
+import { OrdemProducao, AssinaturaSupervisao, FASES_CONFIG, FaseProducao } from '@/types/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,10 +17,11 @@ import {
   Eye,
   Paperclip,
   Pause,
-  FileSignature, // Ícone para Assinatura Eletrônica
-  FileText, // Ícone para Dossiê
-  ChevronLeft, // Seta para esquerda (navegação do carrossel)
-  ChevronRight // Seta para direita (navegação do carrossel)
+  FileSignature,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardEdit
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -98,6 +99,17 @@ export default function OPCard({ op }: OPCardProps) {
   // Estado para controlar o modal de assinatura
   const [modalAssinaturaAberto, setModalAssinaturaAberto] = useState(false)
 
+  // Obtém configuração da fase para a borda colorida
+  const config = FASES_CONFIG[op.fase]
+
+  // Define as etapas que devem ocultar informações de produção e perdas
+  const etapasQueOcultamProducao: FaseProducao[] = ['Planejado', 'Emissão de Dossiê', 'Pesagem']
+  const deveOcultarProducao = etapasQueOcultamProducao.includes(op.fase)
+
+  // Define as etapas que devem ocultar o botão Apontar
+  const etapasQueOcultamApontar: FaseProducao[] = ['Planejado', 'Emissão de Dossiê', 'Pesagem']
+  const deveOcultarApontar = etapasQueOcultamApontar.includes(op.fase)
+
   // Configura o card como arrastável
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: op.op,
@@ -152,7 +164,7 @@ export default function OPCard({ op }: OPCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`w-full hover:shadow-md transition-all duration-200 border-l-4 border-l-primary tab-prod:border-l-2 ${
+      className={`w-full hover:shadow-md transition-all duration-200 ${config.borderClass} border-l-4 tab-prod:border-l-2 ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
     >
@@ -233,7 +245,6 @@ export default function OPCard({ op }: OPCardProps) {
           <span className="font-medium">{op.dataEmissao}</span>
         </div>
 
-
         {/* Produto */}
         <div className="pt-2 pb-2 border-t border-b border-border tab-prod:pt-1 tab-prod:pb-1">
           <p className="text-sm font-semibold text-foreground truncate tab-prod:text-[10px]" title={op.produto}>
@@ -267,18 +278,22 @@ export default function OPCard({ op }: OPCardProps) {
             <span className="font-semibold">{formatarNumero(op.quantidadeTeorica)}</span>
           </div>
 
-          <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
-            <div className="flex items-center gap-1 tab-prod:gap-0.5">
-              <CheckCircle2 className="h-4 w-4 text-green-600 tab-prod:h-2.5 tab-prod:w-2.5" />
-              <span className="text-muted-foreground tab-prod:hidden">Produzido:</span>
-              <span className="text-muted-foreground tab-prod:inline hidden">Prod:</span>
+          {/* Seção "Produzido" - Oculta nas etapas: Planejado, Emissão de Dossiê, Pesagem */}
+          {!deveOcultarProducao && (
+            <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
+              <div className="flex items-center gap-1 tab-prod:gap-0.5">
+                <CheckCircle2 className="h-4 w-4 text-green-600 tab-prod:h-2.5 tab-prod:w-2.5" />
+                <span className="text-muted-foreground tab-prod:hidden">Produzido:</span>
+                <span className="text-muted-foreground tab-prod:inline hidden">Prod:</span>
+              </div>
+              <span className="font-semibold text-green-700">
+                {formatarNumero(op.quantidadeEmbaladaUnidades)} ({progresso}%)
+              </span>
             </div>
-            <span className="font-semibold text-green-700">
-              {formatarNumero(op.quantidadeEmbaladaUnidades)} ({progresso}%)
-            </span>
-          </div>
+          )}
 
-          {temPerdas && (
+          {/* Seção "Perdas" - Oculta nas etapas: Planejado, Emissão de Dossiê, Pesagem */}
+          {!deveOcultarProducao && temPerdas && (
             <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
               <div className="flex items-center gap-1 tab-prod:gap-0.5">
                 <AlertTriangle className="h-4 w-4 text-orange-600 tab-prod:h-2.5 tab-prod:w-2.5" />
@@ -349,6 +364,23 @@ export default function OPCard({ op }: OPCardProps) {
               }}
               className="w-full flex gap-2 overflow-x-auto overflow-y-hidden tab-prod:gap-1 tab-prod:overflow-y-auto tab-prod:overflow-x-hidden tab-prod:flex-col tab-prod:max-h-32 scrollbar-none"
             >
+              {/* Botão Apontar - Oculto nas etapas: Planejado, Emissão de Dossiê, Pesagem */}
+              {!deveOcultarApontar && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('Apontar clicado para OP:', op.op)
+                    // TODO: Implementar funcionalidade de apontamento
+                  }}
+                  variant="outline"
+                  className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                  size="sm"
+                >
+                  <ClipboardEdit className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                  <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Apontar</span>
+                </Button>
+              )}
+
               {/* Botão Detalhes */}
               <Button
                 onClick={handleDetalhesClick}

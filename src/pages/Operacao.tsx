@@ -56,6 +56,7 @@ const FASES: FaseProducao[] = [
   'Pesagem',
   'Preparação',
   'Envase',
+  'Esterilização',
   'Embalagem',
   'Concluído'
 ]
@@ -68,7 +69,8 @@ const TRANSICOES_VALIDAS: Record<FaseProducao, FaseProducao[]> = {
   'Emissão de Dossiê': ['Pesagem'],
   'Pesagem': ['Preparação'],
   'Preparação': ['Envase'],
-  'Envase': ['Embalagem'],
+  'Envase': ['Esterilização'],
+  'Esterilização': ['Embalagem'],
   'Embalagem': ['Concluído'],
   'Concluído': [],
 }
@@ -170,6 +172,7 @@ function migrarOPsAntigas(ops: OrdemProducao[]): OrdemProducao[] {
     'Pesagem',
     'Preparação',
     'Envase',
+    'Esterilização',
     'Embalagem',
     'Concluído'
   ]
@@ -331,6 +334,7 @@ export default function Operacao() {
       'Pesagem': [],
       'Preparação': [],
       'Envase': [],
+      'Esterilização': [],
       'Embalagem': [],
       'Concluído': []
     }

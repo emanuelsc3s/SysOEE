@@ -3,10 +3,21 @@
  * Representa uma fase do processo produtivo com suas OPs
  */
 
-import { OrdemProducao, FaseProducao } from '@/types/operacao'
+import { OrdemProducao, FaseProducao, FASES_CONFIG } from '@/types/operacao'
 import OPCard from './OPCard'
 import { Badge } from '@/components/ui/badge'
 import { useDroppable } from '@dnd-kit/core'
+import {
+  ClipboardList,
+  FileText,
+  Scale,
+  Beaker,
+  Droplet,
+  Zap,
+  Package,
+  CheckCircle2,
+  LucideIcon
+} from 'lucide-react'
 
 interface KanbanColumnProps {
   fase: FaseProducao
@@ -14,35 +25,17 @@ interface KanbanColumnProps {
 }
 
 /**
- * Retorna a cor de fundo da coluna baseado na fase
+ * Mapeamento de ícones para cada fase
  */
-function getCorFase(fase: FaseProducao): string {
-  const cores: Record<FaseProducao, string> = {
-    'Planejado': 'bg-slate-50 border-slate-200',
-    'Emissão de Dossiê': 'bg-blue-50 border-blue-200',
-    'Pesagem': 'bg-purple-50 border-purple-200',
-    'Preparação': 'bg-indigo-50 border-indigo-200',
-    'Envase': 'bg-cyan-50 border-cyan-200',
-    'Embalagem': 'bg-teal-50 border-teal-200',
-    'Concluído': 'bg-green-50 border-green-200'
-  }
-  return cores[fase]
-}
-
-/**
- * Retorna a cor do badge de contagem baseado na fase
- */
-function getCorBadge(fase: FaseProducao): string {
-  const cores: Record<FaseProducao, string> = {
-    'Planejado': 'bg-slate-600 text-white',
-    'Emissão de Dossiê': 'bg-blue-600 text-white',
-    'Pesagem': 'bg-purple-600 text-white',
-    'Preparação': 'bg-indigo-600 text-white',
-    'Envase': 'bg-cyan-600 text-white',
-    'Embalagem': 'bg-teal-600 text-white',
-    'Concluído': 'bg-green-600 text-white'
-  }
-  return cores[fase]
+const ICONES_FASES: Record<FaseProducao, LucideIcon> = {
+  'Planejado': ClipboardList,
+  'Emissão de Dossiê': FileText,
+  'Pesagem': Scale,
+  'Preparação': Beaker,
+  'Envase': Droplet,
+  'Esterilização': Zap,
+  'Embalagem': Package,
+  'Concluído': CheckCircle2
 }
 
 export default function KanbanColumn({ fase, ops }: KanbanColumnProps) {
@@ -51,32 +44,52 @@ export default function KanbanColumn({ fase, ops }: KanbanColumnProps) {
     id: fase,
   })
 
+  // Obtém configuração da fase
+  const config = FASES_CONFIG[fase]
+  const IconeFase = ICONES_FASES[fase]
+
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-lg border-2 ${getCorFase(fase)} min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border transition-all duration-200 ${
-        isOver ? 'ring-4 ring-primary/50 scale-[1.02]' : ''
+      className={`flex flex-col rounded-lg bg-white/50 border border-border ${config.borderClass} border-l-4 min-h-[600px] w-full tab-prod:min-h-[280px] tab-prod:rounded tab-prod:border-l-[3px] transition-all duration-300 ${
+        isOver ? 'ring-2 ring-primary/30 scale-[1.01] bg-white/80' : ''
       }`}
     >
       {/* Cabeçalho da Coluna */}
-      <div className="p-4 border-b-2 border-inherit sticky top-0 bg-inherit z-10 tab-prod:p-1.5 tab-prod:border-b">
-        <div className="flex items-center justify-between gap-2 tab-prod:gap-1">
-          <h3 className="font-bold text-base text-foreground tab-prod:text-xs tab-prod:leading-tight">
-            {fase}
-          </h3>
-          <Badge className={`${getCorBadge(fase)} font-semibold tab-prod:text-[10px] tab-prod:px-1 tab-prod:py-0 tab-prod:leading-tight`}>
+      <div className="p-4 border-b border-border/50 sticky top-0 bg-white/80 backdrop-blur-sm z-10 tab-prod:p-2">
+        <div className="flex items-center justify-between gap-3 tab-prod:gap-1.5">
+          <div className="flex items-center gap-2 tab-prod:gap-1">
+            <IconeFase
+              className={`h-5 w-5 flex-shrink-0 tab-prod:h-4 tab-prod:w-4 ${config.textClass}`}
+              strokeWidth={2}
+            />
+            <h3 className={`font-bold text-base leading-tight tab-prod:text-xs ${config.textClass}`}>
+              {fase}
+            </h3>
+          </div>
+          <Badge className={`${config.badgeClass} font-semibold rounded-full shadow-sm tab-prod:text-[10px] tab-prod:px-1.5 tab-prod:py-0.5`}>
             {ops.length}
           </Badge>
         </div>
       </div>
 
       {/* Lista de Cards */}
-      <div className="flex-1 p-3 space-y-3 overflow-y-auto tab-prod:p-1.5 tab-prod:space-y-1.5">
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto tab-prod:p-2 tab-prod:space-y-2">
         {ops.length === 0 ? (
-          <div className={`flex items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-16 tab-prod:text-[10px] transition-all ${
-            isOver ? 'text-primary font-semibold' : ''
+          <div className={`flex flex-col items-center justify-center h-32 text-muted-foreground text-sm tab-prod:h-24 tab-prod:text-xs transition-all duration-200 ${
+            isOver ? 'text-primary font-semibold scale-105' : ''
           }`}>
-            {isOver ? 'Solte aqui' : 'Nenhuma OP nesta fase'}
+            {isOver ? (
+              <>
+                <IconeFase className="h-8 w-8 mb-2 tab-prod:h-6 tab-prod:w-6" />
+                <span>Solte aqui</span>
+              </>
+            ) : (
+              <>
+                <IconeFase className="h-8 w-8 mb-2 opacity-30 tab-prod:h-6 tab-prod:w-6" />
+                <span>Nenhuma OP</span>
+              </>
+            )}
           </div>
         ) : (
           ops.map((op) => (

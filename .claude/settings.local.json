@@ -8,7 +8,8 @@
       "Bash(test -f:*)",
       "Bash(lsof:*)",
       "Bash(xargs:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

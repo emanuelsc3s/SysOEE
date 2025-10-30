@@ -15,6 +15,56 @@ export type StatusEquipamento =
   | 'Em Produção'
 
 /**
+ * Configuração visual dos status de equipamento
+ */
+export interface ConfigStatus {
+  /** Cor principal do status (hex) */
+  cor: string
+  /** Nome do ícone Lucide React */
+  icone: string
+  /** Classes Tailwind para badge */
+  badgeClass: string
+  /** Classes Tailwind para borda esquerda */
+  borderClass: string
+  /** Classes Tailwind para texto */
+  textClass: string
+}
+
+/**
+ * Configuração de cores e estilos para cada status de equipamento
+ */
+export const STATUS_CONFIG: Record<StatusEquipamento, ConfigStatus> = {
+  'Disponível': {
+    cor: '#0891B2',
+    icone: 'CheckCircle',
+    badgeClass: 'bg-blue-600 text-white',
+    borderClass: 'border-l-blue-600',
+    textClass: 'text-blue-700'
+  },
+  'Em Produção': {
+    cor: '#16A34A',
+    icone: 'Play',
+    badgeClass: 'bg-green-600 text-white',
+    borderClass: 'border-l-green-600',
+    textClass: 'text-green-700'
+  },
+  'Paradas': {
+    cor: '#F59E0B',
+    icone: 'Pause',
+    badgeClass: 'bg-orange-600 text-white',
+    borderClass: 'border-l-orange-600',
+    textClass: 'text-orange-700'
+  },
+  'Não Disponível': {
+    cor: '#DC2626',
+    icone: 'XCircle',
+    badgeClass: 'bg-red-600 text-white',
+    borderClass: 'border-l-red-600',
+    textClass: 'text-red-700'
+  }
+}
+
+/**
  * Interface para Equipamento/Linha de Produção
  */
 export interface Equipamento {

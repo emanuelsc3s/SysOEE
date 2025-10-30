@@ -310,3 +310,126 @@
   }
 }
 
+/* ========================================
+   Animações Customizadas para Kanban
+   ======================================== */
+
+@layer utilities {
+  /* Animação de entrada suave para cards */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.3s ease-out;
+  }
+
+  /* Animação de bounce suave ao soltar card */
+  @keyframes softBounce {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+  }
+
+  .animate-soft-bounce {
+    animation: softBounce 0.4s ease-in-out;
+  }
+
+  /* Pulso suave e discreto (para botões de ação importantes) */
+  @keyframes gentlePulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.03);
+    }
+  }
+
+  .animate-gentle-pulse {
+    animation: gentlePulse 2s ease-in-out infinite;
+  }
+
+  /* Animação de gradiente para barra de progresso */
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+  }
+
+  /* Shake suave para validação de erros */
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+      transform: translateX(-4px);
+    }
+    20%, 40%, 60%, 80% {
+      transform: translateX(4px);
+    }
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  /* Glow suave para elementos em foco */
+  @keyframes softGlow {
+    0%, 100% {
+      box-shadow: 0 0 5px hsl(var(--primary) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
+    }
+  }
+
+  .animate-soft-glow {
+    animation: softGlow 2s ease-in-out infinite;
+  }
+
+  /* Transição de fundo suave para hover */
+  .transition-bg {
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Transição de sombra suave */
+  .transition-shadow {
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Transição combinada (transform + shadow) */
+  .transition-lift {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Estado de elevação ao hover */
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  }
+}
+
