@@ -5,7 +5,10 @@
       "Bash(do echo \"=== Verificando $file ===\")",
       "Bash(for table in tbsetor tblinha tbproduto tbloteinsumo tbvelocidadenominal tbcodigoparada tbturno tbusuario tbmetaoee tblote tbapontamentoparada tbapontamentoproducao tbapontamentoqualidade tboeecalculado)",
       "Bash(do echo -n \"$table: \")",
-      "Bash(test -f:*)"
+      "Bash(test -f:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

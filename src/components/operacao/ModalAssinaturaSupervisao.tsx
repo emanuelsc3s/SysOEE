@@ -68,7 +68,7 @@ export function ModalAssinaturaSupervisao({
 
   // Estado para armazenar backup da assinatura ao alternar entre modos
   const [assinaturaBackup, setAssinaturaBackup] = useState<string | null>(null)
-  
+
   // Mock de dados do supervisor (será substituído por autenticação real)
   // TODO: Integrar com sistema de autenticação (useAuth hook)
   const supervisorMock = {
@@ -184,7 +184,7 @@ export function ModalAssinaturaSupervisao({
     
     // Captura a assinatura em base64
     const assinaturaBase64 = sigCanvas.current.toDataURL('image/png')
-    
+
     // Cria o objeto de assinatura seguindo ALCOA+
     const assinatura: AssinaturaSupervisao = {
       id: `ASS-${op.op}-${Date.now()}`, // ID único temporário
@@ -349,7 +349,7 @@ export function ModalAssinaturaSupervisao({
                   <Input
                     value={supervisorMock.nome}
                     readOnly
-                    className="bg-background mt-1"
+                    className="bg-muted cursor-not-allowed mt-1"
                   />
                 </div>
 
