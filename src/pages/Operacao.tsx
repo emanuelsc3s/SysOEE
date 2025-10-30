@@ -30,7 +30,8 @@ import {
   Lock,
   CheckCircle,
   RotateCcw,
-  FileText
+  FileText,
+  Info
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -824,6 +825,22 @@ export default function Operacao() {
             </div>
 
             <div className="flex items-center gap-2 tab-prod:gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 tab-prod:gap-1 tab-prod:h-8 tab-prod:px-2 tab-prod:text-xs"
+              >
+                <ArrowLeft className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />
+                <span className="tab-prod:hidden">Voltar</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 tab-prod:gap-1 tab-prod:h-8 tab-prod:px-2 tab-prod:text-xs"
+              >
+                <Info className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />
+                <span className="tab-prod:hidden">Legenda</span>
+              </Button>
               <Button
 
 
