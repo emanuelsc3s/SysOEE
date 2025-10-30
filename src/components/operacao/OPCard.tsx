@@ -164,7 +164,7 @@ export default function OPCard({ op }: OPCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={`w-full hover:shadow-md transition-all duration-200 ${config.borderClass} border-l-4 tab-prod:border-l-2 ${
+      className={`w-full hover:shadow-md transition-all duration-200 ${config.borderClass} border-t-4 tab-prod:border-t-2 ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
     >

@@ -38,7 +38,7 @@ export interface ConfigFase {
   icone: string
   /** Classes Tailwind para badge */
   badgeClass: string
-  /** Classes Tailwind para borda esquerda */
+  /** Classes Tailwind para borda superior */
   borderClass: string
   /** Classes Tailwind para texto */
   textClass: string
@@ -53,56 +53,56 @@ export const FASES_CONFIG: Record<FaseProducao, ConfigFase> = {
     cor: '#8B94A5',
     icone: 'ClipboardList',
     badgeClass: 'bg-slate-600 text-white',
-    borderClass: 'border-l-slate-500',
+    borderClass: 'border-t-slate-500',
     textClass: 'text-slate-700'
   },
   'Emissão de Dossiê': {
     cor: '#242f65', // brand.primary
     icone: 'FileText',
     badgeClass: 'bg-[#242f65] text-white',
-    borderClass: 'border-l-[#242f65]',
+    borderClass: 'border-t-[#242f65]',
     textClass: 'text-[#242f65]'
   },
   'Pesagem': {
     cor: '#8B5CF6',
     icone: 'Scale',
     badgeClass: 'bg-purple-600 text-white',
-    borderClass: 'border-l-purple-600',
+    borderClass: 'border-t-purple-600',
     textClass: 'text-purple-700'
   },
   'Preparação': {
     cor: '#ee8b60', // brand.tertiary
     icone: 'Beaker',
     badgeClass: 'bg-[#ee8b60] text-white',
-    borderClass: 'border-l-[#ee8b60]',
+    borderClass: 'border-t-[#ee8b60]',
     textClass: 'text-[#ee8b60]'
   },
   'Envase': {
     cor: '#0891B2',
     icone: 'Droplet',
     badgeClass: 'bg-cyan-600 text-white',
-    borderClass: 'border-l-cyan-600',
+    borderClass: 'border-t-cyan-600',
     textClass: 'text-cyan-700'
   },
   'Esterilização': {
     cor: '#9F7AEA',
     icone: 'Zap',
     badgeClass: 'bg-violet-600 text-white',
-    borderClass: 'border-l-violet-600',
+    borderClass: 'border-t-violet-600',
     textClass: 'text-violet-700'
   },
   'Embalagem': {
     cor: '#62a183', // brand.secondary
     icone: 'Package',
     badgeClass: 'bg-[#62a183] text-white',
-    borderClass: 'border-l-[#62a183]',
+    borderClass: 'border-t-[#62a183]',
     textClass: 'text-[#62a183]'
   },
   'Concluído': {
     cor: '#16A34A',
     icone: 'CheckCircle2',
     badgeClass: 'bg-green-600 text-white',
-    borderClass: 'border-l-green-600',
+    borderClass: 'border-t-green-600',
     textClass: 'text-green-700'
   }
 }
