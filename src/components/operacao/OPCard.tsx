@@ -245,10 +245,23 @@ export default function OPCard({ op }: OPCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-3 tab-prod:space-y-1 tab-prod:px-2 tab-prod:pb-2">
+        {/* Dossiê */}
+        {op.dossie && (
+          <div className="flex items-center gap-1 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+            <div className="flex items-center gap-2 w-[5.5rem] tab-prod:w-auto tab-prod:gap-0.5">
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+              <span className="text-muted-foreground tab-prod:hidden">Dossiê:</span>
+            </div>
+            <span className="font-medium">{op.dossie}</span>
+          </div>
+        )}
+
         {/* Data de Emissão */}
-        <div className="flex items-center gap-2 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
-          <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
-          <span className="text-muted-foreground tab-prod:hidden">Emissão:</span>
+        <div className="flex items-center gap-1 text-sm tab-prod:gap-0.5 tab-prod:text-[10px]">
+          <div className="flex items-center gap-2 w-[5.5rem] tab-prod:w-auto tab-prod:gap-0.5">
+            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 tab-prod:h-2.5 tab-prod:w-2.5" />
+            <span className="text-muted-foreground tab-prod:hidden">Emissão:</span>
+          </div>
           <span className="font-medium">{op.dataEmissao}</span>
         </div>
 
@@ -324,15 +337,6 @@ export default function OPCard({ op }: OPCardProps) {
             </div>
           </div>
         </div>
-
-        {/* Informações Adicionais (se disponíveis) - Ocultar em tablet para economizar espaço */}
-        {op.dossie && (
-          <div className="pt-2 border-t border-border space-y-1 tab-prod:hidden">
-            <p className="text-xs text-muted-foreground">
-              Dossiê: <span className="font-medium">{op.dossie}</span>
-            </p>
-          </div>
-        )}
 
         {/* Botões de Ação com Rolagem */}
         <div className="pt-3 border-t border-border tab-prod:pt-2">
