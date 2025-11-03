@@ -32,6 +32,8 @@ import { salvarAssinatura } from '@/services/localStorage/assinatura.storage'
 
 interface OPCardProps {
   op: OrdemProducao
+  /** Callback para abrir modal de apontamento (opcional) */
+  onAbrirApontamento?: (op: OrdemProducao) => void
 }
 
 /**
@@ -86,7 +88,7 @@ function formatarNumero(num: number): string {
   }).format(num)
 }
 
-export default function OPCard({ op }: OPCardProps) {
+export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
   const navigate = useNavigate()
   const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
   const temPerdas = op.perdas != null && !isNaN(op.perdas) && op.perdas > 0
@@ -107,6 +109,7 @@ export default function OPCard({ op }: OPCardProps) {
   const deveOcultarProducao = etapasQueOcultamProducao.includes(op.fase)
 
   // Define as etapas que devem ocultar o botão Apontar
+  // Agora Preparação permite apontamentos parciais
   const etapasQueOcultamApontar: FaseProducao[] = ['Planejado', 'Emissão de Dossiê', 'Pesagem']
   const deveOcultarApontar = etapasQueOcultamApontar.includes(op.fase)
 
@@ -167,6 +170,17 @@ export default function OPCard({ op }: OPCardProps) {
         description: 'Não foi possível salvar a assinatura. Tente novamente.',
         duration: 5000,
       })
+    }
+  }
+
+  // Handler para abrir modal de apontamento
+  const handleAbrirApontamento = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onAbrirApontamento) {
+      onAbrirApontamento(op)
+    } else {
+      console.log('Apontar clicado para OP:', op.op)
+      // TODO: Implementar funcionalidade de apontamento padrão
     }
   }
 
@@ -384,11 +398,7 @@ export default function OPCard({ op }: OPCardProps) {
               {/* Botão Apontar - Oculto nas etapas: Planejado, Emissão de Dossiê, Pesagem */}
               {!deveOcultarApontar && (
                 <Button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    console.log('Apontar clicado para OP:', op.op)
-                    // TODO: Implementar funcionalidade de apontamento
-                  }}
+                  onClick={handleAbrirApontamento}
                   variant="outline"
                   className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
                   size="sm"

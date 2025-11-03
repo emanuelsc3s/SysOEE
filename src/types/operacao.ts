@@ -258,3 +258,36 @@ export interface AssinaturaSupervisao {
   created_by: number
 }
 
+/**
+ * Interface para Apontamento Parcial de Preparação
+ * Permite múltiplos apontamentos durante a execução da fase
+ */
+export interface ApontamentoPreparacao {
+  /** ID único do apontamento */
+  id: string
+
+  /** Número da OP */
+  op: string
+
+  /** Quantidade preparada em mL */
+  quantidadePreparadaMl: number
+
+  /** Perdas em mL (opcional) */
+  perdasPreparacaoMl?: number
+
+  /** Data e hora do apontamento (ISO 8601) */
+  dataHoraApontamento: string
+
+  /** ID do usuário que fez o apontamento */
+  usuarioId: number
+
+  /** Nome do usuário que fez o apontamento */
+  usuarioNome: string
+
+  /** Tipo de apontamento */
+  tipo: 'parcial' | 'final'
+
+  /** Observações (opcional) */
+  observacao?: string
+}
+

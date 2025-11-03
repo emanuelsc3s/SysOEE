@@ -73,7 +73,7 @@ export function ModalAssinaturaSupervisao({
   // TODO: Integrar com sistema de autenticação (useAuth hook)
   const supervisorMock = {
     id: 1,
-    nome: 'João Silva Santos',
+    nome: 'Emanuel Silva Santos',
     cracha: '12345',
     tipo: 'SUPERVISOR', // OPERADOR, SUPERVISOR, ENCARREGADO, GESTOR, ADMIN
   }

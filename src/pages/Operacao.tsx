@@ -4,12 +4,14 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { FaseProducao, OrdemProducao, RegistroMovimentacao, TipoMovimentacao, Turno } from '@/types/operacao'
+import { FaseProducao, OrdemProducao, RegistroMovimentacao, TipoMovimentacao, Turno, ApontamentoPreparacao } from '@/types/operacao'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
 import DialogoApontamentoEnvase from '@/components/operacao/DialogoApontamentoEnvase'
 import DialogoApontamentoEmbalagem from '@/components/operacao/DialogoApontamentoEmbalagem'
+import ModalApontamentoPreparacao from '@/components/operacao/ModalApontamentoPreparacao'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -294,6 +296,10 @@ export default function Operacao() {
     op: OrdemProducao
     faseOriginal: FaseProducao
   } | null>(null)
+
+  // Estados para controle do modal de apontamento de Preparação
+  const [modalPreparacaoAberto, setModalPreparacaoAberto] = useState(false)
+  const [opApontamentoPreparacao, setOpApontamentoPreparacao] = useState<OrdemProducao | null>(null)
 
   // Diálogo de erro para pulo de etapas
   const [dialogoMovimentoInvalidoAberto, setDialogoMovimentoInvalidoAberto] = useState(false)
@@ -797,6 +803,90 @@ export default function Operacao() {
     setOpPendenteEmbalagem(null)
   }
 
+  /**
+   * Abre o modal de apontamento de Preparação
+   */
+  const handleAbrirApontamentoPreparacao = (op: OrdemProducao) => {
+    console.log('📋 Abrindo modal de apontamento de Preparação para OP:', op.op)
+    setOpApontamentoPreparacao(op)
+    setModalPreparacaoAberto(true)
+  }
+
+  /**
+   * Fecha o modal de apontamento de Preparação
+   */
+  const handleFecharApontamentoPreparacao = () => {
+    console.log('❌ Fechando modal de apontamento de Preparação')
+    setModalPreparacaoAberto(false)
+    setOpApontamentoPreparacao(null)
+  }
+
+  /**
+   * Confirma o apontamento de Preparação
+   */
+  const handleConfirmarApontamentoPreparacao = (
+    apontamento: Omit<ApontamentoPreparacao, 'id' | 'dataHoraApontamento' | 'usuarioId' | 'usuarioNome'>
+  ) => {
+    if (!opApontamentoPreparacao) return
+
+    // Gera ID único para o apontamento
+    const novoApontamento: ApontamentoPreparacao = {
+      ...apontamento,
+      id: gerarIdRegistro(),
+      dataHoraApontamento: new Date().toISOString(),
+      usuarioId: 1, // TODO: Obter do contexto de autenticação
+      usuarioNome: 'Operador Teste', // TODO: Obter do contexto de autenticação
+    }
+
+    console.log('✅ Salvando apontamento de Preparação:', novoApontamento)
+
+    // Salva no localStorage (histórico de apontamentos)
+    try {
+      const chave = `apontamentos_preparacao_${opApontamentoPreparacao.op}`
+      const historicoStr = localStorage.getItem(chave)
+      const historico: ApontamentoPreparacao[] = historicoStr ? JSON.parse(historicoStr) : []
+      historico.push(novoApontamento)
+      localStorage.setItem(chave, JSON.stringify(historico))
+
+      // TODO: Salvar no banco de dados via API
+
+      // Atualiza a OP com os dados do apontamento (se for final)
+      if (apontamento.tipo === 'final') {
+        setOps((opsAtuais) => {
+          const opsAtualizadas = opsAtuais.map((op) => {
+            if (op.op === opApontamentoPreparacao.op) {
+              return {
+                ...op,
+                quantidadePreparadaMl: apontamento.quantidadePreparadaMl,
+                perdasPreparacaoMl: apontamento.perdasPreparacaoMl,
+                dataHoraPreparacao: novoApontamento.dataHoraApontamento,
+              }
+            }
+            return op
+          })
+
+          salvarOPs(opsAtualizadas)
+          return opsAtualizadas
+        })
+      }
+
+      // Exibe notificação de sucesso
+      toast.success('Apontamento registrado com sucesso!', {
+        description: `${apontamento.tipo === 'final' ? 'Apontamento final' : 'Apontamento parcial'} de ${apontamento.quantidadePreparadaMl.toLocaleString('pt-BR')} mL`,
+        duration: 3000,
+      })
+
+      // Fecha o modal
+      handleFecharApontamentoPreparacao()
+    } catch (error) {
+      console.error('❌ Erro ao salvar apontamento:', error)
+      toast.error('Erro ao salvar apontamento', {
+        description: 'Não foi possível salvar o apontamento. Tente novamente.',
+        duration: 5000,
+      })
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-muted">
@@ -956,6 +1046,7 @@ export default function Operacao() {
                     <KanbanColumn
                       fase={fase}
                       ops={opsPorFase[fase]}
+                      onAbrirApontamento={handleAbrirApontamentoPreparacao}
                     />
                   </div>
                 ))}
@@ -1235,6 +1326,13 @@ export default function Operacao() {
         onConfirmar={handleConfirmarEmbalagem}
       />
 
+      {/* Modal de Apontamento de Preparação */}
+      <ModalApontamentoPreparacao
+        op={opApontamentoPreparacao}
+        aberto={modalPreparacaoAberto}
+        onFechar={handleFecharApontamentoPreparacao}
+        onConfirmar={handleConfirmarApontamentoPreparacao}
+      />
 
       {/* Diálogo de Conclusão de OP */}
       <DialogoConclusaoOP

@@ -5,6 +5,7 @@ import Operacao from './pages/Operacao'
 import OperacaoPorEquipamento from './pages/OperacaoPorEquipamento'
 import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
 import ArmazemSaldo from './pages/ArmazemSaldo'
+import ColaboradorPerfil from './pages/ColaboradorPerfil'
 import Placeholder from './pages/Placeholder'
 
 /**
@@ -29,6 +30,9 @@ function App() {
 
         {/* Página de Detalhes de OP */}
         <Route path="/operacao/:numeroOP" element={<OperacaoDetalheOP />} />
+
+        {/* Página de Perfil do Colaborador */}
+        <Route path="/colaborador/:id" element={<ColaboradorPerfil />} />
 
         {/* Páginas placeholder para módulos em desenvolvimento */}
         <Route
