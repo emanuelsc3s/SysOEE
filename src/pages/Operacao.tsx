@@ -13,6 +13,7 @@ import DialogoApontamentoEnvase from '@/components/operacao/DialogoApontamentoEn
 import DialogoApontamentoEmbalagem from '@/components/operacao/DialogoApontamentoEmbalagem'
 import ModalApontamentoPreparacao from '@/components/operacao/ModalApontamentoPreparacao'
 import { ModalApontamentoParada } from '@/components/operacao/ModalApontamentoParada'
+import ModalCadastroAmostra, { DadosAmostra } from '@/components/operacao/ModalCadastroAmostra'
 import { buscarCodigosParada, buscarTurnos, criarApontamentoParada } from '@/services/api/parada.api'
 import { duracaoParaHora, somarHoras } from '@/utils/horas.utils'
 import { toast } from 'sonner'
@@ -329,6 +330,9 @@ export default function Operacao() {
     faseDestino: FaseProducao
   } | null>(null)
   const [justificativaRetrocesso, setJustificativaRetrocesso] = useState('')
+
+  // Estados para controle do modal de cadastro de amostra
+  const [modalAmostraAberto, setModalAmostraAberto] = useState(false)
 
 
   // Configuração dos sensores de drag (requer movimento mínimo para evitar conflitos com cliques e scroll)
@@ -1043,6 +1047,73 @@ export default function Operacao() {
     })
   }
 
+  /**
+   * Abre o modal de cadastro de amostra
+   * @param op - OP opcional (quando chamado do card) ou undefined (quando chamado do header)
+   */
+  const handleAbrirCadastroAmostra = (op?: OrdemProducao) => {
+    if (op) {
+      console.log('📋 Abrindo modal de cadastro de amostra para OP:', op.op)
+    } else {
+      console.log('📋 Abrindo modal de cadastro de amostra')
+    }
+    setModalAmostraAberto(true)
+  }
+
+  /**
+   * Fecha o modal de cadastro de amostra
+   */
+  const handleFecharCadastroAmostra = () => {
+    console.log('❌ Fechando modal de cadastro de amostra')
+    setModalAmostraAberto(false)
+  }
+
+  /**
+   * Salva o cadastro de amostra
+   */
+  const handleSalvarAmostra = (
+    amostra: Omit<DadosAmostra, 'id' | 'dataHoraCadastro' | 'usuarioId' | 'usuarioNome'>
+  ) => {
+    try {
+      // Gera ID único para a amostra
+      const novaAmostra: DadosAmostra = {
+        ...amostra,
+        id: gerarIdRegistro(),
+        dataHoraCadastro: new Date().toISOString(),
+        usuarioId: 1, // TODO: Obter do contexto de autenticação
+        usuarioNome: 'Operador Teste', // TODO: Obter do contexto de autenticação
+      }
+
+      console.log('✅ Salvando amostra:', novaAmostra)
+
+      // Salva no localStorage (histórico de amostras)
+      const chaveAmostras = 'sysoee_amostras'
+      const amostrasStr = localStorage.getItem(chaveAmostras)
+      const amostras: DadosAmostra[] = amostrasStr ? JSON.parse(amostrasStr) : []
+      amostras.push(novaAmostra)
+      localStorage.setItem(chaveAmostras, JSON.stringify(amostras))
+
+      console.log(`📊 Total de amostras cadastradas: ${amostras.length}`)
+
+      // TODO: Salvar no banco de dados via API
+
+      // Exibe notificação de sucesso
+      toast.success('Amostra cadastrada com sucesso!', {
+        description: `${novaAmostra.tipoAmostra} - OP ${novaAmostra.opId}`,
+        duration: 4000,
+      })
+
+      // Fecha o modal
+      handleFecharCadastroAmostra()
+    } catch (error) {
+      console.error('❌ Erro ao salvar amostra:', error)
+      toast.error('Erro ao cadastrar amostra', {
+        description: 'Não foi possível salvar o cadastro. Tente novamente.',
+        duration: 5000,
+      })
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-muted">
@@ -1088,8 +1159,15 @@ export default function Operacao() {
                 <span className="tab-prod:hidden">Legenda</span>
               </Button>
               <Button
-
-
+                variant="outline"
+                size="sm"
+                onClick={handleAbrirCadastroAmostra}
+                className="gap-2 tab-prod:gap-1 tab-prod:h-8 tab-prod:px-2 tab-prod:text-xs"
+              >
+                <FileText className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />
+                <span className="tab-prod:hidden">Amostra</span>
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
@@ -1204,6 +1282,7 @@ export default function Operacao() {
                       ops={opsPorFase[fase]}
                       onAbrirApontamento={handleAbrirApontamentoPreparacao}
                       onAbrirParadas={handleAbrirParadas}
+                      onAbrirAmostra={handleAbrirCadastroAmostra}
                     />
                   </div>
                 ))}
@@ -1523,6 +1602,14 @@ export default function Operacao() {
         aberto={dialogoConclusaoAberto}
         onCancelar={handleCancelarConclusao}
         onConfirmar={handleConfirmarConclusao}
+      />
+
+      {/* Modal de Cadastro de Amostra */}
+      <ModalCadastroAmostra
+        aberto={modalAmostraAberto}
+        onFechar={handleFecharCadastroAmostra}
+        onSalvar={handleSalvarAmostra}
+        ops={ops}
       />
     </div>
   )

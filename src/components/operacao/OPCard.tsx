@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardEdit,
-  Beaker
+  Beaker,
+  Flask
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -38,6 +39,8 @@ interface OPCardProps {
   onAbrirApontamento?: (op: OrdemProducao) => void
   /** Callback para abrir modal de paradas (opcional) */
   onAbrirParadas?: (op: OrdemProducao) => void
+  /** Callback para abrir modal de cadastro de amostra (opcional) */
+  onAbrirAmostra?: (op: OrdemProducao) => void
 }
 
 /**
@@ -92,7 +95,7 @@ function formatarNumero(num: number): string {
   }).format(num)
 }
 
-export default function OPCard({ op, onAbrirApontamento, onAbrirParadas }: OPCardProps) {
+export default function OPCard({ op, onAbrirApontamento, onAbrirParadas, onAbrirAmostra }: OPCardProps) {
   const navigate = useNavigate()
   const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
 
@@ -228,6 +231,17 @@ export default function OPCard({ op, onAbrirApontamento, onAbrirParadas }: OPCar
     } else {
       console.log('Paradas clicado para OP:', op.op)
       // TODO: Implementar funcionalidade de paradas padrão
+    }
+  }
+
+  // Handler para abrir modal de cadastro de amostra
+  const handleAbrirAmostra = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onAbrirAmostra) {
+      onAbrirAmostra(op)
+    } else {
+      console.log('Amostra clicado para OP:', op.op)
+      // TODO: Implementar funcionalidade de amostra padrão
     }
   }
 
@@ -505,6 +519,19 @@ export default function OPCard({ op, onAbrirApontamento, onAbrirParadas }: OPCar
                 >
                   <Pause className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
                   <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Paradas</span>
+                </Button>
+              )}
+
+              {/* Botão Amostra - Visível em todas as etapas de produção */}
+              {!deveOcultarParadas && (
+                <Button
+                  onClick={handleAbrirAmostra}
+                  variant="outline"
+                  className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                  size="sm"
+                >
+                  <Flask className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                  <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Amostra</span>
                 </Button>
               )}
 
