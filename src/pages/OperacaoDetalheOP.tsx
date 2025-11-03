@@ -246,7 +246,7 @@ export default function OperacaoDetalheOP() {
     console.log(`📊 OP ${op.op}: ${horasAtuais} + ${duracaoHora} = ${novasHoras}`)
 
     // Atualiza o estado local
-    setOp({
+    setOP({
       ...op,
       horas: novasHoras,
     })

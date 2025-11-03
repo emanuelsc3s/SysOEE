@@ -62,7 +62,6 @@ export function MapaArmazens({ armazens, onArmazemClick }: MapaArmazensProps) {
   const [coordenadas, setCoordenadas] = useState<ArmazemCoordenadas[]>([])
   const [coordenadasOriginais, setCoordenadasOriginais] = useState<ArmazemCoordenadas[]>([])
   const [marcadorArrastando, setMarcadorArrastando] = useState<string | null>(null)
-  const [posicaoMouse, setPosicaoMouse] = useState<{ x: number; y: number } | null>(null)
 
   /**
    * Carrega coordenadas do localStorage ou usa padrões
@@ -177,8 +176,6 @@ export function MapaArmazens({ armazens, onArmazemClick }: MapaArmazensProps) {
     const xLimitado = Math.max(0, Math.min(100, x))
     const yLimitado = Math.max(0, Math.min(100, y))
 
-    setPosicaoMouse({ x: xLimitado, y: yLimitado })
-
     // Atualiza coordenadas do marcador
     setCoordenadas(prev =>
       prev.map(coord =>
@@ -194,7 +191,6 @@ export function MapaArmazens({ armazens, onArmazemClick }: MapaArmazensProps) {
    */
   const finalizarArraste = () => {
     setMarcadorArrastando(null)
-    setPosicaoMouse(null)
   }
 
   /**

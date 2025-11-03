@@ -68,7 +68,7 @@
     try {
       a.click();
       console.log('✅ Download iniciado automaticamente!');
-    } catch (e) {
+    } catch {
       console.log('⚠️ Download automático bloqueado. Use o link acima.');
     }
     

@@ -138,17 +138,14 @@ export function ModalApontamentoParada({
     horaInicio?: string
   }>({})
 
-  // Inicializa data e hora com valores atuais (contemporaneidade)
+  // Detecta turno atual automaticamente quando o modal é aberto
+  // NOTA: Data e hora NÃO são mais inicializadas aqui (contemporaneidade)
+  // Serão capturadas apenas no momento do clique em "Registrar Parada"
   useEffect(() => {
     if (aberto) {
-      const agora = new Date()
-      const dataAtual = agora.toISOString().split('T')[0] // YYYY-MM-DD
-      const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5) // HH:MM
-      
-      setDataParada(dataAtual)
-      setHoraInicio(horaAtual)
-
       // Detecta turno atual automaticamente
+      const agora = new Date()
+      const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5) // HH:MM
       const turnoAtual = detectarTurnoAtual(turnos, horaAtual)
       if (turnoAtual) {
         setTurnoSelecionado(turnoAtual.id)
@@ -443,21 +440,25 @@ export function ModalApontamentoParada({
 
   /**
    * Valida o formulário
+   * NOTA: Data e hora são validadas apenas se já estiverem preenchidas
+   * (serão preenchidas automaticamente no momento do clique em "Registrar Parada")
    */
   const validarFormulario = (): boolean => {
     const novosErros: typeof erros = {}
 
     if (!tipoParadaSelecionado) novosErros.tipoParada = 'Selecione o tipo de parada'
     if (!turnoSelecionado) novosErros.turno = 'Selecione o turno'
-    if (!dataParada) novosErros.dataParada = 'Informe a data da parada'
-    if (!horaInicio) novosErros.horaInicio = 'Informe a hora de início'
 
-    // Valida que data/hora não seja futura
-    const agora = new Date()
-    const dataHoraParada = new Date(`${dataParada}T${horaInicio}:00`)
-    if (dataHoraParada > agora) {
-      novosErros.dataParada = 'Data/hora não pode ser futura'
-      novosErros.horaInicio = 'Data/hora não pode ser futura'
+    // Data e hora são validadas apenas se já estiverem preenchidas
+    // (serão preenchidas automaticamente no handleSalvar)
+    if (dataParada && horaInicio) {
+      // Valida que data/hora não seja futura
+      const agora = new Date()
+      const dataHoraParada = new Date(`${dataParada}T${horaInicio}:00`)
+      if (dataHoraParada > agora) {
+        novosErros.dataParada = 'Data/hora não pode ser futura'
+        novosErros.horaInicio = 'Data/hora não pode ser futura'
+      }
     }
 
     setErros(novosErros)
@@ -467,8 +468,19 @@ export function ModalApontamentoParada({
   /**
    * Salva o apontamento de parada
    * Usa o tipo de parada selecionado diretamente como código
+   * IMPORTANTE: Captura timestamp CONTEMPORÂNEO no momento do clique (ALCOA+)
    */
   const handleSalvar = async () => {
+    // CAPTURA TIMESTAMP CONTEMPORÂNEO (momento exato do clique no botão)
+    const agora = new Date()
+    const dataAtual = agora.toISOString().split('T')[0] // YYYY-MM-DD
+    const horaAtual = agora.toTimeString().split(' ')[0].substring(0, 5) // HH:MM
+
+    // Atualiza os estados com o timestamp contemporâneo
+    setDataParada(dataAtual)
+    setHoraInicio(horaAtual)
+
+    // Valida formulário (agora com data/hora contemporâneas)
     if (!validarFormulario()) return
 
     // Gera um ID temporário baseado no tipo de parada
@@ -480,8 +492,8 @@ export function ModalApontamentoParada({
       lote_id: loteId || null,
       codigo_parada_id: codigoParadaId,
       turno_id: turnoSelecionado,
-      data_parada: dataParada,
-      hora_inicio: `${horaInicio}:00`, // Adiciona segundos
+      data_parada: dataAtual, // Usa timestamp contemporâneo
+      hora_inicio: `${horaAtual}:00`, // Usa timestamp contemporâneo + segundos
       observacao: observacao.trim() || null,
       criado_por_operador: usuarioId,
     }
@@ -490,7 +502,7 @@ export function ModalApontamentoParada({
     await onConfirmar(dados)
 
     // Exibe modal de sucesso
-    setMensagemSucesso(`Parada registrada com sucesso!\n\nTipo: ${tipoParadaSelecionado}\nInício: ${horaInicio}`)
+    setMensagemSucesso(`Parada registrada com sucesso!\n\nTipo: ${tipoParadaSelecionado}\nInício: ${horaAtual}`)
     setAlertSucessoAberto(true)
 
     // Reseta formulário e volta para aba de paradas ativas
@@ -642,8 +654,7 @@ export function ModalApontamentoParada({
           <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 p-3 rounded-md">
             <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
             <div className="text-xs text-blue-800">
-              <strong>Registro Contemporâneo (ALCOA+):</strong> A data e hora foram pré-preenchidas com o momento atual.
-              Ajuste apenas se necessário (tolerância de 5 minutos).
+              <strong>Registro Contemporâneo (ALCOA+):</strong> A data e hora de início da parada serão registradas automaticamente no momento em que você clicar no botão "Registrar Parada", garantindo a contemporaneidade do apontamento.
             </div>
           </div>
 
@@ -681,69 +692,30 @@ export function ModalApontamentoParada({
           {/* Separador */}
           <div className="border-t pt-4" />
 
-          {/* Grid de Data/Hora e Turno */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Data da Parada */}
-            <div className="space-y-2">
-              <Label htmlFor="dataParada">Data da Parada *</Label>
-              <Input
-                id="dataParada"
-                type="date"
-                value={dataParada}
-                onChange={(e) => {
-                  setDataParada(e.target.value)
-                  if (erros.dataParada) setErros({ ...erros, dataParada: undefined })
-                }}
-                className={erros.dataParada ? 'border-red-500' : ''}
-              />
-              {erros.dataParada && (
-                <p className="text-sm text-red-500">{erros.dataParada}</p>
-              )}
-            </div>
-
-            {/* Hora de Início */}
-            <div className="space-y-2">
-              <Label htmlFor="horaInicio">Hora de Início *</Label>
-              <Input
-                id="horaInicio"
-                type="time"
-                value={horaInicio}
-                onChange={(e) => {
-                  setHoraInicio(e.target.value)
-                  if (erros.horaInicio) setErros({ ...erros, horaInicio: undefined })
-                }}
-                className={erros.horaInicio ? 'border-red-500' : ''}
-              />
-              {erros.horaInicio && (
-                <p className="text-sm text-red-500">{erros.horaInicio}</p>
-              )}
-            </div>
-
-            {/* Turno */}
-            <div className="space-y-2">
-              <Label htmlFor="turno">Turno *</Label>
-              <Select
-                value={turnoSelecionado}
-                onValueChange={(value) => {
-                  setTurnoSelecionado(value)
-                  if (erros.turno) setErros({ ...erros, turno: undefined })
-                }}
-              >
-                <SelectTrigger className={erros.turno ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="Selecione o turno" />
-                </SelectTrigger>
-                <SelectContent>
-                  {turnos.map((turno) => (
-                    <SelectItem key={turno.id} value={turno.id}>
-                      {turno.nome} ({turno.hora_inicio.substring(0, 5)} - {turno.hora_fim.substring(0, 5)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {erros.turno && (
-                <p className="text-sm text-red-500">{erros.turno}</p>
-              )}
-            </div>
+          {/* Turno */}
+          <div className="space-y-2">
+            <Label htmlFor="turno">Turno *</Label>
+            <Select
+              value={turnoSelecionado}
+              onValueChange={(value) => {
+                setTurnoSelecionado(value)
+                if (erros.turno) setErros({ ...erros, turno: undefined })
+              }}
+            >
+              <SelectTrigger className={erros.turno ? 'border-red-500' : ''}>
+                <SelectValue placeholder="Selecione o turno" />
+              </SelectTrigger>
+              <SelectContent>
+                {turnos.map((turno) => (
+                  <SelectItem key={turno.id} value={turno.id}>
+                    {turno.nome} ({turno.hora_inicio.substring(0, 5)} - {turno.hora_fim.substring(0, 5)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {erros.turno && (
+              <p className="text-sm text-red-500">{erros.turno}</p>
+            )}
           </div>
 
           {/* Observações */}
