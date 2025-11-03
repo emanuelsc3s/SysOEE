@@ -4,7 +4,7 @@
  * Exibe histórico de apontamentos realizados
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { OrdemProducao, ApontamentoPreparacao } from '@/types/operacao'
 import {
   Dialog,
@@ -56,26 +56,11 @@ export default function ModalApontamentoPreparacao({
   // Histórico de apontamentos (mock - será substituído por dados do banco)
   const [historico, setHistorico] = useState<ApontamentoPreparacao[]>([])
 
-  // Limpa o formulário quando o modal abre
-  useEffect(() => {
-    if (aberto) {
-      setQuantidadePreparada('')
-      setPerdasPreparacao('')
-      setObservacao('')
-      setTipoApontamento('parcial')
-      setErros({})
-      
-      // TODO: Carregar histórico de apontamentos do banco de dados
-      // Por enquanto, usa dados mockados do localStorage
-      carregarHistorico()
-    }
-  }, [aberto, op])
-
   /**
    * Carrega histórico de apontamentos do localStorage
    * TODO: Substituir por chamada ao banco de dados
    */
-  const carregarHistorico = () => {
+  const carregarHistorico = useCallback(() => {
     if (!op) return
 
     try {
@@ -90,7 +75,22 @@ export default function ModalApontamentoPreparacao({
       console.error('Erro ao carregar histórico de apontamentos:', error)
       setHistorico([])
     }
-  }
+  }, [op])
+
+  // Limpa o formulário quando o modal abre
+  useEffect(() => {
+    if (aberto) {
+      setQuantidadePreparada('')
+      setPerdasPreparacao('')
+      setObservacao('')
+      setTipoApontamento('parcial')
+      setErros({})
+
+      // TODO: Carregar histórico de apontamentos do banco de dados
+      // Por enquanto, usa dados mockados do localStorage
+      carregarHistorico()
+    }
+  }, [aberto, carregarHistorico])
 
   /**
    * Valida os campos do formulário

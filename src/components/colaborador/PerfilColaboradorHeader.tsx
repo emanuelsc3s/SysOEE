@@ -6,7 +6,7 @@
 import { Colaborador } from '@/types/colaborador'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
-import { User, Briefcase, Building2, Mail, Calendar } from 'lucide-react'
+import { Briefcase, Building2, Mail, Calendar } from 'lucide-react'
 
 interface PerfilColaboradorHeaderProps {
   colaborador: Colaborador

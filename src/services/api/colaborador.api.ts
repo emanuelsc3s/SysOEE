@@ -230,11 +230,20 @@ function inicializarDadosMock(): void {
 }
 
 /**
+ * Extensão da interface Window para incluir função de desenvolvimento
+ */
+declare global {
+  interface Window {
+    reinicializarDadosMock?: () => void
+  }
+}
+
+/**
  * Função auxiliar para reinicializar dados mock (útil durante desenvolvimento)
  * Execute no console: window.reinicializarDadosMock()
  */
 if (typeof window !== 'undefined') {
-  (window as any).reinicializarDadosMock = () => {
+  window.reinicializarDadosMock = () => {
     localStorage.removeItem(COLABORADORES_STORAGE_KEY)
     localStorage.removeItem(TREINAMENTOS_STORAGE_KEY)
     console.log('🔄 Cache limpo! Recarregue a página para ver os novos dados.')

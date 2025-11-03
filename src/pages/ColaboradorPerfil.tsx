@@ -4,7 +4,7 @@
  * Rota: /colaborador/:id
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useQueryParams } from '@/hooks/useQueryParams'
@@ -91,7 +91,7 @@ export default function ColaboradorPerfil() {
   /**
    * Carrega dados do colaborador e treinamentos
    */
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     if (!id) {
       setErro('ID do colaborador não fornecido')
       setCarregando(false)
@@ -121,14 +121,14 @@ export default function ColaboradorPerfil() {
     } finally {
       setCarregando(false)
     }
-  }
+  }, [id])
 
   /**
    * Carrega dados ao montar o componente ou quando ID muda
    */
   useEffect(() => {
     carregarDados()
-  }, [id])
+  }, [carregarDados])
 
   /**
    * Sincroniza estado com URL
