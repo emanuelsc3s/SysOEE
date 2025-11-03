@@ -18,18 +18,19 @@ const TREINAMENTOS_STORAGE_KEY = 'sysoee_treinamentos'
 const MOCK_COLABORADORES: Colaborador[] = [
   {
     id: '000648',
-    nome: 'Emanuel Silva Santos',
-    cargo: 'Operador de Produção Sênior',
-    setor: 'SPEP',
-    email: 'joao.silva@sicfar.com.br',
-    dataAdmissao: '2018-03-15'
+    nome: 'Cícero Emanuel da Silva',
+    cargo: 'Gerente de Tecnologia',
+    setor: 'TI',
+    email: 'emanuel@farmace.com.br',
+    dataAdmissao: '2007-02-01',
+    fotoUrl: '/Emanuel.jpeg'
   },
   {
     id: '000649',
     nome: 'Maria Oliveira Costa',
     cargo: 'Técnica de Qualidade',
     setor: 'SPPV',
-    email: 'maria.oliveira@sicfar.com.br',
+    email: 'maria.oliveira@farmace.com.br',
     dataAdmissao: '2019-07-22'
   },
   {
@@ -37,7 +38,7 @@ const MOCK_COLABORADORES: Colaborador[] = [
     nome: 'Carlos Eduardo Pereira',
     cargo: 'Supervisor de Produção',
     setor: 'Líquidos',
-    email: 'carlos.pereira@sicfar.com.br',
+    email: 'carlos.pereira@farmace.com.br',
     dataAdmissao: '2015-01-10'
   }
 ]
@@ -208,6 +209,10 @@ const MOCK_TREINAMENTOS: Treinamento[] = [
  * Inicializa dados mock no localStorage se não existirem
  */
 function inicializarDadosMock(): void {
+  // TEMPORÁRIO: Força atualização dos dados (remover após primeira execução)
+  localStorage.removeItem(COLABORADORES_STORAGE_KEY)
+  localStorage.removeItem(TREINAMENTOS_STORAGE_KEY)
+
   if (!localStorage.getItem(COLABORADORES_STORAGE_KEY)) {
     localStorage.setItem(COLABORADORES_STORAGE_KEY, JSON.stringify(MOCK_COLABORADORES))
     console.log('✅ Colaboradores mock inicializados no localStorage')
@@ -221,6 +226,18 @@ function inicializarDadosMock(): void {
     }))
     localStorage.setItem(TREINAMENTOS_STORAGE_KEY, JSON.stringify(treinamentosAtualizados))
     console.log('✅ Treinamentos mock inicializados no localStorage')
+  }
+}
+
+/**
+ * Função auxiliar para reinicializar dados mock (útil durante desenvolvimento)
+ * Execute no console: window.reinicializarDadosMock()
+ */
+if (typeof window !== 'undefined') {
+  (window as any).reinicializarDadosMock = () => {
+    localStorage.removeItem(COLABORADORES_STORAGE_KEY)
+    localStorage.removeItem(TREINAMENTOS_STORAGE_KEY)
+    console.log('🔄 Cache limpo! Recarregue a página para ver os novos dados.')
   }
 }
 

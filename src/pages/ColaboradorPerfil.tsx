@@ -29,11 +29,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
   ArrowLeft,
-  Loader2,
   AlertTriangle,
   FileX,
   RefreshCw,
-  Trash2,
 } from 'lucide-react'
 
 // Chave do localStorage para preferências
@@ -49,7 +47,7 @@ const PREFERENCIAS_PADRAO: PreferenciasColaborador = {
 export default function ColaboradorPerfil() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { getParam, setParams, clearParams } = useQueryParams()
+  const { getParam, setParams } = useQueryParams()
 
   // Estados de dados
   const [colaborador, setColaborador] = useState<Colaborador | null>(null)
@@ -58,7 +56,7 @@ export default function ColaboradorPerfil() {
   const [erro, setErro] = useState<string | null>(null)
 
   // Preferências persistidas no localStorage
-  const [preferencias, setPreferencias, limparPreferencias] = useLocalStoragePreferences<PreferenciasColaborador>(
+  const [preferencias, setPreferencias] = useLocalStoragePreferences<PreferenciasColaborador>(
     PREFERENCIAS_KEY,
     PREFERENCIAS_PADRAO
   )
@@ -225,17 +223,6 @@ export default function ColaboradorPerfil() {
   }, [treinamentos])
 
   /**
-   * Limpa preferências e reseta UI
-   */
-  const handleLimparPreferencias = () => {
-    limparPreferencias()
-    setStatusSelecionado('Todos')
-    setBusca('')
-    setOrdenacao('vencimento')
-    clearParams()
-  }
-
-  /**
    * Tenta recarregar dados
    */
   const handleTentarNovamente = () => {
@@ -309,18 +296,7 @@ export default function ColaboradorPerfil() {
 
         {/* Seção de Treinamentos */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">Treinamentos de POs</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLimparPreferencias}
-              className="text-xs"
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-              Limpar Preferências
-            </Button>
-          </div>
+          <h2 className="text-xl font-bold text-foreground">Treinamentos de POs</h2>
 
           {/* Filtros */}
           <FiltrosTreinamentos
