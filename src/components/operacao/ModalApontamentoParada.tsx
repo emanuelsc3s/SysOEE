@@ -65,6 +65,8 @@ interface ModalApontamentoParadaProps {
   onFechar: () => void
   /** Callback chamado quando a parada é registrada com sucesso */
   onConfirmar: (dados: CriarApontamentoParadaDTO) => void
+  /** Callback chamado quando uma parada é finalizada (opcional) */
+  onParadaFinalizada?: (duracaoMinutos: number) => void
   /** Número da OP em execução */
   numeroOP: string
   /** ID da linha de produção */
@@ -87,6 +89,7 @@ export function ModalApontamentoParada({
   aberto,
   onFechar,
   onConfirmar,
+  onParadaFinalizada,
   numeroOP,
   linhaId,
   loteId,
@@ -396,6 +399,11 @@ export function ModalApontamentoParada({
       if (paradaAtualizada) {
         // Recarrega paradas
         carregarParadas()
+
+        // Notifica o componente pai sobre a finalização da parada
+        if (onParadaFinalizada && paradaAtualizada.duracao_minutos) {
+          onParadaFinalizada(paradaAtualizada.duracao_minutos)
+        }
 
         // Exibe modal de sucesso
         setMensagemSucesso(`Parada finalizada com sucesso!\n\nDuração: ${formatarDuracao(paradaAtualizada.duracao_minutos || 0)}`)

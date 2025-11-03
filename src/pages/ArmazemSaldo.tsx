@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Package, Search, Lock, X, CheckCircle2, XCircle, ClipboardList, Calendar, User, Save, History, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Package, Search, Lock, X, CheckCircle2, XCircle, ClipboardList, Calendar, User, Save, History, AlertCircle, LayoutGrid, Map } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { MapaArmazens } from '@/components/armazem/MapaArmazens'
 
 /**
  * Interface para representar um armazém
@@ -787,6 +789,9 @@ export default function ArmazemSaldo() {
   const [armazemSelecionado, setArmazemSelecionado] = useState<Armazem | null>(null)
   const [lotes, setLotes] = useState<Lote[]>([])
 
+  // Estado para controlar a guia ativa (blocos ou mapa)
+  const [guiaAtiva, setGuiaAtiva] = useState<'blocos' | 'mapa'>('blocos')
+
   // Estados para Inventário
   const [dialogInventarioAberto, setDialogInventarioAberto] = useState(false)
   const [dialogHistoricoAberto, setDialogHistoricoAberto] = useState(false)
@@ -1158,121 +1163,147 @@ export default function ArmazemSaldo() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8">
-        {/* Barra de Busca */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Buscar por código ou descrição..."
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              className="pl-10"
-              aria-label="Buscar armazéns"
-            />
-          </div>
-          
-          {/* Contador de resultados */}
-          <p className="text-sm text-muted-foreground mt-2">
-            {armazensFiltrados.length === armazens.length
-              ? `${armazens.length} armazéns cadastrados`
-              : `${armazensFiltrados.length} de ${armazens.length} armazéns`}
-          </p>
-        </div>
+        {/* Sistema de Guias */}
+        <Tabs value={guiaAtiva} onValueChange={(value) => setGuiaAtiva(value as 'blocos' | 'mapa')} className="w-full">
+          {/* Barra de Guias */}
+          <TabsList className="grid w-full max-w-md mb-6 grid-cols-2">
+            <TabsTrigger value="blocos" className="flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Blocos
+            </TabsTrigger>
+            <TabsTrigger value="mapa" className="flex items-center gap-2">
+              <Map className="h-4 w-4" />
+              Mapa
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Grid de Cards de Armazéns */}
-        {armazensFiltrados.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {armazensFiltrados.map((armazem) => (
-              <Card
-                key={armazem.codigo}
-                className={`
-                  transition-all duration-300 relative
-                  ${armazem.bloqueado
-                    ? 'cursor-not-allowed border-red-500 bg-red-50/50 hover:shadow-sm'
-                    : 'cursor-pointer hover:shadow-md hover:scale-[1.02] hover:border-primary/20'
-                  }
-                `}
-                onClick={() => handleArmazemClick(armazem)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    handleArmazemClick(armazem)
-                  }
-                }}
-                aria-label={`Armazém ${armazem.codigo} - ${armazem.descricao}${armazem.bloqueado ? ' - Bloqueado' : ''}`}
-                aria-disabled={armazem.bloqueado}
-              >
-                {/* Badge de Bloqueado */}
-                {armazem.bloqueado && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute top-2 right-2 text-xs font-semibold"
+          {/* Conteúdo da Guia "Blocos" */}
+          <TabsContent value="blocos" className="mt-0">
+            {/* Barra de Busca */}
+            <div className="mb-6">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por código ou descrição..."
+                  value={filtro}
+                  onChange={(e) => setFiltro(e.target.value)}
+                  className="pl-10"
+                  aria-label="Buscar armazéns"
+                />
+              </div>
+
+              {/* Contador de resultados */}
+              <p className="text-sm text-muted-foreground mt-2">
+                {armazensFiltrados.length === armazens.length
+                  ? `${armazens.length} armazéns cadastrados`
+                  : `${armazensFiltrados.length} de ${armazens.length} armazéns`}
+              </p>
+            </div>
+
+            {/* Grid de Cards de Armazéns */}
+            {armazensFiltrados.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {armazensFiltrados.map((armazem) => (
+                  <Card
+                    key={armazem.codigo}
+                    className={`
+                      transition-all duration-300 relative
+                      ${armazem.bloqueado
+                        ? 'cursor-not-allowed border-red-500 bg-red-50/50 hover:shadow-sm'
+                        : 'cursor-pointer hover:shadow-md hover:scale-[1.02] hover:border-primary/20'
+                      }
+                    `}
+                    onClick={() => handleArmazemClick(armazem)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleArmazemClick(armazem)
+                      }
+                    }}
+                    aria-label={`Armazém ${armazem.codigo} - ${armazem.descricao}${armazem.bloqueado ? ' - Bloqueado' : ''}`}
+                    aria-disabled={armazem.bloqueado}
                   >
-                    <Lock className="h-3 w-3 mr-1" />
-                    BLOQUEADO
-                  </Badge>
-                )}
+                    {/* Badge de Bloqueado */}
+                    {armazem.bloqueado && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute top-2 right-2 text-xs font-semibold"
+                      >
+                        <Lock className="h-3 w-3 mr-1" />
+                        BLOQUEADO
+                      </Badge>
+                    )}
 
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <div
+                          className={`
+                            flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm
+                            ${armazem.bloqueado
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-primary/10 text-primary'
+                            }
+                          `}
+                        >
+                          {armazem.bloqueado && <Lock className="h-4 w-4" />}
+                          {!armazem.bloqueado && armazem.codigo}
+                        </div>
+                        <span
+                          className={`
+                            text-sm font-semibold
+                            ${armazem.bloqueado ? 'text-red-700' : 'text-muted-foreground'}
+                          `}
+                        >
+                          Armazém {armazem.codigo}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p
+                        className={`
+                          text-sm font-medium leading-tight
+                          ${armazem.bloqueado ? 'text-red-900/70' : 'text-foreground'}
+                        `}
+                      >
+                        {armazem.descricao}
+                      </p>
+                    </CardContent>
+
+                    {/* Barra inferior - vermelha para bloqueados, azul para ativos */}
                     <div
                       className={`
-                        flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm
-                        ${armazem.bloqueado
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-primary/10 text-primary'
-                        }
+                        absolute bottom-0 left-0 w-full h-1.5
+                        ${armazem.bloqueado ? 'bg-red-500' : 'bg-primary'}
                       `}
-                    >
-                      {armazem.bloqueado && <Lock className="h-4 w-4" />}
-                      {!armazem.bloqueado && armazem.codigo}
-                    </div>
-                    <span
-                      className={`
-                        text-sm font-semibold
-                        ${armazem.bloqueado ? 'text-red-700' : 'text-muted-foreground'}
-                      `}
-                    >
-                      Armazém {armazem.codigo}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p
-                    className={`
-                      text-sm font-medium leading-tight
-                      ${armazem.bloqueado ? 'text-red-900/70' : 'text-foreground'}
-                    `}
-                  >
-                    {armazem.descricao}
-                  </p>
-                </CardContent>
+                    />
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              // Mensagem quando não há resultados
+              <div className="text-center py-12">
+                <Package className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Nenhum armazém encontrado
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Tente ajustar os termos de busca
+                </p>
+              </div>
+            )}
+          </TabsContent>
 
-                {/* Barra inferior - vermelha para bloqueados, azul para ativos */}
-                <div
-                  className={`
-                    absolute bottom-0 left-0 w-full h-1.5
-                    ${armazem.bloqueado ? 'bg-red-500' : 'bg-primary'}
-                  `}
-                />
-              </Card>
-            ))}
-          </div>
-        ) : (
-          // Mensagem quando não há resultados
-          <div className="text-center py-12">
-            <Package className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Nenhum armazém encontrado
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Tente ajustar os termos de busca
-            </p>
-          </div>
-        )}
+          {/* Conteúdo da Guia "Mapa" */}
+          <TabsContent value="mapa" className="mt-0">
+            <MapaArmazens
+              armazens={armazens}
+              onArmazemClick={handleArmazemClick}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Modal de Lotes do Armazém */}

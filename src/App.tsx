@@ -7,6 +7,7 @@ import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
 import ArmazemSaldo from './pages/ArmazemSaldo'
 import ColaboradorPerfil from './pages/ColaboradorPerfil'
 import Placeholder from './pages/Placeholder'
+import { Toaster } from '@/components/ui/toaster'
 
 /**
  * Componente principal da aplicação
@@ -15,6 +16,7 @@ import Placeholder from './pages/Placeholder'
 function App() {
   return (
     <Router>
+      <Toaster />
       <Routes>
         {/* Página Home */}
         <Route path="/" element={<Home />} />

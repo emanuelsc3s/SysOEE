@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ModalApontamentoParada } from '@/components/operacao/ModalApontamentoParada'
 import { buscarCodigosParada, buscarTurnos, criarApontamentoParada } from '@/services/api/parada.api'
+import { duracaoParaHora, somarHoras } from '@/utils/horas.utils'
+import { toast } from 'sonner'
 import {
   ArrowLeft,
   Calendar,
@@ -222,6 +224,55 @@ export default function OperacaoDetalheOP() {
     } finally {
       setSalvandoParada(false)
     }
+  }
+
+  /**
+   * Callback chamado quando uma parada é finalizada
+   * Acumula o tempo de parada no campo "horas" da OP
+   */
+  const handleParadaFinalizada = (duracaoMinutos: number) => {
+    if (!op) return
+
+    console.log(`⏱️ Parada finalizada - Duração: ${duracaoMinutos} minutos`)
+
+    // Converte duração da parada para formato HH:MM
+    const duracaoHora = duracaoParaHora(duracaoMinutos)
+    console.log(`⏱️ Duração em HH:MM: ${duracaoHora}`)
+
+    // Atualiza a OP com o tempo acumulado
+    const horasAtuais = op.horas || '00:00'
+    const novasHoras = somarHoras(horasAtuais, duracaoHora)
+
+    console.log(`📊 OP ${op.op}: ${horasAtuais} + ${duracaoHora} = ${novasHoras}`)
+
+    // Atualiza o estado local
+    setOp({
+      ...op,
+      horas: novasHoras,
+    })
+
+    // Atualiza no localStorage
+    const chave = 'sysoee_operacao_ops'
+    const opsStr = localStorage.getItem(chave)
+    if (opsStr) {
+      const ops: OrdemProducao[] = JSON.parse(opsStr)
+      const opsAtualizadas = ops.map((opItem) => {
+        if (opItem.op === op.op) {
+          return {
+            ...opItem,
+            horas: novasHoras,
+          }
+        }
+        return opItem
+      })
+      localStorage.setItem(chave, JSON.stringify(opsAtualizadas))
+    }
+
+    // Exibe notificação de sucesso
+    toast.success('Tempo de parada acumulado!', {
+      description: `${duracaoParaHora(duracaoMinutos)} adicionado ao total de horas da OP ${op.op}`,
+      duration: 3000,
+    })
   }
 
   if (carregando) {
@@ -512,6 +563,7 @@ export default function OperacaoDetalheOP() {
           aberto={modalParadaAberto}
           onFechar={() => setModalParadaAberto(false)}
           onConfirmar={handleConfirmarParada}
+          onParadaFinalizada={handleParadaFinalizada}
           numeroOP={numeroOP || ''}
           linhaId="mock-linha-id" // TODO: Obter linha_id real da OP
           loteId={op?.lote || null}

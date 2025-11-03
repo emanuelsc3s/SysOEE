@@ -5,12 +5,16 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { FaseProducao, OrdemProducao, RegistroMovimentacao, TipoMovimentacao, Turno, ApontamentoPreparacao } from '@/types/operacao'
+import { CodigoParada, Turno as TurnoParada, CriarApontamentoParadaDTO } from '@/types/parada'
 import { mockOPs } from '@/data/mockOPs'
 import KanbanColumn from '@/components/operacao/KanbanColumn'
 import DialogoConclusaoOP from '@/components/operacao/DialogoConclusaoOP'
 import DialogoApontamentoEnvase from '@/components/operacao/DialogoApontamentoEnvase'
 import DialogoApontamentoEmbalagem from '@/components/operacao/DialogoApontamentoEmbalagem'
 import ModalApontamentoPreparacao from '@/components/operacao/ModalApontamentoPreparacao'
+import { ModalApontamentoParada } from '@/components/operacao/ModalApontamentoParada'
+import { buscarCodigosParada, buscarTurnos, criarApontamentoParada } from '@/services/api/parada.api'
+import { duracaoParaHora, somarHoras } from '@/utils/horas.utils'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -300,6 +304,13 @@ export default function Operacao() {
   // Estados para controle do modal de apontamento de Preparação
   const [modalPreparacaoAberto, setModalPreparacaoAberto] = useState(false)
   const [opApontamentoPreparacao, setOpApontamentoPreparacao] = useState<OrdemProducao | null>(null)
+
+  // Estados para controle do modal de paradas
+  const [modalParadaAberto, setModalParadaAberto] = useState(false)
+  const [opParada, setOpParada] = useState<OrdemProducao | null>(null)
+  const [codigosParada, setCodigosParada] = useState<CodigoParada[]>([])
+  const [turnosParada, setTurnosParada] = useState<TurnoParada[]>([])
+  const [salvandoParada, setSalvandoParada] = useState(false)
 
   // Diálogo de erro para pulo de etapas
   const [dialogoMovimentoInvalidoAberto, setDialogoMovimentoInvalidoAberto] = useState(false)
@@ -908,6 +919,130 @@ export default function Operacao() {
     }
   }
 
+  /**
+   * Abre o modal de paradas
+   */
+  const handleAbrirParadas = (op: OrdemProducao) => {
+    console.log('📋 Abrindo modal de paradas para OP:', op.op)
+    setOpParada(op)
+    setModalParadaAberto(true)
+  }
+
+  /**
+   * Fecha o modal de paradas
+   */
+  const handleFecharParadas = () => {
+    console.log('❌ Fechando modal de paradas')
+    setModalParadaAberto(false)
+    setOpParada(null)
+  }
+
+  /**
+   * Confirma o registro de parada
+   */
+  const handleConfirmarParada = async (dados: CriarApontamentoParadaDTO) => {
+    setSalvandoParada(true)
+    try {
+      const apontamento = await criarApontamentoParada(dados)
+
+      console.log('✅ Parada registrada com sucesso:', apontamento)
+
+      // Nota: A mensagem de sucesso é exibida pelo próprio ModalApontamentoParada
+      // O modal não fecha mais automaticamente, permanece aberto na aba "Em Andamento"
+
+    } catch (error) {
+      console.error('❌ Erro ao registrar parada:', error)
+      toast.error('Erro ao registrar parada', {
+        description: 'Não foi possível registrar a parada. Tente novamente.',
+        duration: 5000,
+      })
+    } finally {
+      setSalvandoParada(false)
+    }
+  }
+
+  /**
+   * Carrega códigos de parada e turnos quando o modal é aberto
+   */
+  useEffect(() => {
+    if (modalParadaAberto && codigosParada.length === 0) {
+      carregarDadosParada()
+    }
+  }, [modalParadaAberto, codigosParada.length])
+
+  /**
+   * Carrega códigos de parada e turnos do Supabase
+   */
+  const carregarDadosParada = async () => {
+    try {
+      // TODO: Obter linha_id real da OP quando integrado com banco
+      // Por enquanto, busca apenas paradas globais
+      const [codigosData, turnosData] = await Promise.all([
+        buscarCodigosParada(),
+        buscarTurnos(),
+      ])
+
+      setCodigosParada(codigosData)
+      setTurnosParada(turnosData)
+
+      if (codigosData.length === 0) {
+        toast.error('Atenção: Nenhum código de parada cadastrado no sistema.')
+      }
+      if (turnosData.length === 0) {
+        toast.error('Atenção: Nenhum turno cadastrado no sistema.')
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados de parada:', error)
+      toast.error('Erro ao carregar dados de parada', {
+        description: 'Verifique sua conexão e tente novamente.',
+        duration: 5000,
+      })
+    }
+  }
+
+  /**
+   * Callback chamado quando uma parada é finalizada
+   * Acumula o tempo de parada no campo "horas" da OP
+   */
+  const handleParadaFinalizada = (duracaoMinutos: number) => {
+    if (!opParada) return
+
+    console.log(`⏱️ Parada finalizada - Duração: ${duracaoMinutos} minutos`)
+
+    // Converte duração da parada para formato HH:MM
+    const duracaoHora = duracaoParaHora(duracaoMinutos)
+    console.log(`⏱️ Duração em HH:MM: ${duracaoHora}`)
+
+    // Atualiza a OP com o tempo acumulado
+    setOps((opsAtuais) => {
+      const opsAtualizadas = opsAtuais.map((op) => {
+        if (op.op === opParada.op) {
+          // Soma a duração da parada ao tempo atual
+          const horasAtuais = op.horas || '00:00'
+          const novasHoras = somarHoras(horasAtuais, duracaoHora)
+
+          console.log(`📊 OP ${op.op}: ${horasAtuais} + ${duracaoHora} = ${novasHoras}`)
+
+          return {
+            ...op,
+            horas: novasHoras,
+          }
+        }
+        return op
+      })
+
+      // Salva no localStorage
+      salvarOPs(opsAtualizadas)
+      return opsAtualizadas
+    })
+
+    // Exibe notificação de sucesso
+    toast.success('Tempo de parada acumulado!', {
+      description: `${duracaoParaHora(duracaoMinutos)} adicionado ao total de horas da OP ${opParada.op}`,
+      duration: 3000,
+    })
+  }
+
 
   return (
     <div className="min-h-screen bg-muted">
@@ -1068,6 +1203,7 @@ export default function Operacao() {
                       fase={fase}
                       ops={opsPorFase[fase]}
                       onAbrirApontamento={handleAbrirApontamentoPreparacao}
+                      onAbrirParadas={handleAbrirParadas}
                     />
                   </div>
                 ))}
@@ -1354,6 +1490,32 @@ export default function Operacao() {
         onFechar={handleFecharApontamentoPreparacao}
         onConfirmar={handleConfirmarApontamentoPreparacao}
       />
+
+      {/* Modal de Apontamento de Parada */}
+      {modalParadaAberto && opParada && (
+        <ModalApontamentoParada
+          aberto={modalParadaAberto}
+          onFechar={handleFecharParadas}
+          onConfirmar={handleConfirmarParada}
+          onParadaFinalizada={handleParadaFinalizada}
+          numeroOP={opParada.op}
+          linhaId="mock-linha-id" // TODO: Obter linha_id real da OP
+          loteId={opParada.lote || null}
+          codigosParada={codigosParada}
+          turnos={turnosParada}
+          usuarioId={1} // TODO: Obter ID do usuário logado do contexto de autenticação
+        />
+      )}
+
+      {/* Overlay de carregamento ao salvar parada */}
+      {salvandoParada && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm font-medium">Registrando parada...</p>
+          </div>
+        </div>
+      )}
 
       {/* Diálogo de Conclusão de OP */}
       <DialogoConclusaoOP

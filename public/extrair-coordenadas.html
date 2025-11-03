@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extrair Coordenadas Calibradas - SysOEE</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 800px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: #6c757d;
+    }
+
+    button.secondary:hover {
+      background: #5a6268;
+    }
+
+    .json-output {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .instructions {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+
+    .instructions h3 {
+      color: #856404;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      color: #856404;
+    }
+
+    .instructions li {
+      margin-bottom: 5px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Extrair Coordenadas Calibradas</h1>
+    <p class="subtitle">Sistema OEE - Mapa de Armazéns</p>
+
+    <div id="status" class="status info">
+      ℹ️ Clique no botão abaixo para verificar se existem coordenadas calibradas no localStorage.
+    </div>
+
+    <div>
+      <button onclick="verificarCoordenadas()">🔍 Verificar Coordenadas</button>
+      <button onclick="baixarJSON()" id="btnBaixar" class="hidden">💾 Baixar JSON</button>
+      <button onclick="copiarJSON()" id="btnCopiar" class="hidden">📋 Copiar JSON</button>
+      <button onclick="limparLocalStorage()" class="secondary">🗑️ Limpar localStorage</button>
+    </div>
+
+    <div id="stats" class="stats hidden"></div>
+    <div id="jsonOutput" class="json-output hidden"></div>
+
+    <div class="instructions">
+      <h3>📝 Próximos Passos</h3>
+      <ol>
+        <li>Clique em "Verificar Coordenadas" para extrair do localStorage</li>
+        <li>Se encontradas, clique em "Baixar JSON" ou "Copiar JSON"</li>
+        <li>Salve o arquivo como <code>coordenadas-calibradas.json</code></li>
+        <li>Execute: <code>node scripts/sync-coordenadas.js coordenadas-calibradas.json</code></li>
+        <li>Recarregue a página /armazens e clique em "Restaurar Padrões"</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    let coordenadasGlobal = null;
+
+    function verificarCoordenadas() {
+      const STORAGE_KEY = 'sysoee_coordenadas_armazens';
+      const statusDiv = document.getElementById('status');
+      const statsDiv = document.getElementById('stats');
+      const jsonOutputDiv = document.getElementById('jsonOutput');
+      const btnBaixar = document.getElementById('btnBaixar');
+      const btnCopiar = document.getElementById('btnCopiar');
+
+      try {
+        const coordenadasRaw = localStorage.getItem(STORAGE_KEY);
+
+        if (!coordenadasRaw) {
+          statusDiv.className = 'status error';
+          statusDiv.innerHTML = `
+            ❌ <strong>Nenhuma coordenada calibrada encontrada!</strong><br>
+            <small>Você precisa primeiro calibrar os marcadores em /armazens → Mapa → Calibrar Posições</small>
+          `;
+          statsDiv.classList.add('hidden');
+          jsonOutputDiv.classList.add('hidden');
+          btnBaixar.classList.add('hidden');
+          btnCopiar.classList.add('hidden');
+          return;
+        }
+
+        const coordenadas = JSON.parse(coordenadasRaw);
+        coordenadasGlobal = coordenadas;
+
+        // Calcula estatísticas
+        const totalArmazens = coordenadas.length;
+        const mediaX = (coordenadas.reduce((sum, c) => sum + c.x, 0) / totalArmazens).toFixed(1);
+        const mediaY = (coordenadas.reduce((sum, c) => sum + c.y, 0) / totalArmazens).toFixed(1);
+
+        // Exibe status de sucesso
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `
+          ✅ <strong>Coordenadas calibradas encontradas!</strong><br>
+          <small>Total de ${totalArmazens} armazéns com coordenadas personalizadas</small>
+        `;
+
+        // Exibe estatísticas
+        statsDiv.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-value">${totalArmazens}</div>
+            <div class="stat-label">Armazéns</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${mediaX}%</div>
+            <div class="stat-label">Média X</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${mediaY}%</div>
+            <div class="stat-label">Média Y</div>
+          </div>
+        `;
+        statsDiv.classList.remove('hidden');
+
+        // Exibe JSON formatado
+        const jsonFormatado = JSON.stringify(coordenadas, null, 2);
+        jsonOutputDiv.textContent = jsonFormatado;
+        jsonOutputDiv.classList.remove('hidden');
+
+        // Mostra botões
+        btnBaixar.classList.remove('hidden');
+        btnCopiar.classList.remove('hidden');
+
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.innerHTML = `
+          ❌ <strong>Erro ao processar coordenadas:</strong><br>
+          <small>${error.message}</small>
+        `;
+        console.error('Erro:', error);
+      }
+    }
+
+    function baixarJSON() {
+      if (!coordenadasGlobal) {
+        alert('Nenhuma coordenada disponível. Clique em "Verificar Coordenadas" primeiro.');
+        return;
+      }
+
+      const jsonFormatado = JSON.stringify(coordenadasGlobal, null, 2);
+      const blob = new Blob([jsonFormatado], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'coordenadas-calibradas.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'status success';
+      statusDiv.innerHTML = `
+        ✅ <strong>Arquivo baixado com sucesso!</strong><br>
+        <small>Salvo como: coordenadas-calibradas.json</small>
+      `;
+    }
+
+    function copiarJSON() {
+      if (!coordenadasGlobal) {
+        alert('Nenhuma coordenada disponível. Clique em "Verificar Coordenadas" primeiro.');
+        return;
+      }
+
+      const jsonFormatado = JSON.stringify(coordenadasGlobal, null, 2);
+      navigator.clipboard.writeText(jsonFormatado).then(() => {
+        const statusDiv = document.getElementById('status');
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `
+          ✅ <strong>JSON copiado para a área de transferência!</strong><br>
+          <small>Cole em um arquivo e salve como coordenadas-calibradas.json</small>
+        `;
+      }).catch(err => {
+        alert('Erro ao copiar: ' + err.message);
+      });
+    }
+
+    function limparLocalStorage() {
+      if (!confirm('Tem certeza que deseja limpar as coordenadas calibradas do localStorage?')) {
+        return;
+      }
+
+      localStorage.removeItem('sysoee_coordenadas_armazens');
+      
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'status info';
+      statusDiv.innerHTML = `
+        ℹ️ <strong>localStorage limpo!</strong><br>
+        <small>As coordenadas calibradas foram removidas. Recarregue /armazens para usar os padrões.</small>
+      `;
+
+      document.getElementById('stats').classList.add('hidden');
+      document.getElementById('jsonOutput').classList.add('hidden');
+      document.getElementById('btnBaixar').classList.add('hidden');
+      document.getElementById('btnCopiar').classList.add('hidden');
+      coordenadasGlobal = null;
+    }
+
+    // Verifica automaticamente ao carregar a página
+    window.addEventListener('load', verificarCoordenadas);
+  </script>
+</body>
+</html>
+

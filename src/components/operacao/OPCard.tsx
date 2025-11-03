@@ -36,6 +36,8 @@ interface OPCardProps {
   op: OrdemProducao
   /** Callback para abrir modal de apontamento (opcional) */
   onAbrirApontamento?: (op: OrdemProducao) => void
+  /** Callback para abrir modal de paradas (opcional) */
+  onAbrirParadas?: (op: OrdemProducao) => void
 }
 
 /**
@@ -90,7 +92,7 @@ function formatarNumero(num: number): string {
   }).format(num)
 }
 
-export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
+export default function OPCard({ op, onAbrirApontamento, onAbrirParadas }: OPCardProps) {
   const navigate = useNavigate()
   const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
 
@@ -215,6 +217,17 @@ export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
     } else {
       console.log('Apontar clicado para OP:', op.op)
       // TODO: Implementar funcionalidade de apontamento padrão
+    }
+  }
+
+  // Handler para abrir modal de paradas
+  const handleAbrirParadas = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onAbrirParadas) {
+      onAbrirParadas(op)
+    } else {
+      console.log('Paradas clicado para OP:', op.op)
+      // TODO: Implementar funcionalidade de paradas padrão
     }
   }
 
@@ -485,11 +498,7 @@ export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
               {/* Botão Paradas - Oculto nas etapas: Planejado, Emissão de Dossiê */}
               {!deveOcultarParadas && (
                 <Button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    console.log('Paradas clicado para OP:', op.op)
-                    // TODO: Implementar visualização de paradas
-                  }}
+                  onClick={handleAbrirParadas}
                   variant="outline"
                   className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
                   size="sm"

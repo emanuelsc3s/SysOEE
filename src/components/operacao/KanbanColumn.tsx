@@ -24,6 +24,8 @@ interface KanbanColumnProps {
   ops: OrdemProducao[]
   /** Callback para abrir modal de apontamento (opcional) */
   onAbrirApontamento?: (op: OrdemProducao) => void
+  /** Callback para abrir modal de paradas (opcional) */
+  onAbrirParadas?: (op: OrdemProducao) => void
 }
 
 /**
@@ -40,7 +42,7 @@ const ICONES_FASES: Record<FaseProducao, LucideIcon> = {
   'Concluído': CheckCircle2
 }
 
-export default function KanbanColumn({ fase, ops, onAbrirApontamento }: KanbanColumnProps) {
+export default function KanbanColumn({ fase, ops, onAbrirApontamento, onAbrirParadas }: KanbanColumnProps) {
   // Configura a coluna como área de drop
   const { setNodeRef, isOver } = useDroppable({
     id: fase,
@@ -95,7 +97,12 @@ export default function KanbanColumn({ fase, ops, onAbrirApontamento }: KanbanCo
           </div>
         ) : (
           ops.map((op) => (
-            <OPCard key={op.op} op={op} onAbrirApontamento={onAbrirApontamento} />
+            <OPCard
+              key={op.op}
+              op={op}
+              onAbrirApontamento={onAbrirApontamento}
+              onAbrirParadas={onAbrirParadas}
+            />
           ))
         )}
       </div>
