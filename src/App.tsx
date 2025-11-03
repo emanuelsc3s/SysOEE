@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Operacao from './pages/Operacao'
 import OperacaoPorEquipamento from './pages/OperacaoPorEquipamento'
 import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
+import ArmazemSaldo from './pages/ArmazemSaldo'
 import Placeholder from './pages/Placeholder'
 
 /**
@@ -84,15 +85,8 @@ function App() {
             />
           } 
         />
-        <Route 
-          path="/armazens" 
-          element={
-            <Placeholder 
-              title="Armazéns" 
-              description="Gestão de armazéns e controle de estoque."
-            />
-          } 
-        />
+        {/* Página de Armazéns - Gestão de Armazéns de Estoque */}
+        <Route path="/armazens" element={<ArmazemSaldo />} />
         <Route 
           path="/ordem-servico" 
           element={
