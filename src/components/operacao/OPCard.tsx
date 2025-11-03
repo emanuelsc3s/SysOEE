@@ -114,6 +114,10 @@ export default function OPCard({ op }: OPCardProps) {
   const etapasQueOcultamParadas: FaseProducao[] = ['Planejado', 'Emissão de Dossiê']
   const deveOcultarParadas = etapasQueOcultamParadas.includes(op.fase)
 
+  // Define as etapas que devem ocultar o botão Dossiê
+  const etapasQueOcultamDossie: FaseProducao[] = ['Planejado']
+  const deveOcultarDossie = etapasQueOcultamDossie.includes(op.fase)
+
   // Define se deve ocultar a seção de Horas
   const deveOcultarHoras = op.fase === 'Planejado'
 
@@ -437,20 +441,22 @@ export default function OPCard({ op }: OPCardProps) {
                 </Button>
               )}
 
-              {/* Botão Dossiê */}
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  console.log('Dossiê clicado para OP:', op.op)
-                  // TODO: Implementar visualização do dossiê
-                }}
-                variant="outline"
-                className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
-                size="sm"
-              >
-                <FileText className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
-                <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Dossiê</span>
-              </Button>
+              {/* Botão Dossiê - Oculto na etapa: Planejado */}
+              {!deveOcultarDossie && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('Dossiê clicado para OP:', op.op)
+                    // TODO: Implementar visualização do dossiê
+                  }}
+                  variant="outline"
+                  className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
+                  size="sm"
+                >
+                  <FileText className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                  <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Dossiê</span>
+                </Button>
+              )}
 
               {/* Botão Assinatura Eletrônica */}
               <Button
