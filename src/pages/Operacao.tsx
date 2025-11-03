@@ -848,27 +848,48 @@ export default function Operacao() {
       historico.push(novoApontamento)
       localStorage.setItem(chave, JSON.stringify(historico))
 
+      // Calcula os totais acumulados de todos os apontamentos
+      const totalPreparado = historico.reduce((acc, apt) => acc + apt.quantidadePreparadaMl, 0)
+      const totalPerdas = historico.reduce((acc, apt) => acc + (apt.perdasPreparacaoMl || 0), 0)
+
+      // Salva os totais acumulados em uma chave separada para acesso rápido
+      const chaveTotais = `totais_preparacao_${opApontamentoPreparacao.op}`
+      localStorage.setItem(chaveTotais, JSON.stringify({
+        totalPreparadoMl: totalPreparado,
+        totalPerdasMl: totalPerdas,
+        ultimaAtualizacao: new Date().toISOString()
+      }))
+
+      console.log(`📊 Totais acumulados salvos - Preparado: ${totalPreparado} mL, Perdas: ${totalPerdas} mL`)
+
       // TODO: Salvar no banco de dados via API
 
-      // Atualiza a OP com os dados do apontamento (se for final)
-      if (apontamento.tipo === 'final') {
-        setOps((opsAtuais) => {
-          const opsAtualizadas = opsAtuais.map((op) => {
-            if (op.op === opApontamentoPreparacao.op) {
-              return {
-                ...op,
-                quantidadePreparadaMl: apontamento.quantidadePreparadaMl,
-                perdasPreparacaoMl: apontamento.perdasPreparacaoMl,
-                dataHoraPreparacao: novoApontamento.dataHoraApontamento,
-              }
+      // Atualiza a OP com os totais acumulados
+      setOps((opsAtuais) => {
+        const opsAtualizadas = opsAtuais.map((op) => {
+          if (op.op === opApontamentoPreparacao.op) {
+            // Na etapa de Preparação, sincroniza quantidadeEmbaladaUnidades com totalPreparadoMl
+            const atualizacaoOP = {
+              ...op,
+              quantidadePreparadaMl: totalPreparado,
+              perdasPreparacaoMl: totalPerdas,
+              dataHoraPreparacao: apontamento.tipo === 'final' ? novoApontamento.dataHoraApontamento : op.dataHoraPreparacao,
             }
-            return op
-          })
 
-          salvarOPs(opsAtualizadas)
-          return opsAtualizadas
+            // Se a OP está na etapa de Preparação, sincroniza o "Produzido" com o "Preparado"
+            if (op.fase === 'Preparação') {
+              atualizacaoOP.quantidadeEmbaladaUnidades = totalPreparado
+              console.log(`🔄 Sincronizando quantidadeEmbaladaUnidades com totalPreparadoMl: ${totalPreparado} mL`)
+            }
+
+            return atualizacaoOP
+          }
+          return op
         })
-      }
+
+        salvarOPs(opsAtualizadas)
+        return opsAtualizadas
+      })
 
       // Exibe notificação de sucesso
       toast.success('Apontamento registrado com sucesso!', {

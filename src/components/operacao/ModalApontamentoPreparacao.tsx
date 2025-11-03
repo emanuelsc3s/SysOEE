@@ -98,16 +98,23 @@ export default function ModalApontamentoPreparacao({
   const validarFormulario = (): boolean => {
     const novosErros: typeof erros = {}
 
-    const qtdPrep = parseFloat(quantidadePreparada)
-    if (!quantidadePreparada || isNaN(qtdPrep)) {
-      novosErros.quantidadePreparada = 'Campo obrigatório'
-    } else if (qtdPrep <= 0) {
-      novosErros.quantidadePreparada = 'Deve ser maior que zero'
-    }
-
+    const qtdPrep = quantidadePreparada.trim() === '' ? 0 : parseFloat(quantidadePreparada)
     const qtdPerda = perdasPreparacao.trim() === '' ? 0 : parseFloat(perdasPreparacao)
-    if (!isNaN(qtdPerda) && qtdPerda < 0) {
-      novosErros.perdasPreparacao = 'Não pode ser negativo'
+
+    // Validação: pelo menos um dos campos deve estar preenchido
+    if (qtdPrep === 0 && qtdPerda === 0) {
+      novosErros.quantidadePreparada = 'Informe pelo menos a Quantidade Preparada ou as Perdas'
+      novosErros.perdasPreparacao = 'Informe pelo menos a Quantidade Preparada ou as Perdas'
+    } else {
+      // Validação individual: Quantidade Preparada não pode ser negativa
+      if (quantidadePreparada.trim() !== '' && (isNaN(qtdPrep) || qtdPrep < 0)) {
+        novosErros.quantidadePreparada = 'Deve ser maior ou igual a zero'
+      }
+
+      // Validação individual: Perdas não pode ser negativa
+      if (perdasPreparacao.trim() !== '' && (isNaN(qtdPerda) || qtdPerda < 0)) {
+        novosErros.perdasPreparacao = 'Não pode ser negativo'
+      }
     }
 
     setErros(novosErros)
@@ -120,7 +127,7 @@ export default function ModalApontamentoPreparacao({
   const handleSalvar = () => {
     if (!validarFormulario() || !op) return
 
-    const qtdPrep = parseFloat(quantidadePreparada)
+    const qtdPrep = quantidadePreparada.trim() === '' ? 0 : parseFloat(quantidadePreparada)
     const qtdPerda = perdasPreparacao.trim() === '' ? 0 : parseFloat(perdasPreparacao)
 
     const novoApontamento: Omit<ApontamentoPreparacao, 'id' | 'dataHoraApontamento' | 'usuarioId' | 'usuarioNome'> = {
@@ -252,63 +259,97 @@ export default function ModalApontamentoPreparacao({
 
             {/* Quantidade Preparada */}
             <div className="space-y-2">
-              <Label htmlFor="quantidadePreparada" className="flex items-center gap-2">
-                Quantidade Preparada (mL) *
-              </Label>
-              <Input
-                id="quantidadePreparada"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Ex: 95000"
-                value={quantidadePreparada}
-                onChange={(e) => {
-                  setQuantidadePreparada(e.target.value)
-                  if (erros.quantidadePreparada) setErros({ ...erros, quantidadePreparada: undefined })
-                }}
-                className={erros.quantidadePreparada ? 'border-red-500' : ''}
-                autoFocus
-              />
-              {quantidadePreparada && !isNaN(parseFloat(quantidadePreparada)) && (
-                <p className="text-xs text-muted-foreground">
-                  ≈ {converterParaLitros(parseFloat(quantidadePreparada))} litros
-                </p>
-              )}
-              {erros.quantidadePreparada && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  {erros.quantidadePreparada}
-                </p>
-              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quantidadePreparada" className="flex items-center gap-2">
+                    Quantidade Preparada (mL)
+                  </Label>
+                  <Input
+                    id="quantidadePreparada"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Ex: 95000 (ou deixe vazio)"
+                    value={quantidadePreparada}
+                    onChange={(e) => {
+                      setQuantidadePreparada(e.target.value)
+                      if (erros.quantidadePreparada) setErros({ ...erros, quantidadePreparada: undefined })
+                    }}
+                    className={erros.quantidadePreparada ? 'border-red-500' : ''}
+                    autoFocus
+                  />
+                  {erros.quantidadePreparada && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {erros.quantidadePreparada}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantidadePreparadaLitros" className="flex items-center gap-2">
+                    Quantidade Preparada (L)
+                  </Label>
+                  <Input
+                    id="quantidadePreparadaLitros"
+                    type="text"
+                    placeholder="0,00"
+                    value={quantidadePreparada && !isNaN(parseFloat(quantidadePreparada)) && parseFloat(quantidadePreparada) > 0
+                      ? converterParaLitros(parseFloat(quantidadePreparada))
+                      : ''}
+                    disabled
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Conversão automática
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Perdas */}
             <div className="space-y-2">
-              <Label htmlFor="perdasPreparacao">Perdas (mL)</Label>
-              <Input
-                id="perdasPreparacao"
-                type="number"
-                min="0"
-                step="1"
-                placeholder="Ex: 120 (ou deixe vazio se não houver)"
-                value={perdasPreparacao}
-                onChange={(e) => {
-                  setPerdasPreparacao(e.target.value)
-                  if (erros.perdasPreparacao) setErros({ ...erros, perdasPreparacao: undefined })
-                }}
-                className={erros.perdasPreparacao ? 'border-red-500' : ''}
-              />
-              {perdasPreparacao && !isNaN(parseFloat(perdasPreparacao)) && (
-                <p className="text-xs text-muted-foreground">
-                  ≈ {converterParaLitros(parseFloat(perdasPreparacao))} litros
-                </p>
-              )}
-              {erros.perdasPreparacao && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  {erros.perdasPreparacao}
-                </p>
-              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="perdasPreparacao">Perdas (mL)</Label>
+                  <Input
+                    id="perdasPreparacao"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Ex: 120 (ou deixe vazio se não houver)"
+                    value={perdasPreparacao}
+                    onChange={(e) => {
+                      setPerdasPreparacao(e.target.value)
+                      if (erros.perdasPreparacao) setErros({ ...erros, perdasPreparacao: undefined })
+                    }}
+                    className={erros.perdasPreparacao ? 'border-red-500' : ''}
+                  />
+                  {erros.perdasPreparacao && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {erros.perdasPreparacao}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="perdasPreparacaoLitros">Perdas (L)</Label>
+                  <Input
+                    id="perdasPreparacaoLitros"
+                    type="text"
+                    placeholder="0,00"
+                    value={perdasPreparacao && !isNaN(parseFloat(perdasPreparacao))
+                      ? converterParaLitros(parseFloat(perdasPreparacao))
+                      : ''}
+                    disabled
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Conversão automática
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Observações */}
@@ -331,7 +372,7 @@ export default function ModalApontamentoPreparacao({
               <div className="space-y-3">
                 <h3 className="font-semibold text-sm">Histórico de Apontamentos</h3>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {historico.map((apt) => (
+                  {historico.slice().reverse().map((apt) => (
                     <div
                       key={apt.id}
                       className="bg-muted p-3 rounded-lg text-sm space-y-1"
@@ -355,17 +396,17 @@ export default function ModalApontamentoPreparacao({
                             </span>
                           </p>
                         </div>
-                        {apt.perdasPreparacaoMl && apt.perdasPreparacaoMl > 0 && (
-                          <div>
-                            <span className="text-muted-foreground">Perdas:</span>
-                            <p className="font-medium text-orange-700 dark:text-orange-400">
-                              {apt.perdasPreparacaoMl.toLocaleString('pt-BR')} mL
-                              <span className="text-xs text-muted-foreground ml-1">
-                                ({converterParaLitros(apt.perdasPreparacaoMl)} L)
-                              </span>
-                            </p>
-                          </div>
-                        )}
+                        <div>
+                          <span className="text-muted-foreground">Perdas:</span>
+                          <p className="font-medium text-orange-700 dark:text-orange-400">
+                            {apt.perdasPreparacaoMl
+                              ? `${apt.perdasPreparacaoMl.toLocaleString('pt-BR')} mL`
+                              : '0 mL'}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({apt.perdasPreparacaoMl ? converterParaLitros(apt.perdasPreparacaoMl) : '0,00'} L)
+                            </span>
+                          </p>
+                        </div>
                       </div>
                       {apt.observacao && (
                         <div className="flex items-start gap-1 text-xs text-muted-foreground">

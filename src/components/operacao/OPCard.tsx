@@ -3,7 +3,7 @@
  * Exibe informações detalhadas de uma OP em formato de card
  */
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { OrdemProducao, AssinaturaSupervisao, FASES_CONFIG, FaseProducao } from '@/types/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +21,8 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  ClipboardEdit
+  ClipboardEdit,
+  Beaker
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -29,6 +30,7 @@ import { useNavigate } from 'react-router-dom'
 import { ModalAssinaturaSupervisao } from './ModalAssinaturaSupervisao'
 import { toast } from 'sonner'
 import { salvarAssinatura } from '@/services/localStorage/assinatura.storage'
+import { obterTotaisPreparacao, converterMlParaLitros, formatarMl } from '@/utils/preparacao.utils'
 
 interface OPCardProps {
   op: OrdemProducao
@@ -91,7 +93,6 @@ function formatarNumero(num: number): string {
 export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
   const navigate = useNavigate()
   const progresso = calcularProgresso(op.quantidadeEmbaladaUnidades, op.quantidadeTeorica)
-  const temPerdas = op.perdas != null && !isNaN(op.perdas) && op.perdas > 0
 
   // Estado para controlar a rolagem dos botões
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -100,6 +101,30 @@ export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
 
   // Estado para controlar o modal de assinatura
   const [modalAssinaturaAberto, setModalAssinaturaAberto] = useState(false)
+
+  // Estado para armazenar os totais de preparação
+  const [totalPreparadoMl, setTotalPreparadoMl] = useState<number>(0)
+  const [totalPerdasMl, setTotalPerdasMl] = useState<number>(0)
+
+  // Carrega os totais de preparação do localStorage
+  useEffect(() => {
+    const totais = obterTotaisPreparacao(op.op)
+    if (totais) {
+      setTotalPreparadoMl(totais.totalPreparadoMl)
+      setTotalPerdasMl(totais.totalPerdasMl)
+    } else {
+      // Fallback: usa os valores da OP se não houver totais salvos
+      if (op.quantidadePreparadaMl) {
+        setTotalPreparadoMl(op.quantidadePreparadaMl)
+      }
+      if (op.perdasPreparacaoMl) {
+        setTotalPerdasMl(op.perdasPreparacaoMl)
+      }
+    }
+  }, [op.op, op.quantidadePreparadaMl, op.perdasPreparacaoMl])
+
+  // Calcula se tem perdas (usa totalPerdasMl em vez de op.perdas)
+  const temPerdas = totalPerdasMl > 0
 
   // Obtém configuração da fase para a borda colorida
   const config = FASES_CONFIG[op.fase]
@@ -123,6 +148,15 @@ export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
 
   // Define se deve ocultar a seção de Horas
   const deveOcultarHoras = op.fase === 'Planejado'
+
+  // Define as etapas que devem exibir a quantidade preparada
+  // Exibe a partir de Preparação (quando há apontamentos) até Concluído
+  const etapasComPreparacao: FaseProducao[] = ['Preparação', 'Envase', 'Esterilização', 'Embalagem', 'Concluído']
+  const deveExibirPreparacao = etapasComPreparacao.includes(op.fase) && totalPreparadoMl > 0
+
+  // Na etapa "Preparação", oculta a seção "Produzido" (pois mostra apenas "Preparado")
+  // Nas demais etapas, usa a lógica padrão de deveOcultarProducao
+  const deveOcultarProducaoNaPreparacao = op.fase === 'Preparação' || deveOcultarProducao
 
   // Configura o card como arrastável
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -318,8 +352,22 @@ export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
             <span className="font-semibold">{formatarNumero(op.quantidadeTeorica)}</span>
           </div>
 
-          {/* Seção "Produzido" - Oculta nas etapas: Planejado, Emissão de Dossiê, Pesagem */}
-          {!deveOcultarProducao && (
+          {/* Seção "Preparado" - Exibe nas etapas: Preparação, Envase, Esterilização, Embalagem, Concluído */}
+          {deveExibirPreparacao && (
+            <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
+              <div className="flex items-center gap-1 tab-prod:gap-0.5">
+                <Beaker className="h-4 w-4 text-blue-600 tab-prod:h-2.5 tab-prod:w-2.5" />
+                <span className="text-muted-foreground tab-prod:hidden">Preparado:</span>
+                <span className="text-muted-foreground tab-prod:inline hidden">Prep:</span>
+              </div>
+              <span className="font-semibold text-blue-700" title={`${formatarMl(totalPreparadoMl)} mL`}>
+                {converterMlParaLitros(totalPreparadoMl)} L
+              </span>
+            </div>
+          )}
+
+          {/* Seção "Produzido" - Oculta nas etapas: Planejado, Emissão de Dossiê, Pesagem, Preparação */}
+          {!deveOcultarProducaoNaPreparacao && (
             <div className="flex items-center justify-between text-sm tab-prod:text-[10px]">
               <div className="flex items-center gap-1 tab-prod:gap-0.5">
                 <CheckCircle2 className="h-4 w-4 text-green-600 tab-prod:h-2.5 tab-prod:w-2.5" />
@@ -340,7 +388,7 @@ export default function OPCard({ op, onAbrirApontamento }: OPCardProps) {
                 <span className="text-muted-foreground">Perdas:</span>
               </div>
               <span className="font-semibold text-orange-700">
-                {formatarNumero(op.perdas)}
+                {formatarMl(totalPerdasMl)} mL
               </span>
             </div>
           )}

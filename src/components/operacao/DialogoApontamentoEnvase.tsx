@@ -161,32 +161,54 @@ export default function DialogoApontamentoEnvase({
             )}
           </div>
 
-          {/* Quantidade de Perda */}
+          {/* Quantidade de Perda com conversão automática */}
           <div className="space-y-2">
-            <Label htmlFor="perdasPreparacao" className="flex items-center gap-2">
-              Quantidade de Perda (ML)
-            </Label>
-            <Input
-              id="perdasPreparacao"
-              type="number"
-              min="0"
-              step="1"
-              placeholder="Ex: 120 (ou 0 se não houver)"
-              value={perdasPreparacao}
-              onChange={(e) => {
-                setPerdasPreparacao(e.target.value)
-                if (erros.perdasPreparacao) setErros({ ...erros, perdasPreparacao: undefined })
-              }}
-              onKeyPress={handleKeyPress}
-              className={erros.perdasPreparacao ? 'border-red-500' : ''}
-            />
-            {erros.perdasPreparacao && (
-              <p className="text-sm text-red-500 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {erros.perdasPreparacao}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">Informe 0 (zero) se não houver perdas</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="perdasPreparacao" className="flex items-center gap-2">
+                  Quantidade de Perdas (mL)
+                </Label>
+                <Input
+                  id="perdasPreparacao"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Ex: 120 (ou 0 se não houver)"
+                  value={perdasPreparacao}
+                  onChange={(e) => {
+                    setPerdasPreparacao(e.target.value)
+                    if (erros.perdasPreparacao) setErros({ ...erros, perdasPreparacao: undefined })
+                  }}
+                  onKeyPress={handleKeyPress}
+                  className={erros.perdasPreparacao ? 'border-red-500' : ''}
+                />
+                {erros.perdasPreparacao && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {erros.perdasPreparacao}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="perdasPreparacaoLitros" className="flex items-center gap-2">
+                  Quantidade de Perdas (L)
+                </Label>
+                <Input
+                  id="perdasPreparacaoLitros"
+                  type="text"
+                  placeholder="0,00"
+                  value={perdasPreparacao && !isNaN(parseFloat(perdasPreparacao))
+                    ? (parseFloat(perdasPreparacao) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : ''}
+                  disabled
+                  readOnly
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Conversão automática
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
