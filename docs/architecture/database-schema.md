@@ -48,16 +48,21 @@ CREATE TYPE status_insumo_enum AS ENUM ('EM_ESTOQUE', 'EM_USO', 'ESGOTADO', 'BLO
 
 **Nota:** DDL completo disponível em arquivo separado. Resumo das principais tabelas:
 
-**tbsetor:** Setores produtivos (SPEP, SPPV, CPHD, Líquidos)
-**tblinha:** 37 linhas de produção do MVP
-**tbsku:** Produtos sincronizados do TOTVS
-**tbinsumo:** Insumos sincronizados do TOTVS
+**tbdepartamento:** Departamentos/setores produtivos (SPEP, SPPV, CPHD, Líquidos)
+**tblinhaproducao:** 37 linhas de produção do MVP
+**tbproduto:** Produtos (SKUs e insumos unificados)
 **tbloteinsumo:** Lotes de insumos recebidos
-**tbvelocidadenominal:** Velocidades por SKU por linha (com histórico)
+**tbvelocidadenominal:** Velocidades por SKU por linha ⚠️ **SEM histórico de vigências**
 **tbcodigoparada:** Book de paradas (hierarquia 5 níveis)
 **tbturno:** Turnos de trabalho
-**tbusuario:** Usuários (vinculado a auth.users)
+**tbusuario:** Usuários do sistema (com FK para tbfuncionario)
 **tbmetaoee:** Metas com histórico de vigência
+
+⚠️ **LIMITAÇÕES CRÍTICAS IDENTIFICADAS:**
+- `tbvelocidadenominal` não possui controle de vigências (`data_inicio_vigencia`, `data_fim_vigencia`)
+- Campos de auditoria com tipos incorretos (`updated_at`, `deleted_at` como INTEGER ao invés de TIMESTAMP)
+- Tabela `tbfuncionario` referenciada mas não documentada
+- Tabela de perfis referenciada mas não documentada
 
 ### 3.3. Tabelas Transacionais
 
