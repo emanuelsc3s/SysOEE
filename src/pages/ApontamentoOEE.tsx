@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Popover,
@@ -330,29 +331,31 @@ export default function ApontamentoOEE() {
               <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="start-time">
+                  <div className="flex flex-col gap-3">
+                    <Label htmlFor="start-time" className="px-1">
                       Hora Início
-                    </label>
-                    <input
-                      className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
+                    </Label>
+                    <Input
+                      type="time"
                       id="start-time"
-                      type="datetime-local"
+                      step="1"
                       value={horaInicio}
                       onChange={(e) => setHoraInicio(e.target.value)}
+                      className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="end-time">
+                  <div className="flex flex-col gap-3">
+                    <Label htmlFor="end-time" className="px-1">
                       Hora Fim
-                    </label>
-                    <input
-                      className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
+                    </Label>
+                    <Input
+                      type="time"
                       id="end-time"
-                      type="datetime-local"
+                      step="1"
                       value={horaFim}
                       onChange={(e) => setHoraFim(e.target.value)}
+                      className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                     />
                   </div>
 
