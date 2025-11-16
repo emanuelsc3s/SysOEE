@@ -10,7 +10,8 @@
       "Bash(xargs:*)",
       "Bash(awk:*)",
       "Bash(npm run build:*)",
-      "SlashCommand(/BMad:agents:po)"
+      "SlashCommand(/BMad:agents:po)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

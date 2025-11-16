@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
 import { buscarSKUPorCodigo, buscarSKUsPorSetor } from '@/data/mockSKUs'
@@ -142,6 +142,36 @@ export default function ApontamentoOEE() {
     })
   }
 
+  // ==================== Handlers do Header CRUD ====================
+  const handleVoltar = () => {
+    window.history.back()
+  }
+
+  const handleDashboard = () => {
+    // TODO: Navegar para o dashboard principal quando a rota estiver definida
+    toast({
+      title: 'Navegação',
+      description: 'Redirecionando para o dashboard...'
+    })
+  }
+
+  const handleSalvar = () => {
+    // TODO: Implementar lógica de salvamento geral do apontamento
+    toast({
+      title: 'Sucesso',
+      description: 'Dados do apontamento salvos com sucesso'
+    })
+  }
+
+  const handleExcluir = () => {
+    // TODO: Adicionar diálogo de confirmação antes de excluir
+    toast({
+      title: 'Atenção',
+      description: 'Funcionalidade de exclusão será implementada',
+      variant: 'destructive'
+    })
+  }
+
   return (
     <>
       {/* Cabeçalho da Aplicação */}
@@ -151,6 +181,61 @@ export default function ApontamentoOEE() {
         userRole="Administrador"
       />
 
+      {/* Header CRUD */}
+      <div className="bg-background-light dark:bg-background-dark border-b border-border-light dark:border-border-dark">
+        <div className="px-4 pr-2 py-6">
+          <div className="flex items-center justify-between">
+            {/* Seção Esquerda - Título e Subtítulo */}
+            <div>
+              <h1 className="text-2xl font-bold text-brand-primary">
+                Apontamento de OEE
+              </h1>
+              <p className="text-brand-text-secondary">
+                Registre produção, qualidade e paradas
+              </p>
+            </div>
+
+            {/* Seção Direita - Botões de Ação */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="border-gray-300 hover:bg-gray-100 min-w-[120px] justify-center"
+                onClick={handleVoltar}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar
+              </Button>
+
+              <Button
+                variant="outline"
+                className="border-gray-300 hover:bg-gray-100 min-w-[120px] justify-center"
+                onClick={handleDashboard}
+              >
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+
+              <Button
+                variant="destructive"
+                className="min-w-[120px] justify-center"
+                onClick={handleExcluir}
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Excluir
+              </Button>
+
+              <Button
+                className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                onClick={handleSalvar}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Conteúdo da Página */}
       <div className="min-h-screen flex gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
         {/* Conteúdo Principal */}
@@ -159,8 +244,6 @@ export default function ApontamentoOEE() {
           <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
           {/* Dashboard OEE - Cabeçalho com Filtros */}
           <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
-            <h1 className="font-display text-2xl font-bold text-primary mb-4">Dashboard OEE</h1>
-
             <div className="flex flex-col gap-y-4">
               {/* Primeira linha: Data, Turno, Linha */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
@@ -368,14 +451,16 @@ export default function ApontamentoOEE() {
                     />
                   </div>
 
-                  <button
-                    className="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
-                    type="button"
-                    onClick={handleSalvarProducao}
-                  >
-                    <Save className="h-5 w-5" />
-                    Salvar Dados de Produção
-                  </button>
+                  <div className="flex justify-end mt-2">
+                    <button
+                      className="bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center gap-2"
+                      type="button"
+                      onClick={handleSalvarProducao}
+                    >
+                      <Save className="h-5 w-5" />
+                      Apontar
+                    </button>
+                  </div>
                 </div>
               </section>
 
