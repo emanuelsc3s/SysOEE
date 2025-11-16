@@ -6,6 +6,7 @@ import OperacaoPorEquipamento from './pages/OperacaoPorEquipamento'
 import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
 import ArmazemSaldo from './pages/ArmazemSaldo'
 import ColaboradorPerfil from './pages/ColaboradorPerfil'
+import LinhaProducaoConsulta from './pages/LinhaProducaoConsulta'
 import Placeholder from './pages/Placeholder'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -55,25 +56,18 @@ function App() {
             />
           } 
         />
-        <Route 
-          path="/paradas" 
+        <Route
+          path="/paradas"
           element={
-            <Placeholder 
-              title="Paradas" 
+            <Placeholder
+              title="Paradas"
               description="Análise de paradas e gerenciamento de Books de Paradas por linha."
             />
-          } 
+          }
         />
-        <Route 
-          path="/equipamentos" 
-          element={
-            <Placeholder 
-              title="Equipamentos" 
-              description="Cadastro e configuração de linhas de produção e setores."
-            />
-          } 
-        />
-        <Route 
+        {/* Página de Linhas de Produção - Consulta */}
+        <Route path="/equipamentos" element={<LinhaProducaoConsulta />} />
+        <Route
           path="/turnos" 
           element={
             <Placeholder 
