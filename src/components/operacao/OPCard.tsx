@@ -23,7 +23,7 @@ import {
   ChevronRight,
   ClipboardEdit,
   Beaker,
-  Flask
+  TestTube
 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -530,7 +530,7 @@ export default function OPCard({ op, onAbrirApontamento, onAbrirParadas, onAbrir
                   className="flex flex-col items-center justify-center h-14 gap-1 border-primary hover:bg-primary/10 min-w-[80px] tab-prod:h-12 tab-prod:gap-0.5 tab-prod:w-full tab-prod:min-w-0"
                   size="sm"
                 >
-                  <Flask className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
+                  <TestTube className="h-4 w-4 text-primary tab-prod:h-3 tab-prod:w-3" />
                   <span className="text-[10px] tab-prod:text-[9px] font-medium whitespace-nowrap">Amostra</span>
                 </Button>
               )}
