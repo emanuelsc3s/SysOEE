@@ -7,7 +7,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon } from 'lucide-react'
+import { ptBR } from 'date-fns/locale'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
 import { buscarSKUPorCodigo, buscarSKUsPorSetor } from '@/data/mockSKUs'
 import { Turno } from '@/types/operacao'
@@ -28,6 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -39,7 +48,8 @@ export default function ApontamentoOEE() {
   const [formularioAtivo, setFormularioAtivo] = useState<FormularioAtivo>('production-form')
 
   // ==================== Estado do Cabeçalho ====================
-  const [data, setData] = useState<string>(new Date().toISOString().split('T')[0])
+  const [data, setData] = useState<Date | undefined>(new Date())
+  const [openDatePicker, setOpenDatePicker] = useState(false)
   const [turno, setTurno] = useState<Turno>('1º Turno')
   const [linhaId, setLinhaId] = useState<string>('')
   const [skuCodigo, setSkuCodigo] = useState<string>('')
@@ -143,14 +153,34 @@ export default function ApontamentoOEE() {
             <div className="flex flex-col gap-y-4">
               {/* Primeira linha: Data, Turno, Linha */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
-                <div>
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Data</span>
-                  <input
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    type="date"
-                    value={data}
-                    onChange={(e) => setData(e.target.value)}
-                  />
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="date" className="text-sm font-medium text-muted-foreground">
+                    Data
+                  </Label>
+                  <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        id="date"
+                        className="w-full justify-between font-normal"
+                      >
+                        {data ? data.toLocaleDateString('pt-BR') : "Selecione a data"}
+                        <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={data}
+                        captionLayout="dropdown"
+                        onSelect={(date) => {
+                          setData(date)
+                          setOpenDatePicker(false)
+                        }}
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div>
