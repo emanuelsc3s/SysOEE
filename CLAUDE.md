@@ -140,6 +140,9 @@ Ver `docs/project/09-Validacao-Tecnica-SicFar.md` para especificações completa
 
 ## Princípios de Desenvolvimento
 
+### Criação de Arquivos e Documentação
+- **NUNCA** crie arquivos de documentação (*.md, README, etc.) a menos que **explicitamente solicitado** pelo usuário
+
 ### Integridade de Dados (ALCOA+)
 - **Atribuível**: Todo registro deve ter autor e timestamp
 - **Legível**: Clareza nas informações
