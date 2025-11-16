@@ -127,7 +127,7 @@ export default function ApontamentoOEE() {
       <div className="flex-grow flex flex-col max-w-[calc(100%-20rem)] lg:max-w-[calc(100%-24rem)] xl:max-w-[calc(100%-28rem)]">
         {/* Header Sticky */}
         <header className="sticky top-0 z-10 bg-background-light dark:bg-background-dark px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8">
-          <div className="bg-surface-light dark:bg-surface-dark p-4 sm:p-6 shadow-sm border-b border-border-light dark:border-border-dark">
+          <div className="bg-white dark:bg-white p-4 sm:p-6 shadow-sm border-b border-border-light dark:border-border-dark">
             <h1 className="font-display text-2xl font-bold text-primary mb-4">Dashboard OEE</h1>
 
             <div className="flex flex-col gap-y-4">
@@ -136,7 +136,7 @@ export default function ApontamentoOEE() {
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground">Data</span>
                   <input
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="date"
                     value={data}
                     onChange={(e) => setData(e.target.value)}
@@ -146,7 +146,7 @@ export default function ApontamentoOEE() {
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground">Turno</span>
                   <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={turno}
                     onChange={(e) => setTurno(e.target.value as Turno)}
                   >
@@ -159,7 +159,7 @@ export default function ApontamentoOEE() {
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground">Linha de Produção</span>
                   <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={linhaId}
                     onChange={(e) => setLinhaId(e.target.value)}
                   >
@@ -193,7 +193,7 @@ export default function ApontamentoOEE() {
                 <div className="md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground">SKU</span>
                   <input
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
                     value={skuCodigo}
                     onChange={(e) => setSkuCodigo(e.target.value)}
@@ -204,7 +204,7 @@ export default function ApontamentoOEE() {
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground">Ordem de Produção</span>
                   <input
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
                     value={ordemProducao}
                     onChange={(e) => setOrdemProducao(e.target.value)}
@@ -214,7 +214,7 @@ export default function ApontamentoOEE() {
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground">Lote</span>
                   <input
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
                     value={lote}
                     onChange={(e) => setLote(e.target.value)}
@@ -224,7 +224,7 @@ export default function ApontamentoOEE() {
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground">Dossie</span>
                   <input
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm"
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
                     value={dossie}
                     onChange={(e) => setDossie(e.target.value)}
@@ -240,7 +240,7 @@ export default function ApontamentoOEE() {
           {/* Cards de Seleção de Formulário */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <div
-              className={`bg-surface-light dark:bg-surface-dark p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+              className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
                 formularioAtivo === 'production-form'
                   ? 'border-primary ring-1 ring-primary'
                   : 'border-border-light dark:border-border-dark'
@@ -254,7 +254,7 @@ export default function ApontamentoOEE() {
             </div>
 
             <div
-              className={`bg-surface-light dark:bg-surface-dark p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+              className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
                 formularioAtivo === 'quality-form'
                   ? 'border-primary ring-1 ring-primary'
                   : 'border-border-light dark:border-border-dark'
@@ -268,7 +268,7 @@ export default function ApontamentoOEE() {
             </div>
 
             <div
-              className={`bg-surface-light dark:bg-surface-dark p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+              className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
                 formularioAtivo === 'downtime-form'
                   ? 'border-primary ring-1 ring-primary'
                   : 'border-border-light dark:border-border-dark'
@@ -285,7 +285,7 @@ export default function ApontamentoOEE() {
           {/* Formulário de Produção */}
           {formularioAtivo === 'production-form' && (
             <div className="space-y-6">
-              <section className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+              <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
                 <div className="space-y-4">
                   <div>
@@ -339,7 +339,7 @@ export default function ApontamentoOEE() {
                 </div>
               </section>
 
-              <section className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+              <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Produção</h2>
                 <div className="overflow-x-auto">
                   <div className="max-h-60 overflow-y-auto">
@@ -558,7 +558,7 @@ export default function ApontamentoOEE() {
 
       {/* Sidebar Direita - OEE Real */}
       <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 p-4 sm:p-6 lg:p-8 pr-8 bg-background-light dark:bg-background-dark">
-        <aside className="w-full bg-surface-light dark:bg-surface-dark p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
+        <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
           <div className="sticky top-6 w-full">
             <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
               OEE Real
