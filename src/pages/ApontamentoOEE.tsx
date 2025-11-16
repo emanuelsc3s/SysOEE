@@ -19,6 +19,15 @@ import {
 } from '@/services/localStorage/apontamento-oee.storage'
 import { CalculoOEE } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -146,46 +155,51 @@ export default function ApontamentoOEE() {
 
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
-                  <select
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={turno}
-                    onChange={(e) => setTurno(e.target.value as Turno)}
-                  >
-                    <option>1º Turno</option>
-                    <option>2º Turno</option>
-                    <option>3º Turno</option>
-                  </select>
+                  <Select value={turno} onValueChange={(value) => setTurno(value as Turno)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o turno" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1º Turno">1º Turno</SelectItem>
+                      <SelectItem value="2º Turno">2º Turno</SelectItem>
+                      <SelectItem value="3º Turno">3º Turno</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
-                  <select
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={linhaId}
-                    onChange={(e) => setLinhaId(e.target.value)}
-                  >
-                    <option value="">Selecione...</option>
-                    <optgroup label="SPEP">
-                      {LINHAS_PRODUCAO.filter(l => l.setor === 'SPEP').map(linha => (
-                        <option key={linha.id} value={linha.id}>{linha.nome}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="SPPV">
-                      {LINHAS_PRODUCAO.filter(l => l.setor === 'SPPV').map(linha => (
-                        <option key={linha.id} value={linha.id}>{linha.nome}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Líquidos">
-                      {LINHAS_PRODUCAO.filter(l => l.setor === 'Líquidos').map(linha => (
-                        <option key={linha.id} value={linha.id}>{linha.nome}</option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="CPHD">
-                      {LINHAS_PRODUCAO.filter(l => l.setor === 'CPHD').map(linha => (
-                        <option key={linha.id} value={linha.id}>{linha.nome}</option>
-                      ))}
-                    </optgroup>
-                  </select>
+                  <Select value={linhaId} onValueChange={setLinhaId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>SPEP</SelectLabel>
+                        {LINHAS_PRODUCAO.filter(l => l.setor === 'SPEP').map(linha => (
+                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>SPPV</SelectLabel>
+                        {LINHAS_PRODUCAO.filter(l => l.setor === 'SPPV').map(linha => (
+                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>Líquidos</SelectLabel>
+                        {LINHAS_PRODUCAO.filter(l => l.setor === 'Líquidos').map(linha => (
+                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel>CPHD</SelectLabel>
+                        {LINHAS_PRODUCAO.filter(l => l.setor === 'CPHD').map(linha => (
+                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -463,16 +477,16 @@ export default function ApontamentoOEE() {
                     <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="downtime-type">
                       Tipo
                     </label>
-                    <select
-                      className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                      id="downtime-type"
-                      value={tipoParada}
-                      onChange={(e) => setTipoParada(e.target.value)}
-                    >
-                      <option>Planejado</option>
-                      <option>Não Planejado</option>
-                      <option>Pequena Parada</option>
-                    </select>
+                    <Select value={tipoParada} onValueChange={setTipoParada}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Planejado">Planejado</SelectItem>
+                        <SelectItem value="Não Planejado">Não Planejado</SelectItem>
+                        <SelectItem value="Pequena Parada">Pequena Parada</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="downtime-duration">
@@ -493,51 +507,51 @@ export default function ApontamentoOEE() {
                 </p>
 
                 <div className="space-y-2">
-                  <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                    value={motivoNivel1}
-                    onChange={(e) => setMotivoNivel1(e.target.value)}
-                  >
-                    <option value="">Nível 1: Área</option>
-                    <option>Máquina</option>
-                    <option>Processo</option>
-                  </select>
+                  <Select value={motivoNivel1} onValueChange={setMotivoNivel1}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Nível 1: Área" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Máquina">Máquina</SelectItem>
+                      <SelectItem value="Processo">Processo</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                  <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                    disabled={!motivoNivel1}
-                    value={motivoNivel2}
-                    onChange={(e) => setMotivoNivel2(e.target.value)}
-                  >
-                    <option value="">Nível 2: Componente</option>
-                  </select>
+                  <Select value={motivoNivel2} onValueChange={setMotivoNivel2} disabled={!motivoNivel1}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Nível 2: Componente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Opções serão adicionadas dinamicamente */}
+                    </SelectContent>
+                  </Select>
 
-                  <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                    disabled={!motivoNivel2}
-                    value={motivoNivel3}
-                    onChange={(e) => setMotivoNivel3(e.target.value)}
-                  >
-                    <option value="">Nível 3: Sub-componente</option>
-                  </select>
+                  <Select value={motivoNivel3} onValueChange={setMotivoNivel3} disabled={!motivoNivel2}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Nível 3: Sub-componente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Opções serão adicionadas dinamicamente */}
+                    </SelectContent>
+                  </Select>
 
-                  <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                    disabled={!motivoNivel4}
-                    value={motivoNivel4}
-                    onChange={(e) => setMotivoNivel4(e.target.value)}
-                  >
-                    <option value="">Nível 4: Tipo de Problema</option>
-                  </select>
+                  <Select value={motivoNivel4} onValueChange={setMotivoNivel4} disabled={!motivoNivel3}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Nível 4: Tipo de Problema" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Opções serão adicionadas dinamicamente */}
+                    </SelectContent>
+                  </Select>
 
-                  <select
-                    className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                    disabled={!motivoNivel4}
-                    value={motivoNivel5}
-                    onChange={(e) => setMotivoNivel5(e.target.value)}
-                  >
-                    <option value="">Nível 5: Causa Específica</option>
-                  </select>
+                  <Select value={motivoNivel5} onValueChange={setMotivoNivel5} disabled={!motivoNivel4}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Nível 5: Causa Específica" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Opções serão adicionadas dinamicamente */}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <button
