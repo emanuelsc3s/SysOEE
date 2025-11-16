@@ -38,6 +38,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { AppHeader } from "@/components/layout/AppHeader"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -142,11 +143,20 @@ export default function ApontamentoOEE() {
   }
 
   return (
-    <div className="min-h-screen flex gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
-      {/* Conteúdo Principal */}
-      <div className="flex-grow flex flex-col">
-        {/* Main Content */}
-        <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
+    <>
+      {/* Cabeçalho da Aplicação */}
+      <AppHeader
+        title="SysOEE - Sistema de Monitoramento OEE"
+        userName="Emanuel Silva"
+        userRole="Administrador"
+      />
+
+      {/* Conteúdo da Página */}
+      <div className="min-h-screen flex gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
+        {/* Conteúdo Principal */}
+        <div className="flex-grow flex flex-col">
+          {/* Main Content */}
+          <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
           {/* Dashboard OEE - Cabeçalho com Filtros */}
           <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
             <h1 className="font-display text-2xl font-bold text-primary mb-4">Dashboard OEE</h1>
@@ -331,32 +341,17 @@ export default function ApontamentoOEE() {
               <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-3">
-                    <Label htmlFor="start-time" className="px-1">
-                      Hora Início
-                    </Label>
-                    <Input
-                      type="time"
-                      id="start-time"
-                      step="1"
-                      value={horaInicio}
-                      onChange={(e) => setHoraInicio(e.target.value)}
-                      className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    />
-                  </div>
+                  {/* Container flex para inputs de tempo na mesma linha */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="start-time" className="px-1">Hora Início</Label>
+                      <Input type="time" id="start-time" step="60" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" />
+                    </div>
 
-                  <div className="flex flex-col gap-3">
-                    <Label htmlFor="end-time" className="px-1">
-                      Hora Fim
-                    </Label>
-                    <Input
-                      type="time"
-                      id="end-time"
-                      step="1"
-                      value={horaFim}
-                      onChange={(e) => setHoraFim(e.target.value)}
-                      className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    />
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="end-time" className="px-1">Hora Fim</Label>
+                      <Input type="time" id="end-time" step="60" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" />
+                    </div>
                   </div>
 
                   <div>
@@ -364,7 +359,7 @@ export default function ApontamentoOEE() {
                       Quantidade Produzida
                     </label>
                     <input
-                      className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       id="quantity-produced"
                       type="number"
                       placeholder="ex: 10000"
@@ -709,6 +704,7 @@ export default function ApontamentoOEE() {
           </div>
         </aside>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

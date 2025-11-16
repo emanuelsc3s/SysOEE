@@ -903,22 +903,8 @@ export function ModalApontamentoParada({
 
             {/* Hora de Finalização */}
             <div className="space-y-2">
-              <Label htmlFor="horaFinalizacao">
-                Hora de Finalização *
-              </Label>
-              <Input
-                id="horaFinalizacao"
-                type="time"
-                step="1"
-                value={horaFinalizacao}
-                onChange={(e) => {
-                  setHoraFinalizacao(e.target.value)
-                  if (errosFinalizacao.horaFinalizacao) {
-                    setErrosFinalizacao({ ...errosFinalizacao, horaFinalizacao: undefined })
-                  }
-                }}
-                className={errosFinalizacao.horaFinalizacao ? 'border-red-500' : ''}
-              />
+              <Label htmlFor="horaFinalizacao">Hora de Finalização *</Label>
+              <Input id="horaFinalizacao" type="time" step="60" value={horaFinalizacao} onChange={(e) => { setHoraFinalizacao(e.target.value); if (errosFinalizacao.horaFinalizacao) { setErrosFinalizacao({ ...errosFinalizacao, horaFinalizacao: undefined }) } }} className={errosFinalizacao.horaFinalizacao ? 'border-red-500' : ''} />
               {errosFinalizacao.horaFinalizacao && (
                 <p className="text-sm text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
