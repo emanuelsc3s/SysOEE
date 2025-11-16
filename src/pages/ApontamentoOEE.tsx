@@ -122,19 +122,20 @@ export default function ApontamentoOEE() {
   }
 
   return (
-    <div className="min-h-screen flex text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
+    <div className="min-h-screen flex gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
       {/* Conteúdo Principal */}
-      <div className="flex-grow flex flex-col max-w-[calc(100%-20rem)] lg:max-w-[calc(100%-24rem)] xl:max-w-[calc(100%-28rem)]">
-        {/* Header Sticky */}
-        <header className="sticky top-0 z-10 bg-background-light dark:bg-background-dark px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8">
-          <div className="bg-white dark:bg-white p-4 sm:p-6 shadow-sm border-b border-border-light dark:border-border-dark">
+      <div className="flex-grow flex flex-col">
+        {/* Main Content */}
+        <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
+          {/* Dashboard OEE - Cabeçalho com Filtros */}
+          <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
             <h1 className="font-display text-2xl font-bold text-primary mb-4">Dashboard OEE</h1>
 
             <div className="flex flex-col gap-y-4">
               {/* Primeira linha: Data, Turno, Linha */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground">Data</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Data</span>
                   <input
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="date"
@@ -144,7 +145,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground">Turno</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
                   <select
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={turno}
@@ -157,7 +158,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground">Linha de Produção</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
                   <select
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     value={linhaId}
@@ -191,7 +192,7 @@ export default function ApontamentoOEE() {
               {/* Segunda linha: SKU, OP, Lote, Dossie */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
                 <div className="md:col-span-2">
-                  <span className="block text-sm font-medium text-muted-foreground">SKU</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">SKU</span>
                   <input
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
@@ -202,7 +203,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground">Ordem de Produção</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Ordem de Produção</span>
                   <input
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
@@ -212,7 +213,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground">Lote</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Lote</span>
                   <input
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
@@ -222,7 +223,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground">Dossie</span>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Dossie</span>
                   <input
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     type="text"
@@ -233,10 +234,7 @@ export default function ApontamentoOEE() {
               </div>
             </div>
           </div>
-        </header>
 
-        {/* Main Content */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8 bg-background-light dark:bg-background-dark">
           {/* Cards de Seleção de Formulário */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <div
@@ -343,13 +341,13 @@ export default function ApontamentoOEE() {
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Produção</h2>
                 <div className="overflow-x-auto">
                   <div className="max-h-60 overflow-y-auto">
-                    <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
+                    <table className="table-auto text-sm text-left text-text-primary-light dark:text-text-primary-dark">
                       <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
                         <tr>
-                          <th className="px-3 py-2 font-medium" scope="col">Data/Hora</th>
-                          <th className="px-3 py-2 font-medium" scope="col">Início</th>
-                          <th className="px-3 py-2 font-medium" scope="col">Fim</th>
-                          <th className="px-3 py-2 font-medium text-right" scope="col">Qtd. Prod.</th>
+                          <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
+                          <th className="px-1 py-2 font-medium" scope="col">Início</th>
+                          <th className="px-1 py-2 font-medium" scope="col">Fim</th>
+                          <th className="px-1 py-2 font-medium text-right" scope="col">Qtd. Prod.</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -360,10 +358,10 @@ export default function ApontamentoOEE() {
                               index < historicoProducao.length - 1 ? 'border-b border-border-light dark:border-border-dark' : ''
                             }`}
                           >
-                            <td className="px-3 py-2 whitespace-nowrap">{registro.dataHora}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{registro.inicio}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{registro.fim}</td>
-                            <td className="px-3 py-2 text-right">{registro.qtdProd}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.dataHora}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.inicio}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.fim}</td>
+                            <td className="px-1 py-2 text-right whitespace-nowrap">{registro.qtdProd}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -557,7 +555,7 @@ export default function ApontamentoOEE() {
       </div>
 
       {/* Sidebar Direita - OEE Real */}
-      <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 p-4 sm:p-6 lg:p-8 pr-8 bg-background-light dark:bg-background-dark">
+      <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark">
         <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
           <div className="sticky top-6 w-full">
             <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
