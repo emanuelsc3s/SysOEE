@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html class="" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard OEE</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Inter:wght@700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<script>tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#242f65", "background-light": "#f6f6f8", "background-dark": "#14161e", "surface-light": "#ffffff", "surface-dark": "#1e1e1e", "border-light": "#e0e0e0", "border-dark": "#333333", "text-primary-light": "#1f2937", "text-primary-dark": "#e5e7eb", "text-secondary-light": "#6b7280", "text-secondary-dark": "#9ca3af"}, fontFamily: {display: "Inter", sans: ["Inter", "sans-serif"]}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}}}};</script>
+<style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark transition-colors duration-300">
+<div class="min-h-screen flex">
+<div class="flex-grow flex flex-col max-w-[calc(100%-20rem)] lg:max-w-[calc(100%-24rem)] xl:max-w-[calc(100%-28rem)]">
+<header class="sticky top-0 z-10 bg-background-light dark:bg-background-dark px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8">
+<div class="bg-surface-light dark:bg-surface-dark p-4 sm:p-6 shadow-sm border-b border-border-light dark:border-border-dark">
+<h1 class="font-display text-2xl font-bold text-primary mb-4">Dashboard OEE</h1>
+<div class="flex flex-col gap-y-4">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
+<div>
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Data</span>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="date" name="date" type="date" value="2023-10-27"/>
+</div>
+<div>
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Turno</span>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="shift" name="shift">
+<option>Turno 1</option>
+<option>Turno 2</option>
+<option>Turno 3</option>
+</select>
+</div>
+<div>
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Linha de Produção</span>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="production-line" name="production-line">
+<optgroup label="SPEP">
+<option>Linha 1</option>
+<option>Linha 2</option>
+</optgroup>
+<optgroup label="SPPV">
+<option>Linha 10</option>
+<option>Linha 11</option>
+</optgroup>
+<optgroup label="Líquidos">
+<option>Linha 25</option>
+<option>Linha 26</option>
+</optgroup>
+<optgroup label="CPHD">
+<option>Linha 35</option>
+<option>Linha 36</option>
+<option>Linha 37</option>
+</optgroup>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
+<div class="md:col-span-2">
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">SKU</span>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="product-sku" name="product-sku" type="text"/>
+</div>
+<div>
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Ordem de Produção</span>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="production-order" name="production-order" type="text"/>
+</div>
+<div>
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Lote</span>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="batch" name="batch" type="text"/>
+</div>
+<div>
+<span class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Dossie</span>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary px-2 py-1 text-sm" id="dossie" name="dossie" type="text"/>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow p-4 sm:p-6 lg:p-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark cursor-pointer hover:shadow-md transition-shadow" onclick="showForm('production-form')">
+<h3 class="font-display text-lg font-bold text-primary mb-2">Produção</h3>
+<p class="text-text-secondary-light dark:text-text-secondary-dark text-sm">Registro da quantidade produzida e tempos de ciclo.</p>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark cursor-pointer hover:shadow-md transition-shadow" onclick="showForm('quality-form')">
+<h3 class="font-display text-lg font-bold text-primary mb-2">Qualidade</h3>
+<p class="text-text-secondary-light dark:text-text-secondary-dark text-sm">Registro de perdas e retrabalhos.</p>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark p-4 rounded-lg shadow-sm border border-border-light dark:border-border-dark cursor-pointer hover:shadow-md transition-shadow" onclick="showForm('downtime-form')">
+<h3 class="font-display text-lg font-bold text-primary mb-2">Tempo de Parada</h3>
+<p class="text-text-secondary-light dark:text-text-secondary-dark text-sm">Registro de interrupções e suas causas.</p>
+</div>
+</div>
+<div class="form-section active space-y-6" id="production-form">
+<section class="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+<h2 class="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="start-time">Hora Início</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="start-time" name="start-time" type="datetime-local"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="end-time">Hora Fim</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="end-time" name="end-time" type="datetime-local"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="quantity-produced">Quantidade Produzida</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="quantity-produced" name="quantity-produced" placeholder="ex: 10000" type="number"/>
+</div>
+<button class="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined">save</span>
+              Salvar Dados de Produção
+            </button>
+</div>
+</section>
+<section class="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+<h2 class="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Produção</h2>
+<div class="overflow-x-auto">
+<div class="max-h-60 overflow-y-auto">
+<table class="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
+<thead class="text-xs text-text-secondary-light dark:text-text-secondary-dark uppercase bg-background-light dark:bg-background-dark sticky top-0">
+<tr>
+<th class="px-3 py-2 font-medium" scope="col">Data/Hora</th>
+<th class="px-3 py-2 font-medium" scope="col">Início</th>
+<th class="px-3 py-2 font-medium" scope="col">Fim</th>
+<th class="px-3 py-2 font-medium text-right" scope="col">Qtd. Prod.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-27 08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">12:00</td>
+<td class="px-3 py-2 text-right">15.000</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-27 13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">17:00</td>
+<td class="px-3 py-2 text-right">14.500</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-26 08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">12:00</td>
+<td class="px-3 py-2 text-right">14.800</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-26 13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">17:00</td>
+<td class="px-3 py-2 text-right">15.200</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-25 08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">12:00</td>
+<td class="px-3 py-2 text-right">14.900</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-25 13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">17:00</td>
+<td class="px-3 py-2 text-right">15.100</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-24 08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">12:00</td>
+<td class="px-3 py-2 text-right">14.700</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-24 13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">13:00</td>
+<td class="px-3 py-2 whitespace-nowrap">17:00</td>
+<td class="px-3 py-2 text-right">15.300</td>
+</tr>
+<tr class="bg-surface-light dark:bg-surface-dark">
+<td class="px-3 py-2 whitespace-nowrap">2023-10-23 08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">08:00</td>
+<td class="px-3 py-2 whitespace-nowrap">12:00</td>
+<td class="px-3 py-2 text-right">14.600</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</div>
+<div class="form-section hidden" id="quality-form">
+<section class="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+<h2 class="font-display text-xl font-bold text-primary mb-4">Registro de Qualidade</h2>
+<div class="space-y-6">
+<div>
+<h3 class="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-2 border-b border-border-light dark:border-border-dark pb-2">Perdas</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="loss-quantity">Quantidade</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="loss-quantity" name="loss-quantity" type="number"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="loss-reason">Motivo</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="loss-reason" name="loss-reason" type="text"/>
+</div>
+</div>
+</div>
+<div>
+<h3 class="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-2 border-b border-border-light dark:border-border-dark pb-2">Retrabalho</h3>
+<div class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="rework-quantity">Quantidade</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="rework-quantity" name="rework-quantity" type="number"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="rework-reason">Motivo</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="rework-reason" name="rework-reason" type="text"/>
+</div>
+</div>
+</div>
+<button class="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined">add_task</span>
+              Adicionar Registro de Qualidade
+            </button>
+</div>
+</section>
+</div>
+<div class="form-section hidden" id="downtime-form">
+<section class="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+<h2 class="font-display text-xl font-bold text-primary mb-4">Registro de Tempo de Parada</h2>
+<div class="space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="downtime-type">Tipo</label>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="downtime-type" name="downtime-type">
+<option>Planejado</option>
+<option>Não Planejado</option>
+<option>Pequena Parada</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-1" for="downtime-duration">Duração (min)</label>
+<input class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" id="downtime-duration" name="downtime-duration" type="number"/>
+</div>
+</div>
+<p class="text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">Motivo (hierarquia de 5 níveis)</p>
+<div class="space-y-2">
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" name="reason-l1">
+<option>Nível 1: Área</option>
+<option>Máquina</option>
+<option>Processo</option>
+</select>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" disabled="" name="reason-l2">
+<option>Nível 2: Componente</option>
+</select>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" disabled="" name="reason-l3">
+<option>Nível 3: Sub-componente</option>
+</select>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" disabled="" name="reason-l4">
+<option>Nível 4: Tipo de Problema</option>
+</select>
+<select class="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary" disabled="" name="reason-l5">
+<option>Nível 5: Causa Específica</option>
+</select>
+</div>
+<button class="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined">timer</span>
+              Registrar Tempo de Parada
+            </button>
+</div>
+</section>
+</div>
+</main>
+</div>
+<div class="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 p-4 sm:p-6 lg:p-8 pr-8">
+<aside class="w-full bg-surface-light dark:bg-surface-dark p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
+<div class="sticky top-6 w-full">
+<h2 class="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">OEE Real</h2>
+<div class="flex flex-col items-center gap-8 mb-8">
+<div class="relative flex-shrink-0">
+<svg class="w-64 h-64 transform -rotate-90" viewBox="0 0 120 120">
+<circle class="stroke-gray-200 dark:stroke-gray-700" cx="60" cy="60" fill="none" r="54" stroke-width="12"></circle>
+<circle class="stroke-primary" cx="60" cy="60" fill="none" r="54" stroke-dasharray="339.292" stroke-dashoffset="332.22" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="text-5xl font-bold text-text-primary-light dark:text-text-primary-dark">2,08%</span>
+</div>
+</div>
+<div class="w-full space-y-4">
+<div>
+<div class="flex justify-between items-center text-sm mb-1">
+<span class="font-semibold text-base">3,40%</span>
+<span class="text-text-secondary-light dark:text-text-secondary-dark">Disponibilidade</span>
+</div>
+<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+<div class="bg-primary h-2 rounded-full" style="width: 3.4%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center text-sm mb-1">
+<span class="font-semibold text-base">61,63%</span>
+<span class="text-text-secondary-light dark:text-text-secondary-dark">Produtividade</span>
+</div>
+<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+<div class="bg-primary h-2 rounded-full" style="width: 61.63%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center text-sm mb-1">
+<span class="font-semibold text-base">99,40%</span>
+<span class="text-text-secondary-light dark:text-text-secondary-dark">Qualidade</span>
+</div>
+<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+<div class="bg-primary h-2 rounded-full" style="width: 99.4%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="w-full border-t border-border-light dark:border-border-dark pt-6 space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-sm text-text-secondary-light dark:text-text-secondary-dark">Horas Restantes de Apontamento de Produção</span>
+<span class="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">6:30</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-text-secondary-light dark:text-text-secondary-dark">Total de Horas Paradas</span>
+<span class="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">1:15</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-text-secondary-light dark:text-text-secondary-dark">Total de Perdas de Qualidade</span>
+<span class="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">150 un</span>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Dashboard OEE Inicializado');
+      // Form section functionality
+      window.showForm = function(formId) {
+        const formSections = document.querySelectorAll('.form-section');
+        formSections.forEach(section => {
+          section.classList.add('hidden');
+        });
+        const activeForm = document.getElementById(formId);
+        if (activeForm) {
+          activeForm.classList.remove('hidden');
+        }
+        // Optional: Highlight the active card
+        const overviewCards = document.querySelectorAll('.grid > div[onclick]');
+        overviewCards.forEach(card => {
+            card.classList.remove('border-primary', 'ring-1', 'ring-primary'); // Remove active styling
+            card.classList.add('border-border-light', 'dark:border-border-dark');
+        });
+        const clickedCard = document.querySelector(`div[onclick="showForm('${formId}')"]`);
+        if (clickedCard) {
+            clickedCard.classList.add('border-primary', 'ring-1', 'ring-primary'); // Add active styling
+            clickedCard.classList.remove('border-border-light', 'dark:border-border-dark');
+        }
+      };
+      // Set initial active form
+      showForm('production-form');
+    });
+  </script>
+</body></html>

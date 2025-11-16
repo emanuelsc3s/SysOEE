@@ -37,7 +37,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { buscarLinhasProducao } from '@/services/api/linhaproducao.api'
-import { LinhaProducao } from '@/types/linhaproducao'
 
 /**
  * Interface para filtros aplicados
@@ -136,7 +135,7 @@ export default function LinhaProducaoConsulta() {
     const params = new URLSearchParams(searchParams)
     params.delete('page')
     setSearchParams(params, { replace: true })
-  }, [searchTerm, appliedFilters])
+  }, [searchTerm, appliedFilters, searchParams, setSearchParams])
 
   // Atualizar URL quando página mudar
   const handlePageChange = (page: number) => {

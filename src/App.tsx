@@ -7,6 +7,7 @@ import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
 import ArmazemSaldo from './pages/ArmazemSaldo'
 import ColaboradorPerfil from './pages/ColaboradorPerfil'
 import LinhaProducaoConsulta from './pages/LinhaProducaoConsulta'
+import ApontamentoOEE from './pages/ApontamentoOEE'
 import Placeholder from './pages/Placeholder'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -33,6 +34,9 @@ function App() {
 
         {/* Página de Detalhes de OP */}
         <Route path="/operacao/:numeroOP" element={<OperacaoDetalheOP />} />
+
+        {/* Página de Apontamento de OEE */}
+        <Route path="/apontamento-oee" element={<ApontamentoOEE />} />
 
         {/* Página de Perfil do Colaborador */}
         <Route path="/colaborador/:id" element={<ColaboradorPerfil />} />

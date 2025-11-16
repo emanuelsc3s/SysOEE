@@ -77,7 +77,19 @@ export default {
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
-  			}
+  			},
+  			// Cores customizadas do HTML de referência
+  			'background-light': '#f6f6f8',
+  			'background-dark': '#14161e',
+  			'surface-light': '#ffffff',
+  			'surface-dark': '#1e1e1e',
+  			'border-light': '#e0e0e0',
+  			'border-dark': '#333333',
+  			'text-primary-light': '#1f2937',
+  			'text-primary-dark': '#e5e7eb',
+  			// text-secondary-light/dark agora usa os mesmos valores de muted-foreground
+  			'text-secondary-light': 'hsl(0 0% 45.1%)', // #737373 - mesmo que muted-foreground (light)
+  			'text-secondary-dark': 'hsl(0 0% 63.9%)'   // #a3a3a3 - mesmo que muted-foreground (dark)
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -86,6 +98,7 @@ export default {
   		},
   		fontFamily: {
   			sans: ['Inter', 'sans-serif'],
+  			display: ['Inter', 'sans-serif'],
   		},
   		keyframes: {
   			'accordion-down': {

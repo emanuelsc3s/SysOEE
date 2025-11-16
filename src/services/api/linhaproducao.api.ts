@@ -7,6 +7,20 @@ import { supabase } from '@/lib/supabase'
 import { LinhaProducao, LinhasProducaoResponse } from '@/types/linhaproducao'
 
 /**
+ * Interface para dados brutos retornados pelo Supabase
+ */
+interface LinhaProducaoSupabase {
+  linhaproducao_id: number
+  linhaproducao: string
+  tipo: string
+  ativo: boolean
+  departamento_id: number | null
+  tbdepartamento?: {
+    departamento: string
+  } | null
+}
+
+/**
  * Interface para parâmetros de busca de linhas de produção
  */
 export interface BuscarLinhasProducaoParams {
@@ -102,9 +116,21 @@ export async function buscarLinhasProducao(
     })
 
     // Mapear dados para incluir nome do departamento
-    const linhasComDepartamento = (data || []).map((linha: any) => ({
-      ...linha,
+    const linhasComDepartamento = (data || []).map((linha: LinhaProducaoSupabase): Partial<LinhaProducao> => ({
+      linhaproducao_id: linha.linhaproducao_id,
+      linhaproducao: linha.linhaproducao,
+      tipo: linha.tipo,
+      ativo: linha.ativo ? 'S' : 'N',
+      departamento_id: linha.departamento_id,
       departamento: linha.tbdepartamento?.departamento || null,
+      created_at: new Date().toISOString(),
+      created_by: null,
+      updated_at: null,
+      updated_by: null,
+      deleted_at: null,
+      deleted_by: null,
+      sync: null,
+      sync_data: null,
     }))
 
     return {

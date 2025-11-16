@@ -120,10 +120,10 @@ export default function Home() {
       onClick: handleAbrirModalOperacao
     },
     {
-      title: 'Apontamento',
+      title: 'Apontamento OEE',
       icon: <FileText size={40} />,
-      path: '/apontamento',
-      description: 'Registro contemporâneo de paradas e perdas'
+      path: '/apontamento-oee',
+      description: 'Registro de produção, qualidade e cálculo de OEE em tempo real'
     },
     {
       title: 'Paradas',

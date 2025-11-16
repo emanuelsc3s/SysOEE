@@ -1161,7 +1161,7 @@ export default function Operacao() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleAbrirCadastroAmostra}
+                onClick={() => handleAbrirCadastroAmostra()}
                 className="gap-2 tab-prod:gap-1 tab-prod:h-8 tab-prod:px-2 tab-prod:text-xs"
               >
                 <FileText className="h-4 w-4 tab-prod:h-3 tab-prod:w-3" />
