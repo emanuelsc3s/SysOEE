@@ -424,3 +424,12 @@ export const mockOPs: OrdemProducao[] = [
   }
 ]
 
+/**
+ * Busca uma Ordem de Produção pelo número da OP
+ * @param numeroOP - Número da Ordem de Produção
+ * @returns OrdemProducao encontrada ou undefined
+ */
+export function buscarOPPorNumero(numeroOP: string): OrdemProducao | undefined {
+  return mockOPs.find(op => op.op === numeroOP)
+}
+

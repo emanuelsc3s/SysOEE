@@ -7,11 +7,12 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
 import { buscarSKUPorCodigo, buscarSKUsPorSetor } from '@/data/mockSKUs'
+import { buscarOPTOTVSPorNumero } from '@/data/ordem-producao-totvs'
 import { Turno } from '@/types/operacao'
 import {
   salvarApontamentoProducao,
@@ -201,6 +202,54 @@ export default function ApontamentoOEE() {
     return valor.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
+    })
+  }
+
+  /**
+   * Busca dados da Ordem de Produção e popula os campos do formulário
+   * Busca no arquivo JSON real do TOTVS (ordem-producao.json)
+   */
+  const buscarDadosOP = () => {
+    // Validar se o campo OP está preenchido
+    if (!ordemProducao.trim()) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Por favor, digite o número da Ordem de Produção',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Buscar a OP no JSON do TOTVS pelo campo C2_NUM
+    const opEncontrada = buscarOPTOTVSPorNumero(ordemProducao.trim())
+
+    if (!opEncontrada) {
+      toast({
+        title: 'OP não encontrada',
+        description: `Ordem de Produção "${ordemProducao}" não foi encontrada no sistema`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Popular os campos do formulário com dados do TOTVS
+    // C2_PRODUTO + B1_DESC -> SKU (código do produto + descrição)
+    setSkuCodigo(`${opEncontrada.C2_PRODUTO} - ${opEncontrada.B1_DESC}`)
+
+    // C2_YLOTE -> Lote
+    setLote(opEncontrada.C2_YLOTE)
+
+    // C2_YDOSSIE -> Dossie
+    setDossie(opEncontrada.C2_YDOSSIE)
+
+    // Nota: O JSON do TOTVS não possui informação sobre linha de produção
+    // O usuário deve selecionar manualmente a linha
+
+    // Exibir mensagem de sucesso com informações do produto
+    toast({
+      title: 'Dados carregados com sucesso',
+      description: `OP ${ordemProducao} - ${opEncontrada.B1_DESC}`,
+      variant: 'default'
     })
   }
 
@@ -733,8 +782,31 @@ export default function ApontamentoOEE() {
                 </div>
               </div>
 
-              {/* Segunda linha: SKU, OP, Lote, Dossie */}
+              {/* Segunda linha: OP (com busca), SKU, Lote, Dossie */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
+                <div>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Ordem de Produção</span>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      type="text"
+                      value={ordemProducao}
+                      onChange={(e) => setOrdemProducao(e.target.value)}
+                      placeholder="Digite a OP"
+                      disabled={statusTurno !== 'NAO_INICIADO'}
+                    />
+                    <button
+                      type="button"
+                      onClick={buscarDadosOP}
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
+                      disabled={statusTurno !== 'NAO_INICIADO'}
+                      title="Buscar dados da Ordem de Produção"
+                    >
+                      <Search className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
                 <div className="md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">SKU</span>
                   <input
@@ -743,17 +815,6 @@ export default function ApontamentoOEE() {
                     value={skuCodigo}
                     onChange={(e) => setSkuCodigo(e.target.value)}
                     placeholder="Digite o código SKU"
-                    disabled={statusTurno !== 'NAO_INICIADO'}
-                  />
-                </div>
-
-                <div>
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Ordem de Produção</span>
-                  <input
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    type="text"
-                    value={ordemProducao}
-                    onChange={(e) => setOrdemProducao(e.target.value)}
                     disabled={statusTurno !== 'NAO_INICIADO'}
                   />
                 </div>
@@ -768,8 +829,11 @@ export default function ApontamentoOEE() {
                     disabled={statusTurno !== 'NAO_INICIADO'}
                   />
                 </div>
+              </div>
 
-                <div>
+              {/* Terceira linha: Dossie */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
+                <div className="md:col-span-4">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Dossie</span>
                   <input
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

@@ -97,3 +97,11 @@ export function buscarLinhasPorSetorETipo(setor: Setor, tipo: 'Envase' | 'Embala
   return LINHAS_PRODUCAO.filter(linha => linha.setor === setor && linha.tipo === tipo)
 }
 
+/**
+ * Busca linha de produção pelo nome do equipamento
+ * Usado para mapear equipamentos das OPs para IDs de linhas
+ */
+export function buscarLinhaPorNomeEquipamento(nomeEquipamento: string): LinhaProducao | undefined {
+  return LINHAS_PRODUCAO.find(linha => linha.nome === nomeEquipamento)
+}
+
