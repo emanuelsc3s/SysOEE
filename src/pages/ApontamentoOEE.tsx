@@ -20,7 +20,7 @@ import {
   salvarApontamentoRetrabalho,
   calcularOEE
 } from '@/services/localStorage/apontamento-oee.storage'
-import { CalculoOEE } from '@/types/apontamento-oee'
+import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import {
   Select,
@@ -505,44 +505,252 @@ export default function ApontamentoOEE() {
     })
   }
 
+  /**
+   * Calcula diferença em horas entre dois horários HH:MM
+   * Suporta passagem de meia-noite
+   */
+  const calcularDiferencaHoras = (inicio: string, fim: string): number => {
+    const [hInicio, mInicio] = inicio.split(':').map(Number)
+    const [hFim, mFim] = fim.split(':').map(Number)
+
+    const minutosInicio = hInicio * 60 + mInicio
+    let minutosFim = hFim * 60 + mFim
+
+    // Se fim < início, passou da meia-noite
+    if (minutosFim < minutosInicio) {
+      minutosFim += 24 * 60 // Adiciona 24 horas
+    }
+
+    return (minutosFim - minutosInicio) / 60
+  }
+
   // ==================== Handlers ====================
   const handleSalvarProducao = () => {
-    // Validar campos obrigatórios
-    if (!validarCamposObrigatorios()) {
+    // =================================================================
+    // VALIDAÇÃO 1: Campos do Cabeçalho
+    // =================================================================
+
+    if (!data) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione a Data do apontamento',
+        variant: 'destructive'
+      })
       return
     }
 
-    // Criar novo registro
-    const novoRegistro: RegistroProducao = {
-      id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-      data: format(data!, 'dd/MM/yyyy'),
-      turno,
-      linhaId,
-      linhaNome: linhaSelecionada?.nome || '',
-      skuCodigo,
-      ordemProducao,
-      lote,
-      dossie,
-      horaInicio,
-      horaFim,
-      quantidadeProduzida: Number(quantidadeProduzida),
-      dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+    if (!turno) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione o Turno',
+        variant: 'destructive'
+      })
+      return
     }
 
-    // Adicionar ao histórico
-    const novoHistorico = [novoRegistro, ...historicoProducao]
-    setHistoricoProducao(novoHistorico)
-    salvarNoLocalStorage(novoHistorico)
+    if (!linhaId) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione a Linha de Produção',
+        variant: 'destructive'
+      })
+      return
+    }
 
-    // Limpar apenas os campos de registro de produção
-    setHoraInicio('')
-    setHoraFim('')
-    setQuantidadeProduzida('')
+    if (!skuCodigo) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Digite o código do SKU',
+        variant: 'destructive'
+      })
+      return
+    }
 
-    toast({
-      title: 'Sucesso',
-      description: 'Dados de produção salvos com sucesso'
-    })
+    if (!lote) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Digite o número do Lote',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // VALIDAÇÃO 2: Campos do Formulário de Produção
+    // =================================================================
+
+    if (!horaInicio) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe a Hora de Início da produção',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!horaFim) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe a Hora de Fim da produção',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!quantidadeProduzida || Number(quantidadeProduzida) <= 0) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe a Quantidade Produzida (maior que zero)',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // BUSCAR DADOS RELACIONADOS
+    // =================================================================
+
+    const linha = buscarLinhaPorId(linhaId)
+    if (!linha) {
+      toast({
+        title: 'Erro',
+        description: 'Linha de produção não encontrada',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // EXTRAIR CÓDIGO E DESCRIÇÃO DO SKU
+    // Suporta tanto dados do TOTVS ("código - descrição") quanto entrada manual
+    // =================================================================
+
+    const codigoSKU = skuCodigo.includes(' - ')
+      ? skuCodigo.split(' - ')[0].trim()
+      : skuCodigo.trim()
+
+    const descricaoSKU = skuCodigo.includes(' - ')
+      ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
+      : skuCodigo.trim()
+
+    // =================================================================
+    // CALCULAR TEMPO DE OPERAÇÃO
+    // =================================================================
+
+    const tempoOperacaoHoras = calcularDiferencaHoras(horaInicio, horaFim)
+
+    if (tempoOperacaoHoras <= 0) {
+      toast({
+        title: 'Erro de validação',
+        description: 'Hora de Fim deve ser posterior à Hora de Início',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (tempoOperacaoHoras > 24) {
+      toast({
+        title: 'Atenção',
+        description: 'Tempo de operação superior a 24 horas. Verifique os horários.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // CRIAR DTO
+    // Usa dados extraídos do campo SKU (suporta TOTVS e entrada manual)
+    // =================================================================
+
+    const dto: CriarApontamentoProducaoDTO = {
+      turno,
+      linha: linha.nome,
+      setor: linha.setor,
+      ordemProducao: ordemProducao || 'S/N', // Opcional
+      lote,
+      sku: codigoSKU,
+      produto: descricaoSKU,
+      velocidadeNominal: 4000, // CONSTANTE: 4000 unidades/hora
+      quantidadeProduzida: Number(quantidadeProduzida),
+      tempoOperacao: tempoOperacaoHoras,
+      tempoDisponivel: 12, // CONSTANTE: 12 horas por turno
+      dataApontamento: format(data, 'yyyy-MM-dd'),
+      horaInicio: horaInicio.includes(':') ? horaInicio + ':00' : horaInicio,
+      horaFim: horaFim.includes(':') ? horaFim + ':00' : horaFim,
+      criadoPor: 1, // TODO: buscar do contexto de autenticação
+      criadoPorNome: 'Emanuel Silva' // TODO: buscar do contexto
+    }
+
+    // =================================================================
+    // SALVAR NO LOCALSTORAGE
+    // =================================================================
+
+    try {
+      const apontamento = salvarApontamentoProducao(dto)
+
+      console.log('✅ Apontamento de produção salvo:', apontamento)
+
+      // =================================================================
+      // ATUALIZAR ESTADO PARA RECALCULAR OEE
+      // =================================================================
+
+      setApontamentoProducaoId(apontamento.id)
+
+      // Calcular OEE imediatamente
+      const novoOEE = calcularOEE(apontamento.id)
+      setOeeCalculado(novoOEE)
+
+      console.log('📊 OEE calculado:', novoOEE)
+
+      // =================================================================
+      // ATUALIZAR HISTÓRICO LOCAL (para exibição na tabela)
+      // =================================================================
+
+      const novoRegistro: RegistroProducao = {
+        id: apontamento.id,
+        data: format(data!, 'dd/MM/yyyy'),
+        turno,
+        linhaId,
+        linhaNome: linha.nome,
+        skuCodigo,
+        ordemProducao,
+        lote,
+        dossie,
+        horaInicio,
+        horaFim,
+        quantidadeProduzida: Number(quantidadeProduzida),
+        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+      }
+
+      const novoHistorico = [novoRegistro, ...historicoProducao]
+      setHistoricoProducao(novoHistorico)
+      salvarNoLocalStorage(novoHistorico)
+
+      // =================================================================
+      // LIMPAR FORMULÁRIO
+      // =================================================================
+
+      setHoraInicio('')
+      setHoraFim('')
+      setQuantidadeProduzida('')
+
+      // =================================================================
+      // FEEDBACK PARA O USUÁRIO
+      // =================================================================
+
+      toast({
+        title: '✅ Produção Registrada',
+        description: `${Number(quantidadeProduzida).toLocaleString('pt-BR')} unidades em ${tempoOperacaoHoras.toFixed(2)}h. OEE atualizado.`
+      })
+
+    } catch (error) {
+      console.error('❌ Erro ao salvar apontamento:', error)
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar o apontamento. Tente novamente.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleAdicionarQualidade = () => {
@@ -1241,7 +1449,7 @@ export default function ApontamentoOEE() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-5xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                    <span className="font-bold text-text-primary-light dark:text-text-primary-dark" style={{ fontSize: '37.8px' }}>
                       {formatarPercentual(oeeCalculado.oee)}%
                     </span>
                   </div>
