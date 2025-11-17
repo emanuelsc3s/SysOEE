@@ -189,97 +189,101 @@ export default function ApontamentoOEE() {
 
       {/* Header CRUD */}
       <div className="bg-background-light dark:bg-background-dark">
-        <div className="px-3.5 pr-1.5 pt-3.5 pb-0">
-          <div className="flex items-center justify-between">
-            {/* Seção Esquerda - Título e Subtítulo */}
-            <div>
-              <h1 className="text-2xl font-bold text-brand-primary">
-                Diário de Bordo
-              </h1>
-              <p className="text-brand-text-secondary">
-                Registro de produção, qualidade e paradas
-              </p>
-            </div>
+        <div className="flex justify-center">
+          <div className="w-full max-w-[1600px] px-3.5 pr-1.5 pt-3.5 pb-0">
+            <div className="flex items-center justify-between">
+              {/* Seção Esquerda - Título e Subtítulo */}
+              <div>
+                <h1 className="text-2xl font-bold text-brand-primary">
+                  Diário de Bordo
+                </h1>
+                <p className="text-brand-text-secondary">
+                  Registro de produção, qualidade e paradas
+                </p>
+              </div>
 
-            {/* Seção Direita - Botões de Ação */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="border-gray-300 hover:bg-gray-100 min-w-[120px] justify-center"
-                onClick={handleVoltar}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
-              </Button>
+              {/* Seção Direita - Botões de Ação */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="border-gray-300 hover:bg-gray-100 min-w-[120px] justify-center"
+                  onClick={handleVoltar}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar
+                </Button>
 
-              <Button
-                className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
-                onClick={handleDashboard}
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
+                <Button
+                  className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                  onClick={handleDashboard}
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
 
-              {/* Dropdown de Complemento */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Complemento
-                    <ChevronDownIcon className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => console.log('Procedimento Operacional')}>
-                    Procedimento Operacional
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log('Anexos')}>
-                    Anexos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log('Evento')}>
-                    Evento
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log('Desvio')}>
-                    Desvio
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log('Manutenção')}>
-                    Manutenção
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log('Tecnologia da Informação')}>
-                    Tecnologia da Informação
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                {/* Dropdown de Complemento */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Complemento
+                      <ChevronDownIcon className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => console.log('Procedimento Operacional')}>
+                      Procedimento Operacional
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => console.log('Anexos')}>
+                      Anexos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => console.log('Evento')}>
+                      Evento
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => console.log('Desvio')}>
+                      Desvio
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => console.log('Manutenção')}>
+                      Manutenção
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => console.log('Tecnologia da Informação')}>
+                      Tecnologia da Informação
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <Button
-                variant="destructive"
-                className="min-w-[120px] justify-center"
-                onClick={handleExcluir}
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Excluir
-              </Button>
+                <Button
+                  variant="destructive"
+                  className="min-w-[120px] justify-center"
+                  onClick={handleExcluir}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Excluir
+                </Button>
 
-              <Button
-                className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
-                onClick={handleSalvar}
-              >
-                <Save className="mr-2 h-4 w-4" />
-                Salvar
-              </Button>
+                <Button
+                  className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                  onClick={handleSalvar}
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Conteúdo da Página */}
-      <div className="min-h-screen flex gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
-        {/* Conteúdo Principal */}
-        <div className="flex-grow flex flex-col">
-          {/* Main Content */}
-          <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
+      {/* Conteúdo da Página - Container Centralizado */}
+      <div className="min-h-screen flex justify-center gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
+        {/* Container com largura máxima centralizado */}
+        <div className="w-full max-w-[1600px] flex gap-0">
+          {/* Conteúdo Principal */}
+          <div className="flex-grow flex flex-col">
+            {/* Main Content */}
+            <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
           {/* Dashboard OEE - Cabeçalho com Filtros */}
           <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
             <div className="flex flex-col gap-y-4">
@@ -713,117 +717,118 @@ export default function ApontamentoOEE() {
               </div>
             </section>
           )}
-        </main>
-      </div>
+          </main>
+        </div>
 
-      {/* Sidebar Direita - OEE Real */}
-      <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark">
-        <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
-          <div className="sticky top-6 w-full">
-            <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
-              OEE Real
-            </h2>
+        {/* Sidebar Direita - OEE Real */}
+        <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark">
+          <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
+            <div className="sticky top-6 w-full">
+              <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
+                OEE Real
+              </h2>
 
-            <div className="flex flex-col items-center gap-8 mb-8">
-              {/* Velocímetro SVG */}
-              <div className="relative flex-shrink-0">
-                <svg className="w-64 h-64 transform -rotate-90" viewBox="0 0 120 120">
-                  {/* Círculo de fundo */}
-                  <circle
-                    className="stroke-gray-200 dark:stroke-gray-700"
-                    cx="60"
-                    cy="60"
-                    fill="none"
-                    r="54"
-                    strokeWidth="12"
-                  />
-                  {/* Círculo de progresso */}
-                  <circle
-                    className="stroke-primary"
-                    cx="60"
-                    cy="60"
-                    fill="none"
-                    r="54"
-                    strokeDasharray="339.292"
-                    strokeDashoffset={339.292 - (339.292 * oeeCalculado.oee) / 100}
-                    strokeLinecap="round"
-                    strokeWidth="12"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-5xl font-bold text-text-primary-light dark:text-text-primary-dark">
-                    {oeeCalculado.oee.toFixed(2)}%
+              <div className="flex flex-col items-center gap-8 mb-8">
+                {/* Velocímetro SVG */}
+                <div className="relative flex-shrink-0">
+                  <svg className="w-64 h-64 transform -rotate-90" viewBox="0 0 120 120">
+                    {/* Círculo de fundo */}
+                    <circle
+                      className="stroke-gray-200 dark:stroke-gray-700"
+                      cx="60"
+                      cy="60"
+                      fill="none"
+                      r="54"
+                      strokeWidth="12"
+                    />
+                    {/* Círculo de progresso */}
+                    <circle
+                      className="stroke-primary"
+                      cx="60"
+                      cy="60"
+                      fill="none"
+                      r="54"
+                      strokeDasharray="339.292"
+                      strokeDashoffset={339.292 - (339.292 * oeeCalculado.oee) / 100}
+                      strokeLinecap="round"
+                      strokeWidth="12"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-5xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                      {oeeCalculado.oee.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Barras de Componentes */}
+                <div className="w-full space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="font-semibold text-base">{oeeCalculado.disponibilidade.toFixed(2)}%</span>
+                      <span className="text-muted-foreground">Disponibilidade</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{ width: `${oeeCalculado.disponibilidade}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="font-semibold text-base">{oeeCalculado.performance.toFixed(2)}%</span>
+                      <span className="text-muted-foreground">Produtividade</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{ width: `${oeeCalculado.performance}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="font-semibold text-base">{oeeCalculado.qualidade.toFixed(2)}%</span>
+                      <span className="text-muted-foreground">Qualidade</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{ width: `${oeeCalculado.qualidade}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informações Adicionais */}
+              <div className="w-full border-t border-border-light dark:border-border-dark pt-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Horas Restantes de Apontamento de Produção
                   </span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">6:30</span>
                 </div>
-              </div>
-
-              {/* Barras de Componentes */}
-              <div className="w-full space-y-4">
-                <div>
-                  <div className="flex justify-between items-center text-sm mb-1">
-                    <span className="font-semibold text-base">{oeeCalculado.disponibilidade.toFixed(2)}%</span>
-                    <span className="text-muted-foreground">Disponibilidade</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${oeeCalculado.disponibilidade}%` }}
-                    />
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Total de Horas Paradas
+                  </span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">1:15</span>
                 </div>
-
-                <div>
-                  <div className="flex justify-between items-center text-sm mb-1">
-                    <span className="font-semibold text-base">{oeeCalculado.performance.toFixed(2)}%</span>
-                    <span className="text-muted-foreground">Produtividade</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${oeeCalculado.performance}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center text-sm mb-1">
-                    <span className="font-semibold text-base">{oeeCalculado.qualidade.toFixed(2)}%</span>
-                    <span className="text-muted-foreground">Qualidade</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                    <div
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${oeeCalculado.qualidade}%` }}
-                    />
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Total de Perdas de Qualidade
+                  </span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">150 un</span>
                 </div>
               </div>
             </div>
-
-            {/* Informações Adicionais */}
-            <div className="w-full border-t border-border-light dark:border-border-dark pt-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  Horas Restantes de Apontamento de Produção
-                </span>
-                <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">6:30</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  Total de Horas Paradas
-                </span>
-                <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">1:15</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  Total de Perdas de Qualidade
-                </span>
-                <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">150 un</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
+          </aside>
+        </div>
+        </div>
       </div>
     </>
   )
