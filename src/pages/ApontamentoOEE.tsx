@@ -1017,6 +1017,27 @@ export default function ApontamentoOEE() {
     // Salvar no localStorage
     salvarParada(paradaData)
 
+    // Atualiza histórico exibido imediatamente e persiste no storage da tela
+    const registroHistorico: RegistroParada = {
+      id: registroParada.id,
+      data: format(data!, 'dd/MM/yyyy'),
+      turno,
+      linhaId,
+      linhaNome: linhaSelecionada?.nome || '',
+      horaInicio: horaInicialParada,
+      horaFim: horaFinalParada,
+      duracao: duracaoMinutos,
+      tipoParada: paradaSelecionada.Apontamento || paradaSelecionada.Descrição || 'Parada',
+      codigoParada: (paradaSelecionada.Codigo || paradaSelecionada.Apontamento || 'CODIGO_TEMP') as string,
+      descricaoParada: paradaSelecionada.Descrição || '',
+      observacoes: observacoesParada,
+      dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
+    }
+
+    const historicoAtualizado = [registroHistorico, ...historicoParadas]
+    setHistoricoParadas(historicoAtualizado)
+    salvarParadasNoLocalStorage(historicoAtualizado)
+
     // Recalcular OEE se houver apontamento de produção e lote
     if (apontamentoProducaoId && lote) {
       try {
@@ -1812,7 +1833,6 @@ export default function ApontamentoOEE() {
                         <th className="px-1 py-2 font-medium" scope="col">Fim</th>
                         <th className="px-1 py-2 font-medium" scope="col">Duração</th>
                         <th className="px-1 py-2 font-medium" scope="col">Tipo de Parada</th>
-                        <th className="px-1 py-2 font-medium" scope="col">Motivo</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1844,7 +1864,6 @@ export default function ApontamentoOEE() {
                             <td className="px-1 py-2 whitespace-nowrap">{registro.horaFim}</td>
                             <td className="px-1 py-2 whitespace-nowrap">{formatarDuracao(registro.duracao)}</td>
                             <td className="px-1 py-2 whitespace-nowrap">{registro.tipoParada}</td>
-                            <td className="px-1 py-2">{registro.descricaoParada}</td>
                           </tr>
                         ))
                       )}
