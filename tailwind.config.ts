@@ -58,7 +58,7 @@ export default {
   				foreground: 'hsl(var(--card-foreground))'
   			},
   			brand: {
-  				primary: '#242f65',
+  				primary: '#0662c3',
   				secondary: '#62a183',
   				tertiary: '#ee8b60',
   				alternate: '#e0e3e7',

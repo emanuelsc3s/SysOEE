@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
 import { buscarSKUPorCodigo, buscarSKUsPorSetor } from '@/data/mockSKUs'
@@ -38,6 +38,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { AppHeader } from "@/components/layout/AppHeader"
 
 // Tipo para os formulários disponíveis
@@ -182,16 +188,16 @@ export default function ApontamentoOEE() {
       />
 
       {/* Header CRUD */}
-      <div className="bg-background-light dark:bg-background-dark border-b border-border-light dark:border-border-dark">
-        <div className="px-4 pr-2 py-6">
+      <div className="bg-background-light dark:bg-background-dark">
+        <div className="px-3.5 pr-1.5 pt-3.5 pb-0">
           <div className="flex items-center justify-between">
             {/* Seção Esquerda - Título e Subtítulo */}
             <div>
               <h1 className="text-2xl font-bold text-brand-primary">
-                Apontamento de OEE
+                Diário de Bordo
               </h1>
               <p className="text-brand-text-secondary">
-                Registre produção, qualidade e paradas
+                Registro de produção, qualidade e paradas
               </p>
             </div>
 
@@ -207,13 +213,45 @@ export default function ApontamentoOEE() {
               </Button>
 
               <Button
-                variant="outline"
-                className="border-gray-300 hover:bg-gray-100 min-w-[120px] justify-center"
+                className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
                 onClick={handleDashboard}
               >
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Dashboard
               </Button>
+
+              {/* Dropdown de Complemento */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Complemento
+                    <ChevronDownIcon className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => console.log('Procedimento Operacional')}>
+                    Procedimento Operacional
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log('Anexos')}>
+                    Anexos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log('Evento')}>
+                    Evento
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log('Desvio')}>
+                    Desvio
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log('Manutenção')}>
+                    Manutenção
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log('Tecnologia da Informação')}>
+                    Tecnologia da Informação
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Button
                 variant="destructive"
@@ -424,42 +462,39 @@ export default function ApontamentoOEE() {
               <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
                 <div className="space-y-4">
-                  {/* Container flex para inputs de tempo na mesma linha */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Container flex para inputs de tempo e quantidade na mesma linha */}
+                  <div className="flex flex-wrap gap-4">
                     <div className="flex flex-col gap-3">
                       <Label htmlFor="start-time" className="px-1">Hora Início</Label>
-                      <Input type="time" id="start-time" step="60" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" />
+                      <Input type="time" id="start-time" step="60" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none w-full sm:w-32 md:w-36" />
                     </div>
 
                     <div className="flex flex-col gap-3">
                       <Label htmlFor="end-time" className="px-1">Hora Fim</Label>
-                      <Input type="time" id="end-time" step="60" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" />
+                      <Input type="time" id="end-time" step="60" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none w-full sm:w-32 md:w-36" />
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      <Label htmlFor="quantity-produced" className="px-1">Quantidade Produzida</Label>
+                      <input
+                        className="flex h-9 w-full sm:w-40 md:w-48 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        id="quantity-produced"
+                        type="number"
+                        placeholder="ex: 10000"
+                        value={quantidadeProduzida}
+                        onChange={(e) => setQuantidadeProduzida(e.target.value)}
+                      />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="quantity-produced">
-                      Quantidade Produzida
-                    </label>
-                    <input
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      id="quantity-produced"
-                      type="number"
-                      placeholder="ex: 10000"
-                      value={quantidadeProduzida}
-                      onChange={(e) => setQuantidadeProduzida(e.target.value)}
-                    />
-                  </div>
-
                   <div className="flex justify-end mt-2">
-                    <button
-                      className="bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center gap-2"
-                      type="button"
+                    <Button
+                      className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
                       onClick={handleSalvarProducao}
                     >
-                      <Save className="h-5 w-5" />
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
                       Apontar
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </section>
