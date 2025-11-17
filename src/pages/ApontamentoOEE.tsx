@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
@@ -45,10 +45,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { AppHeader } from "@/components/layout/AppHeader"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
+
+// Tipo para status do turno
+type StatusTurno = 'NAO_INICIADO' | 'INICIADO' | 'ENCERRADO'
 
 // Tipo para registro de produção no localStorage
 interface RegistroProducao {
@@ -82,6 +95,10 @@ export default function ApontamentoOEE() {
   const [ordemProducao, setOrdemProducao] = useState<string>('')
   const [lote, setLote] = useState<string>('')
   const [dossie, setDossie] = useState<string>('')
+
+  // ==================== Estado de Controle de Turno ====================
+  const [statusTurno, setStatusTurno] = useState<StatusTurno>('NAO_INICIADO')
+  const [showConfirmEncerramento, setShowConfirmEncerramento] = useState(false)
 
   // ==================== Estado de Produção ====================
   const [horaInicio, setHoraInicio] = useState<string>('')
@@ -175,6 +192,23 @@ export default function ApontamentoOEE() {
   }, [apontamentoProducaoId])
 
   // ==================== Funções de Validação ====================
+
+  /**
+   * Valida se todos os campos obrigatórios do cabeçalho estão preenchidos
+   * Necessário para habilitar o botão "Iniciar Turno"
+   */
+  const validarCamposCabecalho = (): boolean => {
+    return !!(
+      data &&
+      turno &&
+      linhaId &&
+      skuCodigo.trim() &&
+      ordemProducao.trim() &&
+      lote.trim() &&
+      dossie.trim()
+    )
+  }
+
   const validarCamposObrigatorios = (): boolean => {
     if (!data) {
       toast({
@@ -282,6 +316,52 @@ export default function ApontamentoOEE() {
     }
 
     return true
+  }
+
+  // ==================== Funções de Controle de Turno ====================
+
+  /**
+   * Inicia o turno após validação dos campos obrigatórios
+   * Bloqueia edição dos campos do cabeçalho
+   */
+  const handleIniciarTurno = () => {
+    if (!validarCamposCabecalho()) {
+      toast({
+        title: 'Campos Obrigatórios',
+        description: 'Preencha todos os campos do cabeçalho antes de iniciar o turno',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setStatusTurno('INICIADO')
+
+    toast({
+      title: 'Turno Iniciado',
+      description: `Turno iniciado às ${format(new Date(), 'HH:mm:ss')}. Os campos do cabeçalho foram bloqueados.`,
+      variant: 'default'
+    })
+  }
+
+  /**
+   * Solicita confirmação para encerrar o turno
+   */
+  const handleSolicitarEncerramento = () => {
+    setShowConfirmEncerramento(true)
+  }
+
+  /**
+   * Encerra o turno após confirmação
+   */
+  const handleEncerrarTurno = () => {
+    setStatusTurno('ENCERRADO')
+    setShowConfirmEncerramento(false)
+
+    toast({
+      title: 'Turno Encerrado',
+      description: `Turno encerrado às ${format(new Date(), 'HH:mm:ss')}.`,
+      variant: 'default'
+    })
   }
 
   // ==================== Handlers ====================
@@ -489,6 +569,7 @@ export default function ApontamentoOEE() {
                         variant="outline"
                         id="date"
                         className="w-full justify-between font-normal"
+                        disabled={statusTurno !== 'NAO_INICIADO'}
                       >
                         {data ? data.toLocaleDateString('pt-BR') : "Selecione a data"}
                         <ChevronDownIcon className="h-4 w-4 opacity-50" />
@@ -504,6 +585,7 @@ export default function ApontamentoOEE() {
                           setOpenDatePicker(false)
                         }}
                         locale={ptBR}
+                        disabled={statusTurno !== 'NAO_INICIADO'}
                       />
                     </PopoverContent>
                   </Popover>
@@ -511,7 +593,7 @@ export default function ApontamentoOEE() {
 
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
-                  <Select value={turno} onValueChange={(value) => setTurno(value as Turno)}>
+                  <Select value={turno} onValueChange={(value) => setTurno(value as Turno)} disabled={statusTurno !== 'NAO_INICIADO'}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione o turno" />
                     </SelectTrigger>
@@ -525,7 +607,7 @@ export default function ApontamentoOEE() {
 
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
-                  <Select value={linhaId} onValueChange={setLinhaId}>
+                  <Select value={linhaId} onValueChange={setLinhaId} disabled={statusTurno !== 'NAO_INICIADO'}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
@@ -569,6 +651,7 @@ export default function ApontamentoOEE() {
                     value={skuCodigo}
                     onChange={(e) => setSkuCodigo(e.target.value)}
                     placeholder="Digite o código SKU"
+                    disabled={statusTurno !== 'NAO_INICIADO'}
                   />
                 </div>
 
@@ -579,6 +662,7 @@ export default function ApontamentoOEE() {
                     type="text"
                     value={ordemProducao}
                     onChange={(e) => setOrdemProducao(e.target.value)}
+                    disabled={statusTurno !== 'NAO_INICIADO'}
                   />
                 </div>
 
@@ -589,6 +673,7 @@ export default function ApontamentoOEE() {
                     type="text"
                     value={lote}
                     onChange={(e) => setLote(e.target.value)}
+                    disabled={statusTurno !== 'NAO_INICIADO'}
                   />
                 </div>
 
@@ -599,11 +684,62 @@ export default function ApontamentoOEE() {
                     type="text"
                     value={dossie}
                     onChange={(e) => setDossie(e.target.value)}
+                    disabled={statusTurno !== 'NAO_INICIADO'}
                   />
                 </div>
               </div>
+
+              {/* Terceira linha: Botão de Controle de Turno */}
+              <div className="flex justify-end pt-2">
+                {statusTurno === 'NAO_INICIADO' && (
+                  <Button
+                    onClick={handleIniciarTurno}
+                    disabled={!validarCamposCabecalho()}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    Iniciar Turno
+                  </Button>
+                )}
+
+                {statusTurno === 'INICIADO' && (
+                  <Button
+                    onClick={handleSolicitarEncerramento}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    <StopCircle className="mr-2 h-4 w-4" />
+                    Encerrar Turno
+                  </Button>
+                )}
+
+                {statusTurno === 'ENCERRADO' && (
+                  <div className="flex items-center gap-2 text-green-700 font-medium">
+                    <CheckCircle className="h-5 w-5" />
+                    Turno Encerrado
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Dialog de Confirmação de Encerramento */}
+          <AlertDialog open={showConfirmEncerramento} onOpenChange={setShowConfirmEncerramento}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Encerramento do Turno</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja encerrar o turno? Esta ação não poderá ser desfeita.
+                  Certifique-se de que todos os apontamentos foram registrados.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleEncerrarTurno} className="bg-orange-600 hover:bg-orange-700">
+                  Confirmar Encerramento
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Cards de Seleção de Formulário */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
