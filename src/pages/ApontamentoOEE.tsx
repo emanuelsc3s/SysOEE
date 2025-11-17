@@ -2075,13 +2075,13 @@ export default function ApontamentoOEE() {
               ) : (
                 <div className="space-y-4">
                   {/* 1. Componente de Busca de Tipo de Parada */}
-                  <div>
+                  <div className="w-full sm:w-[304px]">
                     <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="codigo-parada">
                       Tipo de Parada
                     </label>
                     <div className="flex gap-2">
                       <input
-                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         id="codigo-parada"
                         type="text"
                         value={codigoParadaBusca}
@@ -2115,32 +2115,35 @@ export default function ApontamentoOEE() {
                     </div>
                   )}
 
-                  {/* 2. Componente de Hora Inicial */}
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-inicial-parada">
-                      Hora Inicial
-                    </label>
-                    <input
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      id="hora-inicial-parada"
-                      type="time"
-                      value={horaInicialParada}
-                      onChange={(e) => setHoraInicialParada(e.target.value)}
-                    />
-                  </div>
+                  {/* 2 e 3. Componentes de Hora Inicial e Hora Final (lado a lado) */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Hora Inicial */}
+                    <div className="flex flex-col">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-inicial-parada">
+                        Hora Inicial
+                      </label>
+                      <input
+                        className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        id="hora-inicial-parada"
+                        type="time"
+                        value={horaInicialParada}
+                        onChange={(e) => setHoraInicialParada(e.target.value)}
+                      />
+                    </div>
 
-                  {/* 3. Componente de Hora Final */}
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
-                      Hora Final
-                    </label>
-                    <input
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      id="hora-final-parada"
-                      type="time"
-                      value={horaFinalParada}
-                      onChange={(e) => setHoraFinalParada(e.target.value)}
-                    />
+                    {/* Hora Final */}
+                    <div className="flex flex-col">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
+                        Hora Final
+                      </label>
+                      <input
+                        className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        id="hora-final-parada"
+                        type="time"
+                        value={horaFinalParada}
+                        onChange={(e) => setHoraFinalParada(e.target.value)}
+                      />
+                    </div>
                   </div>
 
                   {/* Exibir duração calculada automaticamente */}
