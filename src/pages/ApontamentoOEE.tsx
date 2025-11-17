@@ -125,13 +125,18 @@ export default function ApontamentoOEE() {
   // ==================== Estado de OEE ====================
   const [apontamentoProducaoId, setApontamentoProducaoId] = useState<string | null>(null)
   const [oeeCalculado, setOeeCalculado] = useState<CalculoOEE>({
-    disponibilidade: 3.4,
-    performance: 61.63,
-    qualidade: 99.4,
-    oee: 2.08,
+    disponibilidade: 0,
+    performance: 0,
+    qualidade: 0,
+    oee: 0,
     tempoOperacionalLiquido: 0,
     tempoValioso: 0
   })
+
+  // ==================== Estado de Métricas Adicionais ====================
+  const [horasRestantes, setHorasRestantes] = useState<number>(0)
+  const [totalHorasParadas, setTotalHorasParadas] = useState<number>(0)
+  const [totalPerdasQualidade, setTotalPerdasQualidade] = useState<number>(0)
 
   // ==================== Dados Derivados ====================
   const linhaSelecionada = linhaId ? buscarLinhaPorId(linhaId) : null
@@ -177,6 +182,65 @@ export default function ApontamentoOEE() {
     return quantidade.toLocaleString('pt-BR')
   }
 
+  /**
+   * Formata horas decimais para formato HH:MM
+   * @param horas - Horas em formato decimal (ex: 1.5 = 1h30min)
+   */
+  const formatarHoras = (horas: number): string => {
+    const horasInteiras = Math.floor(horas)
+    const minutos = Math.round((horas - horasInteiras) * 60)
+    return `${horasInteiras}:${minutos.toString().padStart(2, '0')}`
+  }
+
+  /**
+   * Formata percentual no padrão brasileiro (pt-BR)
+   * @param valor - Valor numérico a ser formatado
+   * @returns String formatada com vírgula como separador decimal e 2 casas decimais
+   */
+  const formatarPercentual = (valor: number): string => {
+    return valor.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+  }
+
+  /**
+   * Calcula o tempo disponível do turno em horas
+   * Baseado no turno selecionado (8 horas por turno)
+   */
+  const calcularTempoDisponivelTurno = (): number => {
+    // Cada turno tem 8 horas de tempo disponível
+    return 8
+  }
+
+  /**
+   * Calcula horas restantes de apontamento de produção
+   * Baseado no tempo disponível menos o tempo já apontado
+   */
+  const calcularHorasRestantes = (): number => {
+    const tempoDisponivel = calcularTempoDisponivelTurno()
+    const historico = carregarHistorico()
+
+    // Filtrar apontamentos do turno atual
+    const apontamentosTurnoAtual = historico.filter(
+      h => h.data === format(data!, 'dd/MM/yyyy') &&
+           h.turno === turno &&
+           h.linhaId === linhaId
+    )
+
+    // Calcular total de horas já apontadas
+    const horasApontadas = apontamentosTurnoAtual.reduce((total, apontamento) => {
+      const [horaInicioH, horaInicioM] = apontamento.horaInicio.split(':').map(Number)
+      const [horaFimH, horaFimM] = apontamento.horaFim.split(':').map(Number)
+      const minutosInicio = horaInicioH * 60 + horaInicioM
+      const minutosFim = horaFimH * 60 + horaFimM
+      const duracaoMinutos = minutosFim - minutosInicio
+      return total + (duracaoMinutos / 60)
+    }, 0)
+
+    return Math.max(0, tempoDisponivel - horasApontadas)
+  }
+
   // ==================== Carregar histórico ao montar o componente ====================
   useEffect(() => {
     const historico = carregarHistorico()
@@ -190,6 +254,18 @@ export default function ApontamentoOEE() {
       setOeeCalculado(novoOEE)
     }
   }, [apontamentoProducaoId])
+
+  // ==================== Atualiza métricas quando turno está ativo ====================
+  useEffect(() => {
+    if (statusTurno === 'INICIADO' && data && linhaId) {
+      // Atualizar horas restantes
+      const horasRestantesCalculadas = calcularHorasRestantes()
+      setHorasRestantes(horasRestantesCalculadas)
+
+      // TODO: Atualizar total de horas paradas quando implementar apontamento de paradas
+      // TODO: Atualizar total de perdas de qualidade quando implementar apontamento de perdas
+    }
+  }, [historicoProducao, statusTurno, data, linhaId, turno])
 
   // ==================== Funções de Validação ====================
 
@@ -323,6 +399,7 @@ export default function ApontamentoOEE() {
   /**
    * Inicia o turno após validação dos campos obrigatórios
    * Bloqueia edição dos campos do cabeçalho
+   * Inicializa cálculos de OEE com valores zerados
    */
   const handleIniciarTurno = () => {
     if (!validarCamposCabecalho()) {
@@ -333,6 +410,21 @@ export default function ApontamentoOEE() {
       })
       return
     }
+
+    // Inicializar OEE com valores zerados
+    setOeeCalculado({
+      disponibilidade: 0,
+      performance: 0,
+      qualidade: 0,
+      oee: 0,
+      tempoOperacionalLiquido: 0,
+      tempoValioso: 0
+    })
+
+    // Inicializar métricas adicionais
+    setHorasRestantes(calcularTempoDisponivelTurno())
+    setTotalHorasParadas(0)
+    setTotalPerdasQualidade(0)
 
     setStatusTurno('INICIADO')
 
@@ -1086,7 +1178,7 @@ export default function ApontamentoOEE() {
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-5xl font-bold text-text-primary-light dark:text-text-primary-dark">
-                      {oeeCalculado.oee.toFixed(2)}%
+                      {formatarPercentual(oeeCalculado.oee)}%
                     </span>
                   </div>
                 </div>
@@ -1095,7 +1187,7 @@ export default function ApontamentoOEE() {
                 <div className="w-full space-y-4">
                   <div>
                     <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="font-semibold text-base">{oeeCalculado.disponibilidade.toFixed(2)}%</span>
+                      <span className="font-semibold text-base">{formatarPercentual(oeeCalculado.disponibilidade)}%</span>
                       <span className="text-muted-foreground">Disponibilidade</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
@@ -1108,7 +1200,7 @@ export default function ApontamentoOEE() {
 
                   <div>
                     <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="font-semibold text-base">{oeeCalculado.performance.toFixed(2)}%</span>
+                      <span className="font-semibold text-base">{formatarPercentual(oeeCalculado.performance)}%</span>
                       <span className="text-muted-foreground">Produtividade</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
@@ -1121,7 +1213,7 @@ export default function ApontamentoOEE() {
 
                   <div>
                     <div className="flex justify-between items-center text-sm mb-1">
-                      <span className="font-semibold text-base">{oeeCalculado.qualidade.toFixed(2)}%</span>
+                      <span className="font-semibold text-base">{formatarPercentual(oeeCalculado.qualidade)}%</span>
                       <span className="text-muted-foreground">Qualidade</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
@@ -1140,19 +1232,25 @@ export default function ApontamentoOEE() {
                   <span className="text-sm text-muted-foreground">
                     Horas Restantes de Apontamento de Produção
                   </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">6:30</span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                    {formatarHoras(horasRestantes)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
                     Total de Horas Paradas
                   </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">1:15</span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                    {formatarHoras(totalHorasParadas)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">
                     Total de Perdas de Qualidade
                   </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">150 un</span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                    {totalPerdasQualidade.toLocaleString('pt-BR')} un
+                  </span>
                 </div>
               </div>
             </div>
