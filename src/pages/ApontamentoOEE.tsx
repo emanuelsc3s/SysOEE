@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
+import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
 import { buscarSKUPorCodigo, buscarSKUsPorSetor } from '@/data/mockSKUs'
 import { Turno } from '@/types/operacao'
@@ -48,6 +49,23 @@ import { AppHeader } from "@/components/layout/AppHeader"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
+
+// Tipo para registro de produção no localStorage
+interface RegistroProducao {
+  id: string
+  data: string
+  turno: Turno
+  linhaId: string
+  linhaNome: string
+  skuCodigo: string
+  ordemProducao: string
+  lote: string
+  dossie: string
+  horaInicio: string
+  horaFim: string
+  quantidadeProduzida: number
+  dataHoraRegistro: string
+}
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
@@ -105,18 +123,48 @@ export default function ApontamentoOEE() {
     ? buscarSKUsPorSetor(linhaSelecionada.setor)
     : []
 
-  // ==================== Dados Mock de Histórico ====================
-  const historicoProducao = [
-    { dataHora: '2023-10-27 08:00', inicio: '08:00', fim: '12:00', qtdProd: '15.000' },
-    { dataHora: '2023-10-27 13:00', inicio: '13:00', fim: '17:00', qtdProd: '14.500' },
-    { dataHora: '2023-10-26 08:00', inicio: '08:00', fim: '12:00', qtdProd: '14.800' },
-    { dataHora: '2023-10-26 13:00', inicio: '13:00', fim: '17:00', qtdProd: '15.200' },
-    { dataHora: '2023-10-25 08:00', inicio: '08:00', fim: '12:00', qtdProd: '14.900' },
-    { dataHora: '2023-10-25 13:00', inicio: '13:00', fim: '17:00', qtdProd: '15.100' },
-    { dataHora: '2023-10-24 08:00', inicio: '08:00', fim: '12:00', qtdProd: '14.700' },
-    { dataHora: '2023-10-24 13:00', inicio: '13:00', fim: '17:00', qtdProd: '15.300' },
-    { dataHora: '2023-10-23 08:00', inicio: '08:00', fim: '12:00', qtdProd: '14.600' },
-  ]
+  // ==================== Estado de Histórico de Produção ====================
+  const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
+
+  // ==================== Constante para chave do localStorage ====================
+  const STORAGE_KEY = 'oee_production_records'
+
+  // ==================== Funções de localStorage ====================
+  const carregarHistorico = (): RegistroProducao[] => {
+    try {
+      const dados = localStorage.getItem(STORAGE_KEY)
+      if (dados) {
+        return JSON.parse(dados)
+      }
+      return []
+    } catch (error) {
+      console.error('Erro ao carregar histórico do localStorage:', error)
+      return []
+    }
+  }
+
+  const salvarNoLocalStorage = (registros: RegistroProducao[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(registros))
+    } catch (error) {
+      console.error('Erro ao salvar no localStorage:', error)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar os dados',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const formatarQuantidade = (quantidade: number): string => {
+    return quantidade.toLocaleString('pt-BR')
+  }
+
+  // ==================== Carregar histórico ao montar o componente ====================
+  useEffect(() => {
+    const historico = carregarHistorico()
+    setHistoricoProducao(historico)
+  }, [])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
@@ -126,8 +174,150 @@ export default function ApontamentoOEE() {
     }
   }, [apontamentoProducaoId])
 
+  // ==================== Funções de Validação ====================
+  const validarCamposObrigatorios = (): boolean => {
+    if (!data) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, selecione a data',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!turno) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, selecione o turno',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!linhaId) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, selecione a linha de produção',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!skuCodigo.trim()) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe o código SKU',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!ordemProducao.trim()) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe a ordem de produção',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!lote.trim()) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe o lote',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!dossie.trim()) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe o dossiê',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!horaInicio) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe a hora de início',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!horaFim) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe a hora de fim',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    if (!quantidadeProduzida || Number(quantidadeProduzida) <= 0) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe uma quantidade produzida válida (maior que zero)',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    // Validar se hora fim é posterior à hora início
+    const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number)
+    const [horaFimH, horaFimM] = horaFim.split(':').map(Number)
+    const minutosInicio = horaInicioH * 60 + horaInicioM
+    const minutosFim = horaFimH * 60 + horaFimM
+
+    if (minutosFim <= minutosInicio) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'A hora de fim deve ser posterior à hora de início',
+        variant: 'destructive'
+      })
+      return false
+    }
+
+    return true
+  }
+
   // ==================== Handlers ====================
   const handleSalvarProducao = () => {
+    // Validar campos obrigatórios
+    if (!validarCamposObrigatorios()) {
+      return
+    }
+
+    // Criar novo registro
+    const novoRegistro: RegistroProducao = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      data: format(data!, 'dd/MM/yyyy'),
+      turno,
+      linhaId,
+      linhaNome: linhaSelecionada?.nome || '',
+      skuCodigo,
+      ordemProducao,
+      lote,
+      dossie,
+      horaInicio,
+      horaFim,
+      quantidadeProduzida: Number(quantidadeProduzida),
+      dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+    }
+
+    // Adicionar ao histórico
+    const novoHistorico = [novoRegistro, ...historicoProducao]
+    setHistoricoProducao(novoHistorico)
+    salvarNoLocalStorage(novoHistorico)
+
+    // Limpar apenas os campos de registro de produção
+    setHoraInicio('')
+    setHoraFim('')
+    setQuantidadeProduzida('')
+
     toast({
       title: 'Sucesso',
       description: 'Dados de produção salvos com sucesso'
@@ -505,34 +695,38 @@ export default function ApontamentoOEE() {
 
               <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Produção</h2>
-                <div className="overflow-x-auto">
-                  <div className="max-h-60 overflow-y-auto">
-                    <table className="table-auto text-sm text-left text-text-primary-light dark:text-text-primary-dark">
-                      <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
+                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                  <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
+                    <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
+                      <tr>
+                        <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Início</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Fim</th>
+                        <th className="px-1 py-2 font-medium text-right" scope="col">Qtd. Prod.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historicoProducao.length === 0 ? (
                         <tr>
-                          <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
-                          <th className="px-1 py-2 font-medium" scope="col">Início</th>
-                          <th className="px-1 py-2 font-medium" scope="col">Fim</th>
-                          <th className="px-1 py-2 font-medium text-right" scope="col">Qtd. Prod.</th>
+                          <td colSpan={4} className="px-1 py-4 text-center text-muted-foreground">
+                            Nenhum registro de produção encontrado
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {historicoProducao.map((registro, index) => (
+                      ) : (
+                        historicoProducao.map((registro) => (
                           <tr
-                            key={index}
-                            className={`bg-surface-light dark:bg-surface-dark ${
-                              index < historicoProducao.length - 1 ? 'border-b border-border-light dark:border-border-dark' : ''
-                            }`}
+                            key={registro.id}
+                            className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
                           >
-                            <td className="px-1 py-2 whitespace-nowrap">{registro.dataHora}</td>
-                            <td className="px-1 py-2 whitespace-nowrap">{registro.inicio}</td>
-                            <td className="px-1 py-2 whitespace-nowrap">{registro.fim}</td>
-                            <td className="px-1 py-2 text-right whitespace-nowrap">{registro.qtdProd}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.horaInicio}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.horaFim}</td>
+                            <td className="px-1 py-2 text-right whitespace-nowrap">{formatarQuantidade(registro.quantidadeProduzida)}</td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </section>
             </div>
