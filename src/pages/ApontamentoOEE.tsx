@@ -1265,7 +1265,7 @@ export default function ApontamentoOEE() {
                   <div>
                     <div className="flex justify-between items-center text-sm mb-1">
                       <span className="font-semibold text-base">{formatarPercentual(oeeCalculado.performance)}%</span>
-                      <span className="text-muted-foreground">Produtividade</span>
+                      <span className="text-muted-foreground">Performance</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
                       <div
