@@ -123,8 +123,21 @@ Motivo Nível 2: Manutenção Preventiva
 Validar que paradas < 10 min afetam Performance, mas não afetam Disponibilidade.
 
 ### Pré-condições
-- localStorage limpo
+- localStorage limpo:
 
+```
+// Limpa produção/qualidade usados pelo cálculo
+localStorage.removeItem('sysoee_apontamentos_producao')
+localStorage.removeItem('sysoee_apontamentos_perdas')
+localStorage.removeItem('sysoee_apontamentos_retrabalho')
+
+// Limpa paradas
+localStorage.removeItem('sysoee_paradas')
+
+// Limpa históricos mockados da página (se estiverem presentes)
+localStorage.removeItem('oee_production_records')
+localStorage.removeItem('oee_downtime_records')
+```
 ### Passos
 
 #### Passo 1: Apontar Produção

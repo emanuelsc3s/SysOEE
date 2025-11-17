@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
@@ -17,9 +17,13 @@ import { Turno } from '@/types/operacao'
 import {
   salvarApontamentoProducao,
   calcularOEECompleto,
-  excluirApontamentoProducao
+  excluirApontamentoProducao,
+  buscarApontamentoProducaoPorId,
+  buscarApontamentosPerdasPorProducao,
+  buscarApontamentosRetrabalhoPorProducao,
+  atualizarApontamentoProducao
 } from '@/services/localStorage/apontamento-oee.storage'
-import { salvarParada, ParadaLocalStorage } from '@/services/localStorage/parada.storage'
+import { salvarParada, ParadaLocalStorage, atualizarParada } from '@/services/localStorage/parada.storage'
 import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -99,6 +103,9 @@ interface RegistroParada {
   dataHoraRegistro: string
 }
 
+const TEMPO_DISPONIVEL_PADRAO = 12
+const INDICADORES_SECUNDARIOS_INICIAIS = { mtbf: 0, mttr: 0, taxaUtilizacao: 0 }
+
 export default function ApontamentoOEE() {
   const { toast } = useToast()
 
@@ -114,6 +121,16 @@ export default function ApontamentoOEE() {
   const [ordemProducao, setOrdemProducao] = useState<string>('')
   const [lote, setLote] = useState<string>('')
   const [dossie, setDossie] = useState<string>('')
+  const [editandoCabecalho, setEditandoCabecalho] = useState<boolean>(false)
+  const [cabecalhoOriginal, setCabecalhoOriginal] = useState<{
+    data: Date | undefined
+    turno: Turno
+    linhaId: string
+    skuCodigo: string
+    ordemProducao: string
+    lote: string
+    dossie: string
+  } | null>(null)
 
   // ==================== Estado de Controle de Turno ====================
   const [statusTurno, setStatusTurno] = useState<StatusTurno>('NAO_INICIADO')
@@ -157,9 +174,13 @@ export default function ApontamentoOEE() {
   const [horasRestantes, setHorasRestantes] = useState<number>(0)
   const [totalHorasParadas, setTotalHorasParadas] = useState<number>(0)
   const [totalPerdasQualidade, setTotalPerdasQualidade] = useState<number>(0)
+  const [indicadoresSecundarios, setIndicadoresSecundarios] = useState(INDICADORES_SECUNDARIOS_INICIAIS)
 
   // ==================== Dados Derivados ====================
   const linhaSelecionada = linhaId ? buscarLinhaPorId(linhaId) : null
+
+  // Desabilita cabeçalho quando não está em edição ou antes do início
+  const cabecalhoBloqueado = statusTurno !== 'NAO_INICIADO' && !editandoCabecalho
 
   // ==================== Estado de Histórico de Produção ====================
   const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
@@ -243,6 +264,68 @@ export default function ApontamentoOEE() {
   }
 
   /**
+   * Converte string de data/hora no padrão BR para timestamp
+   * Mantém compatibilidade com registros já salvos no localStorage
+   */
+  const paraTimestamp = (dataHora: string): number => {
+    try {
+      const [dataParte, horaParte = '00:00:00'] = dataHora.split(' ')
+      const [dia, mes, ano] = dataParte.split('/').map(Number)
+      const [hora, minuto, segundo = 0] = horaParte.split(':').map(Number)
+      return new Date(ano, mes - 1, dia, hora, minuto, segundo).getTime()
+    } catch (error) {
+      console.warn('Não foi possível converter data/hora:', dataHora, error)
+      return 0
+    }
+  }
+
+  /**
+   * Converte data no formato dd/MM/yyyy para objeto Date
+   */
+  const converterDataBRParaDate = (dataTexto: string): Date | undefined => {
+    try {
+      const [dia, mes, ano] = dataTexto.split('/').map(Number)
+      return new Date(ano, mes - 1, dia)
+    } catch (error) {
+      console.warn('Não foi possível converter data:', dataTexto, error)
+      return undefined
+    }
+  }
+
+  /**
+   * Soma perdas e retrabalhos de um apontamento de produção
+   */
+  const calcularTotalPerdasDoApontamento = (apontamentoId: string): number => {
+    const perdas = buscarApontamentosPerdasPorProducao(apontamentoId)
+    const retrabalhos = buscarApontamentosRetrabalhoPorProducao(apontamentoId)
+
+    const totalPerdas = perdas.reduce((total, perda) => total + perda.unidadesRejeitadas, 0)
+    const totalRetrabalho = retrabalhos.reduce((total, retrabalho) => total + retrabalho.unidadesRetrabalho, 0)
+
+    return totalPerdas + totalRetrabalho
+  }
+
+  /**
+   * Calcula indicadores secundários (MTBF, MTTR e Taxa de Utilização) de um período
+   * usando as paradas já consolidadas.
+   */
+  const calcularIndicadoresSecundarios = (paradasPeriodo: RegistroParada[], tempoDisponivelHoras: number) => {
+    const totalParadasHoras = paradasPeriodo.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60
+    const totalOcorrencias = paradasPeriodo.length
+    const tempoOperando = Math.max(tempoDisponivelHoras - totalParadasHoras, 0)
+
+    const mtbf = totalOcorrencias > 0 ? tempoOperando / totalOcorrencias : tempoDisponivelHoras
+    const mttr = totalOcorrencias > 0 ? totalParadasHoras / totalOcorrencias : 0
+    const taxaUtilizacao = tempoDisponivelHoras > 0 ? (tempoOperando / tempoDisponivelHoras) * 100 : 0
+
+    return {
+      mtbf: Math.round(mtbf * 100) / 100,
+      mttr: Math.round(mttr * 100) / 100,
+      taxaUtilizacao: Math.round(taxaUtilizacao * 100) / 100
+    }
+  }
+
+  /**
    * Formata percentual no padrão brasileiro (pt-BR)
    * @param valor - Valor numérico a ser formatado
    * @returns String formatada com vírgula como separador decimal e 2 casas decimais
@@ -252,6 +335,64 @@ export default function ApontamentoOEE() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })
+  }
+
+  /**
+   * Recalcula OEE e indicadores derivados após exclusão de um registro
+   * garantindo atualização imediata da UI para o período afetado.
+   */
+  const recalcularIndicadoresAposExclusao = (
+    registroExcluido: RegistroProducao,
+    historicoAtualizado: RegistroProducao[]
+  ) => {
+    const historicoDoPeriodo = [...historicoAtualizado]
+      .filter(
+        (registro) =>
+          registro.data === registroExcluido.data &&
+          registro.turno === registroExcluido.turno &&
+          registro.linhaId === registroExcluido.linhaId &&
+          registro.lote === registroExcluido.lote
+      )
+      .sort((a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro))
+
+    const apontamentoReferencia = historicoDoPeriodo[0]
+
+    const paradasDoPeriodo = carregarHistoricoParadas().filter(
+      (registroParada) =>
+        registroParada.data === registroExcluido.data &&
+        registroParada.turno === registroExcluido.turno &&
+        registroParada.linhaId === registroExcluido.linhaId
+    )
+
+    const totalHorasParadasCalculado = paradasDoPeriodo.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60
+    setTotalHorasParadas(totalHorasParadasCalculado)
+    setHorasRestantes(calcularHorasRestantes())
+    setIndicadoresSecundarios(calcularIndicadoresSecundarios(paradasDoPeriodo, TEMPO_DISPONIVEL_PADRAO))
+
+    if (apontamentoReferencia) {
+      try {
+        const novoOEE = calcularOEECompleto(apontamentoReferencia.id, apontamentoReferencia.lote, TEMPO_DISPONIVEL_PADRAO)
+        setOeeCalculado(novoOEE)
+        setApontamentoProducaoId(apontamentoReferencia.id)
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoReferencia.id))
+        return
+      } catch (error) {
+        console.error('Erro ao recalcular OEE após exclusão:', error)
+      }
+    }
+
+    // Quando não há mais registros relevantes, zera os indicadores para evitar ruído visual.
+    setApontamentoProducaoId(null)
+    setOeeCalculado({
+      disponibilidade: 0,
+      performance: 0,
+      qualidade: 0,
+      oee: 0,
+      tempoOperacionalLiquido: 0,
+      tempoValioso: 0
+    })
+    setTotalPerdasQualidade(0)
+    setIndicadoresSecundarios(INDICADORES_SECUNDARIOS_INICIAIS)
   }
 
   // ==================== Funções de Exclusão de Produção ====================
@@ -294,68 +435,21 @@ export default function ApontamentoOEE() {
         return
       }
 
-      // Excluir do serviço de localStorage (apontamento-oee.storage)
-      // Nota: O histórico usa um localStorage separado (STORAGE_KEY = 'oee_production_records')
-      // mas também precisamos excluir do serviço de apontamento se houver ID correspondente
-
-      // Remover do histórico local
+      // Remover do histórico local e persistir
       const novoHistorico = historicoProducao.filter(r => r.id !== registroParaExcluir)
       setHistoricoProducao(novoHistorico)
       salvarNoLocalStorage(novoHistorico)
 
-      // Se este registro estava sendo usado para calcular o OEE, recalcular
-      // Verificar se há outros registros do mesmo lote
-      const registrosDoLote = novoHistorico.filter(r => r.lote === registro.lote)
+      // Remover também do serviço de apontamentos persistido
+      excluirApontamentoProducao(registroParaExcluir)
 
-      if (registrosDoLote.length > 0) {
-        // Ainda há registros deste lote, usar o mais recente para recalcular
-        const registroMaisRecente = registrosDoLote[0] // já está ordenado por data decrescente
-
-        // Tentar excluir do serviço de apontamento também
-        excluirApontamentoProducao(registroParaExcluir)
-
-        // Recalcular OEE se este era o registro ativo
-        if (apontamentoProducaoId === registroParaExcluir && lote) {
-          try {
-            // Usar o ID do registro mais recente
-            const novoOEE = calcularOEECompleto(registroMaisRecente.id, lote, 12)
-            setOeeCalculado(novoOEE)
-            setApontamentoProducaoId(registroMaisRecente.id)
-            console.log('🔄 OEE recalculado após exclusão:', novoOEE)
-          } catch (error) {
-            console.error('Erro ao recalcular OEE após exclusão:', error)
-            // Resetar OEE se não conseguir recalcular
-            setOeeCalculado({
-              disponibilidade: 0,
-              performance: 0,
-              qualidade: 0,
-              oee: 0,
-              tempoOperacionalLiquido: 0,
-              tempoValioso: 0
-            })
-          }
-        }
-      } else {
-        // Não há mais registros deste lote, resetar OEE
-        excluirApontamentoProducao(registroParaExcluir)
-
-        if (apontamentoProducaoId === registroParaExcluir) {
-          setOeeCalculado({
-            disponibilidade: 0,
-            performance: 0,
-            qualidade: 0,
-            oee: 0,
-            tempoOperacionalLiquido: 0,
-            tempoValioso: 0
-          })
-          setApontamentoProducaoId(null)
-        }
-      }
+      // Recalcular todos os indicadores impactados (OEE e secundários) para o período afetado
+      recalcularIndicadoresAposExclusao(registro, novoHistorico)
 
       // Feedback de sucesso
       toast({
         title: '✅ Registro Excluído',
-        description: 'O registro de produção foi excluído com sucesso',
+        description: 'O registro de produção foi excluído e os indicadores foram recalculados',
       })
 
       // Fechar diálogo
@@ -510,11 +604,11 @@ export default function ApontamentoOEE() {
 
   /**
    * Calcula o tempo disponível do turno em horas
-   * Baseado no turno selecionado (8 horas por turno)
+   * Baseado no turno selecionado (12 horas por turno)
    */
   const calcularTempoDisponivelTurno = (): number => {
-    // Cada turno tem 8 horas de tempo disponível
-    return 8
+    // Cada turno tem 12 horas de tempo disponível (turno fixo definido para SicFar)
+    return TEMPO_DISPONIVEL_PADRAO
   }
 
   /**
@@ -618,7 +712,107 @@ export default function ApontamentoOEE() {
       return
     }
 
-    // Inicializar OEE com valores zerados
+    const dataSelecionada = data ? format(data, 'dd/MM/yyyy') : ''
+    const historico = carregarHistorico()
+    const historicoParadasSalvo = carregarHistoricoParadas()
+
+    // Filtra dados do turno atual para manter contemporaneidade (ALCOA+)
+    const producoesDoTurno = historico.filter(
+      (registro) =>
+        registro.data === dataSelecionada &&
+        registro.turno === turno &&
+        registro.linhaId === linhaId
+    )
+
+    const paradasDoTurno = historicoParadasSalvo.filter(
+      (registro) =>
+        registro.data === dataSelecionada &&
+        registro.turno === turno &&
+        registro.linhaId === linhaId
+    )
+
+    const temDadosSalvos = producoesDoTurno.length > 0 || paradasDoTurno.length > 0
+
+    if (temDadosSalvos) {
+      const producaoReferencia = [...producoesDoTurno].sort(
+        (a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro)
+      )[0]
+
+      // Carrega valores do cabeçalho e formulários com última produção registrada
+      if (producaoReferencia) {
+        const dataConvertida = converterDataBRParaDate(producaoReferencia.data)
+        if (dataConvertida) setData(dataConvertida)
+
+        setTurno(producaoReferencia.turno)
+        setLinhaId(producaoReferencia.linhaId)
+        setSkuCodigo(producaoReferencia.skuCodigo)
+        setOrdemProducao(producaoReferencia.ordemProducao)
+        setLote(producaoReferencia.lote)
+        setDossie(producaoReferencia.dossie)
+        setHoraInicio(producaoReferencia.horaInicio)
+        setHoraFim(producaoReferencia.horaFim)
+        setQuantidadeProduzida(producaoReferencia.quantidadeProduzida.toString())
+        setApontamentoProducaoId(producaoReferencia.id)
+
+        const apontamentoExistente = buscarApontamentoProducaoPorId(producaoReferencia.id)
+
+        if (apontamentoExistente) {
+          try {
+            const oeeRecalculado = calcularOEECompleto(
+              producaoReferencia.id,
+              producaoReferencia.lote,
+              12
+            )
+            setOeeCalculado(oeeRecalculado)
+            setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(producaoReferencia.id))
+          } catch (error) {
+            console.error('Erro ao recalcular OEE carregado:', error)
+            setOeeCalculado({
+              disponibilidade: 0,
+              performance: 0,
+              qualidade: 0,
+              oee: 0,
+              tempoOperacionalLiquido: 0,
+              tempoValioso: 0
+            })
+            setTotalPerdasQualidade(0)
+          }
+        }
+      } else {
+        setApontamentoProducaoId(null)
+        setOeeCalculado({
+          disponibilidade: 0,
+          performance: 0,
+          qualidade: 0,
+          oee: 0,
+          tempoOperacionalLiquido: 0,
+          tempoValioso: 0
+        })
+        setTotalPerdasQualidade(0)
+      }
+
+      setHistoricoProducao(producoesDoTurno)
+      setHistoricoParadas(paradasDoTurno)
+
+      // Atualiza métricas derivadas
+      const totalHorasParadasCalculado =
+        paradasDoTurno.reduce((total, parada) => total + parada.duracao, 0) / 60
+      setTotalHorasParadas(totalHorasParadasCalculado)
+      setIndicadoresSecundarios(calcularIndicadoresSecundarios(paradasDoTurno, TEMPO_DISPONIVEL_PADRAO))
+      setHorasRestantes(calcularHorasRestantes())
+
+      setStatusTurno('INICIADO')
+
+      toast({
+        title: 'Dados recuperados',
+        description: `Turno carregado com ${producoesDoTurno.length} produções e ${paradasDoTurno.length} paradas. OEE recalculado.`,
+        variant: 'default'
+      })
+      return
+    }
+
+    // Inicializar OEE com valores zerados quando não há histórico
+    setApontamentoProducaoId(null)
     setOeeCalculado({
       disponibilidade: 0,
       performance: 0,
@@ -632,12 +826,15 @@ export default function ApontamentoOEE() {
     setHorasRestantes(calcularTempoDisponivelTurno())
     setTotalHorasParadas(0)
     setTotalPerdasQualidade(0)
+    setIndicadoresSecundarios(INDICADORES_SECUNDARIOS_INICIAIS)
+    setHistoricoProducao([])
+    setHistoricoParadas([])
 
     setStatusTurno('INICIADO')
 
     toast({
       title: 'Turno Iniciado',
-      description: `Turno iniciado às ${format(new Date(), 'HH:mm:ss')}. Os campos do cabeçalho foram bloqueados.`,
+      description: `Turno iniciado às ${format(new Date(), 'HH:mm:ss')}. Valores zerados e prontos para novos apontamentos. Os campos do cabeçalho foram bloqueados.`,
       variant: 'default'
     })
   }
@@ -661,6 +858,149 @@ export default function ApontamentoOEE() {
       description: `Turno encerrado às ${format(new Date(), 'HH:mm:ss')}.`,
       variant: 'default'
     })
+  }
+
+  /**
+   * Entrar em modo de edição do cabeçalho após o turno já ter sido iniciado
+   */
+  const handleEditarCabecalho = () => {
+    setCabecalhoOriginal({
+      data,
+      turno,
+      linhaId,
+      skuCodigo,
+      ordemProducao,
+      lote,
+      dossie
+    })
+    setEditandoCabecalho(true)
+    toast({
+      title: 'Edição liberada',
+      description: 'Atualize os campos do cabeçalho e finalize em "Continuar Turno".'
+    })
+  }
+
+  /**
+   * Cancela a edição do cabeçalho e restaura os valores originais
+   */
+  const handleCancelarEdicaoCabecalho = () => {
+    if (cabecalhoOriginal) {
+      setData(cabecalhoOriginal.data)
+      setTurno(cabecalhoOriginal.turno)
+      setLinhaId(cabecalhoOriginal.linhaId)
+      setSkuCodigo(cabecalhoOriginal.skuCodigo)
+      setOrdemProducao(cabecalhoOriginal.ordemProducao)
+      setLote(cabecalhoOriginal.lote)
+      setDossie(cabecalhoOriginal.dossie)
+    }
+    setEditandoCabecalho(false)
+    setCabecalhoOriginal(null)
+    toast({
+      title: 'Edição cancelada',
+      description: 'Os valores do cabeçalho foram restaurados e os campos bloqueados.'
+    })
+  }
+
+  /**
+   * Aplica alterações do cabeçalho, persiste e recalcula OEE
+   */
+  const handleContinuarTurno = () => {
+    if (!validarCamposCabecalho()) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha todos os campos antes de continuar o turno.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      const dataFormatada = data ? format(data, 'dd/MM/yyyy') : ''
+      const dataISO = data ? format(data, 'yyyy-MM-dd') : ''
+      const linhaAtualizada = linhaId ? buscarLinhaPorId(linhaId) : null
+
+      // Atualiza histórico local exibido (registros do turno) e persiste
+      const historicoAtualizado = historicoProducao.map((registro) => ({
+        ...registro,
+        data: dataFormatada,
+        turno,
+        linhaId,
+        linhaNome: linhaAtualizada?.nome || registro.linhaNome,
+        skuCodigo,
+        ordemProducao,
+        lote,
+        dossie
+      }))
+
+      setHistoricoProducao(historicoAtualizado)
+      salvarNoLocalStorage(historicoAtualizado)
+
+      // Propaga atualização para o storage principal (cálculo de OEE)
+      historicoAtualizado.forEach((registro) => {
+        atualizarApontamentoProducao(registro.id, {
+          turno,
+          linha: linhaAtualizada?.nome || registro.linhaNome,
+          setor: linhaAtualizada?.setor,
+          ordemProducao: ordemProducao || 'S/N',
+          lote,
+          sku: skuCodigo.includes(' - ') ? skuCodigo.split(' - ')[0].trim() : skuCodigo.trim(),
+          produto: skuCodigo.includes(' - ')
+            ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
+            : skuCodigo.trim(),
+          dataApontamento: dataISO || registro.data
+        })
+      })
+
+      // Atualiza histórico de paradas exibido e storage para manter o vínculo
+      const historicoParadasAtualizado = historicoParadas.map((parada) => ({
+        ...parada,
+        data: dataFormatada,
+        turno,
+        linhaId,
+        linhaNome: linhaAtualizada?.nome || parada.linhaNome
+      }))
+
+      setHistoricoParadas(historicoParadasAtualizado)
+      salvarParadasNoLocalStorage(historicoParadasAtualizado)
+      historicoParadasAtualizado.forEach((parada) => {
+        atualizarParada(parada.id, {
+          linha_id: linhaId,
+          lote_id: lote || null,
+          turno_id: turno,
+          data_parada: dataISO || parada.data
+        })
+      })
+
+      // Recarrega dados mais recentes gravados
+      setHistoricoProducao(carregarHistorico())
+      setHistoricoParadas(carregarHistoricoParadas())
+
+      // Recalcula indicadores
+      setTotalHorasParadas(historicoParadasAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
+      setIndicadoresSecundarios(calcularIndicadoresSecundarios(historicoParadasAtualizado, TEMPO_DISPONIVEL_PADRAO))
+      setHorasRestantes(calcularHorasRestantes())
+
+      if (apontamentoProducaoId && lote) {
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, TEMPO_DISPONIVEL_PADRAO)
+        setOeeCalculado(novoOEE)
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
+      }
+
+      setEditandoCabecalho(false)
+      setCabecalhoOriginal(null)
+
+      toast({
+        title: 'Cabeçalho atualizado',
+        description: 'Dados salvos, campos bloqueados novamente e OEE recalculado.'
+      })
+    } catch (error) {
+      console.error('Erro ao continuar turno com cabeçalho editado:', error)
+      toast({
+        title: 'Erro ao salvar alterações',
+        description: 'Não foi possível atualizar o cabeçalho. Tente novamente.',
+        variant: 'destructive'
+      })
+    }
   }
 
   /**
@@ -1037,11 +1377,13 @@ export default function ApontamentoOEE() {
     const historicoAtualizado = [registroHistorico, ...historicoParadas]
     setHistoricoParadas(historicoAtualizado)
     salvarParadasNoLocalStorage(historicoAtualizado)
+    setTotalHorasParadas(historicoAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
+    setIndicadoresSecundarios(calcularIndicadoresSecundarios(historicoAtualizado, TEMPO_DISPONIVEL_PADRAO))
 
     // Recalcular OEE se houver apontamento de produção e lote
     if (apontamentoProducaoId && lote) {
       try {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, 12)
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
         console.log('🔄 OEE recalculado após parada:', novoOEE)
       } catch (error) {
@@ -1218,7 +1560,7 @@ export default function ApontamentoOEE() {
                         variant="outline"
                         id="date"
                         className="w-full justify-between font-normal"
-                        disabled={statusTurno !== 'NAO_INICIADO'}
+                        disabled={cabecalhoBloqueado}
                       >
                         {data ? data.toLocaleDateString('pt-BR') : "Selecione a data"}
                         <ChevronDownIcon className="h-4 w-4 opacity-50" />
@@ -1234,7 +1576,7 @@ export default function ApontamentoOEE() {
                           setOpenDatePicker(false)
                         }}
                         locale={ptBR}
-                        disabled={statusTurno !== 'NAO_INICIADO'}
+                        disabled={cabecalhoBloqueado}
                       />
                     </PopoverContent>
                   </Popover>
@@ -1242,7 +1584,7 @@ export default function ApontamentoOEE() {
 
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
-                  <Select value={turno} onValueChange={(value) => setTurno(value as Turno)} disabled={statusTurno !== 'NAO_INICIADO'}>
+                  <Select value={turno} onValueChange={(value) => setTurno(value as Turno)} disabled={cabecalhoBloqueado}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione o turno" />
                     </SelectTrigger>
@@ -1256,7 +1598,7 @@ export default function ApontamentoOEE() {
 
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
-                  <Select value={linhaId} onValueChange={setLinhaId} disabled={statusTurno !== 'NAO_INICIADO'}>
+                  <Select value={linhaId} onValueChange={setLinhaId} disabled={cabecalhoBloqueado}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
@@ -1301,13 +1643,13 @@ export default function ApontamentoOEE() {
                       value={ordemProducao}
                       onChange={(e) => setOrdemProducao(e.target.value)}
                       placeholder="Digite a OP"
-                      disabled={statusTurno !== 'NAO_INICIADO'}
+                      disabled={cabecalhoBloqueado}
                     />
                     <button
                       type="button"
                       onClick={buscarDadosOP}
                       className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
-                      disabled={statusTurno !== 'NAO_INICIADO'}
+                      disabled={cabecalhoBloqueado}
                       title="Buscar dados da Ordem de Produção"
                     >
                       <Search className="h-4 w-4" />
@@ -1323,7 +1665,7 @@ export default function ApontamentoOEE() {
                     value={skuCodigo}
                     onChange={(e) => setSkuCodigo(e.target.value)}
                     placeholder="Digite o código SKU"
-                    disabled={statusTurno !== 'NAO_INICIADO'}
+                    disabled={cabecalhoBloqueado}
                   />
                 </div>
 
@@ -1334,7 +1676,7 @@ export default function ApontamentoOEE() {
                     type="text"
                     value={lote}
                     onChange={(e) => setLote(e.target.value)}
-                    disabled={statusTurno !== 'NAO_INICIADO'}
+                    disabled={cabecalhoBloqueado}
                   />
                 </div>
               </div>
@@ -1348,13 +1690,37 @@ export default function ApontamentoOEE() {
                     type="text"
                     value={dossie}
                     onChange={(e) => setDossie(e.target.value)}
-                    disabled={statusTurno !== 'NAO_INICIADO'}
+                    disabled={cabecalhoBloqueado}
                   />
                 </div>
               </div>
 
-              {/* Terceira linha: Botão de Controle de Turno */}
-              <div className="flex justify-end pt-2">
+              {/* Terceira linha: Botão de Controle de Turno e edição de cabeçalho */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                {statusTurno === 'INICIADO' && (
+                  <div className="flex gap-2">
+                    {!editandoCabecalho ? (
+                      <Button
+                        variant="outline"
+                        onClick={handleEditarCabecalho}
+                        className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Alterar Turno
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={handleCancelarEdicaoCabecalho}
+                        className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 {statusTurno === 'NAO_INICIADO' && (
                   <Button
                     onClick={handleIniciarTurno}
@@ -1368,11 +1734,16 @@ export default function ApontamentoOEE() {
 
                 {statusTurno === 'INICIADO' && (
                   <Button
-                    onClick={handleSolicitarEncerramento}
+                    onClick={editandoCabecalho ? handleContinuarTurno : handleSolicitarEncerramento}
+                    disabled={editandoCabecalho && !validarCamposCabecalho()}
                     className="bg-orange-600 hover:bg-orange-700 text-white"
                   >
-                    <StopCircle className="mr-2 h-4 w-4" />
-                    Encerrar Turno
+                    {editandoCabecalho ? (
+                      <CircleCheck className="mr-2 h-4 w-4" />
+                    ) : (
+                      <StopCircle className="mr-2 h-4 w-4" />
+                    )}
+                    {editandoCabecalho ? 'Continuar Turno' : 'Encerrar Turno'}
                   </Button>
                 )}
 
@@ -1469,7 +1840,7 @@ export default function ApontamentoOEE() {
             >
               <h3 className="font-display text-lg font-bold text-primary mb-2">Produção</h3>
               <p className="text-sm text-muted-foreground">
-                Registro da quantidade produzida e tempos de ciclo.
+                Registro de Produção em ciclos
               </p>
             </div>
 
@@ -1483,7 +1854,7 @@ export default function ApontamentoOEE() {
             >
               <h3 className="font-display text-lg font-bold text-primary mb-2">Qualidade</h3>
               <p className="text-sm text-muted-foreground">
-                Registro de perdas e retrabalhos.
+                Registro de perdas e retrabalhos
               </p>
             </div>
 
@@ -1497,7 +1868,7 @@ export default function ApontamentoOEE() {
             >
               <h3 className="font-display text-lg font-bold text-primary mb-2">Tempo de Parada</h3>
               <p className="text-sm text-muted-foreground">
-                Registro de interrupções e suas causas.
+                Registro de interrupções e motivos
               </p>
             </div>
           </div>
@@ -1984,6 +2355,30 @@ export default function ApontamentoOEE() {
                   </span>
                   <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
                     {totalPerdasQualidade.toLocaleString('pt-BR')} un
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    MTBF (h entre falhas)
+                  </span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                    {formatarHoras(indicadoresSecundarios.mtbf)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    MTTR (h para reparo)
+                  </span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                    {formatarHoras(indicadoresSecundarios.mttr)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Taxa de Utilização
+                  </span>
+                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
+                    {formatarPercentual(indicadoresSecundarios.taxaUtilizacao)}%
                   </span>
                 </div>
               </div>
