@@ -38,7 +38,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({
-  title = "SysOEE - Sistema de Monitoramento OEE",
+  title = "SICFAR OEE - Sistema de Monitoramento OEE",
   userName = "Usuário",
   userRole = "Operador",
   userPhotoUrl,

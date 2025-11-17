@@ -10,6 +10,8 @@ import {
   CriarApontamentoProducaoDTO,
   CalculoOEE
 } from '@/types/apontamento-oee'
+import { buscarParadasPorLote, ParadaLocalStorage } from '@/services/localStorage/parada.storage'
+import { TipoParada } from '@/types/parada'
 
 const STORAGE_KEY_PRODUCAO = 'sysoee_apontamentos_producao'
 const STORAGE_KEY_PERDAS = 'sysoee_apontamentos_perdas'
@@ -62,7 +64,7 @@ export function salvarApontamentoProducao(dto: CriarApontamentoProducaoDTO): Apo
     const apontamentos = buscarTodosApontamentosProducao()
     apontamentos.push(apontamento)
     localStorage.setItem(STORAGE_KEY_PRODUCAO, JSON.stringify(apontamentos))
-    
+
     console.log('✅ Apontamento de produção salvo:', apontamento)
     return apontamento
   } catch (error) {
@@ -81,7 +83,7 @@ export function atualizarApontamentoProducao(
   try {
     const apontamentos = buscarTodosApontamentosProducao()
     const index = apontamentos.findIndex(a => a.id === id)
-    
+
     if (index === -1) {
       console.error('❌ Apontamento não encontrado:', id)
       return null
@@ -153,7 +155,7 @@ export function salvarApontamentoPerdas(
     const apontamentos = buscarTodosApontamentosPerdas()
     apontamentos.push(apontamento)
     localStorage.setItem(STORAGE_KEY_PERDAS, JSON.stringify(apontamentos))
-    
+
     console.log('✅ Apontamento de perdas salvo:', apontamento)
     return apontamento
   } catch (error) {
@@ -292,6 +294,292 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
     oee: Math.round(oee * 100) / 100,
     tempoOperacionalLiquido: Math.round(tempoOperacionalLiquido * 100) / 100,
     tempoValioso: Math.round(tempoValioso * 100) / 100
+  }
+}
+
+/**
+ * Calcula OEE completo integrando paradas, perdas e retrabalhos
+ * Baseado em docs/example/EXEMPLOS-CODIGO-OEE.md
+ */
+export function calcularOEECompleto(
+  apontamentoProducaoId: string,
+  lote: string,
+  tempoDisponivelTurno: number = 12
+): CalculoOEE {
+  // =================================================================
+  // PASSO 1: BUSCAR DADOS
+  // =================================================================
+
+  const apontamento = buscarApontamentoProducaoPorId(apontamentoProducaoId)
+
+  if (!apontamento) {
+    console.warn('6a8 Apontamento de produ e7 e3o n e3o encontrado:', apontamentoProducaoId)
+    return {
+      disponibilidade: 0,
+      performance: 0,
+      qualidade: 0,
+      oee: 0,
+      tempoOperacionalLiquido: 0,
+      tempoValioso: 0
+    }
+  }
+
+  const paradas = buscarParadasPorLote(lote)
+  const perdas = buscarApontamentosPerdasPorProducao(apontamentoProducaoId)
+  const retrabalhos = buscarApontamentosRetrabalhoPorProducao(apontamentoProducaoId)
+
+  console.log('4ca Calculando OEE:', {
+    apontamentoId: apontamentoProducaoId,
+    lote,
+    totalParadas: paradas.length,
+    totalPerdas: perdas.length,
+    totalRetrabalhos: retrabalhos.length
+  })
+
+  // =================================================================
+  // PASSO 2: CLASSIFICAR PARADAS POR TIPO E DURA c7 c3O
+  // =================================================================
+
+  // Paradas estrat e9gicas (n e3o entram no c e1lculo - s e3o exclu eddas do tempo dispon eível)
+  const paradasEstrategicas = paradas.filter(p =>
+    identificarTipoParada(p) === 'ESTRATEGICA' && p.duracao_minutos !== null
+  )
+
+  // Paradas grandes (>= 10 min) - Afetam DISPONIBILIDADE
+  const paradasGrandes = paradas.filter(p =>
+    identificarTipoParada(p) !== 'ESTRATEGICA' &&
+    p.duracao_minutos !== null &&
+    p.duracao_minutos >= 10
+  )
+
+  // Pequenas paradas (< 10 min) - Afetam PERFORMANCE
+  const pequenasParadas = paradas.filter(p =>
+    p.duracao_minutos !== null &&
+    p.duracao_minutos < 10
+  )
+
+  console.log('50d Classifica e7 e3o de paradas:', {
+    estrategicas: paradasEstrategicas.length,
+    grandes: paradasGrandes.length,
+    pequenas: pequenasParadas.length
+  })
+
+  // =================================================================
+  // PASSO 3: CALCULAR TEMPOS (em horas)
+  // =================================================================
+
+  const tempoDisponivelHoras = tempoDisponivelTurno
+  const tempoEstrategicoHoras = somarDuracoesMinutos(paradasEstrategicas) / 60
+  const tempoParadasGrandesHoras = somarDuracoesMinutos(paradasGrandes) / 60
+  const tempoPequenasParadasHoras = somarDuracoesMinutos(pequenasParadas) / 60
+
+  // Tempo Dispon edvel Ajustado = Tempo Dispon eível - Paradas Estrat e9gicas
+  const tempoDisponivelAjustado = tempoDisponivelHoras - tempoEstrategicoHoras
+
+  // Tempo de Opera e7 e3o = Tempo Dispon eível Ajustado - Paradas Grandes
+  const tempoOperacao = tempoDisponivelAjustado - tempoParadasGrandesHoras
+
+  console.log('3f1 Tempos calculados (horas):', {
+    tempoDisponivel: tempoDisponivelHoras,
+    tempoEstrategico: tempoEstrategicoHoras,
+    tempoDisponivelAjustado,
+    tempoParadasGrandes: tempoParadasGrandesHoras,
+    tempoOperacao,
+    tempoPequenasParadas: tempoPequenasParadasHoras
+  })
+
+  // =================================================================
+  // PASSO 4: CALCULAR DISPONIBILIDADE
+  // Disponibilidade = (Tempo de Opera e7 e3o / Tempo Dispon eível Ajustado)  d7 100
+  // =================================================================
+
+  const disponibilidade = tempoDisponivelAjustado > 0
+    ? (tempoOperacao / tempoDisponivelAjustado) * 100
+    : 0
+
+  console.log('4c8 Disponibilidade:', {
+    tempoOperacao,
+    tempoDisponivelAjustado,
+    disponibilidade: `${arredondar(disponibilidade)}%`
+  })
+
+  // =================================================================
+  // PASSO 5: CALCULAR PERFORMANCE
+  // Performance = (Tempo Operacional L edquido / Tempo de Opera e7 e3o)  d7 100
+  // =================================================================
+
+  // Método 1: Por quantidade produzida e velocidade nominal
+  const tempoOperacionalLiquidoPorProducao = apontamento.velocidadeNominal > 0
+    ? apontamento.quantidadeProduzida / apontamento.velocidadeNominal
+    : 0
+
+  // Método 2: Por tempo de operação menos pequenas paradas
+  const tempoOperacionalLiquidoPorParadas = tempoOperacao - tempoPequenasParadasHoras
+
+  console.log('Comparação métodos de performance:', {
+    tempoOperacionalLiquidoPorProducao,
+    tempoOperacionalLiquidoPorParadas
+  })
+
+  // Usar o método por produção (mais preciso)
+  const tempoOperacionalLiquido = tempoOperacionalLiquidoPorProducao
+
+  const performanceBruta = tempoOperacao > 0
+    ? (tempoOperacionalLiquido / tempoOperacao) * 100
+    : 0
+
+  // Garante que a performance não ultrapasse 100%
+  const performance = Math.min(performanceBruta, 100)
+
+  console.log('680 Performance:', {
+    quantidadeProduzida: apontamento.quantidadeProduzida,
+    velocidadeNominal: apontamento.velocidadeNominal,
+    tempoOperacionalLiquido,
+    tempoOperacao,
+    performance: `${arredondar(performance)}%`
+  })
+
+  // =================================================================
+  // PASSO 6: CALCULAR QUALIDADE
+  // Qualidade = Qualidade_Unidades  d7 Qualidade_Retrabalho
+  // =================================================================
+
+  // 6a. Qualidade por Unidades (Refugo e Desvios)
+  const totalPerdas = perdas.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
+  const unidadesBoas = apontamento.quantidadeProduzida - totalPerdas
+
+  const qualidadeUnidades = apontamento.quantidadeProduzida > 0
+    ? (unidadesBoas / apontamento.quantidadeProduzida) * 100
+    : 100
+
+  // 6b. Qualidade por Retrabalho
+  const totalTempoRetrabalho = retrabalhos.reduce((sum, r) => sum + r.tempoRetrabalho, 0)
+
+  const qualidadeRetrabalho = tempoOperacao > 0
+    ? ((tempoOperacao - totalTempoRetrabalho) / tempoOperacao) * 100
+    : 100
+
+  // 6c. Qualidade Total
+  const qualidade = (qualidadeUnidades / 100) * (qualidadeRetrabalho / 100) * 100
+
+  console.log('728 Qualidade:', {
+    totalPerdas,
+    unidadesBoas,
+    qualidadeUnidades: `${arredondar(qualidadeUnidades)}%`,
+    totalTempoRetrabalho,
+    qualidadeRetrabalho: `${arredondar(qualidadeRetrabalho)}%`,
+    qualidadeTotal: `${arredondar(qualidade)}%`
+  })
+
+  // =================================================================
+  // PASSO 7: CALCULAR OEE
+  // OEE = Disponibilidade  d7 Performance  d7 Qualidade
+  // =================================================================
+
+  const oee = (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
+
+  // Tempo Valioso = (Qualidade / 100)  d7 Tempo Operacional L edquido
+  const tempoValioso = (qualidade / 100) * tempoOperacionalLiquido
+
+  console.log('3af OEE Final:', {
+    disponibilidade: `${arredondar(disponibilidade)}%`,
+    performance: `${arredondar(performance)}%`,
+    qualidade: `${arredondar(qualidade)}%`,
+    oee: `${arredondar(oee)}%`,
+    tempoValioso: `${arredondar(tempoValioso)}h`
+  })
+
+  return {
+    disponibilidade: arredondar(disponibilidade),
+    performance: arredondar(performance),
+    qualidade: arredondar(qualidade),
+    oee: arredondar(oee),
+    tempoOperacionalLiquido: arredondar(tempoOperacionalLiquido),
+    tempoValioso: arredondar(tempoValioso)
+  }
+}
+
+/**
+ * Soma dura e7 f5es de paradas em minutos
+ */
+function somarDuracoesMinutos(paradas: ParadaLocalStorage[]): number {
+  return paradas.reduce((sum, p) => sum + (p.duracao_minutos || 0), 0)
+}
+
+/**
+ * Arredonda n famero para 2 casas decimais
+ */
+function arredondar(valor: number): number {
+  return Math.round(valor * 100) / 100
+}
+
+/**
+ * Identifica tipo de parada baseado em campos da parada
+ * TODO: Substituir por busca no c f3digo de parada real quando integrado com banco
+ */
+function identificarTipoParada(parada: ParadaLocalStorage): TipoParada {
+  // Por enquanto, inferir do campo observacao ou usar padr e3o
+  // IMPORTANTE: Esta fun e7 e3o deve ser substitu edda quando integrar com c f3digos de parada reais
+
+  const obs = parada.observacao?.toLowerCase() || ''
+
+  if (obs.includes('estrateg') || obs.includes('setup') || obs.includes('troca')) {
+    return 'ESTRATEGICA'
+  }
+
+  if (obs.includes('planej') || obs.includes('manuten') || obs.includes('limpeza')) {
+    return 'PLANEJADA'
+  }
+
+  return 'NAO_PLANEJADA'
+}
+
+/**
+ * Exclui um apontamento de produção específico do localStorage
+ * Também remove os apontamentos de perdas e retrabalho relacionados
+ *
+ * @param id - ID do apontamento de produção a ser excluído
+ * @returns true se o apontamento foi excluído com sucesso, false caso contrário
+ */
+export function excluirApontamentoProducao(id: string): boolean {
+  try {
+    // Buscar todos os apontamentos
+    const apontamentos = buscarTodosApontamentosProducao()
+
+    // Verificar se o apontamento existe
+    const index = apontamentos.findIndex(a => a.id === id)
+    if (index === -1) {
+      console.error('❌ Apontamento não encontrado para exclusão:', id)
+      return false
+    }
+
+    // Remover o apontamento da lista
+    const apontamentoExcluido = apontamentos[index]
+    apontamentos.splice(index, 1)
+
+    // Salvar a lista atualizada
+    localStorage.setItem(STORAGE_KEY_PRODUCAO, JSON.stringify(apontamentos))
+
+    // Remover apontamentos de perdas relacionados
+    const perdas = buscarTodosApontamentosPerdas()
+    const perdasAtualizadas = perdas.filter(p => p.apontamentoProducaoId !== id)
+    localStorage.setItem(STORAGE_KEY_PERDAS, JSON.stringify(perdasAtualizadas))
+
+    // Remover apontamentos de retrabalho relacionados
+    const retrabalhos = buscarTodosApontamentosRetrabalho()
+    const retrabalhosAtualizados = retrabalhos.filter(r => r.apontamentoProducaoId !== id)
+    localStorage.setItem(STORAGE_KEY_RETRABALHO, JSON.stringify(retrabalhosAtualizados))
+
+    console.log('✅ Apontamento de produção excluído com sucesso:', {
+      id,
+      lote: apontamentoExcluido.lote,
+      quantidadeProduzida: apontamentoExcluido.quantidadeProduzida
+    })
+
+    return true
+  } catch (error) {
+    console.error('❌ Erro ao excluir apontamento de produção:', error)
+    return false
   }
 }
 

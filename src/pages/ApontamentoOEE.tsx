@@ -7,19 +7,19 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
-import { buscarSKUPorCodigo, buscarSKUsPorSetor } from '@/data/mockSKUs'
 import { buscarOPTOTVSPorNumero } from '@/data/ordem-producao-totvs'
+import paradasGeraisData from '../../data/paradas_gerais.json'
 import { Turno } from '@/types/operacao'
 import {
   salvarApontamentoProducao,
-  salvarApontamentoPerdas,
-  salvarApontamentoRetrabalho,
-  calcularOEE
+  calcularOEECompleto,
+  excluirApontamentoProducao
 } from '@/services/localStorage/apontamento-oee.storage'
+import { salvarParada, ParadaLocalStorage } from '@/services/localStorage/parada.storage'
 import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -57,6 +57,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AppHeader } from "@/components/layout/AppHeader"
+import { ModalBuscaParadas } from "@/components/apontamento/ModalBuscaParadas"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -78,6 +79,23 @@ interface RegistroProducao {
   horaInicio: string
   horaFim: string
   quantidadeProduzida: number
+  dataHoraRegistro: string
+}
+
+// Tipo para registro de parada no localStorage
+interface RegistroParada {
+  id: string
+  data: string
+  turno: Turno
+  linhaId: string
+  linhaNome: string
+  horaInicio: string
+  horaFim: string
+  duracao: number // em minutos
+  tipoParada: string
+  codigoParada: string
+  descricaoParada: string
+  observacoes: string
   dataHoraRegistro: string
 }
 
@@ -115,13 +133,14 @@ export default function ApontamentoOEE() {
   const [motivoRetrabalho, setMotivoRetrabalho] = useState<string>('')
 
   // ==================== Estado de Tempo de Parada ====================
-  const [tipoParada, setTipoParada] = useState<string>('Planejado')
-  const [duracaoParada, setDuracaoParada] = useState<string>('')
-  const [motivoNivel1, setMotivoNivel1] = useState<string>('')
-  const [motivoNivel2, setMotivoNivel2] = useState<string>('')
-  const [motivoNivel3, setMotivoNivel3] = useState<string>('')
-  const [motivoNivel4, setMotivoNivel4] = useState<string>('')
-  const [motivoNivel5, setMotivoNivel5] = useState<string>('')
+  const [codigoParadaBusca, setCodigoParadaBusca] = useState<string>('')
+  const [horaInicialParada, setHoraInicialParada] = useState<string>('')
+  const [horaFinalParada, setHoraFinalParada] = useState<string>('')
+  const [observacoesParada, setObservacoesParada] = useState<string>('')
+  const [paradaSelecionada, setParadaSelecionada] = useState<any | null>(null)
+  const [paradasAtivas] = useState<any[]>([]) // Lista de paradas em andamento (setter não usado ainda)
+  const [mostrarFormularioParada, setMostrarFormularioParada] = useState<boolean>(false)
+  const [modalBuscaParadasAberto, setModalBuscaParadasAberto] = useState<boolean>(false)
 
   // ==================== Estado de OEE ====================
   const [apontamentoProducaoId, setApontamentoProducaoId] = useState<string | null>(null)
@@ -141,16 +160,20 @@ export default function ApontamentoOEE() {
 
   // ==================== Dados Derivados ====================
   const linhaSelecionada = linhaId ? buscarLinhaPorId(linhaId) : null
-  const skuSelecionado = skuCodigo ? buscarSKUPorCodigo(skuCodigo) : null
-  const skusDisponiveis = linhaSelecionada
-    ? buscarSKUsPorSetor(linhaSelecionada.setor)
-    : []
 
   // ==================== Estado de Histórico de Produção ====================
   const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
+  const [showConfirmExclusao, setShowConfirmExclusao] = useState(false)
+  const [registroParaExcluir, setRegistroParaExcluir] = useState<string | null>(null)
+
+  // ==================== Estado de Histórico de Paradas ====================
+  const [historicoParadas, setHistoricoParadas] = useState<RegistroParada[]>([])
+  const [showConfirmExclusaoParada, setShowConfirmExclusaoParada] = useState(false)
+  const [paradaParaExcluir, setParadaParaExcluir] = useState<string | null>(null)
 
   // ==================== Constante para chave do localStorage ====================
   const STORAGE_KEY = 'oee_production_records'
+  const STORAGE_KEY_PARADAS = 'oee_downtime_records'
 
   // ==================== Funções de localStorage ====================
   const carregarHistorico = (): RegistroProducao[] => {
@@ -174,6 +197,32 @@ export default function ApontamentoOEE() {
       toast({
         title: 'Erro',
         description: 'Não foi possível salvar os dados',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const carregarHistoricoParadas = (): RegistroParada[] => {
+    try {
+      const dados = localStorage.getItem(STORAGE_KEY_PARADAS)
+      if (dados) {
+        return JSON.parse(dados)
+      }
+      return []
+    } catch (error) {
+      console.error('Erro ao carregar histórico de paradas do localStorage:', error)
+      return []
+    }
+  }
+
+  const salvarParadasNoLocalStorage = (registros: RegistroParada[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY_PARADAS, JSON.stringify(registros))
+    } catch (error) {
+      console.error('Erro ao salvar paradas no localStorage:', error)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar os dados de paradas',
         variant: 'destructive'
       })
     }
@@ -203,6 +252,191 @@ export default function ApontamentoOEE() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })
+  }
+
+  // ==================== Funções de Exclusão de Produção ====================
+
+  /**
+   * Abre o diálogo de confirmação de exclusão
+   * @param registroId - ID do registro a ser excluído
+   */
+  const confirmarExclusao = (registroId: string) => {
+    setRegistroParaExcluir(registroId)
+    setShowConfirmExclusao(true)
+  }
+
+  /**
+   * Cancela a exclusão e fecha o diálogo
+   */
+  const cancelarExclusao = () => {
+    setRegistroParaExcluir(null)
+    setShowConfirmExclusao(false)
+  }
+
+  /**
+   * Exclui um registro de produção do histórico
+   * Remove do localStorage e recalcula o OEE
+   */
+  const handleExcluirProducao = () => {
+    if (!registroParaExcluir) return
+
+    try {
+      // Buscar o registro no histórico para obter o apontamentoProducaoId
+      const registro = historicoProducao.find(r => r.id === registroParaExcluir)
+
+      if (!registro) {
+        toast({
+          title: 'Erro',
+          description: 'Registro não encontrado',
+          variant: 'destructive'
+        })
+        cancelarExclusao()
+        return
+      }
+
+      // Excluir do serviço de localStorage (apontamento-oee.storage)
+      // Nota: O histórico usa um localStorage separado (STORAGE_KEY = 'oee_production_records')
+      // mas também precisamos excluir do serviço de apontamento se houver ID correspondente
+
+      // Remover do histórico local
+      const novoHistorico = historicoProducao.filter(r => r.id !== registroParaExcluir)
+      setHistoricoProducao(novoHistorico)
+      salvarNoLocalStorage(novoHistorico)
+
+      // Se este registro estava sendo usado para calcular o OEE, recalcular
+      // Verificar se há outros registros do mesmo lote
+      const registrosDoLote = novoHistorico.filter(r => r.lote === registro.lote)
+
+      if (registrosDoLote.length > 0) {
+        // Ainda há registros deste lote, usar o mais recente para recalcular
+        const registroMaisRecente = registrosDoLote[0] // já está ordenado por data decrescente
+
+        // Tentar excluir do serviço de apontamento também
+        excluirApontamentoProducao(registroParaExcluir)
+
+        // Recalcular OEE se este era o registro ativo
+        if (apontamentoProducaoId === registroParaExcluir && lote) {
+          try {
+            // Usar o ID do registro mais recente
+            const novoOEE = calcularOEECompleto(registroMaisRecente.id, lote, 12)
+            setOeeCalculado(novoOEE)
+            setApontamentoProducaoId(registroMaisRecente.id)
+            console.log('🔄 OEE recalculado após exclusão:', novoOEE)
+          } catch (error) {
+            console.error('Erro ao recalcular OEE após exclusão:', error)
+            // Resetar OEE se não conseguir recalcular
+            setOeeCalculado({
+              disponibilidade: 0,
+              performance: 0,
+              qualidade: 0,
+              oee: 0,
+              tempoOperacionalLiquido: 0,
+              tempoValioso: 0
+            })
+          }
+        }
+      } else {
+        // Não há mais registros deste lote, resetar OEE
+        excluirApontamentoProducao(registroParaExcluir)
+
+        if (apontamentoProducaoId === registroParaExcluir) {
+          setOeeCalculado({
+            disponibilidade: 0,
+            performance: 0,
+            qualidade: 0,
+            oee: 0,
+            tempoOperacionalLiquido: 0,
+            tempoValioso: 0
+          })
+          setApontamentoProducaoId(null)
+        }
+      }
+
+      // Feedback de sucesso
+      toast({
+        title: '✅ Registro Excluído',
+        description: 'O registro de produção foi excluído com sucesso',
+      })
+
+      // Fechar diálogo
+      cancelarExclusao()
+
+    } catch (error) {
+      console.error('Erro ao excluir registro de produção:', error)
+      toast({
+        title: 'Erro ao excluir',
+        description: 'Não foi possível excluir o registro. Tente novamente.',
+        variant: 'destructive'
+      })
+      cancelarExclusao()
+    }
+  }
+
+  /**
+   * Confirma a exclusão de uma parada
+   * @param paradaId - ID da parada a ser excluída
+   */
+  const confirmarExclusaoParada = (paradaId: string) => {
+    setParadaParaExcluir(paradaId)
+    setShowConfirmExclusaoParada(true)
+  }
+
+  /**
+   * Cancela a exclusão de parada e fecha o diálogo
+   */
+  const cancelarExclusaoParada = () => {
+    setParadaParaExcluir(null)
+    setShowConfirmExclusaoParada(false)
+  }
+
+  /**
+   * Exclui um registro de parada do histórico
+   * Remove do localStorage
+   */
+  const handleExcluirParada = () => {
+    if (!paradaParaExcluir) return
+
+    try {
+      // Remover do histórico local
+      const novoHistorico = historicoParadas.filter(r => r.id !== paradaParaExcluir)
+      setHistoricoParadas(novoHistorico)
+      salvarParadasNoLocalStorage(novoHistorico)
+
+      // Feedback de sucesso
+      toast({
+        title: '✅ Parada Excluída',
+        description: 'O registro de parada foi excluído com sucesso',
+      })
+
+      // Fechar diálogo
+      cancelarExclusaoParada()
+
+    } catch (error) {
+      console.error('Erro ao excluir registro de parada:', error)
+      toast({
+        title: 'Erro ao excluir',
+        description: 'Não foi possível excluir o registro de parada. Tente novamente.',
+        variant: 'destructive'
+      })
+      cancelarExclusaoParada()
+    }
+  }
+
+  /**
+   * Formata duração em minutos para formato legível (ex: "2h 30min")
+   * @param minutos - Duração em minutos
+   */
+  const formatarDuracao = (minutos: number): string => {
+    const horas = Math.floor(minutos / 60)
+    const mins = minutos % 60
+
+    if (horas === 0) {
+      return `${mins}min`
+    } else if (mins === 0) {
+      return `${horas}h`
+    } else {
+      return `${horas}h ${mins}min`
+    }
   }
 
   /**
@@ -254,6 +488,27 @@ export default function ApontamentoOEE() {
   }
 
   /**
+   * Abre o modal de busca de paradas
+   */
+  const abrirModalBuscaParadas = () => {
+    setModalBuscaParadasAberto(true)
+  }
+
+  /**
+   * Callback quando uma parada é selecionada no modal
+   */
+  const handleSelecionarParadaModal = (parada: any) => {
+    setParadaSelecionada(parada)
+    setCodigoParadaBusca(parada.Apontamento || '')
+
+    toast({
+      title: 'Parada selecionada',
+      description: `${parada.Apontamento} - ${parada.Descrição?.substring(0, 50)}...`,
+      variant: 'default'
+    })
+  }
+
+  /**
    * Calcula o tempo disponível do turno em horas
    * Baseado no turno selecionado (8 horas por turno)
    */
@@ -294,15 +549,27 @@ export default function ApontamentoOEE() {
   useEffect(() => {
     const historico = carregarHistorico()
     setHistoricoProducao(historico)
+
+    const historicoParadas = carregarHistoricoParadas()
+    setHistoricoParadas(historicoParadas)
   }, [])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
-    if (apontamentoProducaoId) {
-      const novoOEE = calcularOEE(apontamentoProducaoId)
-      setOeeCalculado(novoOEE)
+    if (apontamentoProducaoId && lote) {
+      try {
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, 12)
+        setOeeCalculado(novoOEE)
+        console.log('f504 OEE recalculado automaticamente:', {
+          apontamentoId: apontamentoProducaoId,
+          lote,
+          oee: `${novoOEE.oee}%`
+        })
+      } catch (error) {
+        console.error(' d7❌ Erro ao recalcular OEE:', error)
+      }
     }
-  }, [apontamentoProducaoId])
+  }, [apontamentoProducaoId, lote])
 
   // ==================== Atualiza métricas quando turno está ativo ====================
   useEffect(() => {
@@ -332,115 +599,6 @@ export default function ApontamentoOEE() {
       lote.trim() &&
       dossie.trim()
     )
-  }
-
-  const validarCamposObrigatorios = (): boolean => {
-    if (!data) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, selecione a data',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!turno) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, selecione o turno',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!linhaId) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, selecione a linha de produção',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!skuCodigo.trim()) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe o código SKU',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!ordemProducao.trim()) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe a ordem de produção',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!lote.trim()) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe o lote',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!dossie.trim()) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe o dossiê',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!horaInicio) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe a hora de início',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!horaFim) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe a hora de fim',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    if (!quantidadeProduzida || Number(quantidadeProduzida) <= 0) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe uma quantidade produzida válida (maior que zero)',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    // Validar se hora fim é posterior à hora início
-    const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number)
-    const [horaFimH, horaFimM] = horaFim.split(':').map(Number)
-    const minutosInicio = horaInicioH * 60 + horaInicioM
-    const minutosFim = horaFimH * 60 + horaFimM
-
-    if (minutosFim <= minutosInicio) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'A hora de fim deve ser posterior à hora de início',
-        variant: 'destructive'
-      })
-      return false
-    }
-
-    return true
   }
 
   // ==================== Funções de Controle de Turno ====================
@@ -696,11 +854,12 @@ export default function ApontamentoOEE() {
 
       setApontamentoProducaoId(apontamento.id)
 
-      // Calcular OEE imediatamente
-      const novoOEE = calcularOEE(apontamento.id)
-      setOeeCalculado(novoOEE)
-
-      console.log('📊 OEE calculado:', novoOEE)
+      // Calcular OEE imediatamente (se houver lote informado)
+      if (lote) {
+        const novoOEE = calcularOEECompleto(apontamento.id, lote, 12)
+        setOeeCalculado(novoOEE)
+        console.log('📊 OEE calculado:', novoOEE)
+      }
 
       // =================================================================
       // ATUALIZAR HISTÓRICO LOCAL (para exibição na tabela)
@@ -761,10 +920,130 @@ export default function ApontamentoOEE() {
   }
 
   const handleRegistrarParada = () => {
+    // Validar campos obrigatórios
+    if (!paradaSelecionada) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, busque e selecione um tipo de parada',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!horaInicialParada) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe a hora inicial da parada',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!horaFinalParada) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Por favor, informe a hora final da parada',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Calcular duração em minutos
+    const [horaIni, minIni] = horaInicialParada.split(':').map(Number)
+    const [horaFin, minFin] = horaFinalParada.split(':').map(Number)
+    const minutosInicio = horaIni * 60 + minIni
+    const minutosFim = horaFin * 60 + minFin
+    const duracaoMinutos = minutosFim - minutosInicio
+
+    // Validar que hora final é maior que hora inicial
+    if (duracaoMinutos <= 0) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'A hora final deve ser maior que a hora inicial',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Criar objeto de registro de parada (para exibição / debug)
+    const registroParada = {
+      id: `parada-${Date.now()}`,
+      data: format(data!, 'dd/MM/yyyy'),
+      turno,
+      linhaId,
+      linhaNome: linhaSelecionada?.nome || '',
+      natureza: paradaSelecionada.Natureza || '',
+      classe: paradaSelecionada.Classe || '',
+      grandeParada: paradaSelecionada['Grande Parada'] || '',
+      apontamento: paradaSelecionada.Apontamento || '',
+      descricao: paradaSelecionada.Descrição || '',
+      horaInicial: horaInicialParada,
+      horaFinal: horaFinalParada,
+      duracaoMinutos,
+      observacoes: observacoesParada,
+      dataHoraRegistro: new Date().toISOString()
+    }
+
+    console.log('Registro de Parada (UI):', registroParada)
+
+    // Converter para formato ParadaLocalStorage (para cálculo do OEE)
+    const horaInicioFormatada =
+      horaInicialParada.length === 5 ? `${horaInicialParada}:00` : horaInicialParada
+    const horaFimFormatada =
+      horaFinalParada.length === 5 ? `${horaFinalParada}:00` : horaFinalParada
+
+    const paradaData: ParadaLocalStorage = {
+      id: registroParada.id,
+      linha_id: linhaId,
+      lote_id: lote || null,
+      codigo_parada_id: (paradaSelecionada.Codigo || paradaSelecionada.Apontamento || 'CODIGO_TEMP') as string,
+      turno_id: turno,
+      data_parada: format(data!, 'yyyy-MM-dd'),
+      hora_inicio: horaInicioFormatada,
+      hora_fim: horaFimFormatada,
+      duracao_minutos: duracaoMinutos,
+      observacao: `${paradaSelecionada.Natureza || ''} - ${paradaSelecionada.Classe || ''} - ${paradaSelecionada['Grande Parada'] || ''} - ${observacoesParada || ''}`.trim(),
+      criado_por_operador: 1,
+      conferido_por_supervisor: null,
+      conferido_em: null,
+      created_at: new Date().toISOString(),
+      created_by: 1,
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      deleted_at: null,
+      deleted_by: null
+    }
+
+    // Salvar no localStorage
+    salvarParada(paradaData)
+
+    // Recalcular OEE se houver apontamento de produção e lote
+    if (apontamentoProducaoId && lote) {
+      try {
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, 12)
+        setOeeCalculado(novoOEE)
+        console.log('🔄 OEE recalculado após parada:', novoOEE)
+      } catch (error) {
+        console.error('Erro ao recalcular OEE após parada:', error)
+      }
+    }
+
+    // Limpar formulário
+    setCodigoParadaBusca('')
+    setParadaSelecionada(null)
+    setHoraInicialParada('')
+    setHoraFinalParada('')
+    setObservacoesParada('')
+
     toast({
       title: 'Sucesso',
-      description: 'Tempo de parada registrado'
+      description: `Parada registrada: ${duracaoMinutos} minutos (${Math.floor(duracaoMinutos / 60)}h ${duracaoMinutos % 60}min)`,
+      variant: 'default'
     })
+  }
+
+  const handleNovaParada = () => {
+    setMostrarFormularioParada(true)
   }
 
   // ==================== Handlers do Header CRUD ====================
@@ -1105,6 +1384,58 @@ export default function ApontamentoOEE() {
             </AlertDialogContent>
           </AlertDialog>
 
+          {/* Dialog de Confirmação de Exclusão de Registro */}
+          <AlertDialog open={showConfirmExclusao} onOpenChange={setShowConfirmExclusao}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão de Registro</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este registro de produção? Esta ação não pode ser desfeita.
+                  {registroParaExcluir && (
+                    <span className="block mt-2 font-medium text-text-primary-light dark:text-text-primary-dark">
+                      Registro: {historicoProducao.find(r => r.id === registroParaExcluir)?.dataHoraRegistro}
+                    </span>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={cancelarExclusao}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleExcluirProducao}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                >
+                  Confirmar Exclusão
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Dialog de Confirmação de Exclusão de Parada */}
+          <AlertDialog open={showConfirmExclusaoParada} onOpenChange={setShowConfirmExclusaoParada}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão de Parada</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este registro de parada? Esta ação não pode ser desfeita.
+                  {paradaParaExcluir && (
+                    <span className="block mt-2 font-medium text-text-primary-light dark:text-text-primary-dark">
+                      Registro: {historicoParadas.find(r => r.id === paradaParaExcluir)?.dataHoraRegistro}
+                    </span>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={cancelarExclusaoParada}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleExcluirParada}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                >
+                  Confirmar Exclusão
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {/* Cards de Seleção de Formulário */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <div
@@ -1199,6 +1530,7 @@ export default function ApontamentoOEE() {
                   <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
                     <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
                       <tr>
+                        <th className="px-1 py-2 font-medium w-10" scope="col">Ações</th>
                         <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
                         <th className="px-1 py-2 font-medium" scope="col">Início</th>
                         <th className="px-1 py-2 font-medium" scope="col">Fim</th>
@@ -1208,7 +1540,7 @@ export default function ApontamentoOEE() {
                     <tbody>
                       {historicoProducao.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-1 py-4 text-center text-muted-foreground">
+                          <td colSpan={5} className="px-1 py-4 text-center text-muted-foreground">
                             Nenhum registro de produção encontrado
                           </td>
                         </tr>
@@ -1218,6 +1550,17 @@ export default function ApontamentoOEE() {
                             key={registro.id}
                             className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
                           >
+                            <td className="px-1 py-2 whitespace-nowrap">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => confirmarExclusao(registro.id)}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Excluir registro"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </td>
                             <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
                             <td className="px-1 py-2 whitespace-nowrap">{registro.horaInicio}</td>
                             <td className="px-1 py-2 whitespace-nowrap">{registro.horaFim}</td>
@@ -1317,98 +1660,198 @@ export default function ApontamentoOEE() {
           {formularioAtivo === 'downtime-form' && (
             <section className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
               <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Tempo de Parada</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+
+              {/* Tela de Estado Vazio - Nenhuma parada em andamento */}
+              {paradasAtivas.length === 0 && !mostrarFormularioParada ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <CircleCheck className="h-16 w-16 text-green-500 mb-4" />
+                  <h3 className="text-lg font-semibold text-green-700">
+                    ✅ Nenhuma parada em andamento
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    A produção está operando normalmente
+                  </p>
+                  <Button
+                    onClick={handleNovaParada}
+                    className="mt-6"
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Registrar Nova Parada
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* 1. Componente de Busca de Tipo de Parada */}
                   <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="downtime-type">
-                      Tipo
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="codigo-parada">
+                      Tipo de Parada
                     </label>
-                    <Select value={tipoParada} onValueChange={setTipoParada}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Planejado">Planejado</SelectItem>
-                        <SelectItem value="Não Planejado">Não Planejado</SelectItem>
-                        <SelectItem value="Pequena Parada">Pequena Parada</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <input
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        id="codigo-parada"
+                        type="text"
+                        value={codigoParadaBusca}
+                        onChange={(e) => setCodigoParadaBusca(e.target.value)}
+                        placeholder="Digite o código da parada ou clique na lupa para buscar"
+                        readOnly
+                        onClick={abrirModalBuscaParadas}
+                      />
+                      <button
+                        type="button"
+                        onClick={abrirModalBuscaParadas}
+                        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
+                        title="Buscar tipo de parada"
+                      >
+                        <Search className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Exibir hierarquia de 5 níveis quando parada for selecionada */}
+                  {paradaSelecionada && (
+                    <div className="p-4 bg-muted/50 rounded-md space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Hierarquia da Parada:</p>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="font-medium">Natureza:</span> {paradaSelecionada.Natureza || 'N/A'}</p>
+                        <p><span className="font-medium">Classe:</span> {paradaSelecionada.Classe || 'N/A'}</p>
+                        <p><span className="font-medium">Grande Parada:</span> {paradaSelecionada['Grande Parada'] || 'N/A'}</p>
+                        <p><span className="font-medium">Apontamento:</span> {paradaSelecionada.Apontamento || 'N/A'}</p>
+                        <p><span className="font-medium">Descrição:</span> {paradaSelecionada.Descrição || 'N/A'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Componente de Hora Inicial */}
                   <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="downtime-duration">
-                      Duração (min)
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-inicial-parada">
+                      Hora Inicial
                     </label>
                     <input
-                      className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                      id="downtime-duration"
-                      type="number"
-                      value={duracaoParada}
-                      onChange={(e) => setDuracaoParada(e.target.value)}
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      id="hora-inicial-parada"
+                      type="time"
+                      value={horaInicialParada}
+                      onChange={(e) => setHoraInicialParada(e.target.value)}
                     />
                   </div>
+
+                  {/* 3. Componente de Hora Final */}
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
+                      Hora Final
+                    </label>
+                    <input
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      id="hora-final-parada"
+                      type="time"
+                      value={horaFinalParada}
+                      onChange={(e) => setHoraFinalParada(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Exibir duração calculada automaticamente */}
+                  {horaInicialParada && horaFinalParada && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        Duração calculada: {(() => {
+                          const [horaIni, minIni] = horaInicialParada.split(':').map(Number)
+                          const [horaFin, minFin] = horaFinalParada.split(':').map(Number)
+                          const minutosInicio = horaIni * 60 + minIni
+                          const minutosFim = horaFin * 60 + minFin
+                          const duracaoMinutos = minutosFim - minutosInicio
+
+                          if (duracaoMinutos < 0) {
+                            return 'Hora final deve ser maior que hora inicial'
+                          }
+
+                          const horas = Math.floor(duracaoMinutos / 60)
+                          const minutos = duracaoMinutos % 60
+                          return `${horas}h ${minutos}min (${duracaoMinutos} minutos)`
+                        })()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 4. Componente de Observações */}
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="observacoes-parada">
+                      Observações da Parada
+                    </label>
+                    <textarea
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
+                      id="observacoes-parada"
+                      value={observacoesParada}
+                      onChange={(e) => setObservacoesParada(e.target.value)}
+                      placeholder="Digite observações adicionais sobre a parada..."
+                    />
+                  </div>
+
+                  <button
+                    className="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+                    type="button"
+                    onClick={handleRegistrarParada}
+                  >
+                    <Timer className="h-5 w-5" />
+                    Registrar Tempo de Parada
+                  </button>
                 </div>
+              )}
 
-                <p className="text-sm font-medium text-muted-foreground">
-                  Motivo (hierarquia de 5 níveis)
-                </p>
-
-                <div className="space-y-2">
-                  <Select value={motivoNivel1} onValueChange={setMotivoNivel1}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nível 1: Área" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Máquina">Máquina</SelectItem>
-                      <SelectItem value="Processo">Processo</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={motivoNivel2} onValueChange={setMotivoNivel2} disabled={!motivoNivel1}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nível 2: Componente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Opções serão adicionadas dinamicamente */}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={motivoNivel3} onValueChange={setMotivoNivel3} disabled={!motivoNivel2}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nível 3: Sub-componente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Opções serão adicionadas dinamicamente */}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={motivoNivel4} onValueChange={setMotivoNivel4} disabled={!motivoNivel3}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nível 4: Tipo de Problema" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Opções serão adicionadas dinamicamente */}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={motivoNivel5} onValueChange={setMotivoNivel5} disabled={!motivoNivel4}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Nível 5: Causa Específica" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Opções serão adicionadas dinamicamente */}
-                    </SelectContent>
-                  </Select>
+              {/* Histórico de Registros de Paradas */}
+              <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark mt-6">
+                <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Paradas</h2>
+                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                  <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
+                    <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
+                      <tr>
+                        <th className="px-1 py-2 font-medium w-10" scope="col">Ações</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Início</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Fim</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Duração</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Tipo de Parada</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historicoParadas.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-1 py-4 text-center text-muted-foreground">
+                            Nenhum registro de parada encontrado
+                          </td>
+                        </tr>
+                      ) : (
+                        historicoParadas.map((registro) => (
+                          <tr
+                            key={registro.id}
+                            className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
+                          >
+                            <td className="px-1 py-2 whitespace-nowrap">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => confirmarExclusaoParada(registro.id)}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Excluir registro"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.horaInicio}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.horaFim}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{formatarDuracao(registro.duracao)}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.tipoParada}</td>
+                            <td className="px-1 py-2">{registro.descricaoParada}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-
-                <button
-                  className="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
-                  type="button"
-                  onClick={handleRegistrarParada}
-                >
-                  <Timer className="h-5 w-5" />
-                  Registrar Tempo de Parada
-                </button>
-              </div>
+              </section>
             </section>
           )}
           </main>
@@ -1530,6 +1973,14 @@ export default function ApontamentoOEE() {
         </div>
         </div>
       </div>
+
+      {/* Modal de Busca de Paradas */}
+      <ModalBuscaParadas
+        aberto={modalBuscaParadasAberto}
+        onFechar={() => setModalBuscaParadasAberto(false)}
+        onSelecionarParada={handleSelecionarParadaModal}
+        paradasGerais={paradasGeraisData}
+      />
     </>
   )
 }
