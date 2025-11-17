@@ -371,7 +371,7 @@ export default function ApontamentoOEE() {
 
     if (apontamentoReferencia) {
       try {
-        const novoOEE = calcularOEECompleto(apontamentoReferencia.id, apontamentoReferencia.lote, TEMPO_DISPONIVEL_PADRAO)
+        const novoOEE = calcularOEECompleto(apontamentoReferencia.id, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
         setApontamentoProducaoId(apontamentoReferencia.id)
         setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoReferencia.id))
@@ -650,20 +650,20 @@ export default function ApontamentoOEE() {
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
-    if (apontamentoProducaoId && lote) {
+    if (apontamentoProducaoId && linhaId) {
       try {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, 12)
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, 12)
         setOeeCalculado(novoOEE)
         console.log('f504 OEE recalculado automaticamente:', {
           apontamentoId: apontamentoProducaoId,
-          lote,
+          linhaId,
           oee: `${novoOEE.oee}%`
         })
       } catch (error) {
         console.error(' d7❌ Erro ao recalcular OEE:', error)
       }
     }
-  }, [apontamentoProducaoId, lote])
+  }, [apontamentoProducaoId, linhaId])
 
   // ==================== Atualiza métricas quando turno está ativo ====================
   useEffect(() => {
@@ -760,7 +760,7 @@ export default function ApontamentoOEE() {
           try {
             const oeeRecalculado = calcularOEECompleto(
               producaoReferencia.id,
-              producaoReferencia.lote,
+              linhaId,
               12
             )
             setOeeCalculado(oeeRecalculado)
@@ -980,8 +980,8 @@ export default function ApontamentoOEE() {
       setIndicadoresSecundarios(calcularIndicadoresSecundarios(historicoParadasAtualizado, TEMPO_DISPONIVEL_PADRAO))
       setHorasRestantes(calcularHorasRestantes())
 
-      if (apontamentoProducaoId && lote) {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, TEMPO_DISPONIVEL_PADRAO)
+      if (apontamentoProducaoId && linhaId) {
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
         setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
       }
@@ -1194,9 +1194,9 @@ export default function ApontamentoOEE() {
 
       setApontamentoProducaoId(apontamento.id)
 
-      // Calcular OEE imediatamente (se houver lote informado)
-      if (lote) {
-        const novoOEE = calcularOEECompleto(apontamento.id, lote, 12)
+      // Calcular OEE imediatamente (OEE é calculado por linha)
+      if (linhaId) {
+        const novoOEE = calcularOEECompleto(apontamento.id, linhaId, 12)
         setOeeCalculado(novoOEE)
         console.log('📊 OEE calculado:', novoOEE)
       }
@@ -1380,10 +1380,10 @@ export default function ApontamentoOEE() {
     setTotalHorasParadas(historicoAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
     setIndicadoresSecundarios(calcularIndicadoresSecundarios(historicoAtualizado, TEMPO_DISPONIVEL_PADRAO))
 
-    // Recalcular OEE se houver apontamento de produção e lote
-    if (apontamentoProducaoId && lote) {
+    // Recalcular OEE se houver apontamento de produção e linha
+    if (apontamentoProducaoId && linhaId) {
       try {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, lote, TEMPO_DISPONIVEL_PADRAO)
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
         console.log('🔄 OEE recalculado após parada:', novoOEE)
       } catch (error) {

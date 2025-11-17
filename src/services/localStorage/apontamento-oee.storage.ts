@@ -10,7 +10,7 @@ import {
   CriarApontamentoProducaoDTO,
   CalculoOEE
 } from '@/types/apontamento-oee'
-import { buscarParadasPorLote, ParadaLocalStorage } from '@/services/localStorage/parada.storage'
+import { buscarParadasPorLinha, ParadaLocalStorage } from '@/services/localStorage/parada.storage'
 import { TipoParada } from '@/types/parada'
 
 const STORAGE_KEY_PRODUCAO = 'sysoee_apontamentos_producao'
@@ -300,10 +300,14 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
 /**
  * Calcula OEE completo integrando paradas, perdas e retrabalhos
  * Baseado em docs/example/EXEMPLOS-CODIGO-OEE.md
+ *
+ * @param apontamentoProducaoId - ID do apontamento de produção
+ * @param linhaId - ID da linha de produção (OEE é calculado por linha)
+ * @param tempoDisponivelTurno - Tempo disponível do turno em horas (padrão: 12h)
  */
 export function calcularOEECompleto(
   apontamentoProducaoId: string,
-  lote: string,
+  linhaId: string,
   tempoDisponivelTurno: number = 12
 ): CalculoOEE {
   // =================================================================
@@ -324,13 +328,14 @@ export function calcularOEECompleto(
     }
   }
 
-  const paradas = buscarParadasPorLote(lote)
+  // OEE é calculado por LINHA, independente de lote, data ou turno
+  const paradas = buscarParadasPorLinha(linhaId)
   const perdas = buscarApontamentosPerdasPorProducao(apontamentoProducaoId)
   const retrabalhos = buscarApontamentosRetrabalhoPorProducao(apontamentoProducaoId)
 
   console.log('4ca Calculando OEE:', {
     apontamentoId: apontamentoProducaoId,
-    lote,
+    linhaId,
     totalParadas: paradas.length,
     totalPerdas: perdas.length,
     totalRetrabalhos: retrabalhos.length

@@ -57,6 +57,15 @@ export function buscarParadasPorLote(loteId: string): ParadaLocalStorage[] {
 }
 
 /**
+ * Busca todas as paradas de uma linha de produção
+ * Usado para cálculo de OEE da linha (independente de lote, data ou turno)
+ */
+export function buscarParadasPorLinha(linhaId: string): ParadaLocalStorage[] {
+  const todasParadas = buscarTodasParadas()
+  return todasParadas.filter(p => p.linha_id === linhaId)
+}
+
+/**
  * Busca uma parada específica por ID
  */
 export function buscarParadaPorId(id: string): ParadaLocalStorage | null {
