@@ -24,10 +24,10 @@ Execute no SQL Editor:
 
 ```sql
 -- Turnos
-INSERT INTO tbturno (codigo, nome, hora_inicio, hora_fim, duracao_horas) VALUES
-('D1', 'Diurno 1', '06:00', '14:00', 8.00),
-('D2', 'Diurno 2', '14:00', '22:00', 8.00),
-('N1', 'Noturno 1', '22:00', '06:00', 8.00);
+INSERT INTO tbturno (codigo, turno, hora_inicio, hora_fim, meta_oee) VALUES
+('D1', 'Diurno 1', '06:00', '14:00', 85.00),
+('D2', 'Diurno 2', '14:00', '22:00', 85.00),
+('N1', 'Noturno 1', '22:00', '06:00', 85.00);
 
 -- Departamentos
 INSERT INTO tbdepartamento (codigo, nome, descricao) VALUES

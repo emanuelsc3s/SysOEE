@@ -21,7 +21,7 @@ SELECT
   -- Cabeçalho
   l.data_producao,
   t.codigo AS turno_codigo,
-  t.nome AS turno_nome,
+  t.turno AS turno_nome,
   li.codigo AS linha_codigo,
   li.nome AS linha_nome,
   d.codigo AS departamento_codigo,
@@ -58,7 +58,7 @@ FROM tblote l
 JOIN tblinha li ON li.id = l.linha_id
 JOIN tbdepartamento d ON d.id = li.departamento_id
 JOIN tbsku sku ON sku.id = l.sku_id
-JOIN tbturno t ON t.id = l.turno_id
+JOIN tbturno t ON t.turno_id = l.turno_id
 LEFT JOIN tbusuario u_op ON u_op.id = l.created_by
 LEFT JOIN tbusuario u_sup ON u_sup.id = l.conferido_por_supervisor
 WHERE l.deletado = 'N'

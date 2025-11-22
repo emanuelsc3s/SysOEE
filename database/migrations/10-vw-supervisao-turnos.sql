@@ -23,7 +23,7 @@ SELECT
   p.produto_id,
   p.descricao AS produto_nome,
   t.turno_id,
-  t.nome AS turno_nome,
+  t.turno AS turno_nome,
   t.codigo AS turno_codigo,
 
   -- Datas e horários

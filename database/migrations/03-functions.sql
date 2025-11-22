@@ -318,10 +318,11 @@ BEGIN
     l.unidades_boas,
     l.unidades_refugo,
     l.tempo_retrabalho_minutos,
-    t.duracao_horas
+    t.hora_inicio AS turno_hora_inicio,
+    t.hora_fim AS turno_hora_fim
   INTO v_lote
   FROM tblote l
-  JOIN tbturno t ON t.id = l.turno_id
+  JOIN tbturno t ON t.turno_id = l.turno_id
   WHERE l.id = p_lote_id;
 
   IF NOT FOUND THEN
@@ -342,8 +343,17 @@ BEGIN
   -- 1. TEMPO CALENDÁRIO
   IF v_lote.hora_inicio IS NOT NULL AND v_lote.hora_fim IS NOT NULL THEN
     v_tempo_calendario := EXTRACT(EPOCH FROM (v_lote.hora_fim - v_lote.hora_inicio)) / 3600.0;
+  ELSIF v_lote.turno_hora_inicio IS NOT NULL AND v_lote.turno_hora_fim IS NOT NULL THEN
+    -- Usar duração do turno (considerando virada de dia se necessário)
+    v_tempo_calendario := EXTRACT(EPOCH FROM (
+      CASE
+        WHEN v_lote.turno_hora_fim < v_lote.turno_hora_inicio
+        THEN v_lote.turno_hora_fim + INTERVAL '24 hours' - v_lote.turno_hora_inicio
+        ELSE v_lote.turno_hora_fim - v_lote.turno_hora_inicio
+      END
+    )) / 3600.0;
   ELSE
-    v_tempo_calendario := v_lote.duracao_horas;
+    v_tempo_calendario := 8.0; -- Padrão: 8 horas
   END IF;
 
   -- 2. CALCULAR TEMPOS DE PARADAS (por tipo)
