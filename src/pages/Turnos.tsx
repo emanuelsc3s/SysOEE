@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { AppHeader } from '@/components/layout/AppHeader'
 import { useTurnos } from '@/hooks/useTurnos'
 import { TurnoFormData, calcularDuracaoTurno } from '@/types/turno'
 import { Plus, Search, Pencil, Trash2, Clock, Target, RefreshCw } from 'lucide-react'
@@ -110,30 +111,38 @@ export default function Turnos() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Turnos</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Gerenciamento de turnos de trabalho
-          </p>
+    <>
+      {/* Header da aplicação */}
+      <AppHeader
+        title="SICFAR OEE - Gerenciamento de Turnos"
+        userName="Usuário"
+        userRole="Administrador"
+      />
+
+      <div className="container mx-auto py-6 space-y-6">
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Turnos</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Gerenciamento de turnos de trabalho
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={loadTurnos}
+              disabled={loading}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button onClick={handleNovo}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Turno
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={loadTurnos}
-            disabled={loading}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-          <Button onClick={handleNovo}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Turno
-          </Button>
-        </div>
-      </div>
 
       {/* Card com filtros e tabela */}
       <Card>
@@ -260,7 +269,8 @@ export default function Turnos() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </>
   )
 }
 
