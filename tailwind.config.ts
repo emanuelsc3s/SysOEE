@@ -79,7 +79,7 @@ export default {
   				'5': 'hsl(var(--chart-5))'
   			},
   			// Cores customizadas do HTML de referência
-  			'background-light': '#f6f6f8',
+  			'background-light': '#f1f4f8',
   			'background-dark': '#14161e',
   			'surface-light': '#ffffff',
   			'surface-dark': '#1e1e1e',

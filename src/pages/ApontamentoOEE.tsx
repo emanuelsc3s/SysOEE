@@ -1510,7 +1510,7 @@ export default function ApontamentoOEE() {
       </div>
 
       {/* Conteúdo da Página - Container Centralizado */}
-      <div className="min-h-screen flex justify-center gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f6f6f8' }}>
+      <div className="min-h-screen flex justify-center gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f1f4f8' }}>
         {/* Container com largura máxima centralizado */}
         <div className="w-full max-w-[1600px] flex gap-0">
           {/* Conteúdo Principal */}
