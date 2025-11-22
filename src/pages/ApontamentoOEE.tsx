@@ -104,7 +104,6 @@ interface RegistroParada {
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
-const INDICADORES_SECUNDARIOS_INICIAIS = { mtbf: 0, mttr: 0, taxaUtilizacao: 0 }
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
@@ -174,7 +173,6 @@ export default function ApontamentoOEE() {
   const [horasRestantes, setHorasRestantes] = useState<number>(0)
   const [totalHorasParadas, setTotalHorasParadas] = useState<number>(0)
   const [totalPerdasQualidade, setTotalPerdasQualidade] = useState<number>(0)
-  const [indicadoresSecundarios, setIndicadoresSecundarios] = useState(INDICADORES_SECUNDARIOS_INICIAIS)
 
   // ==================== Dados Derivados ====================
   const linhaSelecionada = linhaId ? buscarLinhaPorId(linhaId) : null
@@ -306,26 +304,6 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Calcula indicadores secundários (MTBF, MTTR e Taxa de Utilização) de um período
-   * usando as paradas já consolidadas.
-   */
-  const calcularIndicadoresSecundarios = (paradasPeriodo: RegistroParada[], tempoDisponivelHoras: number) => {
-    const totalParadasHoras = paradasPeriodo.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60
-    const totalOcorrencias = paradasPeriodo.length
-    const tempoOperando = Math.max(tempoDisponivelHoras - totalParadasHoras, 0)
-
-    const mtbf = totalOcorrencias > 0 ? tempoOperando / totalOcorrencias : tempoDisponivelHoras
-    const mttr = totalOcorrencias > 0 ? totalParadasHoras / totalOcorrencias : 0
-    const taxaUtilizacao = tempoDisponivelHoras > 0 ? (tempoOperando / tempoDisponivelHoras) * 100 : 0
-
-    return {
-      mtbf: Math.round(mtbf * 100) / 100,
-      mttr: Math.round(mttr * 100) / 100,
-      taxaUtilizacao: Math.round(taxaUtilizacao * 100) / 100
-    }
-  }
-
-  /**
    * Formata percentual no padrão brasileiro (pt-BR)
    * @param valor - Valor numérico a ser formatado
    * @returns String formatada com vírgula como separador decimal e 2 casas decimais
@@ -367,7 +345,6 @@ export default function ApontamentoOEE() {
     const totalHorasParadasCalculado = paradasDoPeriodo.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60
     setTotalHorasParadas(totalHorasParadasCalculado)
     setHorasRestantes(calcularHorasRestantes())
-    setIndicadoresSecundarios(calcularIndicadoresSecundarios(paradasDoPeriodo, TEMPO_DISPONIVEL_PADRAO))
 
     if (apontamentoReferencia) {
       try {
@@ -392,7 +369,6 @@ export default function ApontamentoOEE() {
       tempoValioso: 0
     })
     setTotalPerdasQualidade(0)
-    setIndicadoresSecundarios(INDICADORES_SECUNDARIOS_INICIAIS)
   }
 
   // ==================== Funções de Exclusão de Produção ====================
@@ -798,7 +774,6 @@ export default function ApontamentoOEE() {
       const totalHorasParadasCalculado =
         paradasDoTurno.reduce((total, parada) => total + parada.duracao, 0) / 60
       setTotalHorasParadas(totalHorasParadasCalculado)
-      setIndicadoresSecundarios(calcularIndicadoresSecundarios(paradasDoTurno, TEMPO_DISPONIVEL_PADRAO))
       setHorasRestantes(calcularHorasRestantes())
 
       setStatusTurno('INICIADO')
@@ -826,7 +801,6 @@ export default function ApontamentoOEE() {
     setHorasRestantes(calcularTempoDisponivelTurno())
     setTotalHorasParadas(0)
     setTotalPerdasQualidade(0)
-    setIndicadoresSecundarios(INDICADORES_SECUNDARIOS_INICIAIS)
     setHistoricoProducao([])
     setHistoricoParadas([])
 
@@ -977,7 +951,6 @@ export default function ApontamentoOEE() {
 
       // Recalcula indicadores
       setTotalHorasParadas(historicoParadasAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
-      setIndicadoresSecundarios(calcularIndicadoresSecundarios(historicoParadasAtualizado, TEMPO_DISPONIVEL_PADRAO))
       setHorasRestantes(calcularHorasRestantes())
 
       if (apontamentoProducaoId && linhaId) {
@@ -1378,7 +1351,6 @@ export default function ApontamentoOEE() {
     setHistoricoParadas(historicoAtualizado)
     salvarParadasNoLocalStorage(historicoAtualizado)
     setTotalHorasParadas(historicoAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
-    setIndicadoresSecundarios(calcularIndicadoresSecundarios(historicoAtualizado, TEMPO_DISPONIVEL_PADRAO))
 
     // Recalcular OEE se houver apontamento de produção e linha
     if (apontamentoProducaoId && linhaId) {
@@ -2358,30 +2330,6 @@ export default function ApontamentoOEE() {
                   </span>
                   <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
                     {totalPerdasQualidade.toLocaleString('pt-BR')} un
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    MTBF (h entre falhas)
-                  </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                    {formatarHoras(indicadoresSecundarios.mtbf)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    MTTR (h para reparo)
-                  </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                    {formatarHoras(indicadoresSecundarios.mttr)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    Taxa de Utilização
-                  </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                    {formatarPercentual(indicadoresSecundarios.taxaUtilizacao)}%
                   </span>
                 </div>
               </div>
