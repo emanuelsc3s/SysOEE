@@ -140,7 +140,7 @@ export default function Home() {
     {
       title: 'Turnos',
       icon: <Clock size={40} />,
-      path: '/turnos',
+      path: '/turno',
       description: 'Configuração de turnos de trabalho'
     },
     {

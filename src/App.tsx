@@ -8,6 +8,8 @@ import ArmazemSaldo from './pages/ArmazemSaldo'
 import ColaboradorPerfil from './pages/ColaboradorPerfil'
 import LinhaProducaoConsulta from './pages/LinhaProducaoConsulta'
 import ApontamentoOEE from './pages/ApontamentoOEE'
+import Turnos from './pages/Turnos'
+import TurnosCad from './pages/TurnosCad'
 import Placeholder from './pages/Placeholder'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -71,15 +73,10 @@ function App() {
         />
         {/* Página de Linhas de Produção - Consulta */}
         <Route path="/equipamentos" element={<LinhaProducaoConsulta />} />
-        <Route
-          path="/turnos" 
-          element={
-            <Placeholder 
-              title="Turnos" 
-              description="Configuração de turnos de trabalho e horários."
-            />
-          } 
-        />
+
+        {/* Páginas de Turnos - Gerenciamento de Turnos */}
+        <Route path="/turno" element={<Turnos />} />
+        <Route path="/turno/:id" element={<TurnosCad />} />
         <Route 
           path="/usuarios" 
           element={
