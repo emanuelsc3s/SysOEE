@@ -89,15 +89,16 @@ export const TURNO_INITIAL_VALUES: TurnoFormData = {
   deletado: 'N'
 }
 
+/** Tipos de seleção da meta de OEE */
+export type MetaOeeTipo = 'PADRAO' | 'SEM_META' | 'PERSONALIZADA'
+
 /**
  * Opções de meta OEE padrão
  */
-export const META_OEE_OPTIONS = [
-  { value: 75, label: '75% - Meta Básica' },
-  { value: 80, label: '80% - Meta Intermediária' },
-  { value: 85, label: '85% - Meta Padrão' },
-  { value: 90, label: '90% - Meta Avançada' },
-  { value: 95, label: '95% - Meta Excelência' }
+export const META_OEE_OPTIONS: { value: MetaOeeTipo; label: string; metaValue?: number }[] = [
+  { value: 'PADRAO', label: '85% - Meta Padrão', metaValue: 85 },
+  { value: 'SEM_META', label: 'Sem Meta', metaValue: 0 },
+  { value: 'PERSONALIZADA', label: 'Meta Personalizada' }
 ]
 
 /**
@@ -148,4 +149,3 @@ export function calcularDuracaoTurno(horaInicio: string, horaFim: string): numbe
   const duracaoMinutos = fimMinutos - inicioMinutos
   return duracaoMinutos / 60
 }
-

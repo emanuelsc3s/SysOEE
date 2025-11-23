@@ -31,6 +31,7 @@ import {
   TurnoFormData,
   TURNO_INITIAL_VALUES,
   META_OEE_OPTIONS,
+  MetaOeeTipo,
   isValidTimeFormat,
   calcularDuracaoTurno
 } from '@/types/turno'
@@ -44,10 +45,19 @@ export default function TurnosCad() {
 
   // Estado do formulário
   const [formData, setFormData] = useState<TurnoFormData>(TURNO_INITIAL_VALUES)
+  const [metaOeeTipo, setMetaOeeTipo] = useState<MetaOeeTipo>('PADRAO')
 
   // Estados de UI
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [duracaoTurno, setDuracaoTurno] = useState<number>(0)
+
+  const metaPadraoValue = META_OEE_OPTIONS.find((option) => option.value === 'PADRAO')?.metaValue ?? 85
+
+  const resolverTipoMetaOee = (valor: number): MetaOeeTipo => {
+    if (valor <= 0) return 'SEM_META'
+    if (valor === metaPadraoValue) return 'PADRAO'
+    return 'PERSONALIZADA'
+  }
 
   // Carregar dados ao montar (modo edição)
   useEffect(() => {
@@ -70,14 +80,37 @@ export default function TurnosCad() {
     try {
       const data = await fetchTurno(id!)
       setFormData(data)
+      setMetaOeeTipo(resolverTipoMetaOee(data.metaOee))
     } catch (error) {
       console.error('Erro ao carregar turno:', error)
       navigate('/turno')
     }
   }
 
+  const handleMetaOeeSelect = (value: MetaOeeTipo) => {
+    setMetaOeeTipo(value)
+
+    const option = META_OEE_OPTIONS.find((item) => item.value === value)
+
+    if (option?.metaValue !== undefined) {
+      setFormData((prev) => ({ ...prev, metaOee: option.metaValue ?? prev.metaOee }))
+      return
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      metaOee: prev.metaOee > 0 ? prev.metaOee : 0
+    }))
+  }
+
   const handleSave = async () => {
     try {
+      const metaOeeValor = metaOeeTipo === 'PADRAO'
+        ? metaPadraoValue
+        : metaOeeTipo === 'SEM_META'
+          ? 0
+          : formData.metaOee
+
       // Validações
       if (!formData.codigo.trim()) {
         toast({
@@ -115,7 +148,16 @@ export default function TurnosCad() {
         return
       }
 
-      if (formData.metaOee < 0 || formData.metaOee > 100) {
+      if (metaOeeTipo === 'PERSONALIZADA' && (!metaOeeValor || metaOeeValor <= 0)) {
+        toast({
+          variant: 'destructive',
+          title: 'Validação',
+          description: 'Informe uma meta personalizada maior que zero',
+        })
+        return
+      }
+
+      if (metaOeeValor < 0 || metaOeeValor > 100) {
         toast({
           variant: 'destructive',
           title: 'Validação',
@@ -125,8 +167,8 @@ export default function TurnosCad() {
       }
 
       // Salvar
-      await saveTurno(formData)
-      navigate('/turno')
+      await saveTurno({ ...formData, metaOee: metaOeeValor })
+      navigate('/turno', { state: { shouldRefresh: true } })
     } catch (error) {
       console.error('Erro ao salvar turno:', error)
     }
@@ -136,7 +178,7 @@ export default function TurnosCad() {
     try {
       if (id && id !== 'novo') {
         await deleteTurno(id)
-        navigate('/turno')
+        navigate('/turno', { state: { shouldRefresh: true } })
       }
     } catch (error) {
       console.error('Erro ao excluir turno:', error)
@@ -305,15 +347,15 @@ export default function TurnosCad() {
               <div className="space-y-2">
                 <Label htmlFor="metaOeeSelect">Meta OEE Padrão</Label>
                 <Select
-                  value={formData.metaOee.toString()}
-                  onValueChange={(value) => setFormData({ ...formData, metaOee: parseFloat(value) })}
+                  value={metaOeeTipo}
+                  onValueChange={(value) => handleMetaOeeSelect(value as MetaOeeTipo)}
                 >
                   <SelectTrigger id="metaOeeSelect">
                     <SelectValue placeholder="Selecione uma meta" />
                   </SelectTrigger>
                   <SelectContent>
                     {META_OEE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value.toString()}>
+                      <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -332,6 +374,8 @@ export default function TurnosCad() {
                   step="0.1"
                   value={formData.metaOee}
                   onChange={(e) => setFormData({ ...formData, metaOee: parseFloat(e.target.value) || 0 })}
+                  disabled={metaOeeTipo !== 'PERSONALIZADA'}
+                  required={metaOeeTipo === 'PERSONALIZADA'}
                 />
               </div>
             </div>
@@ -373,4 +417,3 @@ export default function TurnosCad() {
     </div>
   )
 }
-

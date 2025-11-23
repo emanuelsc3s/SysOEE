@@ -35,7 +35,7 @@ export function useTurnos() {
       turno: dbTurno.turno || '',
       horaInicio: dbTurno.hora_inicio || '',
       horaFim: dbTurno.hora_fim || '',
-      metaOee: dbTurno.meta_oee || 85.0,
+      metaOee: typeof dbTurno.meta_oee === 'number' ? dbTurno.meta_oee : 85.0,
       deletado: (dbTurno.deletado as 'N' | 'S') || 'N',
       createdAt: dbTurno.created_at || undefined,
       createdBy: dbTurno.created_by || undefined,
@@ -55,7 +55,7 @@ export function useTurnos() {
       turno: formData.turno || null,
       hora_inicio: formData.horaInicio || null,
       hora_fim: formData.horaFim || null,
-      meta_oee: formData.metaOee || null,
+      meta_oee: Number.isFinite(formData.metaOee) ? formData.metaOee : null,
       deletado: formData.deletado || 'N',
     }
 
@@ -270,4 +270,3 @@ export function useTurnos() {
     deleteTurno
   }
 }
-
