@@ -4,21 +4,12 @@
  * Implementa padrões avançados de UI: React Query, paginação, filtros, busca em tempo real
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,8 +68,9 @@ export default function Turnos() {
     try {
       const raw = localStorage.getItem(PAGE_SIZE_STORAGE_KEY)
       const parsed = raw ? parseInt(raw, 10) : NaN
-      if (PAGE_SIZE_OPTIONS.includes(parsed as any)) {
-        setItemsPerPage(parsed)
+      const validPageSize = PAGE_SIZE_OPTIONS.find((option) => option === parsed)
+      if (validPageSize) {
+        setItemsPerPage(validPageSize)
       }
     } catch { /* noop */ }
   }, [])
@@ -316,10 +308,12 @@ export default function Turnos() {
   }
 
   const formatarMetaOEE = (meta: number) => {
+    if (meta === 0) return 'Sem meta'
     return `${meta.toFixed(1)}%`
   }
 
   const getBadgeMetaOEE = (meta: number): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' => {
+    if (meta === 0) return 'secondary'
     if (meta >= 90) return 'success'
     if (meta >= 85) return 'info'
     if (meta >= 80) return 'warning'

@@ -58,13 +58,16 @@ export { isSupabaseConfigured }
 /**
  * Função auxiliar para tratamento de erros do Supabase
  */
-export function handleSupabaseError(error: any): string {
-  if (error?.message) {
-    return error.message
+export function handleSupabaseError(error: unknown): string {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const mensagem = (error as { message?: string }).message
+    if (mensagem) return mensagem
   }
+
   if (typeof error === 'string') {
     return error
   }
+
   return 'Erro desconhecido ao acessar o banco de dados'
 }
 
@@ -77,4 +80,3 @@ export async function getUserIdFromTbusuario(): Promise<number | null> {
   // Em produção, deve buscar do contexto de autenticação
   return 1
 }
-

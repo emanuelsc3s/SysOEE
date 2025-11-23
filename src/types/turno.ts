@@ -138,7 +138,7 @@ export function calcularDuracaoTurno(horaInicio: string, horaFim: string): numbe
     return 0
   }
   
-  let inicioMinutos = timeToMinutes(horaInicio)
+  const inicioMinutos = timeToMinutes(horaInicio)
   let fimMinutos = timeToMinutes(horaFim)
   
   // Se fim < início, turno cruza meia-noite

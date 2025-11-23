@@ -213,7 +213,6 @@ export const MobileCrudActions: React.FC<MobileCrudActionsProps> = ({
 
 export const ExemploUsoCompleto: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -229,7 +228,7 @@ export const ExemploUsoCompleto: React.FC = () => {
   };
 
   const handleDelete = () => {
-    setShowDeleteDialog(true);
+    console.log('Abrir diálogo de confirmação de exclusão');
   };
 
   const handleBack = () => {
@@ -276,4 +275,3 @@ export const ExemploUsoCompleto: React.FC = () => {
 };
 
 export default CrudHeader;
-

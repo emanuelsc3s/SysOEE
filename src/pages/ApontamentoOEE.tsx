@@ -6,7 +6,7 @@
  * Layout baseado em code_oee_apontar.html
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
@@ -61,7 +61,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AppHeader } from "@/components/layout/AppHeader"
-import { ModalBuscaParadas } from "@/components/apontamento/ModalBuscaParadas"
+import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -153,8 +153,8 @@ export default function ApontamentoOEE() {
   const [horaInicialParada, setHoraInicialParada] = useState<string>('')
   const [horaFinalParada, setHoraFinalParada] = useState<string>('')
   const [observacoesParada, setObservacoesParada] = useState<string>('')
-  const [paradaSelecionada, setParadaSelecionada] = useState<any | null>(null)
-  const [paradasAtivas] = useState<any[]>([]) // Lista de paradas em andamento (setter não usado ainda)
+  const [paradaSelecionada, setParadaSelecionada] = useState<ParadaGeral | null>(null)
+  const [paradasAtivas] = useState<ParadaLocalStorage[]>([]) // Lista de paradas em andamento (setter não usado ainda)
   const [mostrarFormularioParada, setMostrarFormularioParada] = useState<boolean>(false)
   const [modalBuscaParadasAberto, setModalBuscaParadasAberto] = useState<boolean>(false)
 
@@ -195,7 +195,7 @@ export default function ApontamentoOEE() {
   const STORAGE_KEY_PARADAS = 'oee_downtime_records'
 
   // ==================== Funções de localStorage ====================
-  const carregarHistorico = (): RegistroProducao[] => {
+  const carregarHistorico = useCallback((): RegistroProducao[] => {
     try {
       const dados = localStorage.getItem(STORAGE_KEY)
       if (dados) {
@@ -206,7 +206,7 @@ export default function ApontamentoOEE() {
       console.error('Erro ao carregar histórico do localStorage:', error)
       return []
     }
-  }
+  }, [])
 
   const salvarNoLocalStorage = (registros: RegistroProducao[]) => {
     try {
@@ -221,7 +221,7 @@ export default function ApontamentoOEE() {
     }
   }
 
-  const carregarHistoricoParadas = (): RegistroParada[] => {
+  const carregarHistoricoParadas = useCallback((): RegistroParada[] => {
     try {
       const dados = localStorage.getItem(STORAGE_KEY_PARADAS)
       if (dados) {
@@ -232,7 +232,7 @@ export default function ApontamentoOEE() {
       console.error('Erro ao carregar histórico de paradas do localStorage:', error)
       return []
     }
-  }
+  }, [])
 
   const salvarParadasNoLocalStorage = (registros: RegistroParada[]) => {
     try {
@@ -567,7 +567,7 @@ export default function ApontamentoOEE() {
   /**
    * Callback quando uma parada é selecionada no modal
    */
-  const handleSelecionarParadaModal = (parada: any) => {
+  const handleSelecionarParadaModal = (parada: ParadaGeral) => {
     setParadaSelecionada(parada)
     setCodigoParadaBusca(parada.Apontamento || '')
 
@@ -582,16 +582,16 @@ export default function ApontamentoOEE() {
    * Calcula o tempo disponível do turno em horas
    * Baseado no turno selecionado (12 horas por turno)
    */
-  const calcularTempoDisponivelTurno = (): number => {
+  const calcularTempoDisponivelTurno = useCallback((): number => {
     // Cada turno tem 12 horas de tempo disponível (turno fixo definido para SicFar)
     return TEMPO_DISPONIVEL_PADRAO
-  }
+  }, [])
 
   /**
    * Calcula horas restantes de apontamento de produção
    * Baseado no tempo disponível menos o tempo já apontado
    */
-  const calcularHorasRestantes = (): number => {
+  const calcularHorasRestantes = useCallback((): number => {
     const tempoDisponivel = calcularTempoDisponivelTurno()
     const historico = carregarHistorico()
 
@@ -613,7 +613,7 @@ export default function ApontamentoOEE() {
     }, 0)
 
     return Math.max(0, tempoDisponivel - horasApontadas)
-  }
+  }, [calcularTempoDisponivelTurno, carregarHistorico, data, linhaId, turno])
 
   // ==================== Carregar histórico ao montar o componente ====================
   useEffect(() => {
@@ -622,7 +622,7 @@ export default function ApontamentoOEE() {
 
     const historicoParadas = carregarHistoricoParadas()
     setHistoricoParadas(historicoParadas)
-  }, [])
+  }, [carregarHistorico, carregarHistoricoParadas])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
@@ -651,7 +651,7 @@ export default function ApontamentoOEE() {
       // TODO: Atualizar total de horas paradas quando implementar apontamento de paradas
       // TODO: Atualizar total de perdas de qualidade quando implementar apontamento de perdas
     }
-  }, [historicoProducao, statusTurno, data, linhaId, turno])
+  }, [historicoProducao, statusTurno, data, linhaId, turno, calcularHorasRestantes])
 
   // ==================== Funções de Validação ====================
 
@@ -1309,7 +1309,7 @@ export default function ApontamentoOEE() {
       id: registroParada.id,
       linha_id: linhaId,
       lote_id: lote || null,
-      codigo_parada_id: (paradaSelecionada.Codigo || paradaSelecionada.Apontamento || 'CODIGO_TEMP') as string,
+      codigo_parada_id: paradaSelecionada.Apontamento || 'CODIGO_TEMP',
       turno_id: turno,
       data_parada: format(data!, 'yyyy-MM-dd'),
       hora_inicio: horaInicioFormatada,
@@ -1341,7 +1341,7 @@ export default function ApontamentoOEE() {
       horaFim: horaFinalParada,
       duracao: duracaoMinutos,
       tipoParada: paradaSelecionada.Apontamento || paradaSelecionada.Descrição || 'Parada',
-      codigoParada: (paradaSelecionada.Codigo || paradaSelecionada.Apontamento || 'CODIGO_TEMP') as string,
+      codigoParada: paradaSelecionada.Apontamento || 'CODIGO_TEMP',
       descricaoParada: paradaSelecionada.Descrição || '',
       observacoes: observacoesParada,
       dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),

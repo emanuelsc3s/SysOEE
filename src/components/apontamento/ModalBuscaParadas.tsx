@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Search, X, ChevronRight } from 'lucide-react'
 
-interface ParadaGeral {
+export interface ParadaGeral {
   Coluna_1: null | string
   Natureza: string | null
   Classe: string | null
@@ -198,4 +198,3 @@ export function ModalBuscaParadas({
     </Dialog>
   )
 }
-

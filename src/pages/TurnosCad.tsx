@@ -3,7 +3,7 @@
  * Formulário completo para criar ou editar turnos
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,18 +53,29 @@ export default function TurnosCad() {
 
   const metaPadraoValue = META_OEE_OPTIONS.find((option) => option.value === 'PADRAO')?.metaValue ?? 85
 
-  const resolverTipoMetaOee = (valor: number): MetaOeeTipo => {
+  const resolverTipoMetaOee = useCallback((valor: number): MetaOeeTipo => {
     if (valor <= 0) return 'SEM_META'
     if (valor === metaPadraoValue) return 'PADRAO'
     return 'PERSONALIZADA'
-  }
+  }, [metaPadraoValue])
+
+  const loadData = useCallback(async () => {
+    try {
+      const data = await fetchTurno(id!)
+      setFormData(data)
+      setMetaOeeTipo(resolverTipoMetaOee(data.metaOee))
+    } catch (error) {
+      console.error('Erro ao carregar turno:', error)
+      navigate('/turno')
+    }
+  }, [fetchTurno, id, navigate, resolverTipoMetaOee])
 
   // Carregar dados ao montar (modo edição)
   useEffect(() => {
     if (id && id !== 'novo') {
       loadData()
     }
-  }, [id])
+  }, [id, loadData])
 
   // Calcular duração quando horários mudarem
   useEffect(() => {
@@ -75,17 +86,6 @@ export default function TurnosCad() {
       setDuracaoTurno(0)
     }
   }, [formData.horaInicio, formData.horaFim])
-
-  const loadData = async () => {
-    try {
-      const data = await fetchTurno(id!)
-      setFormData(data)
-      setMetaOeeTipo(resolverTipoMetaOee(data.metaOee))
-    } catch (error) {
-      console.error('Erro ao carregar turno:', error)
-      navigate('/turno')
-    }
-  }
 
   const handleMetaOeeSelect = (value: MetaOeeTipo) => {
     setMetaOeeTipo(value)
