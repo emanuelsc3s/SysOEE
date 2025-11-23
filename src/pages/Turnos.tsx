@@ -336,7 +336,7 @@ export default function Turnos() {
       />
 
       {/* Container mais fluido e responsivo para ocupar melhor o espaço disponível */}
-      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 pt-0 pb-0 max-w-none">
+      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-0 max-w-none">
         <div className="flex flex-col gap-4">
           {/* Cabeçalho responsivo: empilha no mobile e distribui no desktop */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
