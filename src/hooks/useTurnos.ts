@@ -4,7 +4,9 @@
  */
 
 import { useState } from 'react'
-import { supabaseAdmin, handleSupabaseError, getUserIdFromTbusuario } from '@/lib/supabase'
+import { supabaseAdmin, handleSupabaseError } from '@/lib/supabase'
+// TODO: Reativar import quando autenticação for implementada
+// import { getUserIdFromTbusuario } from '@/lib/supabase'
 import { TurnoFormData, TurnoDB } from '@/types/turno'
 import { toast } from '@/hooks/use-toast'
 
@@ -145,10 +147,11 @@ export function useTurnos() {
     try {
       setLoading(true)
 
-      const usuarioId = await getUserIdFromTbusuario()
-      if (!usuarioId) {
-        throw new Error('Usuário não encontrado')
-      }
+      // TODO: Reativar campos de auditoria quando sistema de autenticação for implementado
+      // const usuarioId = await getUserIdFromTbusuario()
+      // if (!usuarioId) {
+      //   throw new Error('Usuário não encontrado')
+      // }
 
       const dbData = mapFormToDb(formData)
 
@@ -157,7 +160,8 @@ export function useTurnos() {
         const updateData = {
           ...dbData,
           updated_at: new Date().toISOString(),
-          updated_by: usuarioId
+          // TODO: Reativar quando autenticação estiver implementada
+          // updated_by: usuarioId
         }
 
         const { data, error } = await supabaseAdmin
@@ -181,7 +185,8 @@ export function useTurnos() {
         const insertData = {
           ...dbData,
           created_at: new Date().toISOString(),
-          created_by: usuarioId
+          // TODO: Reativar quando autenticação estiver implementada
+          // created_by: usuarioId
         }
 
         const { data, error } = await supabaseAdmin
@@ -220,17 +225,19 @@ export function useTurnos() {
     try {
       setLoading(true)
 
-      const usuarioId = await getUserIdFromTbusuario()
-      if (!usuarioId) {
-        throw new Error('Usuário não encontrado')
-      }
+      // TODO: Reativar campos de auditoria quando sistema de autenticação for implementado
+      // const usuarioId = await getUserIdFromTbusuario()
+      // if (!usuarioId) {
+      //   throw new Error('Usuário não encontrado')
+      // }
 
       const { error } = await supabaseAdmin
         .from('tbturno')
         .update({
           deletado: 'S',
           deleted_at: new Date().toISOString(),
-          deleted_by: usuarioId
+          // TODO: Reativar quando autenticação estiver implementada
+          // deleted_by: usuarioId
         })
         .eq('turno_id', parseInt(id))
 
