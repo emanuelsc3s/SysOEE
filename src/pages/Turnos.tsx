@@ -146,6 +146,9 @@ export default function Turnos() {
         turno: appliedFilters.turno || undefined,
       })
 
+      // DEBUG TEMPORÁRIO: Verificar dados retornados
+      console.log('🔍 DEBUG: Primeiro turno retornado:', result.data[0])
+
       // Filtrar localmente por busca e meta OEE (já que o backend não suporta esses filtros ainda)
       let filteredData = result.data || []
 
@@ -303,7 +306,8 @@ export default function Turnos() {
               <p className="text-gray-500">Gerencie e acompanhe todos os turnos de trabalho</p>
             </div>
             <Button
-              className="bg-[#242f65] hover:bg-[#1a2148] flex items-center gap-2"
+              variant="outline"
+              className="flex items-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white"
               onClick={handleNovo}
             >
               <Plus className="h-4 w-4" />
@@ -366,7 +370,7 @@ export default function Turnos() {
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex items-center gap-2 bg-[#242f65] text-white border-[#242f65] hover:bg-[#1a2148] hover:border-[#1a2148] hover:text-white"
+                        className="flex items-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white"
                       >
                         <Filter className="h-4 w-4" />
                         Filtros
@@ -445,7 +449,7 @@ export default function Turnos() {
                     variant="outline"
                     onClick={() => { refetch() }}
                     disabled={isFetching}
-                    className="flex items-center gap-2 bg-[#242f65] text-white border-[#242f65] hover:bg-[#1a2148] hover:border-[#1a2148] hover:text-white"
+                    className="flex items-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white"
                     title="Atualizar lista"
                   >
                     <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -582,7 +586,11 @@ export default function Turnos() {
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3 text-gray-400" />
-                              {formatarHorario(turno.horaFim)}
+                              {(() => {
+                                // DEBUG: Verificar valor de horaFim
+                                console.log(`🔍 Turno ${turno.codigo}: horaFim =`, turno.horaFim, typeof turno.horaFim)
+                                return formatarHorario(turno.horaFim)
+                              })()}
                             </div>
                           </td>
                           <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">

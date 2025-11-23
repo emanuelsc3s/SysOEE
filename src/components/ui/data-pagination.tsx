@@ -125,7 +125,7 @@ export function DataPagination({
                   onClick={() => onPageChange(page as number)}
                   isActive={page === currentPage}
                   className={`cursor-pointer hover:bg-gray-100 ${
-                    page === currentPage ? 'bg-[#242f65] text-white hover:bg-[#1a2148]' : ''
+                    page === currentPage ? '!bg-brand-primary text-white hover:!bg-brand-primary/90 !border-brand-primary' : ''
                   }`}
                 >
                   {page}
