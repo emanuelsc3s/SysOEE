@@ -2962,9 +2962,10 @@ export default function ApontamentoOEE() {
                         Quantidade
                       </label>
                       <input
-                        className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
+                        className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
                         id="loss-quantity"
                         type="number"
+                        placeholder="ex: 500"
                         value={quantidadePerdas}
                         onChange={(e) => setQuantidadePerdas(e.target.value)}
                       />
@@ -2994,9 +2995,10 @@ export default function ApontamentoOEE() {
                         Quantidade
                       </label>
                       <input
-                        className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
+                        className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
                         id="rework-quantity"
                         type="number"
+                        placeholder="ex: 200"
                         value={quantidadeRetrabalho}
                         onChange={(e) => setQuantidadeRetrabalho(e.target.value)}
                       />
