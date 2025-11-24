@@ -154,6 +154,23 @@ export function removerParada(id: string, usuarioId: number): boolean {
 }
 
 /**
+ * Exclui permanentemente uma parada do localStorage (hard delete)
+ * Usado quando o usuário exclui um registro de parada do histórico
+ */
+export function excluirParada(id: string): boolean {
+  try {
+    const todasParadas = buscarTodasParadas()
+    const paradasFiltradas = todasParadas.filter(p => p.id !== id)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(paradasFiltradas))
+    console.log('✅ Parada excluída permanentemente do localStorage:', id)
+    return true
+  } catch (error) {
+    console.error('❌ Erro ao excluir parada do localStorage:', error)
+    return false
+  }
+}
+
+/**
  * Calcula duração em minutos entre duas horas (formato HH:MM:SS ou HH:MM)
  */
 function calcularDuracaoMinutos(horaInicio: string, horaFim: string): number {

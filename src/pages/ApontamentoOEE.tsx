@@ -23,7 +23,7 @@ import {
   buscarApontamentosRetrabalhoPorProducao,
   atualizarApontamentoProducao
 } from '@/services/localStorage/apontamento-oee.storage'
-import { salvarParada, ParadaLocalStorage, atualizarParada } from '@/services/localStorage/parada.storage'
+import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada } from '@/services/localStorage/parada.storage'
 import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -866,29 +866,127 @@ export default function ApontamentoOEE() {
   }
 
   /**
+   * Recalcula OEE e indicadores derivados após exclusão de uma parada
+   * garantindo atualização imediata da UI para o período afetado.
+   */
+  const recalcularIndicadoresAposExclusaoParada = (
+    paradaExcluida: RegistroParada,
+    historicoParadasAtualizado: RegistroParada[]
+  ) => {
+    // Buscar o apontamento de produção ativo para o mesmo período
+    const historicoProducao = carregarHistorico()
+    const producoesDoPeriodo = historicoProducao.filter(
+      (registro) =>
+        registro.data === paradaExcluida.data &&
+        registro.turno === paradaExcluida.turno &&
+        registro.linhaId === paradaExcluida.linhaId
+    )
+
+    // Ordenar por data de registro (mais recente primeiro)
+    const producoesOrdenadas = [...producoesDoPeriodo].sort(
+      (a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro)
+    )
+
+    const apontamentoReferencia = producoesOrdenadas[0]
+
+    // Recalcular total de horas paradas com o histórico atualizado
+    const paradasDoPeriodo = historicoParadasAtualizado.filter(
+      (registroParada) =>
+        registroParada.data === paradaExcluida.data &&
+        registroParada.turno === paradaExcluida.turno &&
+        registroParada.linhaId === paradaExcluida.linhaId
+    )
+
+    const totalHorasParadasCalculado = paradasDoPeriodo.reduce(
+      (total, parada) => total + (parada.duracao || 0),
+      0
+    ) / 60
+    setTotalHorasParadas(totalHorasParadasCalculado)
+
+    // Recalcular horas restantes
+    setHorasRestantes(calcularHorasRestantes())
+
+    // Se houver apontamento de produção ativo, recalcular OEE
+    if (apontamentoReferencia) {
+      try {
+        const novoOEE = calcularOEECompleto(
+          apontamentoReferencia.id,
+          paradaExcluida.linhaId,
+          TEMPO_DISPONIVEL_PADRAO
+        )
+        setOeeCalculado(novoOEE)
+        setApontamentoProducaoId(apontamentoReferencia.id)
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoReferencia.id))
+
+        console.log('✅ OEE recalculado após exclusão de parada:', {
+          paradaExcluida: paradaExcluida.id,
+          apontamentoReferencia: apontamentoReferencia.id,
+          oee: `${novoOEE.oee.toFixed(2)}%`,
+          disponibilidade: `${novoOEE.disponibilidade.toFixed(2)}%`,
+          performance: `${novoOEE.performance.toFixed(2)}%`,
+          qualidade: `${novoOEE.qualidade.toFixed(2)}%`,
+          totalHorasParadas: totalHorasParadasCalculado.toFixed(2)
+        })
+        return
+      } catch (error) {
+        console.error('❌ Erro ao recalcular OEE após exclusão de parada:', error)
+      }
+    }
+
+    // Se não houver apontamento de produção, apenas atualizar métricas de paradas
+    console.log('ℹ️ Nenhum apontamento de produção ativo para recalcular OEE')
+  }
+
+  /**
    * Exclui um registro de parada do histórico
-   * Remove do localStorage
+   * Remove do localStorage e recalcula OEE automaticamente
    */
   const handleExcluirParada = () => {
     if (!paradaParaExcluir) return
 
     try {
-      // Remover do histórico local
+      // Buscar o registro da parada antes de excluir
+      const paradaExcluida = historicoParadas.find(r => r.id === paradaParaExcluir)
+
+      if (!paradaExcluida) {
+        toast({
+          title: 'Erro',
+          description: 'Registro de parada não encontrado',
+          variant: 'destructive'
+        })
+        cancelarExclusaoParada()
+        return
+      }
+
+      // Remover do histórico local (oee_downtime_records)
       const novoHistorico = historicoParadas.filter(r => r.id !== paradaParaExcluir)
       setHistoricoParadas(novoHistorico)
       salvarParadasNoLocalStorage(novoHistorico)
 
+      // IMPORTANTE: Também remover do serviço de paradas (sysoee_paradas)
+      // Esta é a chave usada pelo cálculo de OEE
+      excluirParada(paradaParaExcluir)
+
+      console.log('🗑️ Parada excluída de ambos os storages:', {
+        id: paradaParaExcluir,
+        historicoLocal: 'oee_downtime_records',
+        servicoParadas: 'sysoee_paradas'
+      })
+
+      // Recalcular todos os indicadores impactados (OEE e secundários) para o período afetado
+      recalcularIndicadoresAposExclusaoParada(paradaExcluida, novoHistorico)
+
       // Feedback de sucesso
       toast({
         title: '✅ Parada Excluída',
-        description: 'O registro de parada foi excluído com sucesso',
+        description: 'O registro de parada foi excluído e os indicadores foram recalculados',
       })
 
       // Fechar diálogo
       cancelarExclusaoParada()
 
     } catch (error) {
-      console.error('Erro ao excluir registro de parada:', error)
+      console.error('❌ Erro ao excluir registro de parada:', error)
       toast({
         title: 'Erro ao excluir',
         description: 'Não foi possível excluir o registro de parada. Tente novamente.',
