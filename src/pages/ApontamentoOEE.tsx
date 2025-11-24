@@ -84,6 +84,8 @@ type LinhaApontamentoProducao = {
   horaInicio: string
   horaFim: string
   quantidadeProduzida: string
+  apontamentoId?: string // ID do apontamento salvo no banco
+  editavel?: boolean // Indica se a linha está em modo de edição
 }
 
 // Tipo para registro de produção no localStorage
@@ -395,6 +397,258 @@ export default function ApontamentoOEE() {
           : linha
       )
     )
+  }
+
+  /**
+   * Habilita o modo de edição para uma linha específica
+   */
+  const handleEditarLinha = (linhaId: string) => {
+    setLinhasApontamento(linhas =>
+      linhas.map(linha =>
+        linha.id === linhaId
+          ? { ...linha, editavel: true }
+          : linha
+      )
+    )
+  }
+
+  /**
+   * Salva uma linha individual de apontamento de produção
+   */
+  const handleSalvarLinha = async (linhaApontamento: LinhaApontamentoProducao) => {
+    // Validações
+    if (!data) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione a Data do apontamento',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!turnoId) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione o Turno',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!linhaId) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione a Linha de Produção',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!skuCodigo) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Digite o código do SKU',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!lote) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Digite o número do Lote',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!linhaApontamento.quantidadeProduzida || Number(linhaApontamento.quantidadeProduzida) <= 0) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Informe a Quantidade Produzida',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const linha = buscarLinhaPorId(linhaId)
+    if (!linha) {
+      toast({
+        title: 'Erro',
+        description: 'Linha de produção não encontrada',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const codigoSKU = skuCodigo.includes(' - ')
+      ? skuCodigo.split(' - ')[0].trim()
+      : skuCodigo.trim()
+
+    const descricaoSKU = skuCodigo.includes(' - ')
+      ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
+      : skuCodigo.trim()
+
+    try {
+      const tempoOperacaoHoras = calcularDiferencaHoras(
+        linhaApontamento.horaInicio,
+        linhaApontamento.horaFim
+      )
+
+      if (tempoOperacaoHoras <= 0) {
+        toast({
+          title: 'Erro',
+          description: 'Tempo de operação inválido',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const dto: CriarApontamentoProducaoDTO = {
+        turno,
+        linha: linha.nome,
+        setor: linha.setor,
+        ordemProducao: ordemProducao || 'S/N',
+        lote,
+        sku: codigoSKU,
+        produto: descricaoSKU,
+        velocidadeNominal: 4000,
+        quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
+        tempoOperacao: tempoOperacaoHoras,
+        tempoDisponivel: 12,
+        dataApontamento: format(data, 'yyyy-MM-dd'),
+        horaInicio: linhaApontamento.horaInicio.includes(':')
+          ? linhaApontamento.horaInicio + ':00'
+          : linhaApontamento.horaInicio,
+        horaFim: linhaApontamento.horaFim.includes(':')
+          ? linhaApontamento.horaFim + ':00'
+          : linhaApontamento.horaFim,
+        criadoPor: 1,
+        criadoPorNome: 'Emanuel Silva'
+      }
+
+      const apontamento = salvarApontamentoProducao(dto)
+
+      // Criar registro para histórico
+      const novoRegistro: RegistroProducao = {
+        id: apontamento.id,
+        data: format(data!, 'dd/MM/yyyy'),
+        turno,
+        linhaId,
+        linhaNome: linha.nome,
+        skuCodigo,
+        ordemProducao,
+        lote,
+        dossie,
+        horaInicio: linhaApontamento.horaInicio,
+        horaFim: linhaApontamento.horaFim,
+        quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
+        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+      }
+
+      // Atualizar histórico
+      const novoHistorico = [novoRegistro, ...historicoProducao]
+      setHistoricoProducao(novoHistorico)
+      salvarNoLocalStorage(novoHistorico)
+
+      // Atualizar linha com ID do apontamento e desabilitar edição
+      setLinhasApontamento(linhas =>
+        linhas.map(l =>
+          l.id === linhaApontamento.id
+            ? { ...l, apontamentoId: apontamento.id, editavel: false }
+            : l
+        )
+      )
+
+      // Atualizar OEE
+      if (linhaId) {
+        setApontamentoProducaoId(apontamento.id)
+        const novoOEE = calcularOEECompleto(apontamento.id, linhaId, 12)
+        setOeeCalculado(novoOEE)
+      }
+
+      toast({
+        title: '✅ Linha Salva',
+        description: `Apontamento de ${Number(linhaApontamento.quantidadeProduzida).toLocaleString('pt-BR')} unidades registrado com sucesso`
+      })
+
+    } catch (error) {
+      console.error('❌ Erro ao salvar linha:', error)
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar o apontamento. Tente novamente.',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  /**
+   * Exclui uma linha individual de apontamento
+   */
+  const handleExcluirLinha = (linhaApontamento: LinhaApontamentoProducao) => {
+    if (!linhaApontamento.apontamentoId) {
+      // Se não foi salvo ainda, apenas limpa a quantidade
+      setLinhasApontamento(linhas =>
+        linhas.map(l =>
+          l.id === linhaApontamento.id
+            ? { ...l, quantidadeProduzida: '', editavel: false }
+            : l
+        )
+      )
+      toast({
+        title: 'Linha limpa',
+        description: 'Quantidade produzida removida'
+      })
+      return
+    }
+
+    // Se já foi salvo, confirmar exclusão
+    try {
+      // Buscar o registro no histórico
+      const registro = historicoProducao.find(r => r.id === linhaApontamento.apontamentoId)
+
+      if (!registro) {
+        toast({
+          title: 'Erro',
+          description: 'Registro não encontrado',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      // Remover do histórico
+      const novoHistorico = historicoProducao.filter(r => r.id !== linhaApontamento.apontamentoId)
+      setHistoricoProducao(novoHistorico)
+      salvarNoLocalStorage(novoHistorico)
+
+      // Remover do serviço de apontamentos
+      excluirApontamentoProducao(linhaApontamento.apontamentoId)
+
+      // Limpar a linha
+      setLinhasApontamento(linhas =>
+        linhas.map(l =>
+          l.id === linhaApontamento.id
+            ? { ...l, quantidadeProduzida: '', apontamentoId: undefined, editavel: false }
+            : l
+        )
+      )
+
+      // Recalcular OEE
+      recalcularIndicadoresAposExclusao(registro, novoHistorico)
+
+      toast({
+        title: '✅ Linha Excluída',
+        description: 'Apontamento removido com sucesso'
+      })
+
+    } catch (error) {
+      console.error('❌ Erro ao excluir linha:', error)
+      toast({
+        title: 'Erro ao excluir',
+        description: 'Não foi possível excluir o apontamento. Tente novamente.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const formatarQuantidade = (quantidade: number): string => {
@@ -2118,6 +2372,7 @@ export default function ApontamentoOEE() {
                             <th className="px-4 py-3 text-left font-medium">Hora Início</th>
                             <th className="px-4 py-3 text-left font-medium">Hora Fim</th>
                             <th className="px-4 py-3 text-left font-medium">Quantidade Produzida</th>
+                            <th className="px-4 py-3 text-center font-medium">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2132,16 +2387,16 @@ export default function ApontamentoOEE() {
                                 <Input
                                   type="time"
                                   value={linha.horaInicio}
-                                  disabled
-                                  className="w-32 bg-gray-100 cursor-not-allowed"
+                                  disabled={!linha.editavel}
+                                  className={`w-32 ${!linha.editavel ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
                               <td className="px-4 py-3">
                                 <Input
                                   type="time"
                                   value={linha.horaFim}
-                                  disabled
-                                  className="w-32 bg-gray-100 cursor-not-allowed"
+                                  disabled={!linha.editavel}
+                                  className={`w-32 ${!linha.editavel ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
                               <td className="px-4 py-3">
@@ -2151,22 +2406,67 @@ export default function ApontamentoOEE() {
                                   value={linha.quantidadeProduzida}
                                   onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
                                   className="w-48"
+                                  disabled={statusTurno !== 'INICIADO'}
                                 />
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-center gap-2">
+                                  {!linha.editavel && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditarLinha(linha.id)}
+                                      className="h-8 px-3 text-primary hover:text-primary/90 hover:bg-primary/10"
+                                      title="Alterar linha"
+                                      disabled={
+                                        statusTurno !== 'INICIADO' ||
+                                        !linha.apontamentoId ||
+                                        !linha.quantidadeProduzida ||
+                                        Number(linha.quantidadeProduzida) <= 0
+                                      }
+                                    >
+                                      <Pencil className="h-4 w-4 mr-1" />
+                                      Alterar
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSalvarLinha(linha)}
+                                    className="h-8 px-3 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    title="Salvar linha"
+                                    disabled={
+                                      statusTurno !== 'INICIADO' ||
+                                      !linha.quantidadeProduzida ||
+                                      Number(linha.quantidadeProduzida) <= 0 ||
+                                      (linha.apontamentoId && !linha.editavel)
+                                    }
+                                  >
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Salvar
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleExcluirLinha(linha)}
+                                    className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Excluir linha"
+                                    disabled={
+                                      statusTurno !== 'INICIADO' ||
+                                      !linha.apontamentoId ||
+                                      !linha.quantidadeProduzida ||
+                                      Number(linha.quantidadeProduzida) <= 0
+                                    }
+                                  >
+                                    <Trash className="h-4 w-4 mr-1" />
+                                    Excluir
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
-
-                    <div className="flex justify-end mt-4">
-                      <Button
-                        className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
-                        onClick={handleSalvarProducao}
-                      >
-                        <ClipboardCheck className="mr-2 h-4 w-4" />
-                        Apontar Todas as Linhas
-                      </Button>
                     </div>
                   </div>
                 )}
