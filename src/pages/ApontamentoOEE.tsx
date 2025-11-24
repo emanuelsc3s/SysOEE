@@ -2368,50 +2368,86 @@ export default function ApontamentoOEE() {
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* Cards de Seleção de Formulário */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            <div
-              className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
-                formularioAtivo === 'production-form'
-                  ? 'border-primary ring-1 ring-primary'
-                  : 'border-border-light dark:border-border-dark'
-              }`}
-              onClick={() => setFormularioAtivo('production-form')}
-            >
-              <h3 className="font-display text-lg font-bold text-primary mb-2">Produção</h3>
-              <p className="text-sm text-muted-foreground">
-                Registro de Produção em ciclos
-              </p>
-            </div>
+          {/* Mensagem quando turno não foi iniciado */}
+          {statusTurno === 'NAO_INICIADO' ? (
+            <div className="bg-white dark:bg-white p-12 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+              <div className="flex flex-col items-center justify-center text-center space-y-6">
+                {/* Ilustração SVG */}
+                <svg
+                  className="w-32 h-32 text-muted-foreground/40"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
 
-            <div
-              className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
-                formularioAtivo === 'quality-form'
-                  ? 'border-primary ring-1 ring-primary'
-                  : 'border-border-light dark:border-border-dark'
-              }`}
-              onClick={() => setFormularioAtivo('quality-form')}
-            >
-              <h3 className="font-display text-lg font-bold text-primary mb-2">Qualidade</h3>
-              <p className="text-sm text-muted-foreground">
-                Registro de perdas e retrabalhos
-              </p>
+                {/* Mensagem principal */}
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-text-primary-light dark:text-text-primary-dark">
+                    Turno não iniciado
+                  </h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Para começar a registrar apontamentos de produção, qualidade e paradas, é necessário iniciar um turno.
+                  </p>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Preencha os campos do cabeçalho acima e clique em <span className="font-semibold text-green-600">"Iniciar Turno"</span> para começar.
+                  </p>
+                </div>
+              </div>
             </div>
+          ) : (
+            <>
+              {/* Cards de Seleção de Formulário */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div
+                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+                    formularioAtivo === 'production-form'
+                      ? 'border-primary ring-1 ring-primary'
+                      : 'border-border-light dark:border-border-dark'
+                  }`}
+                  onClick={() => setFormularioAtivo('production-form')}
+                >
+                  <h3 className="font-display text-lg font-bold text-primary mb-2">Produção</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Registro de Produção em ciclos
+                  </p>
+                </div>
 
-            <div
-              className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
-                formularioAtivo === 'downtime-form'
-                  ? 'border-primary ring-1 ring-primary'
-                  : 'border-border-light dark:border-border-dark'
-              }`}
-              onClick={() => setFormularioAtivo('downtime-form')}
-            >
-              <h3 className="font-display text-lg font-bold text-primary mb-2">Tempo de Parada</h3>
-              <p className="text-sm text-muted-foreground">
-                Registro de interrupções e motivos
-              </p>
-            </div>
-          </div>
+                <div
+                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+                    formularioAtivo === 'quality-form'
+                      ? 'border-primary ring-1 ring-primary'
+                      : 'border-border-light dark:border-border-dark'
+                  }`}
+                  onClick={() => setFormularioAtivo('quality-form')}
+                >
+                  <h3 className="font-display text-lg font-bold text-primary mb-2">Qualidade</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Registro de perdas e retrabalhos
+                  </p>
+                </div>
+
+                <div
+                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+                    formularioAtivo === 'downtime-form'
+                      ? 'border-primary ring-1 ring-primary'
+                      : 'border-border-light dark:border-border-dark'
+                  }`}
+                  onClick={() => setFormularioAtivo('downtime-form')}
+                >
+                  <h3 className="font-display text-lg font-bold text-primary mb-2">Tempo de Parada</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Registro de interrupções e motivos
+                  </p>
+                </div>
+              </div>
 
           {/* Formulário de Produção */}
           {formularioAtivo === 'production-form' && (
@@ -2864,6 +2900,8 @@ export default function ApontamentoOEE() {
                 </div>
               </section>
             </section>
+          )}
+            </>
           )}
           </main>
         </div>
