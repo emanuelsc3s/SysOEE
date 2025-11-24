@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
 import { buscarOPTOTVSPorNumero } from '@/data/ordem-producao-totvs'
-import paradasGeraisData from '../../data/paradas_gerais.json'
+import paradasGeraisData from '../../data/paradas.json'
 import { Turno } from '@/types/operacao'
 import {
   salvarApontamentoProducao,
@@ -975,11 +975,11 @@ export default function ApontamentoOEE() {
    */
   const handleSelecionarParadaModal = (parada: ParadaGeral) => {
     setParadaSelecionada(parada)
-    setCodigoParadaBusca(parada.Apontamento || '')
+    setCodigoParadaBusca(parada.apontamento || '')
 
     toast({
       title: 'Parada selecionada',
-      description: `${parada.Apontamento} - ${parada.Descrição?.substring(0, 50)}...`,
+      description: `${parada.apontamento} - ${parada.descricao?.substring(0, 50)}...`,
       variant: 'default'
     })
   }
