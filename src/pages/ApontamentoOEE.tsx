@@ -1021,16 +1021,18 @@ export default function ApontamentoOEE() {
   /**
    * Calcula horas restantes de apontamento de produção
    * Baseado no tempo disponível menos o tempo já apontado
+   * Filtra por Data + Turno + Linha + SKU (ALCOA+)
    */
   const calcularHorasRestantes = useCallback((): number => {
     const tempoDisponivel = calcularTempoDisponivelTurno()
     const historico = carregarHistorico()
 
-    // Filtrar apontamentos do turno atual
+    // Filtrar apontamentos do turno atual por Data + Turno + Linha + SKU
     const apontamentosTurnoAtual = historico.filter(
       h => h.data === format(data!, 'dd/MM/yyyy') &&
            h.turno === turno &&
-           h.linhaId === linhaId
+           h.linhaId === linhaId &&
+           h.skuCodigo === skuCodigo // Filtro adicional por SKU
     )
 
     // Calcular total de horas já apontadas
@@ -1044,7 +1046,7 @@ export default function ApontamentoOEE() {
     }, 0)
 
     return Math.max(0, tempoDisponivel - horasApontadas)
-  }, [calcularTempoDisponivelTurno, carregarHistorico, data, linhaId, turno])
+  }, [calcularTempoDisponivelTurno, carregarHistorico, data, linhaId, turno, skuCodigo])
 
   // ==================== Carregar histórico ao montar o componente ====================
   useEffect(() => {
@@ -1112,18 +1114,61 @@ export default function ApontamentoOEE() {
     )
   }
 
+  /**
+   * Filtra dados de produção por Linha de Produção e SKU
+   * Garante que apenas dados da combinação específica sejam carregados (ALCOA+)
+   *
+   * @param registros - Lista de registros de produção
+   * @param linhaId - ID da linha de produção
+   * @param skuCodigo - Código do SKU
+   * @returns Registros filtrados pela linha e SKU
+   */
+  const filtrarPorLinhaESku = (
+    registros: RegistroProducao[],
+    linhaId: string,
+    skuCodigo: string
+  ): RegistroProducao[] => {
+    return registros.filter(
+      (registro) =>
+        registro.linhaId === linhaId &&
+        registro.skuCodigo === skuCodigo
+    )
+  }
+
   // ==================== Funções de Controle de Turno ====================
 
   /**
    * Inicia o turno após validação dos campos obrigatórios
    * Bloqueia edição dos campos do cabeçalho
    * Inicializa cálculos de OEE com valores zerados
+   * Aplica filtragem por Linha de Produção e SKU (ALCOA+)
    */
   const handleIniciarTurno = () => {
+    // Validação 1: Campos obrigatórios do cabeçalho
     if (!validarCamposCabecalho()) {
       toast({
         title: 'Campos Obrigatórios',
         description: 'Preencha todos os campos do cabeçalho antes de iniciar o turno',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Validação 2: Linha de Produção selecionada
+    if (!linhaId || linhaId.trim() === '') {
+      toast({
+        title: 'Linha de Produção Obrigatória',
+        description: 'Selecione uma Linha de Produção antes de iniciar o turno',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Validação 3: SKU selecionado
+    if (!skuCodigo || skuCodigo.trim() === '') {
+      toast({
+        title: 'SKU Obrigatório',
+        description: 'Informe o código SKU do produto antes de iniciar o turno',
         variant: 'destructive'
       })
       return
@@ -1134,13 +1179,17 @@ export default function ApontamentoOEE() {
     const historicoParadasSalvo = carregarHistoricoParadas()
 
     // Filtra dados do turno atual para manter contemporaneidade (ALCOA+)
+    // IMPORTANTE: Aplica filtros de Data + Turno + Linha + SKU simultaneamente
     const producoesDoTurno = historico.filter(
       (registro) =>
         registro.data === dataSelecionada &&
         registro.turno === turno &&
-        registro.linhaId === linhaId
+        registro.linhaId === linhaId &&
+        registro.skuCodigo === skuCodigo // Filtro adicional por SKU
     )
 
+    // Paradas são filtradas apenas por Data + Turno + Linha
+    // (paradas não são específicas de SKU, mas sim da linha)
     const paradasDoTurno = historicoParadasSalvo.filter(
       (registro) =>
         registro.data === dataSelecionada &&
@@ -1149,6 +1198,17 @@ export default function ApontamentoOEE() {
     )
 
     const temDadosSalvos = producoesDoTurno.length > 0 || paradasDoTurno.length > 0
+
+    // Log dos filtros aplicados para auditoria (ALCOA+)
+    console.log('🔍 Filtros aplicados ao iniciar turno:', {
+      data: dataSelecionada,
+      turno,
+      linhaId,
+      linhaNome: linhaSelecionada?.nome || 'Não encontrada',
+      skuCodigo,
+      producoesEncontradas: producoesDoTurno.length,
+      paradasEncontradas: paradasDoTurno.length
+    })
 
     if (temDadosSalvos) {
       const producaoReferencia = [...producoesDoTurno].sort(
@@ -1219,9 +1279,10 @@ export default function ApontamentoOEE() {
 
       setStatusTurno('INICIADO')
 
+      const linhaNome = linhaSelecionada?.nome || 'Linha não identificada'
       toast({
-        title: 'Dados recuperados',
-        description: `Turno carregado com ${producoesDoTurno.length} produções e ${paradasDoTurno.length} paradas. OEE recalculado.`,
+        title: 'Turno Iniciado',
+        description: `Dados carregados para ${linhaNome} - SKU ${skuCodigo}: ${producoesDoTurno.length} produções e ${paradasDoTurno.length} paradas`,
         variant: 'default'
       })
       return
@@ -1247,9 +1308,10 @@ export default function ApontamentoOEE() {
 
     setStatusTurno('INICIADO')
 
+    const linhaNome = linhaSelecionada?.nome || 'Linha não identificada'
     toast({
       title: 'Turno Iniciado',
-      description: `Turno iniciado às ${format(new Date(), 'HH:mm:ss')}. Valores zerados e prontos para novos apontamentos. Os campos do cabeçalho foram bloqueados.`,
+      description: `Novo turno iniciado para ${linhaNome} - SKU ${skuCodigo}. Valores zerados e prontos para apontamentos.`,
       variant: 'default'
     })
   }
