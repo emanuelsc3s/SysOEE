@@ -78,6 +78,14 @@ type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
 // Tipo para status do turno
 type StatusTurno = 'NAO_INICIADO' | 'INICIADO' | 'ENCERRADO'
 
+// Tipo para linha de apontamento de produção
+type LinhaApontamentoProducao = {
+  id: string
+  horaInicio: string
+  horaFim: string
+  quantidadeProduzida: string
+}
+
 // Tipo para registro de produção no localStorage
 interface RegistroProducao {
   id: string
@@ -158,6 +166,9 @@ export default function ApontamentoOEE() {
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
   const [intervaloApontamento, setIntervaloApontamento] = useState<number>(1) // Padrão: 1 hora
+
+  // ==================== Estado de Linhas de Apontamento de Produção ====================
+  const [linhasApontamento, setLinhasApontamento] = useState<LinhaApontamentoProducao[]>([])
 
   // ==================== Estado de Produção ====================
   const [horaInicio, setHoraInicio] = useState<string>('')
@@ -301,6 +312,11 @@ export default function ApontamentoOEE() {
         description: `Intervalo de apontamento definido para ${intervaloApontamento} ${intervaloApontamento === 1 ? 'hora' : 'horas'}`,
       })
       setModalConfiguracoesAberto(false)
+
+      // Regenerar linhas de apontamento se o turno já estiver selecionado
+      if (turnoHoraInicial && turnoHoraFinal) {
+        gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
+      }
     } catch (error) {
       console.error('Erro ao salvar configurações:', error)
       toast({
@@ -309,6 +325,76 @@ export default function ApontamentoOEE() {
         variant: 'destructive'
       })
     }
+  }
+
+  /**
+   * Gera linhas de apontamento de produção com base no intervalo configurado
+   * @param horaInicial - Hora inicial do turno (formato HH:mm)
+   * @param horaFinal - Hora final do turno (formato HH:mm)
+   * @param intervalo - Intervalo em horas
+   */
+  const gerarLinhasApontamento = useCallback((horaInicial: string, horaFinal: string, intervalo: number) => {
+    if (!horaInicial || !horaFinal || intervalo < 1) {
+      setLinhasApontamento([])
+      return
+    }
+
+    try {
+      // Converter horas para minutos desde meia-noite
+      const [horaInicioH, horaInicioM] = horaInicial.split(':').map(Number)
+      const [horaFimH, horaFimM] = horaFinal.split(':').map(Number)
+
+      let minutoInicio = horaInicioH * 60 + horaInicioM
+      let minutoFim = horaFimH * 60 + horaFimM
+
+      // Se hora final for menor que inicial, significa que o turno passa da meia-noite
+      if (minutoFim < minutoInicio) {
+        minutoFim += 24 * 60 // Adiciona 24 horas em minutos
+      }
+
+      const intervaloMinutos = intervalo * 60
+      const linhas: LinhaApontamentoProducao[] = []
+      let minutoAtual = minutoInicio
+
+      // Gerar linhas de apontamento
+      while (minutoAtual < minutoFim) {
+        const proximoMinuto = Math.min(minutoAtual + intervaloMinutos, minutoFim)
+
+        // Converter minutos de volta para formato HH:mm
+        const formatarHora = (minutos: number): string => {
+          const horas = Math.floor(minutos / 60) % 24
+          const mins = minutos % 60
+          return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+        }
+
+        linhas.push({
+          id: `linha-${Date.now()}-${minutoAtual}`,
+          horaInicio: formatarHora(minutoAtual),
+          horaFim: formatarHora(proximoMinuto),
+          quantidadeProduzida: ''
+        })
+
+        minutoAtual = proximoMinuto
+      }
+
+      setLinhasApontamento(linhas)
+    } catch (error) {
+      console.error('Erro ao gerar linhas de apontamento:', error)
+      setLinhasApontamento([])
+    }
+  }, [])
+
+  /**
+   * Atualiza a quantidade produzida de uma linha específica
+   */
+  const atualizarQuantidadeLinha = (linhaId: string, quantidade: string) => {
+    setLinhasApontamento(linhas =>
+      linhas.map(linha =>
+        linha.id === linhaId
+          ? { ...linha, quantidadeProduzida: quantidade }
+          : linha
+      )
+    )
   }
 
   const formatarQuantidade = (quantidade: number): string => {
@@ -659,6 +745,9 @@ export default function ApontamentoOEE() {
     setTurnoHoraInicial(turnoSelecionado.horaInicio)
     setTurnoHoraFinal(turnoSelecionado.horaFim)
 
+    // Gerar linhas de apontamento automaticamente
+    gerarLinhasApontamento(turnoSelecionado.horaInicio, turnoSelecionado.horaFim, intervaloApontamento)
+
     toast({
       title: 'Turno selecionado',
       description: `${turnoSelecionado.codigo} - ${turnoSelecionado.turno} (${turnoSelecionado.horaInicio} - ${turnoSelecionado.horaFim})`,
@@ -714,6 +803,13 @@ export default function ApontamentoOEE() {
     // Carregar configurações
     carregarConfiguracoes()
   }, [carregarHistorico, carregarHistoricoParadas, carregarConfiguracoes])
+
+  // ==================== Regenerar linhas de apontamento quando turno ou intervalo mudar ====================
+  useEffect(() => {
+    if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0) {
+      gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
+    }
+  }, [turnoHoraInicial, turnoHoraFinal, intervaloApontamento, gerarLinhasApontamento])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
@@ -1148,31 +1244,27 @@ export default function ApontamentoOEE() {
     }
 
     // =================================================================
-    // VALIDAÇÃO 2: Campos do Formulário de Produção
+    // VALIDAÇÃO 2: Linhas de Apontamento
     // =================================================================
 
-    if (!horaInicio) {
+    if (linhasApontamento.length === 0) {
       toast({
-        title: 'Campo obrigatório',
-        description: 'Informe a Hora de Início da produção',
+        title: 'Nenhuma linha de apontamento',
+        description: 'Selecione um turno para gerar as linhas de apontamento automaticamente',
         variant: 'destructive'
       })
       return
     }
 
-    if (!horaFim) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Informe a Hora de Fim da produção',
-        variant: 'destructive'
-      })
-      return
-    }
+    // Validar se pelo menos uma linha tem quantidade produzida
+    const linhasComProducao = linhasApontamento.filter(
+      linha => linha.quantidadeProduzida && Number(linha.quantidadeProduzida) > 0
+    )
 
-    if (!quantidadeProduzida || Number(quantidadeProduzida) <= 0) {
+    if (linhasComProducao.length === 0) {
       toast({
         title: 'Campo obrigatório',
-        description: 'Informe a Quantidade Produzida (maior que zero)',
+        description: 'Informe a Quantidade Produzida em pelo menos uma linha',
         variant: 'destructive'
       })
       return
@@ -1206,71 +1298,82 @@ export default function ApontamentoOEE() {
       : skuCodigo.trim()
 
     // =================================================================
-    // CALCULAR TEMPO DE OPERAÇÃO
-    // =================================================================
-
-    const tempoOperacaoHoras = calcularDiferencaHoras(horaInicio, horaFim)
-
-    if (tempoOperacaoHoras <= 0) {
-      toast({
-        title: 'Erro de validação',
-        description: 'Hora de Fim deve ser posterior à Hora de Início',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (tempoOperacaoHoras > 24) {
-      toast({
-        title: 'Atenção',
-        description: 'Tempo de operação superior a 24 horas. Verifique os horários.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // CRIAR DTO
-    // Usa dados extraídos do campo SKU (suporta TOTVS e entrada manual)
-    // =================================================================
-
-    const dto: CriarApontamentoProducaoDTO = {
-      turno,
-      linha: linha.nome,
-      setor: linha.setor,
-      ordemProducao: ordemProducao || 'S/N', // Opcional
-      lote,
-      sku: codigoSKU,
-      produto: descricaoSKU,
-      velocidadeNominal: 4000, // CONSTANTE: 4000 unidades/hora
-      quantidadeProduzida: Number(quantidadeProduzida),
-      tempoOperacao: tempoOperacaoHoras,
-      tempoDisponivel: 12, // CONSTANTE: 12 horas por turno
-      dataApontamento: format(data, 'yyyy-MM-dd'),
-      horaInicio: horaInicio.includes(':') ? horaInicio + ':00' : horaInicio,
-      horaFim: horaFim.includes(':') ? horaFim + ':00' : horaFim,
-      criadoPor: 1, // TODO: buscar do contexto de autenticação
-      criadoPorNome: 'Emanuel Silva' // TODO: buscar do contexto
-    }
-
-    // =================================================================
-    // SALVAR NO LOCALSTORAGE
+    // SALVAR TODAS AS LINHAS DE APONTAMENTO
     // =================================================================
 
     try {
-      const apontamento = salvarApontamentoProducao(dto)
+      let totalLinhasSalvas = 0
+      let ultimoApontamentoId = ''
+      const novosRegistros: RegistroProducao[] = []
 
-      console.log('✅ Apontamento de produção salvo:', apontamento)
+      // Processar cada linha de apontamento com quantidade produzida
+      for (const linhaApontamento of linhasComProducao) {
+        const tempoOperacaoHoras = calcularDiferencaHoras(
+          linhaApontamento.horaInicio,
+          linhaApontamento.horaFim
+        )
+
+        if (tempoOperacaoHoras <= 0) {
+          console.warn(`Linha ignorada: tempo de operação inválido (${linhaApontamento.horaInicio} - ${linhaApontamento.horaFim})`)
+          continue
+        }
+
+        const dto: CriarApontamentoProducaoDTO = {
+          turno,
+          linha: linha.nome,
+          setor: linha.setor,
+          ordemProducao: ordemProducao || 'S/N',
+          lote,
+          sku: codigoSKU,
+          produto: descricaoSKU,
+          velocidadeNominal: 4000, // CONSTANTE: 4000 unidades/hora
+          quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
+          tempoOperacao: tempoOperacaoHoras,
+          tempoDisponivel: 12, // CONSTANTE: 12 horas por turno
+          dataApontamento: format(data, 'yyyy-MM-dd'),
+          horaInicio: linhaApontamento.horaInicio.includes(':')
+            ? linhaApontamento.horaInicio + ':00'
+            : linhaApontamento.horaInicio,
+          horaFim: linhaApontamento.horaFim.includes(':')
+            ? linhaApontamento.horaFim + ':00'
+            : linhaApontamento.horaFim,
+          criadoPor: 1, // TODO: buscar do contexto de autenticação
+          criadoPorNome: 'Emanuel Silva' // TODO: buscar do contexto
+        }
+
+        const apontamento = salvarApontamentoProducao(dto)
+        ultimoApontamentoId = apontamento.id
+        totalLinhasSalvas++
+
+        console.log(`✅ Apontamento ${totalLinhasSalvas} salvo:`, apontamento)
+
+        // Criar registro para histórico
+        const novoRegistro: RegistroProducao = {
+          id: apontamento.id,
+          data: format(data!, 'dd/MM/yyyy'),
+          turno,
+          linhaId,
+          linhaNome: linha.nome,
+          skuCodigo,
+          ordemProducao,
+          lote,
+          dossie,
+          horaInicio: linhaApontamento.horaInicio,
+          horaFim: linhaApontamento.horaFim,
+          quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
+          dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+        }
+
+        novosRegistros.push(novoRegistro)
+      }
 
       // =================================================================
       // ATUALIZAR ESTADO PARA RECALCULAR OEE
       // =================================================================
 
-      setApontamentoProducaoId(apontamento.id)
-
-      // Calcular OEE imediatamente (OEE é calculado por linha)
-      if (linhaId) {
-        const novoOEE = calcularOEECompleto(apontamento.id, linhaId, 12)
+      if (ultimoApontamentoId && linhaId) {
+        setApontamentoProducaoId(ultimoApontamentoId)
+        const novoOEE = calcularOEECompleto(ultimoApontamentoId, linhaId, 12)
         setOeeCalculado(novoOEE)
         console.log('📊 OEE calculado:', novoOEE)
       }
@@ -1279,48 +1382,38 @@ export default function ApontamentoOEE() {
       // ATUALIZAR HISTÓRICO LOCAL (para exibição na tabela)
       // =================================================================
 
-      const novoRegistro: RegistroProducao = {
-        id: apontamento.id,
-        data: format(data!, 'dd/MM/yyyy'),
-        turno,
-        linhaId,
-        linhaNome: linha.nome,
-        skuCodigo,
-        ordemProducao,
-        lote,
-        dossie,
-        horaInicio,
-        horaFim,
-        quantidadeProduzida: Number(quantidadeProduzida),
-        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
-      }
-
-      const novoHistorico = [novoRegistro, ...historicoProducao]
+      const novoHistorico = [...novosRegistros, ...historicoProducao]
       setHistoricoProducao(novoHistorico)
       salvarNoLocalStorage(novoHistorico)
 
       // =================================================================
-      // LIMPAR FORMULÁRIO
+      // LIMPAR FORMULÁRIO E LINHAS
       // =================================================================
 
-      setHoraInicio('')
-      setHoraFim('')
-      setQuantidadeProduzida('')
+      // Limpar quantidades produzidas das linhas
+      setLinhasApontamento(linhas =>
+        linhas.map(linha => ({ ...linha, quantidadeProduzida: '' }))
+      )
 
       // =================================================================
       // FEEDBACK PARA O USUÁRIO
       // =================================================================
 
+      const totalUnidades = linhasComProducao.reduce(
+        (total, linha) => total + Number(linha.quantidadeProduzida),
+        0
+      )
+
       toast({
         title: '✅ Produção Registrada',
-        description: `${Number(quantidadeProduzida).toLocaleString('pt-BR')} unidades em ${tempoOperacaoHoras.toFixed(2)}h. OEE atualizado.`
+        description: `${totalLinhasSalvas} ${totalLinhasSalvas === 1 ? 'linha salva' : 'linhas salvas'} com total de ${totalUnidades.toLocaleString('pt-BR')} unidades. OEE atualizado.`
       })
 
     } catch (error) {
-      console.error('❌ Erro ao salvar apontamento:', error)
+      console.error('❌ Erro ao salvar apontamentos:', error)
       toast({
         title: 'Erro ao salvar',
-        description: 'Não foi possível salvar o apontamento. Tente novamente.',
+        description: 'Não foi possível salvar os apontamentos. Tente novamente.',
         variant: 'destructive'
       })
     }
@@ -2009,42 +2102,74 @@ export default function ApontamentoOEE() {
             <div className="space-y-6">
               <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
-                <div className="space-y-4">
-                  {/* Container flex para inputs de tempo e quantidade na mesma linha */}
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex flex-col gap-3">
-                      <Label htmlFor="start-time" className="px-1">Hora Início</Label>
-                      <Input type="time" id="start-time" step="60" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none w-full sm:w-32 md:w-36" />
+
+                {linhasApontamento.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="mb-2">Nenhuma linha de apontamento gerada.</p>
+                    <p className="text-sm">Selecione um turno para gerar automaticamente as linhas de apontamento com base no intervalo configurado.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Tabela de linhas de apontamento */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-medium">Hora Início</th>
+                            <th className="px-4 py-3 text-left font-medium">Hora Fim</th>
+                            <th className="px-4 py-3 text-left font-medium">Quantidade Produzida</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {linhasApontamento.map((linha, index) => (
+                            <tr
+                              key={linha.id}
+                              className={`border-b border-border-light dark:border-border-dark ${
+                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                              }`}
+                            >
+                              <td className="px-4 py-3">
+                                <Input
+                                  type="time"
+                                  value={linha.horaInicio}
+                                  disabled
+                                  className="w-32 bg-gray-100 cursor-not-allowed"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <Input
+                                  type="time"
+                                  value={linha.horaFim}
+                                  disabled
+                                  className="w-32 bg-gray-100 cursor-not-allowed"
+                                />
+                              </td>
+                              <td className="px-4 py-3">
+                                <Input
+                                  type="number"
+                                  placeholder="ex: 10000"
+                                  value={linha.quantidadeProduzida}
+                                  onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
+                                  className="w-48"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
 
-                    <div className="flex flex-col gap-3">
-                      <Label htmlFor="end-time" className="px-1">Hora Fim</Label>
-                      <Input type="time" id="end-time" step="60" value={horaFim} onChange={(e) => setHoraFim(e.target.value)} className="bg-background-light dark:bg-background-dark appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none w-full sm:w-32 md:w-36" />
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      <Label htmlFor="quantity-produced" className="px-1">Quantidade Produzida</Label>
-                      <input
-                        className="flex h-9 w-full sm:w-40 md:w-48 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        id="quantity-produced"
-                        type="number"
-                        placeholder="ex: 10000"
-                        value={quantidadeProduzida}
-                        onChange={(e) => setQuantidadeProduzida(e.target.value)}
-                      />
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                        onClick={handleSalvarProducao}
+                      >
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Apontar Todas as Linhas
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex justify-end mt-2">
-                    <Button
-                      className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
-                      onClick={handleSalvarProducao}
-                    >
-                      <ClipboardCheck className="mr-2 h-4 w-4" />
-                      Apontar
-                    </Button>
-                  </div>
-                </div>
+                )}
               </section>
 
               <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
