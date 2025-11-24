@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { AppHeader } from "@/components/layout/AppHeader"
 import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
+import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -115,6 +116,12 @@ export default function ApontamentoOEE() {
   const [data, setData] = useState<Date | undefined>(new Date())
   const [openDatePicker, setOpenDatePicker] = useState(false)
   const [turno, setTurno] = useState<Turno>('1º Turno')
+  const [turnoId, setTurnoId] = useState<string>('') // ID do turno selecionado
+  const [turnoCodigo, setTurnoCodigo] = useState<string>('') // Código do turno
+  const [turnoNome, setTurnoNome] = useState<string>('') // Nome do turno
+  const [modalBuscaTurnoAberto, setModalBuscaTurnoAberto] = useState<boolean>(false)
+  const [turnoHoraInicial, setTurnoHoraInicial] = useState<string>('') // Hora inicial do turno
+  const [turnoHoraFinal, setTurnoHoraFinal] = useState<string>('') // Hora final do turno
   const [linhaId, setLinhaId] = useState<string>('')
   const [skuCodigo, setSkuCodigo] = useState<string>('')
   const [ordemProducao, setOrdemProducao] = useState<string>('')
@@ -124,6 +131,11 @@ export default function ApontamentoOEE() {
   const [cabecalhoOriginal, setCabecalhoOriginal] = useState<{
     data: Date | undefined
     turno: Turno
+    turnoId: string
+    turnoCodigo: string
+    turnoNome: string
+    turnoHoraInicial: string
+    turnoHoraFinal: string
     linhaId: string
     skuCodigo: string
     ordemProducao: string
@@ -579,6 +591,30 @@ export default function ApontamentoOEE() {
   }
 
   /**
+   * Abre o modal de busca de turnos
+   */
+  const abrirModalBuscaTurno = () => {
+    setModalBuscaTurnoAberto(true)
+  }
+
+  /**
+   * Callback quando um turno é selecionado no modal
+   */
+  const handleSelecionarTurnoModal = (turnoSelecionado: TurnoSelecionado) => {
+    setTurnoId(turnoSelecionado.turno_id)
+    setTurnoCodigo(turnoSelecionado.codigo)
+    setTurnoNome(turnoSelecionado.turno)
+    setTurnoHoraInicial(turnoSelecionado.horaInicio)
+    setTurnoHoraFinal(turnoSelecionado.horaFim)
+
+    toast({
+      title: 'Turno selecionado',
+      description: `${turnoSelecionado.codigo} - ${turnoSelecionado.turno} (${turnoSelecionado.horaInicio} - ${turnoSelecionado.horaFim})`,
+      variant: 'default'
+    })
+  }
+
+  /**
    * Calcula o tempo disponível do turno em horas
    * Baseado no turno selecionado (12 horas por turno)
    */
@@ -662,7 +698,7 @@ export default function ApontamentoOEE() {
   const validarCamposCabecalho = (): boolean => {
     return !!(
       data &&
-      turno &&
+      turnoId && // Validar turnoId ao invés de turno
       linhaId &&
       skuCodigo.trim() &&
       ordemProducao.trim() &&
@@ -841,6 +877,11 @@ export default function ApontamentoOEE() {
     setCabecalhoOriginal({
       data,
       turno,
+      turnoId,
+      turnoCodigo,
+      turnoNome,
+      turnoHoraInicial,
+      turnoHoraFinal,
       linhaId,
       skuCodigo,
       ordemProducao,
@@ -861,6 +902,11 @@ export default function ApontamentoOEE() {
     if (cabecalhoOriginal) {
       setData(cabecalhoOriginal.data)
       setTurno(cabecalhoOriginal.turno)
+      setTurnoId(cabecalhoOriginal.turnoId)
+      setTurnoCodigo(cabecalhoOriginal.turnoCodigo)
+      setTurnoNome(cabecalhoOriginal.turnoNome)
+      setTurnoHoraInicial(cabecalhoOriginal.turnoHoraInicial)
+      setTurnoHoraFinal(cabecalhoOriginal.turnoHoraFinal)
       setLinhaId(cabecalhoOriginal.linhaId)
       setSkuCodigo(cabecalhoOriginal.skuCodigo)
       setOrdemProducao(cabecalhoOriginal.ordemProducao)
@@ -1010,7 +1056,7 @@ export default function ApontamentoOEE() {
       return
     }
 
-    if (!turno) {
+    if (!turnoId) {
       toast({
         title: 'Campo obrigatório',
         description: 'Selecione o Turno',
@@ -1520,8 +1566,8 @@ export default function ApontamentoOEE() {
           {/* Dashboard OEE - Cabeçalho com Filtros */}
           <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
             <div className="flex flex-col gap-y-4">
-              {/* Primeira linha: Data, Turno, Linha */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
+              {/* Primeira linha: Data, Código do Turno, Turno, Hora Inicial, Hora Final */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="date" className="text-sm font-medium text-muted-foreground">
                     Data
@@ -1554,20 +1600,74 @@ export default function ApontamentoOEE() {
                   </Popover>
                 </div>
 
+                {/* Turno - Código */}
                 <div>
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
-                  <Select value={turno} onValueChange={(value) => setTurno(value as Turno)} disabled={cabecalhoBloqueado}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o turno" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1º Turno">1º Turno</SelectItem>
-                      <SelectItem value="2º Turno">2º Turno</SelectItem>
-                      <SelectItem value="3º Turno">3º Turno</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Código do Turno</span>
+                  <Input
+                    type="text"
+                    value={turnoCodigo}
+                    readOnly
+                    disabled={cabecalhoBloqueado}
+                    placeholder="Código"
+                    className="bg-muted/50 cursor-not-allowed"
+                  />
                 </div>
 
+                {/* Turno - Nome com Botão de Busca */}
+                <div>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={turnoNome}
+                      readOnly
+                      disabled={cabecalhoBloqueado}
+                      placeholder="Selecione um turno"
+                      className="flex-1 bg-muted/50 cursor-not-allowed"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={abrirModalBuscaTurno}
+                      disabled={cabecalhoBloqueado}
+                      title="Buscar turno"
+                      className="flex-none"
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Hora Inicial do Turno */}
+                <div>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Inicial</span>
+                  <Input
+                    type="time"
+                    value={turnoHoraInicial}
+                    onChange={(e) => setTurnoHoraInicial(e.target.value)}
+                    disabled={cabecalhoBloqueado}
+                    placeholder="00:00"
+                    className="bg-background-light dark:bg-background-dark"
+                  />
+                </div>
+
+                {/* Hora Final do Turno */}
+                <div>
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Final</span>
+                  <Input
+                    type="time"
+                    value={turnoHoraFinal}
+                    onChange={(e) => setTurnoHoraFinal(e.target.value)}
+                    disabled={cabecalhoBloqueado}
+                    placeholder="00:00"
+                    className="bg-background-light dark:bg-background-dark"
+                  />
+                </div>
+              </div>
+
+              {/* Segunda linha: Linha de Produção */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
                   <Select value={linhaId} onValueChange={setLinhaId} disabled={cabecalhoBloqueado}>
@@ -1604,7 +1704,7 @@ export default function ApontamentoOEE() {
                 </div>
               </div>
 
-              {/* Segunda linha: OP (com busca), SKU, Lote, Dossie */}
+              {/* Terceira linha: OP (com busca), SKU, Lote, Dossie */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Ordem de Produção</span>
@@ -2345,6 +2445,13 @@ export default function ApontamentoOEE() {
         onFechar={() => setModalBuscaParadasAberto(false)}
         onSelecionarParada={handleSelecionarParadaModal}
         paradasGerais={paradasGeraisData}
+      />
+
+      {/* Modal de Busca de Turno */}
+      <ModalBuscaTurno
+        aberto={modalBuscaTurnoAberto}
+        onFechar={() => setModalBuscaTurnoAberto(false)}
+        onSelecionarTurno={handleSelecionarTurnoModal}
       />
     </>
   )

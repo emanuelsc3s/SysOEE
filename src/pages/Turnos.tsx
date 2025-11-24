@@ -32,7 +32,7 @@ import {
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useTurnos } from '@/hooks/useTurnos'
 import { TurnoFormData, calcularDuracaoTurno } from '@/types/turno'
-import { Plus, Search, Pencil, Trash2, Clock, Target, RefreshCw, Filter, Loader2, AlertCircle, Eye } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Clock, Target, RefreshCw, Filter, Loader2, AlertCircle, Eye, ArrowLeft } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { DataPagination } from '@/components/ui/data-pagination'
 
@@ -338,14 +338,24 @@ export default function Turnos() {
               <h1 className="text-2xl font-bold text-[#1f2937]">Turnos</h1>
               <p className="text-sm text-gray-500">Gerencie e acompanhe todos os turnos de trabalho</p>
             </div>
-            <Button
-              variant="outline"
-              className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
-              onClick={handleNovo}
-            >
-              <Plus className="h-4 w-4" />
-              Novo Turno
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="flex items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-10 px-4"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+              <Button
+                variant="outline"
+                className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                onClick={handleNovo}
+              >
+                <Plus className="h-4 w-4" />
+                Novo Turno
+              </Button>
+            </div>
           </div>
 
           {/* Card principal como coluna flex para permitir que o conteúdo ocupe a altura disponível */}

@@ -41,6 +41,7 @@ export interface TurnoFormData {
 /**
  * Interface para dados do banco de dados (tbturno)
  * Representa a estrutura exata da tabela no Supabase
+ * NOTA: meta_oee pode vir como string devido ao tipo numeric(10,2) do PostgreSQL
  */
 export interface TurnoDB {
   turno_id: number
@@ -55,7 +56,7 @@ export interface TurnoDB {
   updated_by: number | null
   deleted_at: string | null
   deleted_by: number | null
-  meta_oee: number | null
+  meta_oee: number | string | null  // Pode vir como string do Supabase
 }
 
 /**

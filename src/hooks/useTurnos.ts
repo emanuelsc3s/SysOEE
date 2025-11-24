@@ -29,13 +29,21 @@ export function useTurnos() {
    * Mapeia dados do banco para o formato do formulário
    */
   const mapDbToForm = (dbTurno: TurnoDB): TurnoFormData => {
+    // Converter meta_oee para número (pode vir como string do Supabase)
+    let metaOeeNumero = 85.0
+    if (dbTurno.meta_oee !== null && dbTurno.meta_oee !== undefined) {
+      metaOeeNumero = typeof dbTurno.meta_oee === 'number'
+        ? dbTurno.meta_oee
+        : parseFloat(dbTurno.meta_oee as unknown as string)
+    }
+
     return {
       id: dbTurno.turno_id.toString(),
       codigo: dbTurno.codigo,
       turno: dbTurno.turno || '',
       horaInicio: dbTurno.hora_inicio || '',
       horaFim: dbTurno.hora_fim || '',
-      metaOee: typeof dbTurno.meta_oee === 'number' ? dbTurno.meta_oee : 85.0,
+      metaOee: metaOeeNumero,
       deletado: (dbTurno.deletado as 'N' | 'S') || 'N',
       createdAt: dbTurno.created_at || undefined,
       createdBy: dbTurno.created_by || undefined,
@@ -67,6 +75,7 @@ export function useTurnos() {
    */
   const fetchTurnos = async (filters?: FetchTurnosFilters) => {
     try {
+      console.log('🔍 useTurnos: Iniciando busca de turnos. Filtros:', filters)
       setLoading(true)
 
       let query = supabaseAdmin
@@ -83,11 +92,20 @@ export function useTurnos() {
         query = query.ilike('turno', `%${filters.turno}%`)
       }
 
+      console.log('🔍 useTurnos: Executando query no Supabase...')
       const { data, error, count } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ useTurnos: Erro na query:', error)
+        throw error
+      }
+
+      console.log('✅ useTurnos: Dados recebidos do Supabase:', data)
+      console.log('📊 useTurnos: Total de registros:', data?.length || 0)
 
       const turnosMapeados = (data || []).map(mapDbToForm)
+      console.log('✅ useTurnos: Turnos mapeados:', turnosMapeados)
+
       setTurnos(turnosMapeados)
 
       return {
@@ -95,6 +113,7 @@ export function useTurnos() {
         count: count || turnosMapeados.length
       }
     } catch (error) {
+      console.error('❌ useTurnos: Erro ao buscar turnos:', error)
       const errorMessage = handleSupabaseError(error)
       toast({
         title: 'Erro ao buscar turnos',
