@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
@@ -60,6 +60,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { AppHeader } from "@/components/layout/AppHeader"
 import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
 import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
@@ -147,6 +155,10 @@ export default function ApontamentoOEE() {
   const [statusTurno, setStatusTurno] = useState<StatusTurno>('NAO_INICIADO')
   const [showConfirmEncerramento, setShowConfirmEncerramento] = useState(false)
 
+  // ==================== Estado de Configurações ====================
+  const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
+  const [intervaloApontamento, setIntervaloApontamento] = useState<number>(1) // Padrão: 1 hora
+
   // ==================== Estado de Produção ====================
   const [horaInicio, setHoraInicio] = useState<string>('')
   const [horaFim, setHoraFim] = useState<string>('')
@@ -205,6 +217,7 @@ export default function ApontamentoOEE() {
   // ==================== Constante para chave do localStorage ====================
   const STORAGE_KEY = 'oee_production_records'
   const STORAGE_KEY_PARADAS = 'oee_downtime_records'
+  const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
 
   // ==================== Funções de localStorage ====================
   const carregarHistorico = useCallback((): RegistroProducao[] => {
@@ -254,6 +267,45 @@ export default function ApontamentoOEE() {
       toast({
         title: 'Erro',
         description: 'Não foi possível salvar os dados de paradas',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  /**
+   * Carrega configurações do localStorage
+   */
+  const carregarConfiguracoes = useCallback(() => {
+    try {
+      const dados = localStorage.getItem(STORAGE_KEY_CONFIGURACOES)
+      if (dados) {
+        const config = JSON.parse(dados)
+        setIntervaloApontamento(config.intervaloApontamento || 1)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações do localStorage:', error)
+    }
+  }, [])
+
+  /**
+   * Salva configurações no localStorage
+   */
+  const salvarConfiguracoes = () => {
+    try {
+      const config = {
+        intervaloApontamento
+      }
+      localStorage.setItem(STORAGE_KEY_CONFIGURACOES, JSON.stringify(config))
+      toast({
+        title: '✅ Configurações Salvas',
+        description: `Intervalo de apontamento definido para ${intervaloApontamento} ${intervaloApontamento === 1 ? 'hora' : 'horas'}`,
+      })
+      setModalConfiguracoesAberto(false)
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar as configurações',
         variant: 'destructive'
       })
     }
@@ -658,7 +710,10 @@ export default function ApontamentoOEE() {
 
     const historicoParadas = carregarHistoricoParadas()
     setHistoricoParadas(historicoParadas)
-  }, [carregarHistorico, carregarHistoricoParadas])
+
+    // Carregar configurações
+    carregarConfiguracoes()
+  }, [carregarHistorico, carregarHistoricoParadas, carregarConfiguracoes])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
@@ -1512,6 +1567,10 @@ export default function ApontamentoOEE() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setModalConfiguracoesAberto(true)}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configurações
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => console.log('Procedimento Operacional')}>
                       Procedimento Operacional
                     </DropdownMenuItem>
@@ -2453,6 +2512,61 @@ export default function ApontamentoOEE() {
         onFechar={() => setModalBuscaTurnoAberto(false)}
         onSelecionarTurno={handleSelecionarTurnoModal}
       />
+
+      {/* Modal de Configurações */}
+      <Dialog open={modalConfiguracoesAberto} onOpenChange={setModalConfiguracoesAberto}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Configurações de Apontamento</DialogTitle>
+            <DialogDescription>
+              Configure o intervalo obrigatório para apontamento de produção
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="intervalo-apontamento">
+                Intervalo de apontamento de produção (horas)
+              </Label>
+              <Input
+                id="intervalo-apontamento"
+                type="number"
+                min="1"
+                max="24"
+                value={intervaloApontamento}
+                onChange={(e) => {
+                  const valor = parseInt(e.target.value)
+                  if (valor >= 1 && valor <= 24) {
+                    setIntervaloApontamento(valor)
+                  }
+                }}
+                placeholder="Ex: 1"
+                className="w-full"
+              />
+              <p className="text-sm text-muted-foreground">
+                Define a cada quantas horas o apontamento de produção deve ser realizado.
+                Valor entre 1 e 24 horas (1 dia).
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setModalConfiguracoesAberto(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={salvarConfiguracoes}
+              className="bg-brand-primary hover:bg-brand-primary/90"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
