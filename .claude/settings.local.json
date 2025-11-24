@@ -12,7 +12,8 @@
       "Bash(npm run build:*)",
       "SlashCommand(/BMad:agents:po)",
       "mcp__ide__getDiagnostics",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

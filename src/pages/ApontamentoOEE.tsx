@@ -316,7 +316,8 @@ export default function ApontamentoOEE() {
       setModalConfiguracoesAberto(false)
 
       // Regenerar linhas de apontamento se o turno já estiver selecionado
-      if (turnoHoraInicial && turnoHoraFinal) {
+      // IMPORTANTE: Só regenera se o turno NÃO estiver iniciado
+      if (turnoHoraInicial && turnoHoraFinal && statusTurno === 'NAO_INICIADO') {
         gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
       }
     } catch (error) {
@@ -373,7 +374,8 @@ export default function ApontamentoOEE() {
           id: `linha-${Date.now()}-${minutoAtual}`,
           horaInicio: formatarHora(minutoAtual),
           horaFim: formatarHora(proximoMinuto),
-          quantidadeProduzida: ''
+          quantidadeProduzida: '',
+          editavel: true // Linhas geradas automaticamente são editáveis
         })
 
         minutoAtual = proximoMinuto
@@ -1000,7 +1002,10 @@ export default function ApontamentoOEE() {
     setTurnoHoraFinal(turnoSelecionado.horaFim)
 
     // Gerar linhas de apontamento automaticamente
-    gerarLinhasApontamento(turnoSelecionado.horaInicio, turnoSelecionado.horaFim, intervaloApontamento)
+    // IMPORTANTE: Só gera se o turno ainda não foi iniciado (evita sobrescrever dados do histórico)
+    if (statusTurno === 'NAO_INICIADO') {
+      gerarLinhasApontamento(turnoSelecionado.horaInicio, turnoSelecionado.horaFim, intervaloApontamento)
+    }
 
     toast({
       title: 'Turno selecionado',
@@ -1061,11 +1066,14 @@ export default function ApontamentoOEE() {
   }, [carregarHistorico, carregarHistoricoParadas, carregarConfiguracoes])
 
   // ==================== Regenerar linhas de apontamento quando turno ou intervalo mudar ====================
+  // IMPORTANTE: Só regenera se o turno NÃO estiver iniciado (evita sobrescrever dados durante o turno)
+  // NOTA: NÃO incluir linhasApontamento nas dependências para evitar loop infinito
   useEffect(() => {
-    if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0) {
+    if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0 && statusTurno === 'NAO_INICIADO') {
       gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
+      console.log('✅ Linhas de apontamento geradas automaticamente (useEffect)')
     }
-  }, [turnoHoraInicial, turnoHoraFinal, intervaloApontamento, gerarLinhasApontamento])
+  }, [turnoHoraInicial, turnoHoraFinal, intervaloApontamento, gerarLinhasApontamento, statusTurno])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
@@ -1138,10 +1146,101 @@ export default function ApontamentoOEE() {
   // ==================== Funções de Controle de Turno ====================
 
   /**
+   * Pré-carrega dados de produção do histórico de OPs do TOTVS
+   * Busca OPs ativas para a linha de produção selecionada
+   * Preenche automaticamente os campos de OP, Lote, Dossiê e SKU se houver apenas uma OP
+   */
+  const preCarregarDadosProducao = useCallback(() => {
+    try {
+      // Importar função de busca de OPs do TOTVS
+      const { obterTodasOPs } = require('@/data/ordem-producao-totvs')
+
+      // Buscar todas as OPs disponíveis
+      const todasOPs = obterTodasOPs()
+
+      // Filtrar OPs relevantes
+      // Critério 1: OPs recentes (últimos 30 dias)
+      // Critério 2: Quantidade > 0
+      // Critério 3: Mesmo SKU se já estiver preenchido
+      const dataLimite = new Date()
+      dataLimite.setDate(dataLimite.getDate() - 30)
+
+      let opsRelevantes = todasOPs.filter(op => {
+        // Converter data de emissão (DD/MM/YYYY) para Date
+        const [dia, mes, ano] = op.C2_EMISSAO.split('/')
+        const dataEmissao = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia))
+
+        // Filtrar por data e quantidade
+        const dentroDataLimite = dataEmissao >= dataLimite
+        const temQuantidade = op.C2_QUANT > 0
+
+        // Se SKU já estiver preenchido, filtrar apenas OPs do mesmo SKU
+        const mesmoSKU = !skuCodigo || op.C2_PRODUTO === skuCodigo
+
+        return dentroDataLimite && temQuantidade && mesmoSKU
+      })
+
+      // Ordenar por data de emissão (mais recentes primeiro)
+      opsRelevantes.sort((a, b) => {
+        const [diaA, mesA, anoA] = a.C2_EMISSAO.split('/')
+        const [diaB, mesB, anoB] = b.C2_EMISSAO.split('/')
+        const dataA = new Date(parseInt(anoA), parseInt(mesA) - 1, parseInt(diaA))
+        const dataB = new Date(parseInt(anoB), parseInt(mesB) - 1, parseInt(diaB))
+        return dataB.getTime() - dataA.getTime()
+      })
+
+      // Limitar a 5 OPs mais recentes
+      opsRelevantes = opsRelevantes.slice(0, 5)
+
+      if (opsRelevantes.length === 0) {
+        console.log('ℹ️ Nenhuma OP relevante encontrada para pré-carregamento')
+        return { linhas: [], opUnica: null }
+      }
+
+      // Se houver apenas UMA OP, pré-preencher os campos do cabeçalho
+      let opUnica = null
+      if (opsRelevantes.length === 1) {
+        opUnica = opsRelevantes[0]
+        console.log('✅ OP única encontrada, pré-preenchendo campos:', {
+          numero: opUnica.C2_NUM,
+          produto: opUnica.C2_PRODUTO,
+          lote: opUnica.C2_YLOTE,
+          dossie: opUnica.C2_YDOSSIE
+        })
+      }
+
+      // Converter OPs para linhas de apontamento
+      const linhasPreCarregadas: LinhaApontamentoProducao[] = opsRelevantes.map((op, index) => ({
+        id: `pre-${Date.now()}-${index}`,
+        horaInicio: '',
+        horaFim: '',
+        quantidadeProduzida: '',
+        editavel: true
+      }))
+
+      console.log(`✅ Pré-carregadas ${linhasPreCarregadas.length} linhas de produção`, {
+        ops: opsRelevantes.map(op => ({
+          numero: op.C2_NUM,
+          produto: op.C2_PRODUTO,
+          descricao: op.B1_DESC,
+          lote: op.C2_YLOTE,
+          quantidade: op.C2_QUANT
+        }))
+      })
+
+      return { linhas: linhasPreCarregadas, opUnica }
+    } catch (error) {
+      console.error('❌ Erro ao pré-carregar dados de produção:', error)
+      return { linhas: [], opUnica: null }
+    }
+  }, [skuCodigo])
+
+  /**
    * Inicia o turno após validação dos campos obrigatórios
    * Bloqueia edição dos campos do cabeçalho
    * Inicializa cálculos de OEE com valores zerados
    * Aplica filtragem por Linha de Produção e SKU (ALCOA+)
+   * PRÉ-CARREGA dados de produção de OPs ativas
    */
   const handleIniciarTurno = () => {
     // Validação 1: Campos obrigatórios do cabeçalho
@@ -1271,6 +1370,98 @@ export default function ApontamentoOEE() {
       setHistoricoProducao(producoesDoTurno)
       setHistoricoParadas(paradasDoTurno)
 
+      // GERAR TODAS AS LINHAS DO TURNO (do início ao fim) e preencher com dados do histórico
+      let todasAsLinhas: LinhaApontamentoProducao[] = []
+
+      if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0) {
+        // Criar um mapa de registros do histórico por hora de início para busca rápida
+        const mapaHistorico = new Map<string, RegistroProducao>()
+        producoesDoTurno.forEach(registro => {
+          mapaHistorico.set(registro.horaInicio, registro)
+        })
+
+        // Calcular minutos de início e fim do turno
+        const [turnoInicioH, turnoInicioM] = turnoHoraInicial.split(':').map(Number)
+        const [turnoFimH, turnoFimM] = turnoHoraFinal.split(':').map(Number)
+
+        let minutoAtual = turnoInicioH * 60 + turnoInicioM
+        let minutoFimTurno = turnoFimH * 60 + turnoFimM
+
+        // Se hora final do turno for menor que hora inicial, significa que passa da meia-noite
+        if (minutoFimTurno < minutoAtual) {
+          minutoFimTurno += 24 * 60
+        }
+
+        const intervaloMinutos = intervaloApontamento * 60
+
+        // Função auxiliar para formatar minutos em HH:MM
+        const formatarHora = (minutos: number): string => {
+          const horas = Math.floor(minutos / 60) % 24
+          const mins = minutos % 60
+          return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+        }
+
+        // Gerar todas as linhas do turno
+        while (minutoAtual < minutoFimTurno) {
+          const proximoMinuto = Math.min(minutoAtual + intervaloMinutos, minutoFimTurno)
+          const horaInicio = formatarHora(minutoAtual)
+          const horaFim = formatarHora(proximoMinuto)
+
+          // Verificar se existe registro do histórico para este horário
+          const registroHistorico = mapaHistorico.get(horaInicio)
+
+          if (registroHistorico) {
+            // Linha do histórico (pré-preenchida e bloqueada)
+            todasAsLinhas.push({
+              id: registroHistorico.id,
+              horaInicio: registroHistorico.horaInicio,
+              horaFim: registroHistorico.horaFim,
+              quantidadeProduzida: registroHistorico.quantidadeProduzida.toString(),
+              apontamentoId: registroHistorico.id,
+              editavel: false // Bloqueado
+            })
+          } else {
+            // Linha vazia (editável)
+            todasAsLinhas.push({
+              id: `linha-${Date.now()}-${minutoAtual}`,
+              horaInicio,
+              horaFim,
+              quantidadeProduzida: '',
+              editavel: true // Editável
+            })
+          }
+
+          minutoAtual = proximoMinuto
+        }
+
+        const linhasHistorico = todasAsLinhas.filter(l => l.apontamentoId).length
+        const linhasVazias = todasAsLinhas.filter(l => !l.apontamentoId).length
+
+        console.log(`✅ Tabela de produção montada em ordem cronológica: ${linhasHistorico} do histórico + ${linhasVazias} vazias = ${todasAsLinhas.length} total`)
+      } else {
+        // Fallback: Se não houver configuração de turno, apenas converter histórico
+        todasAsLinhas = producoesDoTurno.map((registro) => ({
+          id: registro.id,
+          horaInicio: registro.horaInicio,
+          horaFim: registro.horaFim,
+          quantidadeProduzida: registro.quantidadeProduzida.toString(),
+          apontamentoId: registro.id,
+          editavel: false
+        }))
+      }
+
+      // Pré-preencher a tabela "Registro de Produção" com todas as linhas ordenadas
+      setLinhasApontamento(todasAsLinhas)
+
+      console.log(`✅ Tabela de produção pré-preenchida com ${todasAsLinhas.length} linhas`, {
+        linhas: todasAsLinhas.map(l => ({
+          horaInicio: l.horaInicio,
+          horaFim: l.horaFim,
+          quantidade: l.quantidadeProduzida || '(vazio)',
+          salvo: !!l.apontamentoId
+        }))
+      })
+
       // Atualiza métricas derivadas
       const totalHorasParadasCalculado =
         paradasDoTurno.reduce((total, parada) => total + parada.duracao, 0) / 60
@@ -1306,12 +1497,49 @@ export default function ApontamentoOEE() {
     setHistoricoProducao([])
     setHistoricoParadas([])
 
+    // PRÉ-CARREGAR linhas de produção com dados de OPs ativas
+    const { linhas: linhasPreCarregadas, opUnica } = preCarregarDadosProducao()
+
+    // Se houver apenas UMA OP, pré-preencher os campos do cabeçalho
+    if (opUnica) {
+      setOrdemProducao(opUnica.C2_NUM.toString())
+      setLote(opUnica.C2_YLOTE)
+      setDossie(opUnica.C2_YDOSSIE)
+
+      // Só preencher SKU se ainda não estiver preenchido
+      if (!skuCodigo) {
+        setSkuCodigo(opUnica.C2_PRODUTO)
+      }
+
+      console.log('✅ Campos do cabeçalho pré-preenchidos com OP única:', {
+        op: opUnica.C2_NUM,
+        lote: opUnica.C2_YLOTE,
+        dossie: opUnica.C2_YDOSSIE,
+        sku: opUnica.C2_PRODUTO
+      })
+    }
+
+    // GERAR LINHAS DE APONTAMENTO VAZIAS baseadas no intervalo configurado
+    // Isso garante que sempre haverá linhas para o usuário preencher
+    if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0) {
+      gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
+      console.log(`✅ Linhas de apontamento geradas automaticamente (${turnoHoraInicial} - ${turnoHoraFinal}, intervalo: ${intervaloApontamento}h)`)
+    }
+
     setStatusTurno('INICIADO')
 
     const linhaNome = linhaSelecionada?.nome || 'Linha não identificada'
+    let mensagemPreCarregamento = ' Linhas de apontamento geradas. Pronto para registrar produção.'
+
+    if (opUnica) {
+      mensagemPreCarregamento = ` OP ${opUnica.C2_NUM} pré-carregada automaticamente.`
+    } else if (linhasPreCarregadas.length > 0) {
+      mensagemPreCarregamento = ` ${linhasPreCarregadas.length} OPs disponíveis para seleção.`
+    }
+
     toast({
       title: 'Turno Iniciado',
-      description: `Novo turno iniciado para ${linhaNome} - SKU ${skuCodigo}. Valores zerados e prontos para apontamentos.`,
+      description: `Novo turno iniciado para ${linhaNome} - SKU ${skuCodigo || 'a definir'}.${mensagemPreCarregamento}`,
       variant: 'default'
     })
   }
@@ -2485,16 +2713,16 @@ export default function ApontamentoOEE() {
                                 <Input
                                   type="time"
                                   value={linha.horaInicio}
-                                  disabled={!linha.editavel}
-                                  className={`w-32 ${!linha.editavel ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  disabled={linha.editavel === false}
+                                  className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
                               <td className="px-4 py-3">
                                 <Input
                                   type="time"
                                   value={linha.horaFim}
-                                  disabled={!linha.editavel}
-                                  className={`w-32 ${!linha.editavel ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  disabled={linha.editavel === false}
+                                  className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
                               <td className="px-4 py-3">
@@ -2503,8 +2731,8 @@ export default function ApontamentoOEE() {
                                   placeholder="ex: 10000"
                                   value={linha.quantidadeProduzida}
                                   onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
-                                  className="w-48"
-                                  disabled={statusTurno !== 'INICIADO'}
+                                  className={`w-48 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  disabled={statusTurno !== 'INICIADO' || linha.editavel === false}
                                 />
                               </td>
                               <td className="px-4 py-3">
