@@ -122,6 +122,20 @@ interface RegistroParada {
   dataHoraRegistro: string
 }
 
+// Tipo para registro de qualidade no localStorage
+interface RegistroQualidade {
+  id: string
+  data: string
+  turno: Turno
+  linhaId: string
+  linhaNome: string
+  apontamentoProducaoId: string
+  tipo: 'PERDAS' | 'RETRABALHO'
+  quantidade: number
+  motivo: string
+  dataHoraRegistro: string
+}
+
 const TEMPO_DISPONIVEL_PADRAO = 12
 
 export default function ApontamentoOEE() {
@@ -227,9 +241,15 @@ export default function ApontamentoOEE() {
   const [showConfirmExclusaoParada, setShowConfirmExclusaoParada] = useState(false)
   const [paradaParaExcluir, setParadaParaExcluir] = useState<string | null>(null)
 
+  // ==================== Estado de Histórico de Qualidade ====================
+  const [historicoQualidade, setHistoricoQualidade] = useState<RegistroQualidade[]>([])
+  const [showConfirmExclusaoQualidade, setShowConfirmExclusaoQualidade] = useState(false)
+  const [qualidadeParaExcluir, setQualidadeParaExcluir] = useState<string | null>(null)
+
   // ==================== Constante para chave do localStorage ====================
   const STORAGE_KEY = 'oee_production_records'
   const STORAGE_KEY_PARADAS = 'oee_downtime_records'
+  const STORAGE_KEY_QUALIDADE = 'oee_quality_records'
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
 
   // ==================== Funções de localStorage ====================
@@ -280,6 +300,38 @@ export default function ApontamentoOEE() {
       toast({
         title: 'Erro',
         description: 'Não foi possível salvar os dados de paradas',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  /**
+   * Carrega histórico de qualidade do localStorage
+   */
+  const carregarHistoricoQualidade = useCallback((): RegistroQualidade[] => {
+    try {
+      const dados = localStorage.getItem(STORAGE_KEY_QUALIDADE)
+      if (dados) {
+        return JSON.parse(dados)
+      }
+      return []
+    } catch (error) {
+      console.error('Erro ao carregar histórico de qualidade do localStorage:', error)
+      return []
+    }
+  }, [])
+
+  /**
+   * Salva histórico de qualidade no localStorage
+   */
+  const salvarQualidadeNoLocalStorage = (registros: RegistroQualidade[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY_QUALIDADE, JSON.stringify(registros))
+    } catch (error) {
+      console.error('Erro ao salvar qualidade no localStorage:', error)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar os dados de qualidade',
         variant: 'destructive'
       })
     }
@@ -996,6 +1048,99 @@ export default function ApontamentoOEE() {
     }
   }
 
+  // ==================== Funções de Exclusão de Qualidade ====================
+
+  /**
+   * Confirma a exclusão de um registro de qualidade
+   * @param qualidadeId - ID do registro de qualidade a ser excluído
+   */
+  const confirmarExclusaoQualidade = (qualidadeId: string) => {
+    setQualidadeParaExcluir(qualidadeId)
+    setShowConfirmExclusaoQualidade(true)
+  }
+
+  /**
+   * Cancela a exclusão de qualidade e fecha o diálogo
+   */
+  const cancelarExclusaoQualidade = () => {
+    setQualidadeParaExcluir(null)
+    setShowConfirmExclusaoQualidade(false)
+  }
+
+  /**
+   * Exclui um registro de qualidade do histórico
+   * Remove do localStorage e recalcula OEE automaticamente
+   */
+  const handleExcluirQualidade = () => {
+    if (!qualidadeParaExcluir) return
+
+    try {
+      // Buscar o registro de qualidade antes de excluir
+      const qualidadeExcluida = historicoQualidade.find(r => r.id === qualidadeParaExcluir)
+
+      if (!qualidadeExcluida) {
+        toast({
+          title: 'Erro',
+          description: 'Registro de qualidade não encontrado',
+          variant: 'destructive'
+        })
+        cancelarExclusaoQualidade()
+        return
+      }
+
+      // Remover do histórico local
+      const novoHistorico = historicoQualidade.filter(r => r.id !== qualidadeParaExcluir)
+      setHistoricoQualidade(novoHistorico)
+      salvarQualidadeNoLocalStorage(novoHistorico)
+
+      // Remover do serviço de apontamentos (localStorage de perdas/retrabalho)
+      if (qualidadeExcluida.tipo === 'PERDAS') {
+        const perdas = buscarTodosApontamentosPerdas()
+        const perdasAtualizadas = perdas.filter(p => p.id !== qualidadeParaExcluir)
+        localStorage.setItem('sysoee_apontamentos_perdas', JSON.stringify(perdasAtualizadas))
+      } else if (qualidadeExcluida.tipo === 'RETRABALHO') {
+        const retrabalhos = buscarTodosApontamentosRetrabalho()
+        const retrabalhosAtualizados = retrabalhos.filter(r => r.id !== qualidadeParaExcluir)
+        localStorage.setItem('sysoee_apontamentos_retrabalho', JSON.stringify(retrabalhosAtualizados))
+      }
+
+      console.log('🗑️ Qualidade excluída:', {
+        id: qualidadeParaExcluir,
+        tipo: qualidadeExcluida.tipo,
+        quantidade: qualidadeExcluida.quantidade
+      })
+
+      // Recalcular OEE se houver apontamento de produção ativo
+      if (apontamentoProducaoId && linhaId) {
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
+        setOeeCalculado(novoOEE)
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
+
+        console.log('✅ OEE recalculado após exclusão de qualidade:', {
+          qualidadeExcluida: qualidadeExcluida.id,
+          tipo: qualidadeExcluida.tipo,
+          oee: `${novoOEE.oee.toFixed(2)}%`,
+          qualidade: `${novoOEE.qualidade.toFixed(2)}%`
+        })
+      }
+
+      toast({
+        title: '✅ Qualidade Excluída',
+        description: 'Registro removido com sucesso e OEE recalculado'
+      })
+
+      cancelarExclusaoQualidade()
+    } catch (error) {
+      console.error('❌ Erro ao excluir qualidade:', error)
+      toast({
+        title: 'Erro ao excluir',
+        description: 'Não foi possível excluir o registro. Tente novamente.',
+        variant: 'destructive'
+      })
+      cancelarExclusaoQualidade()
+    }
+  }
+
   /**
    * Formata duração em minutos para formato legível (ex: "2h 30min")
    * @param minutos - Duração em minutos
@@ -1468,6 +1613,15 @@ export default function ApontamentoOEE() {
       setHistoricoProducao(producoesDoTurno)
       setHistoricoParadas(paradasDoTurno)
 
+      // Carregar histórico de qualidade do turno
+      const qualidadeDoTurno = carregarHistoricoQualidade().filter(
+        (registro) =>
+          registro.data === format(data, 'dd/MM/yyyy') &&
+          registro.turno === turno &&
+          registro.linhaId === linhaId
+      )
+      setHistoricoQualidade(qualidadeDoTurno)
+
       // GERAR TODAS AS LINHAS DO TURNO (do início ao fim) e preencher com dados do histórico
       let todasAsLinhas: LinhaApontamentoProducao[] = []
 
@@ -1594,6 +1748,7 @@ export default function ApontamentoOEE() {
     setTotalPerdasQualidade(0)
     setHistoricoProducao([])
     setHistoricoParadas([])
+    setHistoricoQualidade([])
 
     // PRÉ-CARREGAR linhas de produção com dados de OPs ativas
     const { linhas: linhasPreCarregadas, opUnica } = preCarregarDadosProducao()
@@ -2061,11 +2216,163 @@ export default function ApontamentoOEE() {
     }
   }
 
+  /**
+   * Adiciona registro de qualidade (perdas e/ou retrabalho)
+   */
   const handleAdicionarQualidade = () => {
-    toast({
-      title: 'Sucesso',
-      description: 'Registro de qualidade adicionado'
-    })
+    // =================================================================
+    // VALIDAÇÃO 1: Verificar se existe apontamento de produção ativo
+    // =================================================================
+    if (!apontamentoProducaoId) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'É necessário ter um apontamento de produção ativo para registrar qualidade',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // VALIDAÇÃO 2: Verificar se pelo menos um campo está preenchido
+    // =================================================================
+    const temPerdas = quantidadePerdas && Number(quantidadePerdas) > 0
+    const temRetrabalho = quantidadeRetrabalho && Number(quantidadeRetrabalho) > 0
+
+    if (!temPerdas && !temRetrabalho) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Informe a quantidade de perdas e/ou retrabalho',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // VALIDAÇÃO 3: Verificar se os motivos estão preenchidos
+    // =================================================================
+    if (temPerdas && !motivoPerdas.trim()) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Informe o motivo das perdas',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (temRetrabalho && !motivoRetrabalho.trim()) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Informe o motivo do retrabalho',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // =================================================================
+    // SALVAMENTO: Salvar perdas e/ou retrabalho
+    // =================================================================
+    try {
+      const novosRegistros: RegistroQualidade[] = []
+
+      // Salvar perdas se informado
+      if (temPerdas) {
+        const apontamentoPerdas = salvarApontamentoPerdas(
+          apontamentoProducaoId,
+          Number(quantidadePerdas),
+          motivoPerdas,
+          null, // observacao
+          1, // TODO: buscar do contexto de autenticação
+          'Operador' // TODO: buscar do contexto de autenticação
+        )
+
+        const registroPerdas: RegistroQualidade = {
+          id: apontamentoPerdas.id,
+          data: format(data!, 'dd/MM/yyyy'),
+          turno,
+          linhaId: linhaId!,
+          linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
+          apontamentoProducaoId,
+          tipo: 'PERDAS',
+          quantidade: Number(quantidadePerdas),
+          motivo: motivoPerdas,
+          dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+        }
+
+        novosRegistros.push(registroPerdas)
+      }
+
+      // Salvar retrabalho se informado
+      if (temRetrabalho) {
+        const apontamentoRetrabalho = salvarApontamentoRetrabalho(
+          apontamentoProducaoId,
+          Number(quantidadeRetrabalho),
+          0, // tempoRetrabalho - TODO: adicionar campo no formulário
+          motivoRetrabalho,
+          null, // observacao
+          1, // TODO: buscar do contexto de autenticação
+          'Operador' // TODO: buscar do contexto de autenticação
+        )
+
+        const registroRetrabalho: RegistroQualidade = {
+          id: apontamentoRetrabalho.id,
+          data: format(data!, 'dd/MM/yyyy'),
+          turno,
+          linhaId: linhaId!,
+          linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
+          apontamentoProducaoId,
+          tipo: 'RETRABALHO',
+          quantidade: Number(quantidadeRetrabalho),
+          motivo: motivoRetrabalho,
+          dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+        }
+
+        novosRegistros.push(registroRetrabalho)
+      }
+
+      // =================================================================
+      // ATUALIZAR HISTÓRICO E LOCALSTORAGE
+      // =================================================================
+      const novoHistorico = [...novosRegistros, ...historicoQualidade]
+      setHistoricoQualidade(novoHistorico)
+      salvarQualidadeNoLocalStorage(novoHistorico)
+
+      // =================================================================
+      // RECALCULAR OEE
+      // =================================================================
+      if (linhaId) {
+        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
+        setOeeCalculado(novoOEE)
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
+      }
+
+      // =================================================================
+      // LIMPAR FORMULÁRIO
+      // =================================================================
+      setQuantidadePerdas('')
+      setMotivoPerdas('')
+      setQuantidadeRetrabalho('')
+      setMotivoRetrabalho('')
+
+      // =================================================================
+      // FEEDBACK PARA O USUÁRIO
+      // =================================================================
+      const mensagens: string[] = []
+      if (temPerdas) mensagens.push(`${Number(quantidadePerdas).toLocaleString('pt-BR')} unidades de perdas`)
+      if (temRetrabalho) mensagens.push(`${Number(quantidadeRetrabalho).toLocaleString('pt-BR')} unidades de retrabalho`)
+
+      toast({
+        title: '✅ Qualidade Registrada',
+        description: `Registrado: ${mensagens.join(' e ')}. OEE atualizado.`
+      })
+
+    } catch (error) {
+      console.error('❌ Erro ao salvar apontamento de qualidade:', error)
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar o apontamento de qualidade. Tente novamente.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleRegistrarParada = () => {
@@ -2694,6 +3001,32 @@ export default function ApontamentoOEE() {
             </AlertDialogContent>
           </AlertDialog>
 
+          {/* Dialog de Confirmação de Exclusão de Qualidade */}
+          <AlertDialog open={showConfirmExclusaoQualidade} onOpenChange={setShowConfirmExclusaoQualidade}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão de Qualidade</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir este registro de qualidade? Esta ação não pode ser desfeita e o OEE será recalculado.
+                  {qualidadeParaExcluir && (
+                    <span className="block mt-2 font-medium text-text-primary-light dark:text-text-primary-dark">
+                      Registro: {historicoQualidade.find(r => r.id === qualidadeParaExcluir)?.dataHoraRegistro} - {historicoQualidade.find(r => r.id === qualidadeParaExcluir)?.tipo}
+                    </span>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={cancelarExclusaoQualidade}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleExcluirQualidade}
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                >
+                  Confirmar Exclusão
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {/* Mensagem quando turno não foi iniciado */}
           {statusTurno === 'NAO_INICIADO' ? (
             <div className="bg-white dark:bg-white p-12 rounded-lg shadow-md border border-border-light dark:border-border-dark">
@@ -2811,6 +3144,7 @@ export default function ApontamentoOEE() {
                                 <Input
                                   type="time"
                                   value={linha.horaInicio}
+                                  readOnly
                                   disabled={linha.editavel === false}
                                   className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
@@ -2819,6 +3153,7 @@ export default function ApontamentoOEE() {
                                 <Input
                                   type="time"
                                   value={linha.horaFim}
+                                  readOnly
                                   disabled={linha.editavel === false}
                                   className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
@@ -3022,10 +3357,75 @@ export default function ApontamentoOEE() {
                   className="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
                   type="button"
                   onClick={handleAdicionarQualidade}
+                  disabled={statusTurno !== 'INICIADO'}
                 >
                   <CheckCircle className="h-5 w-5" />
                   Adicionar Registro de Qualidade
                 </button>
+              </div>
+
+              {/* Histórico de Registros de Qualidade */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
+                  Histórico de Registros de Qualidade
+                </h3>
+                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                  <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
+                    <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
+                      <tr>
+                        <th className="px-1 py-2 font-medium w-10" scope="col">Ações</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Tipo</th>
+                        <th className="px-1 py-2 font-medium text-right" scope="col">Quantidade</th>
+                        <th className="px-1 py-2 font-medium" scope="col">Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historicoQualidade.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-1 py-4 text-center text-muted-foreground">
+                            Nenhum registro de qualidade encontrado
+                          </td>
+                        </tr>
+                      ) : (
+                        historicoQualidade.map((registro) => (
+                          <tr
+                            key={registro.id}
+                            className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
+                          >
+                            <td className="px-1 py-2 whitespace-nowrap">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => confirmarExclusaoQualidade(registro.id)}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Excluir registro"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </td>
+                            <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
+                            <td className="px-1 py-2 whitespace-nowrap">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                registro.tipo === 'PERDAS'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {registro.tipo}
+                              </span>
+                            </td>
+                            <td className="px-1 py-2 text-right whitespace-nowrap">
+                              {formatarQuantidade(registro.quantidade)}
+                            </td>
+                            <td className="px-1 py-2 truncate max-w-xs" title={registro.motivo}>
+                              {registro.motivo}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           )}
