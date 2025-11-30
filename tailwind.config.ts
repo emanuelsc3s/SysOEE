@@ -85,7 +85,7 @@ export default {
   			'surface-dark': '#1e1e1e',
   			'border-light': '#e0e0e0',
   			'border-dark': '#333333',
-  			'text-primary-light': '#1f2937',
+  			'text-primary-light': '#4b5563',
   			'text-primary-dark': '#e5e7eb',
   			// text-secondary-light/dark agora usa os mesmos valores de muted-foreground
   			'text-secondary-light': 'hsl(0 0% 45.1%)', // #737373 - mesmo que muted-foreground (light)
