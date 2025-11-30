@@ -3636,6 +3636,35 @@ export default function ApontamentoOEE() {
 
         {/* Sidebar Direita - OEE Real */}
         <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark">
+
+          {/* Cards de Métricas - Grid 2x2 (FORA do aside) */}
+          <div className="grid grid-cols-2 gap-3 mb-4 w-full">
+            {/* Card 1 - Meta */}
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+              <span className="text-xs text-muted-foreground block mb-1">Meta</span>
+              <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">65%</span>
+            </div>
+
+            {/* Card 2 - Horas Restantes */}
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+              <span className="text-xs text-muted-foreground block mb-1">Horas Restantes</span>
+              <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">{formatarHoras(horasRestantes)}</span>
+            </div>
+
+            {/* Card 3 - Total Horas Paradas */}
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+              <span className="text-xs text-muted-foreground block mb-1">Horas Paradas</span>
+              <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">{formatarHoras(totalHorasParadas)}</span>
+            </div>
+
+            {/* Card 4 - Perdas de Qualidade */}
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+              <span className="text-xs text-muted-foreground block mb-1">Perdas Qualidade</span>
+              <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">{totalPerdasQualidade.toLocaleString('pt-BR')} un</span>
+            </div>
+          </div>
+
+          {/* Aside do OEE Real - Velocímetro e Barras */}
           <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
             <div className="sticky top-6 w-full">
               <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
@@ -3715,34 +3744,6 @@ export default function ApontamentoOEE() {
                       />
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Informações Adicionais */}
-              <div className="w-full border-t border-border-light dark:border-border-dark pt-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    Horas Restantes de Apontamento de Produção
-                  </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                    {formatarHoras(horasRestantes)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    Total de Horas Paradas
-                  </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                    {formatarHoras(totalHorasParadas)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    Total de Perdas de Qualidade
-                  </span>
-                  <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">
-                    {totalPerdasQualidade.toLocaleString('pt-BR')} un
-                  </span>
                 </div>
               </div>
             </div>
