@@ -21,7 +21,11 @@ import {
   buscarApontamentoProducaoPorId,
   buscarApontamentosPerdasPorProducao,
   buscarApontamentosRetrabalhoPorProducao,
-  atualizarApontamentoProducao
+  atualizarApontamentoProducao,
+  salvarApontamentoPerdas,
+  salvarApontamentoRetrabalho,
+  buscarTodosApontamentosPerdas,
+  buscarTodosApontamentosRetrabalho
 } from '@/services/localStorage/apontamento-oee.storage'
 import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada } from '@/services/localStorage/parada.storage'
 import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
@@ -771,6 +775,66 @@ export default function ApontamentoOEE() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })
+  }
+
+  /**
+   * Calcula a cor dinâmica baseada no percentual do indicador OEE
+   * Implementa gradiente de vermelho (valores baixos) até azul (valores próximos a 100%)
+   *
+   * Escala de cores:
+   * - 0-50%: Vermelho (#DC2626 a #F97316)
+   * - 50-75%: Laranja/Amarelo (#F97316 a #EAB308)
+   * - 75-90%: Verde/Azul claro (#10B981 a #3B82F6)
+   * - 90-100%: Azul (#3B82F6 a #1E40AF)
+   *
+   * @param percentage - Percentual do indicador (0-100)
+   * @returns Cor em formato hexadecimal
+   */
+  const getColorByPercentage = (percentage: number): string => {
+    // Garantir que o percentual está entre 0 e 100
+    const percent = Math.max(0, Math.min(100, percentage))
+
+    // Definir pontos de cor (RGB)
+    const colorStops = [
+      { percent: 0, color: { r: 220, g: 38, b: 38 } },    // Vermelho escuro #DC2626
+      { percent: 25, color: { r: 239, g: 68, b: 68 } },   // Vermelho #EF4444
+      { percent: 50, color: { r: 249, g: 115, b: 22 } },  // Laranja #F97316
+      { percent: 65, color: { r: 234, g: 179, b: 8 } },   // Amarelo #EAB308
+      { percent: 75, color: { r: 34, g: 197, b: 94 } },   // Verde #22C55E
+      { percent: 85, color: { r: 16, g: 185, b: 129 } },  // Verde-azulado #10B981
+      { percent: 90, color: { r: 59, g: 130, b: 246 } },  // Azul claro #3B82F6
+      { percent: 95, color: { r: 37, g: 99, b: 235 } },   // Azul #2563EB
+      { percent: 100, color: { r: 30, g: 64, b: 175 } }   // Azul escuro #1E40AF
+    ]
+
+    // Encontrar os dois pontos de cor mais próximos
+    let lowerStop = colorStops[0]
+    let upperStop = colorStops[colorStops.length - 1]
+
+    for (let i = 0; i < colorStops.length - 1; i++) {
+      if (percent >= colorStops[i].percent && percent <= colorStops[i + 1].percent) {
+        lowerStop = colorStops[i]
+        upperStop = colorStops[i + 1]
+        break
+      }
+    }
+
+    // Calcular a interpolação entre os dois pontos
+    const range = upperStop.percent - lowerStop.percent
+    const rangePercent = range === 0 ? 0 : (percent - lowerStop.percent) / range
+
+    // Interpolar RGB
+    const r = Math.round(lowerStop.color.r + (upperStop.color.r - lowerStop.color.r) * rangePercent)
+    const g = Math.round(lowerStop.color.g + (upperStop.color.g - lowerStop.color.g) * rangePercent)
+    const b = Math.round(lowerStop.color.b + (upperStop.color.b - lowerStop.color.b) * rangePercent)
+
+    // Converter para hexadecimal
+    const toHex = (value: number) => {
+      const hex = value.toString(16)
+      return hex.length === 1 ? '0' + hex : hex
+    }
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`
   }
 
   /**
@@ -3684,9 +3748,8 @@ export default function ApontamentoOEE() {
                       r="54"
                       strokeWidth="12"
                     />
-                    {/* Círculo de progresso */}
+                    {/* Círculo de progresso com cor dinâmica */}
                     <circle
-                      className="stroke-primary"
                       cx="60"
                       cy="60"
                       fill="none"
@@ -3695,6 +3758,8 @@ export default function ApontamentoOEE() {
                       strokeDashoffset={339.292 - (339.292 * oeeCalculado.oee) / 100}
                       strokeLinecap="round"
                       strokeWidth="12"
+                      stroke={getColorByPercentage(oeeCalculado.oee)}
+                      style={{ transition: 'stroke 0.3s ease-in-out' }}
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -3704,7 +3769,7 @@ export default function ApontamentoOEE() {
                   </div>
                 </div>
 
-                {/* Barras de Componentes */}
+                {/* Barras de Componentes com cores dinâmicas */}
                 <div className="w-full space-y-4">
                   <div>
                     <div className="flex justify-between items-center text-sm mb-1">
@@ -3713,8 +3778,11 @@ export default function ApontamentoOEE() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
                       <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{ width: `${oeeCalculado.disponibilidade}%` }}
+                        className="h-2 rounded-full transition-all duration-300 ease-in-out"
+                        style={{
+                          width: `${oeeCalculado.disponibilidade}%`,
+                          backgroundColor: getColorByPercentage(oeeCalculado.disponibilidade)
+                        }}
                       />
                     </div>
                   </div>
@@ -3726,8 +3794,11 @@ export default function ApontamentoOEE() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
                       <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{ width: `${oeeCalculado.performance}%` }}
+                        className="h-2 rounded-full transition-all duration-300 ease-in-out"
+                        style={{
+                          width: `${oeeCalculado.performance}%`,
+                          backgroundColor: getColorByPercentage(oeeCalculado.performance)
+                        }}
                       />
                     </div>
                   </div>
@@ -3739,8 +3810,11 @@ export default function ApontamentoOEE() {
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
                       <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{ width: `${oeeCalculado.qualidade}%` }}
+                        className="h-2 rounded-full transition-all duration-300 ease-in-out"
+                        style={{
+                          width: `${oeeCalculado.qualidade}%`,
+                          backgroundColor: getColorByPercentage(oeeCalculado.qualidade)
+                        }}
                       />
                     </div>
                   </div>
