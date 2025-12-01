@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
@@ -71,6 +71,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { AppHeader } from "@/components/layout/AppHeader"
 import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
 import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
@@ -139,6 +148,40 @@ interface RegistroQualidade {
   dataHoraRegistro: string
 }
 
+// Tipo para dados de lote com ID único
+interface LoteProducao {
+  id: string
+  numeroLote: string
+  data: string
+  horaInicial: string
+  horaFinal: string
+  quantidadePerdas: number
+  quantidadeRetrabalho: number
+  quantidadeProduzida: number
+}
+
+// Tipo para dados do formulário de lote (sem ID para cadastro)
+interface DadosLote {
+  numeroLote: string
+  data: string
+  horaInicial: string
+  horaFinal: string
+  quantidadePerdas: number
+  quantidadeRetrabalho: number
+  quantidadeProduzida: number
+}
+
+// Estado inicial do formulário de lote
+const estadoInicialLote: DadosLote = {
+  numeroLote: '',
+  data: '',
+  horaInicial: '',
+  horaFinal: '',
+  quantidadePerdas: 0,
+  quantidadeRetrabalho: 0,
+  quantidadeProduzida: 0
+}
+
 const TEMPO_DISPONIVEL_PADRAO = 12
 
 export default function ApontamentoOEE() {
@@ -186,6 +229,14 @@ export default function ApontamentoOEE() {
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
   const [intervaloApontamento, setIntervaloApontamento] = useState<number>(1) // Padrão: 1 hora
   const [modalExplicacaoOEEAberto, setModalExplicacaoOEEAberto] = useState(false)
+
+  // ==================== Estado do Modal de Lotes ====================
+  const [modalLotesAberto, setModalLotesAberto] = useState(false)
+  const [lotesProducao, setLotesProducao] = useState<LoteProducao[]>([]) // Lista de lotes cadastrados
+  const [dadosLote, setDadosLote] = useState<DadosLote>(estadoInicialLote)
+  const [salvandoLote, setSalvandoLote] = useState(false)
+  const [formularioLoteAberto, setFormularioLoteAberto] = useState(false) // Controla exibição do formulário inline
+  const [loteEmEdicao, setLoteEmEdicao] = useState<string | null>(null) // ID do lote sendo editado
 
   // ==================== Estado de Linhas de Apontamento de Produção ====================
   const [linhasApontamento, setLinhasApontamento] = useState<LinhaApontamentoProducao[]>([])
@@ -384,6 +435,137 @@ export default function ApontamentoOEE() {
         description: 'Não foi possível salvar as configurações',
         variant: 'destructive'
       })
+    }
+  }
+
+  /**
+   * Valida os campos obrigatórios do formulário de lote
+   * @returns true se todos os campos obrigatórios estão preenchidos
+   */
+  const validarCamposLote = (): boolean => {
+    return (
+      dadosLote.numeroLote.trim() !== '' &&
+      dadosLote.data !== '' &&
+      dadosLote.horaInicial !== '' &&
+      dadosLote.horaFinal !== '' &&
+      dadosLote.quantidadeProduzida > 0
+    )
+  }
+
+  /**
+   * Reseta o formulário de lote para o estado inicial e fecha o formulário
+   */
+  const resetarFormularioLote = () => {
+    setDadosLote(estadoInicialLote)
+    setLoteEmEdicao(null)
+    setFormularioLoteAberto(false)
+  }
+
+  /**
+   * Calcula os totalizadores dos lotes
+   */
+  const calcularTotaisLotes = () => {
+    return lotesProducao.reduce(
+      (acc, lote) => ({
+        totalProduzido: acc.totalProduzido + lote.quantidadeProduzida,
+        totalPerdas: acc.totalPerdas + lote.quantidadePerdas,
+        totalRetrabalho: acc.totalRetrabalho + lote.quantidadeRetrabalho
+      }),
+      { totalProduzido: 0, totalPerdas: 0, totalRetrabalho: 0 }
+    )
+  }
+
+  /**
+   * Abre o formulário para adicionar novo lote
+   */
+  const handleNovoLote = () => {
+    resetarFormularioLote()
+    setFormularioLoteAberto(true)
+  }
+
+  /**
+   * Abre o formulário para editar um lote existente
+   */
+  const handleEditarLote = (lote: LoteProducao) => {
+    setDadosLote({
+      numeroLote: lote.numeroLote,
+      data: lote.data,
+      horaInicial: lote.horaInicial,
+      horaFinal: lote.horaFinal,
+      quantidadePerdas: lote.quantidadePerdas,
+      quantidadeRetrabalho: lote.quantidadeRetrabalho,
+      quantidadeProduzida: lote.quantidadeProduzida
+    })
+    setLoteEmEdicao(lote.id)
+    setFormularioLoteAberto(true)
+  }
+
+  /**
+   * Exclui um lote da lista
+   */
+  const handleExcluirLote = (id: string) => {
+    const lote = lotesProducao.find(l => l.id === id)
+    setLotesProducao(prev => prev.filter(l => l.id !== id))
+    toast({
+      title: '🗑️ Lote Excluído',
+      description: `O lote ${lote?.numeroLote} foi removido.`
+    })
+  }
+
+  /**
+   * Salva os dados do lote (adiciona novo ou atualiza existente)
+   */
+  const handleSalvarLote = async () => {
+    // Validar campos obrigatórios
+    if (!validarCamposLote()) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Por favor, preencha todos os campos obrigatórios: Número do Lote, Data, Hora Inicial, Hora Final e Quantidade Produzida.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setSalvandoLote(true)
+
+    try {
+      if (loteEmEdicao) {
+        // Atualizar lote existente
+        setLotesProducao(prev =>
+          prev.map(lote =>
+            lote.id === loteEmEdicao
+              ? { ...lote, ...dadosLote }
+              : lote
+          )
+        )
+        toast({
+          title: '✅ Lote Atualizado',
+          description: `O lote ${dadosLote.numeroLote} foi atualizado com sucesso.`
+        })
+      } else {
+        // Criar novo lote com ID único
+        const novoLote: LoteProducao = {
+          id: `lote-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          ...dadosLote
+        }
+        setLotesProducao(prev => [...prev, novoLote])
+        toast({
+          title: '✅ Lote Adicionado',
+          description: `O lote ${dadosLote.numeroLote} foi adicionado com sucesso.`
+        })
+      }
+
+      // Resetar formulário
+      resetarFormularioLote()
+    } catch (error) {
+      console.error('Erro ao salvar lote:', error)
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar os dados do lote. Tente novamente.',
+        variant: 'destructive'
+      })
+    } finally {
+      setSalvandoLote(false)
     }
   }
 
@@ -2721,6 +2903,18 @@ export default function ApontamentoOEE() {
                   </div>
                 )}
 
+                {/* Botão Lotes - disponível quando o turno está iniciado */}
+                {statusTurno === 'INICIADO' && !editandoCabecalho && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setModalLotesAberto(true)}
+                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Package className="mr-2 h-4 w-4" />
+                    Lotes
+                  </Button>
+                )}
+
                 {statusTurno === 'NAO_INICIADO' && (
                   <Button
                     onClick={handleIniciarTurno}
@@ -3860,6 +4054,302 @@ export default function ApontamentoOEE() {
               Entendi
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Controle de Lotes */}
+      <Dialog
+        open={modalLotesAberto}
+        onOpenChange={(open) => {
+          setModalLotesAberto(open)
+          if (!open) {
+            resetarFormularioLote()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-blue-600" />
+              Controle de Lotes
+            </DialogTitle>
+            <DialogDescription>
+              Visualize e gerencie os lotes de produção do turno atual. Utilize o botão abaixo para adicionar novos lotes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden flex flex-col gap-4 py-4">
+            {/* Botão para adicionar novo lote */}
+            <div className="flex justify-end">
+              <Button
+                onClick={handleNovoLote}
+                className="bg-brand-primary hover:bg-brand-primary/90"
+                disabled={formularioLoteAberto}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Lote
+              </Button>
+            </div>
+
+            {/* Formulário inline para adicionar/editar lote */}
+            {formularioLoteAberto && (
+              <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">
+                    {loteEmEdicao ? 'Editar Lote' : 'Novo Lote'}
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetarFormularioLote}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Campos do formulário em grid compacto */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* Número do Lote */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="numero-lote" className="text-xs flex items-center gap-1">
+                      Nº Lote <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="numero-lote"
+                      type="text"
+                      value={dadosLote.numeroLote}
+                      onChange={(e) => setDadosLote(prev => ({ ...prev, numeroLote: e.target.value }))}
+                      placeholder="LT-001"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Data */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="data-lote" className="text-xs flex items-center gap-1">
+                      Data <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="data-lote"
+                      type="date"
+                      value={dadosLote.data}
+                      onChange={(e) => setDadosLote(prev => ({ ...prev, data: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Hora Inicial */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="hora-inicial-lote" className="text-xs flex items-center gap-1">
+                      Hora Inicial <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="hora-inicial-lote"
+                      type="time"
+                      value={dadosLote.horaInicial}
+                      onChange={(e) => setDadosLote(prev => ({ ...prev, horaInicial: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Hora Final */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="hora-final-lote" className="text-xs flex items-center gap-1">
+                      Hora Final <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="hora-final-lote"
+                      type="time"
+                      value={dadosLote.horaFinal}
+                      onChange={(e) => setDadosLote(prev => ({ ...prev, horaFinal: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Quantidade Produzida */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="quantidade-produzida-lote" className="text-xs flex items-center gap-1">
+                      Qtd. Produzida <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="quantidade-produzida-lote"
+                      type="number"
+                      min="0"
+                      value={dadosLote.quantidadeProduzida || ''}
+                      onChange={(e) => setDadosLote(prev => ({
+                        ...prev,
+                        quantidadeProduzida: parseInt(e.target.value) || 0
+                      }))}
+                      placeholder="0"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Quantidade de Perdas */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="quantidade-perdas-lote" className="text-xs">
+                      Qtd. Perdas
+                    </Label>
+                    <Input
+                      id="quantidade-perdas-lote"
+                      type="number"
+                      min="0"
+                      value={dadosLote.quantidadePerdas || ''}
+                      onChange={(e) => setDadosLote(prev => ({
+                        ...prev,
+                        quantidadePerdas: parseInt(e.target.value) || 0
+                      }))}
+                      placeholder="0"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Quantidade de Retrabalho */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="quantidade-retrabalho-lote" className="text-xs">
+                      Qtd. Retrabalho
+                    </Label>
+                    <Input
+                      id="quantidade-retrabalho-lote"
+                      type="number"
+                      min="0"
+                      value={dadosLote.quantidadeRetrabalho || ''}
+                      onChange={(e) => setDadosLote(prev => ({
+                        ...prev,
+                        quantidadeRetrabalho: parseInt(e.target.value) || 0
+                      }))}
+                      placeholder="0"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Botões de ação do formulário */}
+                  <div className="flex items-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetarFormularioLote}
+                      disabled={salvandoLote}
+                      className="h-9"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSalvarLote}
+                      disabled={salvandoLote || !validarCamposLote()}
+                      className="h-9 bg-green-600 hover:bg-green-700"
+                    >
+                      {salvandoLote ? (
+                        <Timer className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tabela de lotes */}
+            <div className="flex-1 overflow-auto border rounded-lg">
+              {lotesProducao.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <Package className="h-12 w-12 mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Nenhum lote cadastrado ainda</p>
+                  <p className="text-sm">Clique em "Novo Lote" para adicionar o primeiro registro.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Nº Lote</TableHead>
+                      <TableHead className="font-semibold">Data</TableHead>
+                      <TableHead className="font-semibold">Hora Inicial</TableHead>
+                      <TableHead className="font-semibold">Hora Final</TableHead>
+                      <TableHead className="font-semibold text-right">Qtd. Produzida</TableHead>
+                      <TableHead className="font-semibold text-right">Perdas</TableHead>
+                      <TableHead className="font-semibold text-right">Retrabalho</TableHead>
+                      <TableHead className="font-semibold text-center">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lotesProducao.map((lote, index) => (
+                      <TableRow
+                        key={lote.id}
+                        className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}
+                      >
+                        <TableCell className="font-medium">{lote.numeroLote}</TableCell>
+                        <TableCell>
+                          {lote.data ? new Date(lote.data + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                        </TableCell>
+                        <TableCell>{lote.horaInicial}</TableCell>
+                        <TableCell>{lote.horaFinal}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {lote.quantidadeProduzida.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right text-red-600">
+                          {lote.quantidadePerdas.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right text-orange-600">
+                          {lote.quantidadeRetrabalho.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditarLote(lote)}
+                              className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700"
+                              title="Editar lote"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleExcluirLote(lote.id)}
+                              className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-700"
+                              title="Excluir lote"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  {/* Linha de totalizadores */}
+                  <TableFooter>
+                    <TableRow className="bg-muted font-bold">
+                      <TableCell colSpan={4} className="text-right">
+                        TOTAIS:
+                      </TableCell>
+                      <TableCell className="text-right text-green-700">
+                        {calcularTotaisLotes().totalProduzido.toLocaleString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-right text-red-700">
+                        {calcularTotaisLotes().totalPerdas.toLocaleString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-right text-orange-700">
+                        {calcularTotaisLotes().totalRetrabalho.toLocaleString('pt-BR')}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setModalLotesAberto(false)}
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
