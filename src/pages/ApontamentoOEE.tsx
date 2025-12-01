@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
@@ -186,6 +186,7 @@ export default function ApontamentoOEE() {
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
   const [intervaloApontamento, setIntervaloApontamento] = useState<number>(1) // Padrão: 1 hora
+  const [modalExplicacaoOEEAberto, setModalExplicacaoOEEAberto] = useState(false)
 
   // ==================== Estado de Linhas de Apontamento de Produção ====================
   const [linhasApontamento, setLinhasApontamento] = useState<LinhaApontamentoProducao[]>([])
@@ -3737,7 +3738,11 @@ export default function ApontamentoOEE() {
 
               <div className="flex flex-col items-center gap-8 mb-8">
                 {/* Velocímetro SVG */}
-                <div className="relative flex-shrink-0">
+                <div
+                  className="relative flex-shrink-0 cursor-pointer group"
+                  onClick={() => setModalExplicacaoOEEAberto(true)}
+                  title="Clique para ver explicação do velocímetro de OEE"
+                >
                   <svg className="w-64 h-64 transform -rotate-90" viewBox="0 0 120 120">
                     {/* Círculo de fundo */}
                     <circle
@@ -3761,11 +3766,46 @@ export default function ApontamentoOEE() {
                       stroke={getColorByPercentage(oeeCalculado.oee)}
                       style={{ transition: 'stroke 0.3s ease-in-out' }}
                     />
+                    {/* Destaque visual do gap até a meta (65%) - exibido apenas quando OEE < 65% */}
+                    {oeeCalculado.oee < 65 && (
+                      <circle
+                        cx="60"
+                        cy="60"
+                        fill="none"
+                        r="54"
+                        strokeDasharray="339.292"
+                        strokeDashoffset={339.292 - (339.292 * 65) / 100}
+                        strokeLinecap="round"
+                        strokeWidth="12"
+                        stroke="#EAB308"
+                        opacity="0.25"
+                        style={{ transition: 'opacity 0.3s ease-in-out' }}
+                      />
+                    )}
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span className="font-bold text-text-primary-light dark:text-text-primary-dark" style={{ fontSize: '37.8px' }}>
                       {formatarPercentual(oeeCalculado.oee)}%
                     </span>
+                  </div>
+                  {/* Ícone de informação - sempre visível para tablets */}
+                  <div className="absolute top-2 right-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-6 h-6 text-blue-500 dark:text-blue-400"
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                      <path d="M12 17h.01"></path>
+                    </svg>
                   </div>
                 </div>
 
@@ -3893,6 +3933,171 @@ export default function ApontamentoOEE() {
               Salvar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Explicação do Velocímetro de OEE */}
+      <Dialog open={modalExplicacaoOEEAberto} onOpenChange={setModalExplicacaoOEEAberto}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <Info className="w-6 h-6 text-blue-500" />
+              Entendendo o Velocímetro de OEE
+            </DialogTitle>
+            <DialogDescription>
+              Explicação dos elementos visuais do indicador de Overall Equipment Effectiveness
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Seção: OEE Atual */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <div
+                  className="w-4 h-4 rounded-full"
+                  style={{ backgroundColor: getColorByPercentage(oeeCalculado.oee) }}
+                />
+                Círculo de Progresso (OEE Atual)
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                O círculo colorido representa o <strong>OEE atual calculado</strong> ({formatarPercentual(oeeCalculado.oee)}%).
+                A cor muda dinamicamente conforme o desempenho da linha de produção, facilitando a identificação
+                rápida do status operacional.
+              </p>
+            </div>
+
+            {/* Seção: Meta de OEE */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-yellow-500" />
+                Meta de OEE (65%)
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                A meta estabelecida para esta linha de produção é de <strong>65%</strong>. Este é o objetivo
+                mínimo de eficiência que deve ser alcançado para garantir a produtividade esperada.
+              </p>
+            </div>
+
+            {/* Seção: Gap até a Meta */}
+            {oeeCalculado.oee < 65 && (
+              <div className="space-y-2 bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-yellow-500 opacity-25" />
+                  Destaque do Gap (Diferença até a Meta)
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  O círculo amarelo translúcido que você vê representa a <strong>distância entre o OEE atual
+                  ({formatarPercentual(oeeCalculado.oee)}%) e a meta (65%)</strong>. Este destaque visual ajuda a
+                  identificar rapidamente o quanto falta para atingir o objetivo estabelecido.
+                </p>
+                <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
+                  Gap atual: {formatarPercentual(65 - oeeCalculado.oee)} pontos percentuais
+                </p>
+              </div>
+            )}
+
+            {oeeCalculado.oee >= 65 && (
+              <div className="space-y-2 bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  Meta Atingida!
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Parabéns! O OEE atual ({formatarPercentual(oeeCalculado.oee)}%) está <strong>acima da meta de 65%</strong>.
+                  O destaque do gap não é exibido quando a meta é atingida ou superada.
+                </p>
+              </div>
+            )}
+
+            {/* Seção: Escala de Cores */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Escala de Cores do Velocímetro</h3>
+              <p className="text-sm text-muted-foreground">
+                As cores do velocímetro indicam o nível de desempenho da linha:
+              </p>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
+                  <div className="w-8 h-8 rounded-full bg-red-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-sm">Vermelho (0-50%)</p>
+                    <p className="text-xs text-muted-foreground">Desempenho crítico - requer ação imediata</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
+                  <div className="w-8 h-8 rounded-full bg-orange-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-sm">Laranja (50-65%)</p>
+                    <p className="text-xs text-muted-foreground">Desempenho abaixo da meta - necessita melhoria</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
+                  <div className="w-8 h-8 rounded-full bg-yellow-500 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-sm">Amarelo (65-75%)</p>
+                    <p className="text-xs text-muted-foreground">Desempenho na meta - satisfatório</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
+                  <div className="w-8 h-8 rounded-full bg-green-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-sm">Verde (75-100%)</p>
+                    <p className="text-xs text-muted-foreground">Desempenho excelente - acima da meta</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Seção: Componentes do OEE */}
+            <div className="space-y-3 border-t pt-4">
+              <h3 className="font-semibold text-lg">Componentes do OEE</h3>
+              <p className="text-sm text-muted-foreground">
+                O OEE é calculado multiplicando três componentes principais:
+              </p>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold min-w-[140px]">Disponibilidade:</span>
+                  <span className="text-muted-foreground">
+                    {formatarPercentual(oeeCalculado.disponibilidade)}% - Tempo que o equipamento esteve disponível para produção
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold min-w-[140px]">Performance:</span>
+                  <span className="text-muted-foreground">
+                    {formatarPercentual(oeeCalculado.performance)}% - Velocidade de produção comparada à velocidade nominal
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-semibold min-w-[140px]">Qualidade:</span>
+                  <span className="text-muted-foreground">
+                    {formatarPercentual(oeeCalculado.qualidade)}% - Percentual de produtos sem defeitos ou retrabalho
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-800 mt-3">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  OEE = Disponibilidade × Performance × Qualidade
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  {formatarPercentual(oeeCalculado.disponibilidade)}% × {formatarPercentual(oeeCalculado.performance)}% × {formatarPercentual(oeeCalculado.qualidade)}% = {formatarPercentual(oeeCalculado.oee)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              onClick={() => setModalExplicacaoOEEAberto(false)}
+              className="bg-brand-primary hover:bg-brand-primary/90"
+            >
+              Entendi
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
