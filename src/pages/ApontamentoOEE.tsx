@@ -11,7 +11,7 @@ import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, Arro
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
-import { buscarOPTOTVSPorNumero } from '@/data/ordem-producao-totvs'
+import { buscarOPTOTVSPorNumero, obterTodasOPs } from '@/data/ordem-producao-totvs'
 import paradasGeraisData from '../../data/paradas.json'
 import { Turno } from '@/types/operacao'
 import {
@@ -19,13 +19,12 @@ import {
   calcularOEECompleto,
   excluirApontamentoProducao,
   buscarApontamentoProducaoPorId,
-  buscarApontamentosPerdasPorProducao,
-  buscarApontamentosRetrabalhoPorProducao,
   atualizarApontamentoProducao,
   salvarApontamentoPerdas,
   salvarApontamentoRetrabalho,
   buscarTodosApontamentosPerdas,
-  buscarTodosApontamentosRetrabalho
+  buscarTodosApontamentosRetrabalho,
+  calcularTotalPerdasPorLinhaESku
 } from '@/services/localStorage/apontamento-oee.storage'
 import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada } from '@/services/localStorage/parada.storage'
 import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
@@ -754,16 +753,27 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Soma perdas e retrabalhos de um apontamento de produção
+   * Soma perdas e retrabalhos por linha e SKU
+   * OEE é calculado por linha de produção e código SKU, não por apontamento individual
    */
-  const calcularTotalPerdasDoApontamento = (apontamentoId: string): number => {
-    const perdas = buscarApontamentosPerdasPorProducao(apontamentoId)
-    const retrabalhos = buscarApontamentosRetrabalhoPorProducao(apontamentoId)
+  const calcularTotalPerdasDoApontamento = (): number => {
+    // Extrair apenas o código do SKU (sem a descrição)
+    // skuCodigo pode ser "07010001 - SOL. CLORETO DE SODIO..." ou apenas "07010001"
+    const codigoSKU = skuCodigo.includes(' - ')
+      ? skuCodigo.split(' - ')[0].trim()
+      : skuCodigo.trim()
 
-    const totalPerdas = perdas.reduce((total, perda) => total + perda.unidadesRejeitadas, 0)
-    const totalRetrabalho = retrabalhos.reduce((total, retrabalho) => total + retrabalho.unidadesRetrabalho, 0)
+    // Verificar se há linha e SKU selecionados
+    if (!linhaId || !codigoSKU) {
+      return 0
+    }
 
-    return totalPerdas + totalRetrabalho
+    // Obter o nome da linha a partir do ID
+    const linhaNome = linhaSelecionada?.nome
+
+    // Usar a nova função que soma TODAS as perdas da linha e SKU
+    // Passamos tanto o ID quanto o nome da linha para garantir a busca correta
+    return calcularTotalPerdasPorLinhaESku(linhaId, codigoSKU, linhaNome)
   }
 
   /**
@@ -874,7 +884,7 @@ export default function ApontamentoOEE() {
         const novoOEE = calcularOEECompleto(apontamentoReferencia.id, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
         setApontamentoProducaoId(apontamentoReferencia.id)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoReferencia.id))
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
         return
       } catch (error) {
         console.error('Erro ao recalcular OEE após exclusão:', error)
@@ -1033,7 +1043,7 @@ export default function ApontamentoOEE() {
         )
         setOeeCalculado(novoOEE)
         setApontamentoProducaoId(apontamentoReferencia.id)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoReferencia.id))
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
 
         console.log('✅ OEE recalculado após exclusão de parada:', {
           paradaExcluida: paradaExcluida.id,
@@ -1179,7 +1189,7 @@ export default function ApontamentoOEE() {
       if (apontamentoProducaoId && linhaId) {
         const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
 
         console.log('✅ OEE recalculado após exclusão de qualidade:', {
           qualidadeExcluida: qualidadeExcluida.id,
@@ -1460,10 +1470,7 @@ export default function ApontamentoOEE() {
    */
   const preCarregarDadosProducao = useCallback(() => {
     try {
-      // Importar função de busca de OPs do TOTVS
-      const { obterTodasOPs } = require('@/data/ordem-producao-totvs')
-
-      // Buscar todas as OPs disponíveis
+      // Buscar todas as OPs disponíveis do TOTVS
       const todasOPs = obterTodasOPs()
 
       // Filtrar OPs relevantes
@@ -1648,7 +1655,7 @@ export default function ApontamentoOEE() {
               12
             )
             setOeeCalculado(oeeRecalculado)
-            setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(producaoReferencia.id))
+            setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
           } catch (error) {
             console.error('Erro ao recalcular OEE carregado:', error)
             setOeeCalculado({
@@ -2015,7 +2022,7 @@ export default function ApontamentoOEE() {
       if (apontamentoProducaoId && linhaId) {
         const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
       }
 
       setEditandoCabecalho(false)
@@ -2407,7 +2414,7 @@ export default function ApontamentoOEE() {
       if (linhaId) {
         const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
         setOeeCalculado(novoOEE)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento(apontamentoProducaoId))
+        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
       }
 
       // =================================================================

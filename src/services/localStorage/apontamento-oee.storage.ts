@@ -189,6 +189,62 @@ export function buscarApontamentosRetrabalhoPorProducao(apontamentoProducaoId: s
 }
 
 /**
+ * Busca apontamentos de perdas por linha e SKU
+ * Soma todas as perdas de todos os apontamentos de produção da mesma linha e SKU
+ *
+ * IMPORTANTE: O campo 'linha' no ApontamentoProducao armazena o NOME da linha (ex: "Linha A"),
+ * enquanto linhaId é o ID da linha (ex: "spep-envase-a"). Precisamos buscar pelo nome.
+ */
+export function buscarApontamentosPerdasPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): ApontamentoQualidadePerdas[] {
+  // Busca todos os apontamentos de produção da linha e SKU
+  // Compara tanto pelo ID quanto pelo nome da linha para garantir compatibilidade
+  const apontamentosProducao = buscarTodosApontamentosProducao().filter(a => {
+    const matchLinha = a.linha === linhaId || a.linha === linhaNome || (linhaNome && a.linha === linhaNome)
+    const matchSku = a.sku === skuCodigo
+    return matchLinha && matchSku
+  })
+
+  // Busca todas as perdas associadas a esses apontamentos
+  const todasPerdas = buscarTodosApontamentosPerdas()
+  const idsProducao = apontamentosProducao.map(a => a.id)
+
+  return todasPerdas.filter(p => idsProducao.includes(p.apontamentoProducaoId))
+}
+
+/**
+ * Busca apontamentos de retrabalho por linha e SKU
+ * Soma todos os retrabalhos de todos os apontamentos de produção da mesma linha e SKU
+ */
+export function buscarApontamentosRetrabalhoPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): ApontamentoQualidadeRetrabalho[] {
+  // Busca todos os apontamentos de produção da linha e SKU
+  // Compara tanto pelo ID quanto pelo nome da linha para garantir compatibilidade
+  const apontamentosProducao = buscarTodosApontamentosProducao().filter(a => {
+    const matchLinha = a.linha === linhaId || a.linha === linhaNome || (linhaNome && a.linha === linhaNome)
+    const matchSku = a.sku === skuCodigo
+    return matchLinha && matchSku
+  })
+
+  // Busca todos os retrabalhos associados a esses apontamentos
+  const todosRetrabalhos = buscarTodosApontamentosRetrabalho()
+  const idsProducao = apontamentosProducao.map(a => a.id)
+
+  return todosRetrabalhos.filter(r => idsProducao.includes(r.apontamentoProducaoId))
+}
+
+/**
+ * Calcula o total de perdas (perdas + retrabalhos) por linha e SKU
+ */
+export function calcularTotalPerdasPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): number {
+  const perdas = buscarApontamentosPerdasPorLinhaESku(linhaId, skuCodigo, linhaNome)
+  const retrabalhos = buscarApontamentosRetrabalhoPorLinhaESku(linhaId, skuCodigo, linhaNome)
+
+  const totalPerdas = perdas.reduce((total, p) => total + p.unidadesRejeitadas, 0)
+  const totalRetrabalho = retrabalhos.reduce((total, r) => total + r.unidadesRetrabalho, 0)
+
+  return totalPerdas + totalRetrabalho
+}
+
+/**
  * Salva um novo apontamento de retrabalho
  */
 export function salvarApontamentoRetrabalho(
