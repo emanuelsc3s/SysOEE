@@ -3,7 +3,7 @@
  * Operações CRUD com a tabela tbturno do Supabase
  */
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { supabaseAdmin, handleSupabaseError } from '@/lib/supabase'
 // TODO: Reativar import quando autenticação for implementada
 // import { getUserIdFromTbusuario } from '@/lib/supabase'
@@ -73,7 +73,7 @@ export function useTurnos() {
   /**
    * Busca lista de turnos com filtros opcionais
    */
-  const fetchTurnos = async (filters?: FetchTurnosFilters) => {
+  const fetchTurnos = useCallback(async (filters?: FetchTurnosFilters) => {
     try {
       console.log('🔍 useTurnos: Iniciando busca de turnos. Filtros:', filters)
       setLoading(true)
@@ -124,7 +124,7 @@ export function useTurnos() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   /**
    * Busca um turno específico por ID

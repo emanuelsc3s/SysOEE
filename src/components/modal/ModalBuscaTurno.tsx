@@ -67,7 +67,7 @@ export function ModalBuscaTurno({
           console.error('❌ ModalBuscaTurno: Erro ao carregar turnos:', error)
         })
     }
-  }, [aberto]) // Removido fetchTurnos das dependências para evitar loops
+  }, [aberto, fetchTurnos])
 
   // Filtrar turnos com base no termo de busca
   const turnosFiltrados = useMemo(() => {

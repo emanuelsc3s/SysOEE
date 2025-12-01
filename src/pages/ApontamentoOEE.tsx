@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, ClipboardCheck, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
@@ -191,9 +191,10 @@ export default function ApontamentoOEE() {
   const [linhasApontamento, setLinhasApontamento] = useState<LinhaApontamentoProducao[]>([])
 
   // ==================== Estado de Produção ====================
-  const [horaInicio, setHoraInicio] = useState<string>('')
-  const [horaFim, setHoraFim] = useState<string>('')
-  const [quantidadeProduzida, setQuantidadeProduzida] = useState<string>('')
+  // Estados usados para restaurar dados ao editar um registro existente
+  const [, setHoraInicio] = useState<string>('')
+  const [, setHoraFim] = useState<string>('')
+  const [, setQuantidadeProduzida] = useState<string>('')
 
   // ==================== Estado de Qualidade - Perdas ====================
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
@@ -403,7 +404,7 @@ export default function ApontamentoOEE() {
       const [horaInicioH, horaInicioM] = horaInicial.split(':').map(Number)
       const [horaFimH, horaFimM] = horaFinal.split(':').map(Number)
 
-      let minutoInicio = horaInicioH * 60 + horaInicioM
+      const minutoInicio = horaInicioH * 60 + horaInicioM
       let minutoFim = horaFimH * 60 + horaFimM
 
       // Se hora final for menor que inicial, significa que o turno passa da meia-noite
@@ -1440,27 +1441,6 @@ export default function ApontamentoOEE() {
     )
   }
 
-  /**
-   * Filtra dados de produção por Linha de Produção e SKU
-   * Garante que apenas dados da combinação específica sejam carregados (ALCOA+)
-   *
-   * @param registros - Lista de registros de produção
-   * @param linhaId - ID da linha de produção
-   * @param skuCodigo - Código do SKU
-   * @returns Registros filtrados pela linha e SKU
-   */
-  const filtrarPorLinhaESku = (
-    registros: RegistroProducao[],
-    linhaId: string,
-    skuCodigo: string
-  ): RegistroProducao[] => {
-    return registros.filter(
-      (registro) =>
-        registro.linhaId === linhaId &&
-        registro.skuCodigo === skuCodigo
-    )
-  }
-
   // ==================== Funções de Controle de Turno ====================
 
   /**
@@ -1525,7 +1505,7 @@ export default function ApontamentoOEE() {
       }
 
       // Converter OPs para linhas de apontamento
-      const linhasPreCarregadas: LinhaApontamentoProducao[] = opsRelevantes.map((op, index) => ({
+      const linhasPreCarregadas: LinhaApontamentoProducao[] = opsRelevantes.map((_op, index) => ({
         id: `pre-${Date.now()}-${index}`,
         horaInicio: '',
         horaFim: '',
@@ -1688,7 +1668,7 @@ export default function ApontamentoOEE() {
       // Carregar histórico de qualidade do turno
       const qualidadeDoTurno = carregarHistoricoQualidade().filter(
         (registro) =>
-          registro.data === format(data, 'dd/MM/yyyy') &&
+          data && registro.data === format(data, 'dd/MM/yyyy') &&
           registro.turno === turno &&
           registro.linhaId === linhaId
       )
@@ -2062,231 +2042,6 @@ export default function ApontamentoOEE() {
   }
 
   // ==================== Handlers ====================
-  const handleSalvarProducao = () => {
-    // =================================================================
-    // VALIDAÇÃO 1: Campos do Cabeçalho
-    // =================================================================
-
-    if (!data) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Selecione a Data do apontamento',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (!turnoId) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Selecione o Turno',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (!linhaId) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Selecione a Linha de Produção',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (!skuCodigo) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Digite o código do SKU',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (!lote) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Digite o número do Lote',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // VALIDAÇÃO 2: Linhas de Apontamento
-    // =================================================================
-
-    if (linhasApontamento.length === 0) {
-      toast({
-        title: 'Nenhuma linha de apontamento',
-        description: 'Selecione um turno para gerar as linhas de apontamento automaticamente',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // Validar se pelo menos uma linha tem quantidade produzida
-    const linhasComProducao = linhasApontamento.filter(
-      linha => linha.quantidadeProduzida && Number(linha.quantidadeProduzida) > 0
-    )
-
-    if (linhasComProducao.length === 0) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Informe a Quantidade Produzida em pelo menos uma linha',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // BUSCAR DADOS RELACIONADOS
-    // =================================================================
-
-    const linha = buscarLinhaPorId(linhaId)
-    if (!linha) {
-      toast({
-        title: 'Erro',
-        description: 'Linha de produção não encontrada',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // EXTRAIR CÓDIGO E DESCRIÇÃO DO SKU
-    // Suporta tanto dados do TOTVS ("código - descrição") quanto entrada manual
-    // =================================================================
-
-    const codigoSKU = skuCodigo.includes(' - ')
-      ? skuCodigo.split(' - ')[0].trim()
-      : skuCodigo.trim()
-
-    const descricaoSKU = skuCodigo.includes(' - ')
-      ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
-      : skuCodigo.trim()
-
-    // =================================================================
-    // SALVAR TODAS AS LINHAS DE APONTAMENTO
-    // =================================================================
-
-    try {
-      let totalLinhasSalvas = 0
-      let ultimoApontamentoId = ''
-      const novosRegistros: RegistroProducao[] = []
-
-      // Processar cada linha de apontamento com quantidade produzida
-      for (const linhaApontamento of linhasComProducao) {
-        const tempoOperacaoHoras = calcularDiferencaHoras(
-          linhaApontamento.horaInicio,
-          linhaApontamento.horaFim
-        )
-
-        if (tempoOperacaoHoras <= 0) {
-          console.warn(`Linha ignorada: tempo de operação inválido (${linhaApontamento.horaInicio} - ${linhaApontamento.horaFim})`)
-          continue
-        }
-
-        const dto: CriarApontamentoProducaoDTO = {
-          turno,
-          linha: linha.nome,
-          setor: linha.setor,
-          ordemProducao: ordemProducao || 'S/N',
-          lote,
-          sku: codigoSKU,
-          produto: descricaoSKU,
-          velocidadeNominal: 4000, // CONSTANTE: 4000 unidades/hora
-          quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
-          tempoOperacao: tempoOperacaoHoras,
-          tempoDisponivel: 12, // CONSTANTE: 12 horas por turno
-          dataApontamento: format(data, 'yyyy-MM-dd'),
-          horaInicio: linhaApontamento.horaInicio.includes(':')
-            ? linhaApontamento.horaInicio + ':00'
-            : linhaApontamento.horaInicio,
-          horaFim: linhaApontamento.horaFim.includes(':')
-            ? linhaApontamento.horaFim + ':00'
-            : linhaApontamento.horaFim,
-          criadoPor: 1, // TODO: buscar do contexto de autenticação
-          criadoPorNome: 'Emanuel Silva' // TODO: buscar do contexto
-        }
-
-        const apontamento = salvarApontamentoProducao(dto)
-        ultimoApontamentoId = apontamento.id
-        totalLinhasSalvas++
-
-        console.log(`✅ Apontamento ${totalLinhasSalvas} salvo:`, apontamento)
-
-        // Criar registro para histórico
-        const novoRegistro: RegistroProducao = {
-          id: apontamento.id,
-          data: format(data!, 'dd/MM/yyyy'),
-          turno,
-          linhaId,
-          linhaNome: linha.nome,
-          skuCodigo,
-          ordemProducao,
-          lote,
-          dossie,
-          horaInicio: linhaApontamento.horaInicio,
-          horaFim: linhaApontamento.horaFim,
-          quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
-          dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
-        }
-
-        novosRegistros.push(novoRegistro)
-      }
-
-      // =================================================================
-      // ATUALIZAR ESTADO PARA RECALCULAR OEE
-      // =================================================================
-
-      if (ultimoApontamentoId && linhaId) {
-        setApontamentoProducaoId(ultimoApontamentoId)
-        const novoOEE = calcularOEECompleto(ultimoApontamentoId, linhaId, 12)
-        setOeeCalculado(novoOEE)
-        console.log('📊 OEE calculado:', novoOEE)
-      }
-
-      // =================================================================
-      // ATUALIZAR HISTÓRICO LOCAL (para exibição na tabela)
-      // =================================================================
-
-      const novoHistorico = [...novosRegistros, ...historicoProducao]
-      setHistoricoProducao(novoHistorico)
-      salvarNoLocalStorage(novoHistorico)
-
-      // =================================================================
-      // LIMPAR FORMULÁRIO E LINHAS
-      // =================================================================
-
-      // Limpar quantidades produzidas das linhas
-      setLinhasApontamento(linhas =>
-        linhas.map(linha => ({ ...linha, quantidadeProduzida: '' }))
-      )
-
-      // =================================================================
-      // FEEDBACK PARA O USUÁRIO
-      // =================================================================
-
-      const totalUnidades = linhasComProducao.reduce(
-        (total, linha) => total + Number(linha.quantidadeProduzida),
-        0
-      )
-
-      toast({
-        title: '✅ Produção Registrada',
-        description: `${totalLinhasSalvas} ${totalLinhasSalvas === 1 ? 'linha salva' : 'linhas salvas'} com total de ${totalUnidades.toLocaleString('pt-BR')} unidades. OEE atualizado.`
-      })
-
-    } catch (error) {
-      console.error('❌ Erro ao salvar apontamentos:', error)
-      toast({
-        title: 'Erro ao salvar',
-        description: 'Não foi possível salvar os apontamentos. Tente novamente.',
-        variant: 'destructive'
-      })
-    }
-  }
 
   /**
    * Adiciona registro de qualidade (perdas e/ou retrabalho)
@@ -2500,11 +2255,11 @@ export default function ApontamentoOEE() {
       turno,
       linhaId,
       linhaNome: linhaSelecionada?.nome || '',
-      natureza: paradaSelecionada.Natureza || '',
-      classe: paradaSelecionada.Classe || '',
-      grandeParada: paradaSelecionada['Grande Parada'] || '',
-      apontamento: paradaSelecionada.Apontamento || '',
-      descricao: paradaSelecionada.Descrição || '',
+      natureza: paradaSelecionada.natureza || '',
+      classe: paradaSelecionada.classe || '',
+      grandeParada: paradaSelecionada.grandeParada || '',
+      apontamento: paradaSelecionada.apontamento || '',
+      descricao: paradaSelecionada.descricao || '',
       horaInicial: horaInicialParada,
       horaFinal: horaFinalParada,
       duracaoMinutos,
@@ -2524,13 +2279,13 @@ export default function ApontamentoOEE() {
       id: registroParada.id,
       linha_id: linhaId,
       lote_id: lote || null,
-      codigo_parada_id: paradaSelecionada.Apontamento || 'CODIGO_TEMP',
+      codigo_parada_id: paradaSelecionada.apontamento || 'CODIGO_TEMP',
       turno_id: turno,
       data_parada: format(data!, 'yyyy-MM-dd'),
       hora_inicio: horaInicioFormatada,
       hora_fim: horaFimFormatada,
       duracao_minutos: duracaoMinutos,
-      observacao: `${paradaSelecionada.Natureza || ''} - ${paradaSelecionada.Classe || ''} - ${paradaSelecionada['Grande Parada'] || ''} - ${observacoesParada || ''}`.trim(),
+      observacao: `${paradaSelecionada.natureza || ''} - ${paradaSelecionada.classe || ''} - ${paradaSelecionada.grandeParada || ''} - ${observacoesParada || ''}`.trim(),
       criado_por_operador: 1,
       conferido_por_supervisor: null,
       conferido_em: null,
@@ -2555,9 +2310,9 @@ export default function ApontamentoOEE() {
       horaInicio: horaInicialParada,
       horaFim: horaFinalParada,
       duracao: duracaoMinutos,
-      tipoParada: paradaSelecionada.Apontamento || paradaSelecionada.Descrição || 'Parada',
-      codigoParada: paradaSelecionada.Apontamento || 'CODIGO_TEMP',
-      descricaoParada: paradaSelecionada.Descrição || '',
+      tipoParada: paradaSelecionada.apontamento || paradaSelecionada.descricao || 'Parada',
+      codigoParada: paradaSelecionada.apontamento || 'CODIGO_TEMP',
+      descricaoParada: paradaSelecionada.descricao || '',
       observacoes: observacoesParada,
       dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
     }
@@ -3270,7 +3025,7 @@ export default function ApontamentoOEE() {
                                       statusTurno !== 'INICIADO' ||
                                       !linha.quantidadeProduzida ||
                                       Number(linha.quantidadeProduzida) <= 0 ||
-                                      (linha.apontamentoId && !linha.editavel)
+                                      Boolean(linha.apontamentoId && !linha.editavel)
                                     }
                                   >
                                     <Save className="h-4 w-4 mr-1" />
@@ -3560,11 +3315,11 @@ export default function ApontamentoOEE() {
                     <div className="p-4 bg-muted/50 rounded-md space-y-2">
                       <p className="text-sm font-medium text-muted-foreground">Hierarquia da Parada:</p>
                       <div className="space-y-1 text-sm">
-                        <p><span className="font-medium">Natureza:</span> {paradaSelecionada.Natureza || 'N/A'}</p>
-                        <p><span className="font-medium">Classe:</span> {paradaSelecionada.Classe || 'N/A'}</p>
-                        <p><span className="font-medium">Grande Parada:</span> {paradaSelecionada['Grande Parada'] || 'N/A'}</p>
-                        <p><span className="font-medium">Apontamento:</span> {paradaSelecionada.Apontamento || 'N/A'}</p>
-                        <p><span className="font-medium">Descrição:</span> {paradaSelecionada.Descrição || 'N/A'}</p>
+                        <p><span className="font-medium">Natureza:</span> {paradaSelecionada.natureza || 'N/A'}</p>
+                        <p><span className="font-medium">Classe:</span> {paradaSelecionada.classe || 'N/A'}</p>
+                        <p><span className="font-medium">Grande Parada:</span> {paradaSelecionada.grandeParada || 'N/A'}</p>
+                        <p><span className="font-medium">Apontamento:</span> {paradaSelecionada.apontamento || 'N/A'}</p>
+                        <p><span className="font-medium">Descrição:</span> {paradaSelecionada.descricao || 'N/A'}</p>
                       </div>
                     </div>
                   )}

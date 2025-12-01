@@ -367,12 +367,12 @@ export function calcularOEECompleto(
   tempoDisponivelTurno: number = 12
 ): CalculoOEE {
   // =================================================================
-  // PASSO 1: BUSCAR DADOS
+  // PASSO 1: BUSCAR DADOS DO APONTAMENTO DE REFERÊNCIA
   // =================================================================
 
-  const apontamento = buscarApontamentoProducaoPorId(apontamentoProducaoId)
+  const apontamentoReferencia = buscarApontamentoProducaoPorId(apontamentoProducaoId)
 
-  if (!apontamento) {
+  if (!apontamentoReferencia) {
     console.warn('6a8 Apontamento de produ e7 e3o n e3o encontrado:', apontamentoProducaoId)
     return {
       disponibilidade: 0,
@@ -384,14 +384,44 @@ export function calcularOEECompleto(
     }
   }
 
-  // OEE é calculado por LINHA, independente de lote, data ou turno
+  // =================================================================
+  // PASSO 1B: BUSCAR TODOS OS APONTAMENTOS DA MESMA LINHA E TURNO
+  // OEE deve considerar TODA a produção do turno, não apenas um apontamento
+  // =================================================================
+
+  const todosApontamentos = buscarTodosApontamentosProducao()
+  const apontamentosDoTurno = todosApontamentos.filter(a =>
+    a.linha === apontamentoReferencia.linha &&
+    a.turno === apontamentoReferencia.turno
+  )
+
+  // IDs de todos os apontamentos do turno para buscar perdas e retrabalhos
+  const idsApontamentos = apontamentosDoTurno.map(a => a.id)
+
+  // Somar quantidades produzidas de todos os apontamentos do turno
+  const quantidadeProduzidaTotal = apontamentosDoTurno.reduce(
+    (total, a) => total + a.quantidadeProduzida, 0
+  )
+
+  // Usar velocidade nominal do apontamento de referência
+  const velocidadeNominal = apontamentoReferencia.velocidadeNominal
+
+  // OEE é calculado por LINHA
   const paradas = buscarParadasPorLinha(linhaId)
-  const perdas = buscarApontamentosPerdasPorProducao(apontamentoProducaoId)
-  const retrabalhos = buscarApontamentosRetrabalhoPorProducao(apontamentoProducaoId)
+
+  // Buscar TODAS as perdas e retrabalhos de TODOS os apontamentos do turno
+  const todasPerdas = buscarTodosApontamentosPerdas()
+  const perdas = todasPerdas.filter(p => idsApontamentos.includes(p.apontamentoProducaoId))
+
+  const todosRetrabalhos = buscarTodosApontamentosRetrabalho()
+  const retrabalhos = todosRetrabalhos.filter(r => idsApontamentos.includes(r.apontamentoProducaoId))
 
   console.log('4ca Calculando OEE:', {
-    apontamentoId: apontamentoProducaoId,
+    apontamentoReferencia: apontamentoProducaoId,
     linhaId,
+    turno: apontamentoReferencia.turno,
+    apontamentosDoTurno: apontamentosDoTurno.length,
+    quantidadeProduzidaTotal,
     totalParadas: paradas.length,
     totalPerdas: perdas.length,
     totalRetrabalhos: retrabalhos.length
@@ -470,8 +500,9 @@ export function calcularOEECompleto(
   // =================================================================
 
   // Método 1: Por quantidade produzida e velocidade nominal
-  const tempoOperacionalLiquidoPorProducao = apontamento.velocidadeNominal > 0
-    ? apontamento.quantidadeProduzida / apontamento.velocidadeNominal
+  // Usa quantidadeProduzidaTotal (soma de todos apontamentos do turno) e velocidadeNominal
+  const tempoOperacionalLiquidoPorProducao = velocidadeNominal > 0
+    ? quantidadeProduzidaTotal / velocidadeNominal
     : 0
 
   // Método 2: Por tempo de operação menos pequenas paradas
@@ -493,8 +524,8 @@ export function calcularOEECompleto(
   const performance = Math.min(performanceBruta, 100)
 
   console.log('680 Performance:', {
-    quantidadeProduzida: apontamento.quantidadeProduzida,
-    velocidadeNominal: apontamento.velocidadeNominal,
+    quantidadeProduzidaTotal,
+    velocidadeNominal,
     tempoOperacionalLiquido,
     tempoOperacao,
     performance: `${arredondar(performance)}%`
@@ -506,11 +537,12 @@ export function calcularOEECompleto(
   // =================================================================
 
   // 6a. Qualidade por Unidades (Refugo e Desvios)
+  // Usa quantidadeProduzidaTotal (soma de todos apontamentos do turno)
   const totalPerdas = perdas.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
-  const unidadesBoas = apontamento.quantidadeProduzida - totalPerdas
+  const unidadesBoas = quantidadeProduzidaTotal - totalPerdas
 
-  const qualidadeUnidades = apontamento.quantidadeProduzida > 0
-    ? (unidadesBoas / apontamento.quantidadeProduzida) * 100
+  const qualidadeUnidades = quantidadeProduzidaTotal > 0
+    ? (unidadesBoas / quantidadeProduzidaTotal) * 100
     : 100
 
   // 6b. Qualidade por Retrabalho
