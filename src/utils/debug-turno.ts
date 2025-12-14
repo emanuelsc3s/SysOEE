@@ -3,7 +3,7 @@
  * Usar temporariamente para diagnosticar problema com hora_fim
  */
 
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Busca dados brutos da tabela tbturno para debug
@@ -13,7 +13,7 @@ export async function debugTurnoData() {
   
   try {
     // Query simples sem filtros
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('tbturno')
       .select('*')
       .eq('deletado', 'N')
@@ -63,7 +63,7 @@ export async function debugTurnoSchema() {
   console.group('🔍 DEBUG: Estrutura da Tabela tbturno')
   
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('tbturno')
       .select('*')
       .limit(1)

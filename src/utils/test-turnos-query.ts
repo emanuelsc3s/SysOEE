@@ -3,17 +3,17 @@
  * Execute este arquivo para testar a conexão com Supabase e a query de turnos
  */
 
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export async function testTurnosQuery() {
   console.log('🔍 Testando query de turnos...')
   console.log('📡 Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
-  console.log('🔑 Supabase Key configurada:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
+  console.log('🔑 Supabase Key configurada:', !!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)
 
   try {
     // Teste 1: Buscar todos os turnos (sem filtro de deletado)
     console.log('\n📋 Teste 1: Buscar TODOS os turnos (incluindo deletados)')
-    const { data: allTurnos, error: error1 } = await supabaseAdmin
+    const { data: allTurnos, error: error1 } = await supabase
       .from('tbturno')
       .select('*')
       .order('codigo', { ascending: true })
@@ -27,7 +27,7 @@ export async function testTurnosQuery() {
 
     // Teste 2: Buscar apenas turnos não deletados
     console.log('\n📋 Teste 2: Buscar turnos NÃO deletados (deletado = "N")')
-    const { data: activeTurnos, error: error2 } = await supabaseAdmin
+    const { data: activeTurnos, error: error2 } = await supabase
       .from('tbturno')
       .select('*')
       .eq('deletado', 'N')
@@ -56,7 +56,7 @@ export async function testTurnosQuery() {
 
     // Teste 4: Verificar se há turnos deletados
     console.log('\n📋 Teste 4: Verificar turnos deletados')
-    const { data: deletedTurnos, error: error4 } = await supabaseAdmin
+    const { data: deletedTurnos, error: error4 } = await supabase
       .from('tbturno')
       .select('*')
       .eq('deletado', 'S')

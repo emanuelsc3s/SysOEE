@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { supabaseAdmin, handleSupabaseError } from '@/lib/supabase'
+import { supabase, handleSupabaseError } from '@/lib/supabase'
 // TODO: Reativar import quando autenticação for implementada
 // import { getUserIdFromTbusuario } from '@/lib/supabase'
 import { TurnoFormData, TurnoDB } from '@/types/turno'
@@ -78,7 +78,7 @@ export function useTurnos() {
       console.log('🔍 useTurnos: Iniciando busca de turnos. Filtros:', filters)
       setLoading(true)
 
-      let query = supabaseAdmin
+      let query = supabase
         .from('tbturno')
         .select('*')
         .eq('deletado', 'N')
@@ -133,7 +133,7 @@ export function useTurnos() {
     try {
       setLoading(true)
 
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('tbturno')
         .select('*')
         .eq('turno_id', parseInt(id))
@@ -183,7 +183,7 @@ export function useTurnos() {
           // updated_by: usuarioId
         }
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('tbturno')
           .update(updateData)
           .eq('turno_id', parseInt(formData.id))
@@ -208,7 +208,7 @@ export function useTurnos() {
           // created_by: usuarioId
         }
 
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await supabase
           .from('tbturno')
           .insert(insertData)
           .select()
@@ -250,7 +250,7 @@ export function useTurnos() {
       //   throw new Error('Usuário não encontrado')
       // }
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('tbturno')
         .update({
           deletado: 'S',

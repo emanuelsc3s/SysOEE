@@ -69,7 +69,7 @@ src/
 │   ├── TurnosCad.tsx               # Página de cadastro/edição
 │   └── README-TURNOS.md            # Esta documentação
 └── lib/
-    └── supabase.ts                 # Cliente Supabase (atualizado com supabaseAdmin)
+   └── supabase.ts                 # Cliente Supabase (publishable key + RLS)
 ```
 
 ### Padrão Arquitetural
@@ -96,31 +96,19 @@ Seguindo o padrão da documentação de licitação:
 
 ## 🔐 Autenticação e RLS
 
-### Service Key do Supabase
+### Publishable Key do Supabase
 
-Como a tabela `tbturno` possui RLS (Row Level Security) ativada mas o sistema ainda não utiliza autenticação de usuários do Supabase, a implementação utiliza a **SUPABASE_SERVICE_KEY** para realizar operações administrativas.
+A tabela `tbturno` possui RLS (Row Level Security) ativada. Como este projeto roda no frontend (Vite/React), **não usamos service role key** no bundle.
+
+Isso significa que as operações (listar/criar/editar/excluir) dependem de **políticas RLS** adequadas para o contexto do app.
 
 **Configuração em `.env`:**
 ```env
 VITE_SUPABASE_URL=https://gonbyhpqnqnddqozqvhk.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 ```
 
-**Cliente Admin em `lib/supabase.ts`:**
-```typescript
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
-```
-
-⚠️ **IMPORTANTE**: A service key faz bypass da RLS. Em produção, deve-se:
-- Nunca expor a service key no frontend
-- Implementar autenticação real de usuários
-- Usar a anon key com RLS policies adequadas
+⚠️ **IMPORTANTE**: Sem autenticação (Supabase Auth) e sem políticas públicas específicas, operações de escrita podem falhar por RLS.
 
 ## 📊 Campos e Validações
 

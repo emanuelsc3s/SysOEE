@@ -9,15 +9,12 @@
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'
-// IMPORTANTE: VITE_SUPABASE_SERVICE_KEY é exposta no bundle apenas para uso em ambiente de desenvolvimento/MVP.
-// Em produção, nunca deve ser utilizada no frontend.
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY || 'placeholder-service-key'
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'placeholder-key'
 
 // Verifica se as variáveis de ambiente estão configuradas
 const isSupabaseConfigured =
   import.meta.env.VITE_SUPABASE_URL &&
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
 if (!isSupabaseConfigured) {
   console.warn(
@@ -25,31 +22,19 @@ if (!isSupabaseConfigured) {
     'O sistema funcionará em modo MOCK.\n' +
     'Para usar Supabase real, configure as variáveis no arquivo .env:\n' +
     '  VITE_SUPABASE_URL=sua_url_aqui\n' +
-    '  VITE_SUPABASE_ANON_KEY=sua_chave_aqui'
+    '  VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_aqui'
   )
 }
 
 /**
- * Cliente Supabase padrão (com anon key)
+ * Cliente Supabase padrão (com publishable key)
  * Usa RLS policies para controle de acesso
  */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-  },
-})
-
-/**
- * Cliente Supabase Admin (com service key)
- * Bypass RLS - usar apenas para operações administrativas
- * IMPORTANTE: Nunca expor este cliente no frontend em produção
- */
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
   },
 })
 
