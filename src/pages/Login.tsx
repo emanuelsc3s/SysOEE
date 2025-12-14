@@ -276,9 +276,18 @@ export default function Login() {
 
       {/* Seção Formulário (Direita) */}
       <section
-        className="flex-1 lg:w-1/2 xl:w-2/5 flex items-center justify-center bg-brand-bg-primary p-4 md:p-8"
+        className="flex-1 lg:w-1/2 xl:w-2/5 flex flex-col items-center justify-between bg-brand-bg-primary p-4 md:p-8"
         aria-label="Formulário de login"
       >
+        {/* Logo Farmace */}
+        <div className="mb-8 flex justify-center">
+          <img
+            src="/logo-farmace.png"
+            alt="Farmace"
+            className="h-16 md:h-20 w-auto"
+          />
+        </div>
+
         <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up transition-lift hover:shadow-xl">
           <CardHeader className="space-y-2 pb-6">
             <CardTitle className="text-2xl md:text-3xl font-bold text-brand-text-primary text-center">
@@ -365,6 +374,13 @@ export default function Login() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Copyright */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-brand-text-secondary">
+            © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
+          </p>
+        </div>
       </section>
 
       {/* Dialog de Erro */}
