@@ -16,14 +16,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { cn } from '@/lib/utils'
 
 // Icons
-import { Mail, Lock, Loader2, AlertCircle, Shield } from 'lucide-react'
+import { User, Lock, Loader2, AlertCircle, Shield } from 'lucide-react'
 
 /**
  * Interface para dados do formulário de login
  */
 interface LoginFormData {
-  email: string
+  /** E-mail ou nome de usuário para login */
+  credential: string
   password: string
+}
+
+/**
+ * Verifica se o valor é um e-mail válido
+ * @param value - Valor para verificar
+ * @returns true se for um e-mail, false se for nome de usuário
+ */
+function isEmail(value: string): boolean {
+  return value.includes('@')
 }
 
 /**
@@ -84,7 +94,7 @@ function BrandingSection() {
 export default function Login() {
   // Estados do formulário
   const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
+    credential: '',
     password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -117,20 +127,22 @@ export default function Login() {
    * Retorna objeto com status de validação e mensagem de erro
    */
   const validateForm = (): { isValid: boolean; errorMessage?: string } => {
-    // Email obrigatório
-    if (!formData.email.trim()) {
+    // Credencial obrigatória
+    if (!formData.credential.trim()) {
       return {
         isValid: false,
-        errorMessage: 'Por favor, informe seu email.'
+        errorMessage: 'Por favor, informe seu usuário.'
       }
     }
 
-    // Email válido (regex básico)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      return {
-        isValid: false,
-        errorMessage: 'Por favor, informe um email válido.'
+    // Se for e-mail, validar formato
+    if (isEmail(formData.credential)) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.credential)) {
+        return {
+          isValid: false,
+          errorMessage: 'Por favor, informe um e-mail válido.'
+        }
       }
     }
 
@@ -154,6 +166,31 @@ export default function Login() {
   }
 
   /**
+   * Busca o e-mail associado a um nome de usuário na tabela tbusuario
+   * Usa função RPC com SECURITY DEFINER para acessar dados de forma segura
+   * @param username - Nome de usuário para buscar
+   * @returns E-mail do usuário ou null se não encontrado
+   */
+  const getEmailFromUsername = async (username: string): Promise<string | null> => {
+    try {
+      // Usar função RPC que faz a busca de forma segura (SECURITY DEFINER)
+      // A função busca em tbusuario e auth.users, retornando apenas o email
+      const { data, error } = await supabase
+        .rpc('get_email_by_username', { username: username.trim() })
+
+      if (error) {
+        console.error('Erro ao buscar email do usuário:', error)
+        return null
+      }
+
+      return data as string | null
+    } catch (error) {
+      console.error('Erro ao buscar email do usuário:', error)
+      return null
+    }
+  }
+
+  /**
    * Função de submissão do formulário de login
    * Valida os campos, autentica no Supabase e redireciona
    */
@@ -174,9 +211,28 @@ export default function Login() {
     setIsLoading(true)
 
     try {
+      let emailToAuth = formData.credential.trim()
+
+      // Se não for e-mail, buscar o e-mail associado ao nome de usuário
+      if (!isEmail(formData.credential)) {
+        const userEmail = await getEmailFromUsername(formData.credential)
+
+        if (!userEmail) {
+          setErrorDialog({
+            isOpen: true,
+            title: 'Usuário não encontrado',
+            message: 'Não foi possível encontrar um usuário ativo com esse nome. Verifique se o nome de usuário está correto.'
+          })
+          setIsLoading(false)
+          return
+        }
+
+        emailToAuth = userEmail
+      }
+
       // Autenticação Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email.trim(),
+        email: emailToAuth,
         password: formData.password
       })
 
@@ -235,22 +291,23 @@ export default function Login() {
 
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-5">
-              {/* Campo Email */}
+              {/* Campo Usuário */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-brand-text-primary font-medium">
-                  Email
+                <Label htmlFor="credential" className="text-brand-text-primary font-medium">
+                  Usuário
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="seu.email@farmace.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    id="credential"
+                    name="credential"
+                    type="text"
+                    placeholder="Digite seu usuário"
+                    value={formData.credential}
+                    onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
                     disabled={isLoading}
                     required
+                    autoComplete="username"
                     className={cn(
                       "pl-10 h-11",
                       "focus:ring-2 focus:ring-primary focus:border-primary",
