@@ -12,8 +12,10 @@ import {
   Package,
   Wrench,
   Shield,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 import { BrandingSection } from '@/components/branding/BrandingSection'
 import { NavigationCard } from '@/components/navigation/NavigationCard'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -25,6 +27,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
 
 /**
@@ -56,11 +68,17 @@ export default function Home() {
   // Estado para controlar o modal de seleção de operação
   const [modalOperacaoAberto, setModalOperacaoAberto] = useState(false)
 
-  // Mock de dados do usuário (será substituído por autenticação real)
+  // Estado para controlar o dialog de confirmação de logout
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+
+  // Hook de autenticação
+  const { user: authUser, isLoading, signOut } = useAuth()
+
+  // Derivar dados do usuário autenticado
   const user = {
-    name: 'Usuário Demo',
-    email: 'usuario@sicfar.com.br',
-    initials: 'UD',
+    name: authUser?.email?.split('@')[0] || 'Usuário',
+    email: authUser?.email || '',
+    initials: authUser?.email?.substring(0, 2).toUpperCase() || 'U',
     photoUrl: null,
   }
 
@@ -95,6 +113,28 @@ export default function Home() {
   const handleSelecionarEquipamento = () => {
     setModalOperacaoAberto(false)
     navigate('/operacao-equipamento')
+  }
+
+  /**
+   * Abre o dialog de confirmação de logout
+   */
+  const handleOpenLogoutDialog = () => {
+    setShowLogoutDialog(true)
+  }
+
+  /**
+   * Fecha o dialog de confirmação sem fazer logout
+   */
+  const handleCancelLogout = () => {
+    setShowLogoutDialog(false)
+  }
+
+  /**
+   * Confirma e realiza logout do sistema
+   */
+  const handleConfirmLogout = async () => {
+    setShowLogoutDialog(false)
+    await signOut()
   }
 
   // Definição dos módulos de navegação
@@ -214,7 +254,7 @@ export default function Home() {
                     <Avatar className="h-10 w-10 tab-prod:h-8 tab-prod:w-8">
                       {user.photoUrl && <AvatarImage src={user.photoUrl} alt={user.name} />}
                       <AvatarFallback className="bg-primary text-white tab-prod:text-xs">
-                        {user.initials}
+                        {isLoading ? '...' : user.initials}
                       </AvatarFallback>
                     </Avatar>
                     <ChevronDown className="h-4 w-4 tab-prod:h-3 tab-prod:w-3 text-muted-foreground" />
@@ -231,7 +271,8 @@ export default function Home() {
                       <span>Configurações</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem onClick={handleOpenLogoutDialog} className="text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" />
                       <span>Sair</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -274,6 +315,24 @@ export default function Home() {
         onSelecionarOrdemProducao={handleSelecionarOrdemProducao}
         onSelecionarEquipamento={handleSelecionarEquipamento}
       />
+
+      {/* Dialog de Confirmação de Logout */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar saída</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja sair do sistema? Você precisará fazer login novamente para acessar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelLogout}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLogout} className="bg-destructive hover:bg-destructive/90">
+              Sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
