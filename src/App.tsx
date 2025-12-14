@@ -11,6 +11,8 @@ import ApontamentoOEE from './pages/ApontamentoOEE'
 import Turnos from './pages/Turnos'
 import TurnosCad from './pages/TurnosCad'
 import Placeholder from './pages/Placeholder'
+import Login from './pages/Login'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
 
 /**
@@ -22,109 +24,128 @@ function App() {
     <Router>
       <Toaster />
       <Routes>
+        {/* Rota pública de Login */}
+        <Route path="/login" element={<Login />} />
+
         {/* Página Home */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
 
         {/* Dashboard com gráficos OEE */}
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
         {/* Página de Operação - Kanban de OPs */}
-        <Route path="/operacao" element={<Operacao />} />
+        <Route path="/operacao" element={<ProtectedRoute><Operacao /></ProtectedRoute>} />
 
         {/* Página de Operação - Por Equipamento */}
-        <Route path="/operacao-equipamento" element={<OperacaoPorEquipamento />} />
+        <Route path="/operacao-equipamento" element={<ProtectedRoute><OperacaoPorEquipamento /></ProtectedRoute>} />
 
         {/* Página de Detalhes de OP */}
-        <Route path="/operacao/:numeroOP" element={<OperacaoDetalheOP />} />
+        <Route path="/operacao/:numeroOP" element={<ProtectedRoute><OperacaoDetalheOP /></ProtectedRoute>} />
 
         {/* Página de Apontamento de OEE */}
-        <Route path="/apontamento-oee" element={<ApontamentoOEE />} />
+        <Route path="/apontamento-oee" element={<ProtectedRoute><ApontamentoOEE /></ProtectedRoute>} />
 
         {/* Página de Perfil do Colaborador */}
-        <Route path="/colaborador/:id" element={<ColaboradorPerfil />} />
+        <Route path="/colaborador/:id" element={<ProtectedRoute><ColaboradorPerfil /></ProtectedRoute>} />
 
         {/* Páginas placeholder para módulos em desenvolvimento */}
         <Route
           path="/ordem-producao"
           element={
-            <Placeholder
-              title="Ordem de Produção"
-              description="Gestão de ordens de produção ativas e histórico de produção."
-            />
+            <ProtectedRoute>
+              <Placeholder
+                title="Ordem de Produção"
+                description="Gestão de ordens de produção ativas e histórico de produção."
+              />
+            </ProtectedRoute>
           }
         />
-        <Route 
-          path="/apontamento" 
+        <Route
+          path="/apontamento"
           element={
-            <Placeholder 
-              title="Apontamento" 
-              description="Registro contemporâneo de paradas, perdas de qualidade e trocas de turno."
-            />
-          } 
+            <ProtectedRoute>
+              <Placeholder
+                title="Apontamento"
+                description="Registro contemporâneo de paradas, perdas de qualidade e trocas de turno."
+              />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/paradas"
           element={
-            <Placeholder
-              title="Paradas"
-              description="Análise de paradas e gerenciamento de Books de Paradas por linha."
-            />
+            <ProtectedRoute>
+              <Placeholder
+                title="Paradas"
+                description="Análise de paradas e gerenciamento de Books de Paradas por linha."
+              />
+            </ProtectedRoute>
           }
         />
         {/* Página de Linhas de Produção - Consulta */}
-        <Route path="/equipamentos" element={<LinhaProducaoConsulta />} />
+        <Route path="/equipamentos" element={<ProtectedRoute><LinhaProducaoConsulta /></ProtectedRoute>} />
 
         {/* Páginas de Turnos - Gerenciamento de Turnos */}
-        <Route path="/turno" element={<Turnos />} />
-        <Route path="/turno/:id" element={<TurnosCad />} />
-        <Route 
-          path="/usuarios" 
+        <Route path="/turno" element={<ProtectedRoute><Turnos /></ProtectedRoute>} />
+        <Route path="/turno/:id" element={<ProtectedRoute><TurnosCad /></ProtectedRoute>} />
+        <Route
+          path="/usuarios"
           element={
-            <Placeholder 
-              title="Usuários" 
-              description="Gerenciamento de usuários, permissões e roles (Operador, Supervisor, Gestor, Admin)."
-            />
-          } 
+            <ProtectedRoute>
+              <Placeholder
+                title="Usuários"
+                description="Gerenciamento de usuários, permissões e roles (Operador, Supervisor, Gestor, Admin)."
+              />
+            </ProtectedRoute>
+          }
         />
         {/* Página de Armazéns - Gestão de Armazéns de Estoque */}
-        <Route path="/armazens" element={<ArmazemSaldo />} />
-        <Route 
-          path="/ordem-servico" 
+        <Route path="/armazens" element={<ProtectedRoute><ArmazemSaldo /></ProtectedRoute>} />
+        <Route
+          path="/ordem-servico"
           element={
-            <Placeholder 
-              title="Ordem de Serviço" 
-              description="Manutenção preventiva e corretiva, ordens de serviço."
-            />
-          } 
+            <ProtectedRoute>
+              <Placeholder
+                title="Ordem de Serviço"
+                description="Manutenção preventiva e corretiva, ordens de serviço."
+              />
+            </ProtectedRoute>
+          }
         />
-        <Route 
-          path="/auditoria" 
+        <Route
+          path="/auditoria"
           element={
-            <Placeholder 
-              title="Auditoria" 
-              description="Audit trail completo, rastreabilidade de alterações e conformidade ALCOA+."
-            />
-          } 
+            <ProtectedRoute>
+              <Placeholder
+                title="Auditoria"
+                description="Audit trail completo, rastreabilidade de alterações e conformidade ALCOA+."
+              />
+            </ProtectedRoute>
+          }
         />
-        <Route 
-          path="/configuracoes" 
+        <Route
+          path="/configuracoes"
           element={
-            <Placeholder 
-              title="Configurações" 
-              description="Configurações gerais do sistema, velocidades nominais e metas de OEE."
-            />
-          } 
+            <ProtectedRoute>
+              <Placeholder
+                title="Configurações"
+                description="Configurações gerais do sistema, velocidades nominais e metas de OEE."
+              />
+            </ProtectedRoute>
+          }
         />
 
         {/* Rota 404 - Página não encontrada */}
-        <Route 
-          path="*" 
+        <Route
+          path="*"
           element={
-            <Placeholder 
-              title="Página Não Encontrada" 
-              description="A página que você está procurando não existe."
-            />
-          } 
+            <ProtectedRoute>
+              <Placeholder
+                title="Página Não Encontrada"
+                description="A página que você está procurando não existe."
+              />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </Router>
