@@ -58,16 +58,16 @@ function BrandingSection() {
 
       {/* Conteúdo sobre o vídeo */}
       <div className="relative z-10 flex flex-col justify-end p-12 text-white">
-        <div className="max-w-md space-y-4">
-          <div className="flex items-center gap-3">
+        <div className="max-w-md lg:max-w-none space-y-4">
+          <div className="flex items-center gap-3 lg:w-[28rem]">
             <Shield className="h-10 w-10" aria-hidden="true" />
-            <span className="text-2xl font-bold tracking-tight">OEE SicFar</span>
+            <span className="text-2xl font-bold tracking-tight">SICFAR OEE</span>
           </div>
-          <h1 className="text-3xl xl:text-4xl font-bold leading-tight">
-            SICFAR para Monitoramento da Eficiência Operacional de Equipamentos.
+          <h1 className="text-3xl lg:text-[1.75rem] font-bold leading-tight lg:w-[28rem]">
+            Monitoramento da Eficiência<br className="hidden lg:block" /> Operacional de Equipamentos.
           </h1>
-          <p className="text-lg text-white/90 leading-relaxed">
-            SICFAR para Monitoramento da Eficiência Operacional de Equipamentos.
+          <p className="text-lg text-white/90 leading-relaxed xl:whitespace-nowrap">
+            Disponibilidade, Performance e Qualidade. Tudo em um só lugar.
           </p>
         </div>
       </div>
