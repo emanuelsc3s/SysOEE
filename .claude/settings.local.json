@@ -13,7 +13,8 @@
       "SlashCommand(/BMad:agents:po)",
       "mcp__ide__getDiagnostics",
       "Bash(kill:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []

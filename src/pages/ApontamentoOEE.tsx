@@ -11,7 +11,7 @@ import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, Arro
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
-import { buscarOPTOTVSPorNumero, obterTodasOPs } from '@/data/ordem-producao-totvs'
+import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import paradasGeraisData from '../../data/paradas.json'
 import { Turno } from '@/types/operacao'
 import {
@@ -83,6 +83,7 @@ import {
 import { AppHeader } from "@/components/layout/AppHeader"
 import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
 import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
+import { ModalBuscaSKU, type SKUSelecionado } from "@/components/modal/ModalBuscaSKU"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -198,6 +199,7 @@ export default function ApontamentoOEE() {
   const [turnoCodigo, setTurnoCodigo] = useState<string>('') // Código do turno
   const [turnoNome, setTurnoNome] = useState<string>('') // Nome do turno
   const [modalBuscaTurnoAberto, setModalBuscaTurnoAberto] = useState<boolean>(false)
+  const [modalBuscaSKUAberto, setModalBuscaSKUAberto] = useState<boolean>(false)
   const [turnoHoraInicial, setTurnoHoraInicial] = useState<string>('') // Hora inicial do turno
   const [turnoHoraFinal, setTurnoHoraFinal] = useState<string>('') // Hora final do turno
   const [linhaId, setLinhaId] = useState<string>('')
@@ -1417,54 +1419,6 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Busca dados da Ordem de Produção e popula os campos do formulário
-   * Busca no arquivo JSON real do TOTVS (ordem-producao.json)
-   */
-  const buscarDadosOP = () => {
-    // Validar se o campo OP está preenchido
-    if (!ordemProducao.trim()) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Por favor, digite o número da Ordem de Produção',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // Buscar a OP no JSON do TOTVS pelo campo C2_NUM
-    const opEncontrada = buscarOPTOTVSPorNumero(ordemProducao.trim())
-
-    if (!opEncontrada) {
-      toast({
-        title: 'OP não encontrada',
-        description: `Ordem de Produção "${ordemProducao}" não foi encontrada no sistema`,
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // Popular os campos do formulário com dados do TOTVS
-    // C2_PRODUTO + B1_DESC -> SKU (código do produto + descrição)
-    setSkuCodigo(`${opEncontrada.C2_PRODUTO} - ${opEncontrada.B1_DESC}`)
-
-    // C2_YLOTE -> Lote
-    setLote(opEncontrada.C2_YLOTE)
-
-    // C2_YDOSSIE -> Dossie
-    setDossie(opEncontrada.C2_YDOSSIE)
-
-    // Nota: O JSON do TOTVS não possui informação sobre linha de produção
-    // O usuário deve selecionar manualmente a linha
-
-    // Exibir mensagem de sucesso com informações do produto
-    toast({
-      title: 'Dados carregados com sucesso',
-      description: `OP ${ordemProducao} - ${opEncontrada.B1_DESC}`,
-      variant: 'default'
-    })
-  }
-
-  /**
    * Abre o modal de busca de paradas
    */
   const abrirModalBuscaParadas = () => {
@@ -1511,6 +1465,27 @@ export default function ApontamentoOEE() {
     toast({
       title: 'Turno selecionado',
       description: `${turnoSelecionado.codigo} - ${turnoSelecionado.turno} (${turnoSelecionado.horaInicio} - ${turnoSelecionado.horaFim})`,
+      variant: 'default'
+    })
+  }
+
+  /**
+   * Abre o modal de busca de SKU
+   */
+  const abrirModalBuscaSKU = () => {
+    setModalBuscaSKUAberto(true)
+  }
+
+  /**
+   * Callback quando um SKU é selecionado no modal
+   */
+  const handleSelecionarSKUModal = (skuSelecionado: SKUSelecionado) => {
+    // Preenche o campo SKU com código + descrição
+    setSkuCodigo(`${skuSelecionado.codigo} - ${skuSelecionado.descricao}`)
+
+    toast({
+      title: 'Produto selecionado',
+      description: `${skuSelecionado.codigo} - ${skuSelecionado.descricao}`,
       variant: 'default'
     })
   }
@@ -2814,41 +2789,31 @@ export default function ApontamentoOEE() {
                 </div>
               </div>
 
-              {/* Terceira linha: OP (com busca), SKU, Lote, Dossie */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
-                <div>
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Ordem de Produção</span>
+              {/* Terceira linha: Produto SKU (com busca), Lote */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
+                <div className="md:col-span-2">
+                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Produto SKU</span>
                   <div className="flex gap-2">
-                    <input
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    <Input
                       type="text"
-                      value={ordemProducao}
-                      onChange={(e) => setOrdemProducao(e.target.value)}
-                      placeholder="Digite a OP"
+                      value={skuCodigo}
+                      readOnly
                       disabled={cabecalhoBloqueado}
+                      placeholder="Selecione um produto SKU"
+                      className="flex-1 bg-muted/50 cursor-not-allowed"
                     />
-                    <button
+                    <Button
                       type="button"
-                      onClick={buscarDadosOP}
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
+                      variant="outline"
+                      size="icon"
+                      onClick={abrirModalBuscaSKU}
                       disabled={cabecalhoBloqueado}
-                      title="Buscar dados da Ordem de Produção"
+                      title="Buscar produto SKU"
+                      className="flex-none"
                     >
                       <Search className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">SKU</span>
-                  <input
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    type="text"
-                    value={skuCodigo}
-                    onChange={(e) => setSkuCodigo(e.target.value)}
-                    placeholder="Digite o código SKU"
-                    disabled={cabecalhoBloqueado}
-                  />
                 </div>
 
                 <div>
@@ -4352,6 +4317,20 @@ export default function ApontamentoOEE() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Busca de Turno */}
+      <ModalBuscaTurno
+        aberto={modalBuscaTurnoAberto}
+        onFechar={() => setModalBuscaTurnoAberto(false)}
+        onSelecionarTurno={handleSelecionarTurnoModal}
+      />
+
+      {/* Modal de Busca de SKU */}
+      <ModalBuscaSKU
+        aberto={modalBuscaSKUAberto}
+        onFechar={() => setModalBuscaSKUAberto(false)}
+        onSelecionarSKU={handleSelecionarSKUModal}
+      />
     </>
   )
 }
