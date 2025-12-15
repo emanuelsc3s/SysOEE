@@ -162,8 +162,8 @@ export default function Home() {
     {
       title: 'Apontamento OEE',
       icon: <FileText size={40} />,
-      path: '/apontamento-oee',
-      description: 'Registro de produção, qualidade e cálculo de OEE em tempo real'
+      path: '/oee-turno',
+      description: 'Listagem e consulta de apontamentos de OEE por turno'
     },
     {
       title: 'Paradas',

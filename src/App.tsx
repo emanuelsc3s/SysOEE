@@ -10,6 +10,7 @@ import LinhaProducaoConsulta from './pages/LinhaProducaoConsulta'
 import ApontamentoOEE from './pages/ApontamentoOEE'
 import Turnos from './pages/Turnos'
 import TurnosCad from './pages/TurnosCad'
+import OeeTurno from './pages/OeeTurno'
 import Placeholder from './pages/Placeholder'
 import Login from './pages/Login'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -44,6 +45,9 @@ function App() {
 
         {/* Página de Apontamento de OEE */}
         <Route path="/apontamento-oee" element={<ProtectedRoute><ApontamentoOEE /></ProtectedRoute>} />
+
+        {/* Página de Listagem de Apontamentos OEE por Turno */}
+        <Route path="/oee-turno" element={<ProtectedRoute><OeeTurno /></ProtectedRoute>} />
 
         {/* Página de Perfil do Colaborador */}
         <Route path="/colaborador/:id" element={<ProtectedRoute><ColaboradorPerfil /></ProtectedRoute>} />

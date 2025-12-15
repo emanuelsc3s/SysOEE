@@ -1437,6 +1437,7 @@ export default function ApontamentoOEE() {
     setTurnoId(turnoSelecionado.turno_id)
     setTurnoCodigo(turnoSelecionado.codigo)
     setTurnoNome(turnoSelecionado.turno)
+    setTurno(turnoSelecionado.turno as Turno)  // Sincroniza o estado turno para o DTO de salvamento
     setTurnoHoraInicial(turnoSelecionado.horaInicio)
     setTurnoHoraFinal(turnoSelecionado.horaFim)
 
