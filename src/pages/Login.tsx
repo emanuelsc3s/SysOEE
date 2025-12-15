@@ -37,6 +37,23 @@ function isEmail(value: string): boolean {
 }
 
 /**
+ * Componente MobileBackground
+ * Background minimalista e corporativo para dispositivos mobile
+ * Visível apenas em telas menores que 640px (sm breakpoint)
+ */
+function MobileBackground() {
+  return (
+    <div className="sm:hidden absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {/* Gradiente vertical sutil - do azul corporativo para branco */}
+      <div className="absolute inset-0 bg-gradient-to-b from-brand-primary via-brand-primary/95 to-brand-primary/90 h-[35%]" />
+
+      {/* Linha divisória elegante */}
+      <div className="absolute top-[35%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+    </div>
+  )
+}
+
+/**
  * Componente BrandingSection
  * Seção esquerda com vídeo de apresentação e branding
  * Inspirado no design do camera-web, adaptado para OEE SicFar
@@ -276,113 +293,215 @@ export default function Login() {
 
       {/* Seção Formulário (Direita) */}
       <section
-        className="login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col items-center justify-between bg-brand-bg-primary p-3 sm:p-4 md:p-6 lg:p-8"
+        className={cn(
+          "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative",
+          // Mobile: fundo com área azul corporativa no topo
+          "max-sm:bg-brand-bg-primary",
+          // Tablet/Desktop: fundo padrão
+          "sm:bg-brand-bg-primary sm:p-4 md:p-6 lg:p-8 sm:items-center sm:justify-between"
+        )}
         aria-label="Formulário de login"
       >
-        {/* Logo Farmace */}
-        <div className="mb-2 sm:mb-4 md:mb-6 flex justify-center shrink-0">
-          <img
-            src="/logo-farmace.png"
-            alt="Farmace"
-            className="h-10 sm:h-12 md:h-16 lg:h-20 w-auto"
-          />
+        {/* Background corporativo para mobile */}
+        <MobileBackground />
+
+        {/* ===== LAYOUT MOBILE (< 640px) ===== */}
+        <div className="sm:hidden relative z-10 flex flex-col h-full">
+
+          {/* Header azul com logo e título */}
+          <div className="flex flex-col items-center pt-8 pb-6 px-6">
+            <img
+              src="/logo-farmace.png"
+              alt="Farmace"
+              className="h-20 w-auto mb-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)]"
+            />
+            <h1 className="text-lg font-semibold text-white/90 tracking-wide">
+              SICFAR OEE
+            </h1>
+            <p className="text-sm text-white/70 mt-1">
+              Monitoramento de Eficiência
+            </p>
+          </div>
+
+          {/* Card de login - área branca arredondada */}
+          <div className="flex-1 bg-white rounded-t-3xl px-6 pt-8 pb-4 flex flex-col">
+
+            {/* Título do formulário */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-brand-text-primary">
+                Acesse sua conta
+              </h2>
+              <p className="text-sm text-brand-text-secondary mt-1">
+                Digite suas credenciais para continuar
+              </p>
+            </div>
+
+            {/* Formulário */}
+            <form onSubmit={handleLogin} className="space-y-4 flex-1">
+              {/* Campo Usuário */}
+              <div className="space-y-1.5">
+                <Label htmlFor="credential" className="text-brand-text-primary font-medium text-sm">
+                  Usuário
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-brand-text-secondary" />
+                  <Input
+                    id="credential"
+                    name="credential"
+                    type="text"
+                    placeholder="Digite seu usuário"
+                    value={formData.credential}
+                    onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
+                    disabled={isLoading}
+                    required
+                    autoComplete="username"
+                    className="pl-10 h-12 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Campo Senha */}
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-brand-text-primary font-medium text-sm">
+                  Senha
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-brand-text-secondary" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    disabled={isLoading}
+                    required
+                    className="pl-10 h-12 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Botão Submit */}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 text-base font-medium bg-brand-primary hover:bg-brand-primary/90 rounded-lg mt-2 transition-all"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  'Entrar'
+                )}
+              </Button>
+            </form>
+
+            {/* Copyright */}
+            <div className="mt-auto pt-4">
+              <p className="text-xs text-center text-brand-text-secondary/60">
+                © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Container central flexível para o card */}
-        <div className="flex-1 flex items-center justify-center w-full min-h-0">
-          <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up transition-lift hover:shadow-xl">
-            <CardHeader className="space-y-1 sm:space-y-2 pb-3 sm:pb-4 md:pb-6 pt-4 sm:pt-6">
-              <CardTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-brand-text-primary text-center">
-                Bem-vindo
-              </CardTitle>
-              <CardDescription className="text-center text-sm sm:text-base text-brand-text-secondary">
-                Faça login para acessar o sistema
-              </CardDescription>
-            </CardHeader>
+        {/* ===== LAYOUT TABLET/DESKTOP (≥ 640px) ===== */}
+        <div className="hidden sm:flex sm:flex-col sm:items-center sm:justify-between sm:h-full sm:w-full">
 
-            <CardContent className="pb-4 sm:pb-6">
-              <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 md:space-y-5">
-                {/* Campo Usuário */}
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="credential" className="text-brand-text-primary font-medium text-sm sm:text-base">
-                    Usuário
-                  </Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="credential"
-                      name="credential"
-                      type="text"
-                      placeholder="Digite seu usuário"
-                      value={formData.credential}
-                      onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
-                      disabled={isLoading}
-                      required
-                      autoComplete="username"
-                      className={cn(
-                        "pl-10 h-10 sm:h-11",
-                        "focus:ring-2 focus:ring-primary focus:border-primary",
-                        "transition-all duration-200"
-                      )}
-                    />
+          {/* Logo Farmace */}
+          <div className="mb-4 md:mb-6 flex justify-center shrink-0">
+            <img
+              src="/logo-farmace.png"
+              alt="Farmace"
+              className="h-12 md:h-16 lg:h-20 w-auto"
+            />
+          </div>
+
+          {/* Container central flexível para o card */}
+          <div className="flex-1 flex items-center justify-center w-full min-h-0">
+            <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up transition-lift hover:shadow-xl">
+              <CardHeader className="space-y-2 pb-4 md:pb-6 pt-6">
+                <CardTitle className="text-2xl md:text-3xl font-bold text-brand-text-primary text-center">
+                  Bem-vindo
+                </CardTitle>
+                <CardDescription className="text-center text-base text-brand-text-secondary">
+                  Faça login para acessar o sistema
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="pb-6">
+                <form onSubmit={handleLogin} className="space-y-4 md:space-y-5">
+                  {/* Campo Usuário */}
+                  <div className="space-y-2">
+                    <Label htmlFor="credential-desktop" className="text-brand-text-primary font-medium text-base">
+                      Usuário
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="credential-desktop"
+                        name="credential"
+                        type="text"
+                        placeholder="Digite seu usuário"
+                        value={formData.credential}
+                        onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
+                        disabled={isLoading}
+                        required
+                        autoComplete="username"
+                        className="pl-10 h-11 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Campo Senha */}
-                <div className="space-y-1 sm:space-y-2">
-                  <Label htmlFor="password" className="text-brand-text-primary font-medium text-sm sm:text-base">
-                    Senha
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      disabled={isLoading}
-                      required
-                      className={cn(
-                        "pl-10 h-10 sm:h-11",
-                        "focus:ring-2 focus:ring-primary focus:border-primary",
-                        "transition-all duration-200"
-                      )}
-                    />
+                  {/* Campo Senha */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password-desktop" className="text-brand-text-primary font-medium text-base">
+                      Senha
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password-desktop"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        disabled={isLoading}
+                        required
+                        className="pl-10 h-11 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* Botão Submit */}
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className={cn(
-                    "w-full h-10 sm:h-11 text-sm sm:text-base font-semibold",
-                    "bg-primary hover:bg-primary/90",
-                    "transition-all duration-200",
-                    "shadow-md hover:shadow-lg"
-                  )}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Entrando...
-                    </>
-                  ) : (
-                    'Entrar'
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+                  {/* Botão Submit */}
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Entrando...
+                      </>
+                    ) : (
+                      'Entrar'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Copyright */}
-        <div className="mt-2 sm:mt-4 md:mt-6 text-center shrink-0">
-          <p className="text-xs sm:text-sm text-brand-text-secondary">
-            © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
-          </p>
+          {/* Copyright */}
+          <div className="mt-4 md:mt-6 text-center shrink-0">
+            <p className="text-sm text-brand-text-secondary">
+              © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
+            </p>
+          </div>
         </div>
       </section>
 
