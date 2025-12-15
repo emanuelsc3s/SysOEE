@@ -315,11 +315,11 @@ export default function Login() {
               alt="Farmace"
               className="h-20 w-auto mb-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)]"
             />
-            <h1 className="text-lg font-semibold text-white/90 tracking-wide">
+            <h1 className="text-2xl font-semibold text-white/90 tracking-wide text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)] transition-all duration-500">
               SICFAR OEE
             </h1>
-            <p className="text-sm text-white/70 mt-1">
-              Monitoramento de Eficiência
+            <p className="text-sm text-white/70 mt-1 text-shimmer drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] hover:drop-shadow-[0_0_18px_rgba(255,255,255,0.4)] transition-all duration-500">
+              Monitoramento de Eficiência Operacional
             </p>
           </div>
 
