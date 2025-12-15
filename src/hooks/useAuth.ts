@@ -73,7 +73,7 @@ export function useAuth(): UseAuthReturn {
      * Busca a sessão atual do Supabase ao montar o componente
      */
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email } : null)
+      setUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
       setIsLoading(false)
     })
 
@@ -86,7 +86,7 @@ export function useAuth(): UseAuthReturn {
      * - Logout acontece em outra aba (sincronização automática)
      */
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email } : null)
+      setUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
       setIsLoading(false)
     })
 
