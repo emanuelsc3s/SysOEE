@@ -120,6 +120,37 @@
   }
 
   /*
+    Estilos específicos para página de login
+    Garante que não haja scroll vertical em nenhum dispositivo
+  */
+  html:has(.login-page),
+  body:has(.login-page) {
+    height: 100vh;
+    height: 100dvh; /* Dynamic Viewport Height - resolve problema da barra de endereço mobile */
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  .login-page {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .login-page-section {
+    height: 100%;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  /*
     Otimizações para tablets com alto DPI (Device Pixel Ratio)
 
     Problema: Tablets como Samsung Galaxy Tab A7 Lite (1340x800px físicos, 196 DPI)
@@ -135,8 +166,12 @@
       font-size: 16px;
     }
 
-    /* Ajusta tamanhos mínimos de toque para tablets */
-    button, a, input, select, textarea {
+    /* Ajusta tamanhos mínimos de toque para tablets - exceto na página de login */
+    body:not(:has(.login-page)) button,
+    body:not(:has(.login-page)) a,
+    body:not(:has(.login-page)) input,
+    body:not(:has(.login-page)) select,
+    body:not(:has(.login-page)) textarea {
       min-height: 44px; /* Tamanho mínimo recomendado para toque */
     }
   }

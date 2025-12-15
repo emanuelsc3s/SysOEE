@@ -44,7 +44,7 @@ function isEmail(value: string): boolean {
 function BrandingSection() {
   return (
     <section
-      className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden"
+      className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden login-page-section"
       aria-label="Vídeo institucional da linha de produção"
     >
       {/* Vídeo de fundo */}
@@ -270,114 +270,117 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="login-page flex flex-col lg:flex-row">
       {/* Seção Branding (Esquerda) */}
       <BrandingSection />
 
       {/* Seção Formulário (Direita) */}
       <section
-        className="flex-1 lg:w-1/2 xl:w-2/5 flex flex-col items-center justify-between bg-brand-bg-primary p-4 md:p-8"
+        className="login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col items-center justify-between bg-brand-bg-primary p-3 sm:p-4 md:p-6 lg:p-8"
         aria-label="Formulário de login"
       >
         {/* Logo Farmace */}
-        <div className="mb-8 flex justify-center">
+        <div className="mb-2 sm:mb-4 md:mb-6 flex justify-center shrink-0">
           <img
             src="/logo-farmace.png"
             alt="Farmace"
-            className="h-16 md:h-20 w-auto"
+            className="h-10 sm:h-12 md:h-16 lg:h-20 w-auto"
           />
         </div>
 
-        <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up transition-lift hover:shadow-xl">
-          <CardHeader className="space-y-2 pb-6">
-            <CardTitle className="text-2xl md:text-3xl font-bold text-brand-text-primary text-center">
-              Bem-vindo
-            </CardTitle>
-            <CardDescription className="text-center text-base text-brand-text-secondary">
-              Faça login para acessar o sistema
-            </CardDescription>
-          </CardHeader>
+        {/* Container central flexível para o card */}
+        <div className="flex-1 flex items-center justify-center w-full min-h-0">
+          <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up transition-lift hover:shadow-xl">
+            <CardHeader className="space-y-1 sm:space-y-2 pb-3 sm:pb-4 md:pb-6 pt-4 sm:pt-6">
+              <CardTitle className="text-xl sm:text-2xl md:text-3xl font-bold text-brand-text-primary text-center">
+                Bem-vindo
+              </CardTitle>
+              <CardDescription className="text-center text-sm sm:text-base text-brand-text-secondary">
+                Faça login para acessar o sistema
+              </CardDescription>
+            </CardHeader>
 
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Campo Usuário */}
-              <div className="space-y-2">
-                <Label htmlFor="credential" className="text-brand-text-primary font-medium">
-                  Usuário
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="credential"
-                    name="credential"
-                    type="text"
-                    placeholder="Digite seu usuário"
-                    value={formData.credential}
-                    onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
-                    disabled={isLoading}
-                    required
-                    autoComplete="username"
-                    className={cn(
-                      "pl-10 h-11",
-                      "focus:ring-2 focus:ring-primary focus:border-primary",
-                      "transition-all duration-200"
-                    )}
-                  />
+            <CardContent className="pb-4 sm:pb-6">
+              <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 md:space-y-5">
+                {/* Campo Usuário */}
+                <div className="space-y-1 sm:space-y-2">
+                  <Label htmlFor="credential" className="text-brand-text-primary font-medium text-sm sm:text-base">
+                    Usuário
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="credential"
+                      name="credential"
+                      type="text"
+                      placeholder="Digite seu usuário"
+                      value={formData.credential}
+                      onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
+                      disabled={isLoading}
+                      required
+                      autoComplete="username"
+                      className={cn(
+                        "pl-10 h-10 sm:h-11",
+                        "focus:ring-2 focus:ring-primary focus:border-primary",
+                        "transition-all duration-200"
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Campo Senha */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-brand-text-primary font-medium">
-                  Senha
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    disabled={isLoading}
-                    required
-                    className={cn(
-                      "pl-10 h-11",
-                      "focus:ring-2 focus:ring-primary focus:border-primary",
-                      "transition-all duration-200"
-                    )}
-                  />
+                {/* Campo Senha */}
+                <div className="space-y-1 sm:space-y-2">
+                  <Label htmlFor="password" className="text-brand-text-primary font-medium text-sm sm:text-base">
+                    Senha
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      disabled={isLoading}
+                      required
+                      className={cn(
+                        "pl-10 h-10 sm:h-11",
+                        "focus:ring-2 focus:ring-primary focus:border-primary",
+                        "transition-all duration-200"
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Botão Submit */}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className={cn(
-                  "w-full h-11 text-base font-semibold",
-                  "bg-primary hover:bg-primary/90",
-                  "transition-all duration-200",
-                  "shadow-md hover:shadow-lg"
-                )}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  'Entrar'
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                {/* Botão Submit */}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className={cn(
+                    "w-full h-10 sm:h-11 text-sm sm:text-base font-semibold",
+                    "bg-primary hover:bg-primary/90",
+                    "transition-all duration-200",
+                    "shadow-md hover:shadow-lg"
+                  )}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : (
+                    'Entrar'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Copyright */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-brand-text-secondary">
+        <div className="mt-2 sm:mt-4 md:mt-6 text-center shrink-0">
+          <p className="text-xs sm:text-sm text-brand-text-secondary">
             © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
           </p>
         </div>
