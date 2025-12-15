@@ -109,9 +109,6 @@ interface RegistroProducao {
   linhaId: string
   linhaNome: string
   skuCodigo: string
-  ordemProducao: string
-  lote: string
-  dossie: string
   horaInicio: string
   horaFim: string
   quantidadeProduzida: number
@@ -157,8 +154,9 @@ interface LoteProducao {
   horaInicial: string
   horaFinal: string
   quantidadePerdas: number
-  quantidadeRetrabalho: number
-  quantidadeProduzida: number
+  quantidadeProduzidaInicial: number
+  quantidadeProduzidaFinal: number
+  quantidadeProduzida: number // Calculado: Final - Inicial
 }
 
 // Tipo para dados do formulário de lote (sem ID para cadastro)
@@ -168,8 +166,8 @@ interface DadosLote {
   horaInicial: string
   horaFinal: string
   quantidadePerdas: number
-  quantidadeRetrabalho: number
-  quantidadeProduzida: number
+  quantidadeProduzidaInicial: number
+  quantidadeProduzidaFinal: number
 }
 
 // Estado inicial do formulário de lote
@@ -179,8 +177,8 @@ const estadoInicialLote: DadosLote = {
   horaInicial: '',
   horaFinal: '',
   quantidadePerdas: 0,
-  quantidadeRetrabalho: 0,
-  quantidadeProduzida: 0
+  quantidadeProduzidaInicial: 0,
+  quantidadeProduzidaFinal: 0
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
@@ -204,9 +202,6 @@ export default function ApontamentoOEE() {
   const [turnoHoraFinal, setTurnoHoraFinal] = useState<string>('') // Hora final do turno
   const [linhaId, setLinhaId] = useState<string>('')
   const [skuCodigo, setSkuCodigo] = useState<string>('')
-  const [ordemProducao, setOrdemProducao] = useState<string>('')
-  const [lote, setLote] = useState<string>('')
-  const [dossie, setDossie] = useState<string>('')
   const [editandoCabecalho, setEditandoCabecalho] = useState<boolean>(false)
   const [cabecalhoOriginal, setCabecalhoOriginal] = useState<{
     data: Date | undefined
@@ -218,9 +213,6 @@ export default function ApontamentoOEE() {
     turnoHoraFinal: string
     linhaId: string
     skuCodigo: string
-    ordemProducao: string
-    lote: string
-    dossie: string
   } | null>(null)
 
   // ==================== Estado de Controle de Turno ====================
@@ -449,8 +441,7 @@ export default function ApontamentoOEE() {
       dadosLote.numeroLote.trim() !== '' &&
       dadosLote.data !== '' &&
       dadosLote.horaInicial !== '' &&
-      dadosLote.horaFinal !== '' &&
-      dadosLote.quantidadeProduzida > 0
+      (dadosLote.quantidadeProduzidaInicial > 0 || dadosLote.quantidadeProduzidaFinal > 0)
     )
   }
 
@@ -469,11 +460,12 @@ export default function ApontamentoOEE() {
   const calcularTotaisLotes = () => {
     return lotesProducao.reduce(
       (acc, lote) => ({
+        totalProduzidoInicial: acc.totalProduzidoInicial + lote.quantidadeProduzidaInicial,
+        totalProduzidoFinal: acc.totalProduzidoFinal + lote.quantidadeProduzidaFinal,
         totalProduzido: acc.totalProduzido + lote.quantidadeProduzida,
-        totalPerdas: acc.totalPerdas + lote.quantidadePerdas,
-        totalRetrabalho: acc.totalRetrabalho + lote.quantidadeRetrabalho
+        totalPerdas: acc.totalPerdas + lote.quantidadePerdas
       }),
-      { totalProduzido: 0, totalPerdas: 0, totalRetrabalho: 0 }
+      { totalProduzidoInicial: 0, totalProduzidoFinal: 0, totalProduzido: 0, totalPerdas: 0 }
     )
   }
 
@@ -495,8 +487,8 @@ export default function ApontamentoOEE() {
       horaInicial: lote.horaInicial,
       horaFinal: lote.horaFinal,
       quantidadePerdas: lote.quantidadePerdas,
-      quantidadeRetrabalho: lote.quantidadeRetrabalho,
-      quantidadeProduzida: lote.quantidadeProduzida
+      quantidadeProduzidaInicial: lote.quantidadeProduzidaInicial,
+      quantidadeProduzidaFinal: lote.quantidadeProduzidaFinal
     })
     setLoteEmEdicao(lote.id)
     setFormularioLoteAberto(true)
@@ -522,7 +514,7 @@ export default function ApontamentoOEE() {
     if (!validarCamposLote()) {
       toast({
         title: 'Campos obrigatórios',
-        description: 'Por favor, preencha todos os campos obrigatórios: Número do Lote, Data, Hora Inicial, Hora Final e Quantidade Produzida.',
+        description: 'Por favor, preencha todos os campos obrigatórios: Número do Lote, Data, Hora Inicial e Quantidade Produzida (Inicial ou Final).',
         variant: 'destructive'
       })
       return
@@ -530,13 +522,18 @@ export default function ApontamentoOEE() {
 
     setSalvandoLote(true)
 
+    // Calcular quantidade produzida (Final - Inicial), apenas se a quantidade final for maior que zero
+    const quantidadeProduzidaCalculada = dadosLote.quantidadeProduzidaFinal > 0
+      ? dadosLote.quantidadeProduzidaFinal - dadosLote.quantidadeProduzidaInicial
+      : 0
+
     try {
       if (loteEmEdicao) {
         // Atualizar lote existente
         setLotesProducao(prev =>
           prev.map(lote =>
             lote.id === loteEmEdicao
-              ? { ...lote, ...dadosLote }
+              ? { ...lote, ...dadosLote, quantidadeProduzida: quantidadeProduzidaCalculada }
               : lote
           )
         )
@@ -547,8 +544,9 @@ export default function ApontamentoOEE() {
       } else {
         // Criar novo lote com ID único
         const novoLote: LoteProducao = {
-          id: `lote-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          ...dadosLote
+          id: `lote-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          ...dadosLote,
+          quantidadeProduzida: quantidadeProduzidaCalculada
         }
         setLotesProducao(prev => [...prev, novoLote])
         toast({
@@ -696,15 +694,6 @@ export default function ApontamentoOEE() {
       return
     }
 
-    if (!lote) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Digite o número do Lote',
-        variant: 'destructive'
-      })
-      return
-    }
-
     if (!linhaApontamento.quantidadeProduzida || Number(linhaApontamento.quantidadeProduzida) <= 0) {
       toast({
         title: 'Campo obrigatório',
@@ -751,8 +740,6 @@ export default function ApontamentoOEE() {
         turno,
         linha: linha.nome,
         setor: linha.setor,
-        ordemProducao: ordemProducao || 'S/N',
-        lote,
         sku: codigoSKU,
         produto: descricaoSKU,
         velocidadeNominal: 4000,
@@ -780,9 +767,6 @@ export default function ApontamentoOEE() {
         linhaId,
         linhaNome: linha.nome,
         skuCodigo,
-        ordemProducao,
-        lote,
-        dossie,
         horaInicio: linhaApontamento.horaInicio,
         horaFim: linhaApontamento.horaFim,
         quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
@@ -1047,7 +1031,7 @@ export default function ApontamentoOEE() {
           registro.data === registroExcluido.data &&
           registro.turno === registroExcluido.turno &&
           registro.linhaId === registroExcluido.linhaId &&
-          registro.lote === registroExcluido.lote
+          registro.skuCodigo === registroExcluido.skuCodigo
       )
       .sort((a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro))
 
@@ -1591,10 +1575,7 @@ export default function ApontamentoOEE() {
       data &&
       turnoId && // Validar turnoId ao invés de turno
       linhaId &&
-      skuCodigo.trim() &&
-      ordemProducao.trim() &&
-      lote.trim() &&
-      dossie.trim()
+      skuCodigo.trim()
     )
   }
 
@@ -1603,7 +1584,7 @@ export default function ApontamentoOEE() {
   /**
    * Pré-carrega dados de produção do histórico de OPs do TOTVS
    * Busca OPs ativas para a linha de produção selecionada
-   * Preenche automaticamente os campos de OP, Lote, Dossiê e SKU se houver apenas uma OP
+   * Preenche automaticamente o campo SKU se houver apenas uma OP
    */
   const preCarregarDadosProducao = useCallback(() => {
     try {
@@ -1655,9 +1636,7 @@ export default function ApontamentoOEE() {
         opUnica = opsRelevantes[0]
         console.log('✅ OP única encontrada, pré-preenchendo campos:', {
           numero: opUnica.C2_NUM,
-          produto: opUnica.C2_PRODUTO,
-          lote: opUnica.C2_YLOTE,
-          dossie: opUnica.C2_YDOSSIE
+          produto: opUnica.C2_PRODUTO
         })
       }
 
@@ -1675,7 +1654,6 @@ export default function ApontamentoOEE() {
           numero: op.C2_NUM,
           produto: op.C2_PRODUTO,
           descricao: op.B1_DESC,
-          lote: op.C2_YLOTE,
           quantidade: op.C2_QUANT
         }))
       })
@@ -1774,9 +1752,6 @@ export default function ApontamentoOEE() {
         setTurno(producaoReferencia.turno)
         setLinhaId(producaoReferencia.linhaId)
         setSkuCodigo(producaoReferencia.skuCodigo)
-        setOrdemProducao(producaoReferencia.ordemProducao)
-        setLote(producaoReferencia.lote)
-        setDossie(producaoReferencia.dossie)
         setHoraInicio(producaoReferencia.horaInicio)
         setHoraFim(producaoReferencia.horaFim)
         setQuantidadeProduzida(producaoReferencia.quantidadeProduzida.toString())
@@ -1964,19 +1939,12 @@ export default function ApontamentoOEE() {
 
     // Se houver apenas UMA OP, pré-preencher os campos do cabeçalho
     if (opUnica) {
-      setOrdemProducao(opUnica.C2_NUM.toString())
-      setLote(opUnica.C2_YLOTE)
-      setDossie(opUnica.C2_YDOSSIE)
-
       // Só preencher SKU se ainda não estiver preenchido
       if (!skuCodigo) {
         setSkuCodigo(opUnica.C2_PRODUTO)
       }
 
       console.log('✅ Campos do cabeçalho pré-preenchidos com OP única:', {
-        op: opUnica.C2_NUM,
-        lote: opUnica.C2_YLOTE,
-        dossie: opUnica.C2_YDOSSIE,
         sku: opUnica.C2_PRODUTO
       })
     }
@@ -2040,10 +2008,7 @@ export default function ApontamentoOEE() {
       turnoHoraInicial,
       turnoHoraFinal,
       linhaId,
-      skuCodigo,
-      ordemProducao,
-      lote,
-      dossie
+      skuCodigo
     })
     setEditandoCabecalho(true)
     toast({
@@ -2066,9 +2031,6 @@ export default function ApontamentoOEE() {
       setTurnoHoraFinal(cabecalhoOriginal.turnoHoraFinal)
       setLinhaId(cabecalhoOriginal.linhaId)
       setSkuCodigo(cabecalhoOriginal.skuCodigo)
-      setOrdemProducao(cabecalhoOriginal.ordemProducao)
-      setLote(cabecalhoOriginal.lote)
-      setDossie(cabecalhoOriginal.dossie)
     }
     setEditandoCabecalho(false)
     setCabecalhoOriginal(null)
@@ -2103,10 +2065,7 @@ export default function ApontamentoOEE() {
         turno,
         linhaId,
         linhaNome: linhaAtualizada?.nome || registro.linhaNome,
-        skuCodigo,
-        ordemProducao,
-        lote,
-        dossie
+        skuCodigo
       }))
 
       setHistoricoProducao(historicoAtualizado)
@@ -2118,8 +2077,6 @@ export default function ApontamentoOEE() {
           turno,
           linha: linhaAtualizada?.nome || registro.linhaNome,
           setor: linhaAtualizada?.setor,
-          ordemProducao: ordemProducao || 'S/N',
-          lote,
           sku: skuCodigo.includes(' - ') ? skuCodigo.split(' - ')[0].trim() : skuCodigo.trim(),
           produto: skuCodigo.includes(' - ')
             ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
@@ -2142,7 +2099,7 @@ export default function ApontamentoOEE() {
       historicoParadasAtualizado.forEach((parada) => {
         atualizarParada(parada.id, {
           linha_id: linhaId,
-          lote_id: lote || null,
+          lote_id: null,
           turno_id: turno,
           data_parada: dataISO || parada.data
         })
@@ -2435,7 +2392,7 @@ export default function ApontamentoOEE() {
     const paradaData: ParadaLocalStorage = {
       id: registroParada.id,
       linha_id: linhaId,
-      lote_id: lote || null,
+      lote_id: null,
       codigo_parada_id: paradaSelecionada.apontamento || 'CODIGO_TEMP',
       turno_id: turno,
       data_parada: format(data!, 'yyyy-MM-dd'),
@@ -2751,9 +2708,9 @@ export default function ApontamentoOEE() {
                 </div>
               </div>
 
-              {/* Segunda linha: Linha de Produção */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
-                <div>
+              {/* Segunda linha: Linha de Produção e Produto SKU */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-x-6 gap-y-2">
+                <div className="md:col-span-3">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
                   <Select value={linhaId} onValueChange={setLinhaId} disabled={cabecalhoBloqueado}>
                     <SelectTrigger className="w-full">
@@ -2787,11 +2744,7 @@ export default function ApontamentoOEE() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              {/* Terceira linha: Produto SKU (com busca), Lote */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
-                <div className="md:col-span-2">
+                <div className="md:col-span-9">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Produto SKU</span>
                   <div className="flex gap-2">
                     <Input
@@ -2815,34 +2768,9 @@ export default function ApontamentoOEE() {
                     </Button>
                   </div>
                 </div>
-
-                <div>
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Lote</span>
-                  <input
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    type="text"
-                    value={lote}
-                    onChange={(e) => setLote(e.target.value)}
-                    disabled={cabecalhoBloqueado}
-                  />
-                </div>
               </div>
 
-              {/* Terceira linha: Dossie */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-2">
-                <div className="md:col-span-4">
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Dossie</span>
-                  <input
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    type="text"
-                    value={dossie}
-                    onChange={(e) => setDossie(e.target.value)}
-                    disabled={cabecalhoBloqueado}
-                  />
-                </div>
-              </div>
-
-              {/* Terceira linha: Botão de Controle de Turno e edição de cabeçalho */}
+              {/* Botão de Controle de Turno e edição de cabeçalho */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 {statusTurno === 'INICIADO' && (
                   <div className="flex gap-2">
@@ -4117,10 +4045,10 @@ export default function ApontamentoOEE() {
                     />
                   </div>
 
-                  {/* Hora Final */}
+                  {/* Hora Final (opcional) */}
                   <div className="grid gap-1">
-                    <Label htmlFor="hora-final-lote" className="text-xs flex items-center gap-1">
-                      Hora Final <span className="text-red-500">*</span>
+                    <Label htmlFor="hora-final-lote" className="text-xs">
+                      Hora Final
                     </Label>
                     <Input
                       id="hora-final-lote"
@@ -4131,19 +4059,38 @@ export default function ApontamentoOEE() {
                     />
                   </div>
 
-                  {/* Quantidade Produzida */}
+                  {/* Quantidade Produzida Inicial */}
                   <div className="grid gap-1">
-                    <Label htmlFor="quantidade-produzida-lote" className="text-xs flex items-center gap-1">
-                      Qtd. Produzida <span className="text-red-500">*</span>
+                    <Label htmlFor="quantidade-produzida-inicial-lote" className="text-xs flex items-center gap-1">
+                      Qtd/Ciclo Inicial <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="quantidade-produzida-lote"
+                      id="quantidade-produzida-inicial-lote"
                       type="number"
                       min="0"
-                      value={dadosLote.quantidadeProduzida || ''}
+                      value={dadosLote.quantidadeProduzidaInicial || ''}
                       onChange={(e) => setDadosLote(prev => ({
                         ...prev,
-                        quantidadeProduzida: parseInt(e.target.value) || 0
+                        quantidadeProduzidaInicial: parseInt(e.target.value) || 0
+                      }))}
+                      placeholder="0"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Quantidade Produzida Final */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="quantidade-produzida-final-lote" className="text-xs flex items-center gap-1">
+                      Qtd/Ciclo Final <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="quantidade-produzida-final-lote"
+                      type="number"
+                      min="0"
+                      value={dadosLote.quantidadeProduzidaFinal || ''}
+                      onChange={(e) => setDadosLote(prev => ({
+                        ...prev,
+                        quantidadeProduzidaFinal: parseInt(e.target.value) || 0
                       }))}
                       placeholder="0"
                       className="h-9"
@@ -4163,25 +4110,6 @@ export default function ApontamentoOEE() {
                       onChange={(e) => setDadosLote(prev => ({
                         ...prev,
                         quantidadePerdas: parseInt(e.target.value) || 0
-                      }))}
-                      placeholder="0"
-                      className="h-9"
-                    />
-                  </div>
-
-                  {/* Quantidade de Retrabalho */}
-                  <div className="grid gap-1">
-                    <Label htmlFor="quantidade-retrabalho-lote" className="text-xs">
-                      Qtd. Retrabalho
-                    </Label>
-                    <Input
-                      id="quantidade-retrabalho-lote"
-                      type="number"
-                      min="0"
-                      value={dadosLote.quantidadeRetrabalho || ''}
-                      onChange={(e) => setDadosLote(prev => ({
-                        ...prev,
-                        quantidadeRetrabalho: parseInt(e.target.value) || 0
                       }))}
                       placeholder="0"
                       className="h-9"
@@ -4232,9 +4160,10 @@ export default function ApontamentoOEE() {
                       <TableHead className="font-semibold">Data</TableHead>
                       <TableHead className="font-semibold">Hora Inicial</TableHead>
                       <TableHead className="font-semibold">Hora Final</TableHead>
+                      <TableHead className="font-semibold text-right">Qtd/Ciclo Inicial</TableHead>
+                      <TableHead className="font-semibold text-right">Qtd/Ciclo Final</TableHead>
                       <TableHead className="font-semibold text-right">Qtd. Produzida</TableHead>
                       <TableHead className="font-semibold text-right">Perdas</TableHead>
-                      <TableHead className="font-semibold text-right">Retrabalho</TableHead>
                       <TableHead className="font-semibold text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -4251,13 +4180,16 @@ export default function ApontamentoOEE() {
                         <TableCell>{lote.horaInicial}</TableCell>
                         <TableCell>{lote.horaFinal}</TableCell>
                         <TableCell className="text-right font-medium">
+                          {lote.quantidadeProduzidaInicial.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {lote.quantidadeProduzidaFinal.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
                           {lote.quantidadeProduzida.toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell className="text-right text-red-600">
                           {lote.quantidadePerdas.toLocaleString('pt-BR')}
-                        </TableCell>
-                        <TableCell className="text-right text-orange-600">
-                          {lote.quantidadeRetrabalho.toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
@@ -4287,17 +4219,14 @@ export default function ApontamentoOEE() {
                   {/* Linha de totalizadores */}
                   <TableFooter>
                     <TableRow className="bg-muted font-bold">
-                      <TableCell colSpan={4} className="text-right">
+                      <TableCell colSpan={6} className="text-right">
                         TOTAIS:
                       </TableCell>
-                      <TableCell className="text-right text-green-700">
+                      <TableCell className="text-right text-green-700 font-bold">
                         {calcularTotaisLotes().totalProduzido.toLocaleString('pt-BR')}
                       </TableCell>
                       <TableCell className="text-right text-red-700">
                         {calcularTotaisLotes().totalPerdas.toLocaleString('pt-BR')}
-                      </TableCell>
-                      <TableCell className="text-right text-orange-700">
-                        {calcularTotaisLotes().totalRetrabalho.toLocaleString('pt-BR')}
                       </TableCell>
                       <TableCell></TableCell>
                     </TableRow>

@@ -42,14 +42,6 @@ export function buscarApontamentoProducaoPorId(id: string): ApontamentoProducao 
 }
 
 /**
- * Busca apontamentos de produção por lote
- */
-export function buscarApontamentosProducaoPorLote(lote: string): ApontamentoProducao[] {
-  const apontamentos = buscarTodosApontamentosProducao()
-  return apontamentos.filter(a => a.lote === lote)
-}
-
-/**
  * Salva um novo apontamento de produção
  */
 export function salvarApontamentoProducao(dto: CriarApontamentoProducaoDTO): ApontamentoProducao {
@@ -665,7 +657,7 @@ export function excluirApontamentoProducao(id: string): boolean {
 
     console.log('✅ Apontamento de produção excluído com sucesso:', {
       id,
-      lote: apontamentoExcluido.lote,
+      sku: apontamentoExcluido.sku,
       quantidadeProduzida: apontamentoExcluido.quantidadeProduzida
     })
 

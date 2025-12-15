@@ -21,12 +21,6 @@ export interface ApontamentoProducao {
   /** Setor produtivo */
   setor: Setor
 
-  /** Número da Ordem de Produção */
-  ordemProducao: string
-
-  /** Número do lote */
-  lote: string
-
   /** Código do SKU */
   sku: string
 
@@ -158,8 +152,6 @@ export interface CriarApontamentoProducaoDTO {
   turno: Turno
   linha: string
   setor: Setor
-  ordemProducao: string
-  lote: string
   sku: string
   produto: string
   velocidadeNominal: number
