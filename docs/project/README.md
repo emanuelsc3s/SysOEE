@@ -66,6 +66,11 @@ Este diretório contém os resumos estruturados de todas as atividades e especif
   - Segmentação de dados
   - Requisitos de interface (Front-end e Back-end)
 
+- [**16 - Modelagem de Banco (Supabase/Postgres) para OEE**](16-Modelagem-Banco-Supabase-OEE.md)
+  - Entidades e relacionamentos (lote, produção, paradas, qualidade)
+  - Mapeamento UI/localStorage → Supabase
+  - Considerações de ALCOA+ e RLS
+
 ### Planejamento e Estrutura
 - [**10 - Refinamento do Planejamento de Programação**](10-Planejamento-Programacao.md)
   - Marcos da fase de programação
