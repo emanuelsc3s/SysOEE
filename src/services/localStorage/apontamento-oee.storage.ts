@@ -365,7 +365,7 @@ export function calcularOEECompleto(
   const apontamentoReferencia = buscarApontamentoProducaoPorId(apontamentoProducaoId)
 
   if (!apontamentoReferencia) {
-    console.warn('6a8 Apontamento de produ e7 e3o n e3o encontrado:', apontamentoProducaoId)
+    console.warn('6a8 Apontamento de produe7e3o ne3o encontrado:', apontamentoProducaoId)
     return {
       disponibilidade: 0,
       performance: 0,
@@ -420,10 +420,10 @@ export function calcularOEECompleto(
   })
 
   // =================================================================
-  // PASSO 2: CLASSIFICAR PARADAS POR TIPO E DURA c7 c3O
+  // PASSO 2: CLASSIFICAR PARADAS POR TIPO E DURAc7c3O
   // =================================================================
 
-  // Paradas estrat e9gicas (n e3o entram no c e1lculo - s e3o exclu eddas do tempo dispon eível)
+  // Paradas estrate9gicas (ne3o entram no ce1lculo - se3o exclueddas do tempo disponeível)
   const paradasEstrategicas = paradas.filter(p =>
     identificarTipoParada(p) === 'ESTRATEGICA' && p.duracao_minutos !== null
   )
@@ -441,7 +441,7 @@ export function calcularOEECompleto(
     p.duracao_minutos < 10
   )
 
-  console.log('50d Classifica e7 e3o de paradas:', {
+  console.log('50d Classificae7e3o de paradas:', {
     estrategicas: paradasEstrategicas.length,
     grandes: paradasGrandes.length,
     pequenas: pequenasParadas.length
@@ -456,10 +456,10 @@ export function calcularOEECompleto(
   const tempoParadasGrandesHoras = somarDuracoesMinutos(paradasGrandes) / 60
   const tempoPequenasParadasHoras = somarDuracoesMinutos(pequenasParadas) / 60
 
-  // Tempo Dispon edvel Ajustado = Tempo Dispon eível - Paradas Estrat e9gicas
+  // Tempo Disponedvel Ajustado = Tempo Disponeível - Paradas Estrate9gicas
   const tempoDisponivelAjustado = tempoDisponivelHoras - tempoEstrategicoHoras
 
-  // Tempo de Opera e7 e3o = Tempo Dispon eível Ajustado - Paradas Grandes
+  // Tempo de Operae7e3o = Tempo Disponeível Ajustado - Paradas Grandes
   const tempoOperacao = tempoDisponivelAjustado - tempoParadasGrandesHoras
 
   console.log('3f1 Tempos calculados (horas):', {
@@ -473,7 +473,7 @@ export function calcularOEECompleto(
 
   // =================================================================
   // PASSO 4: CALCULAR DISPONIBILIDADE
-  // Disponibilidade = (Tempo de Opera e7 e3o / Tempo Dispon eível Ajustado)  d7 100
+  // Disponibilidade = (Tempo de Operae7e3o / Tempo Disponeível Ajustado) d7 100
   // =================================================================
 
   const disponibilidade = tempoDisponivelAjustado > 0
@@ -488,7 +488,7 @@ export function calcularOEECompleto(
 
   // =================================================================
   // PASSO 5: CALCULAR PERFORMANCE
-  // Performance = (Tempo Operacional L edquido / Tempo de Opera e7 e3o)  d7 100
+  // Performance = (Tempo Operacional Ledquido / Tempo de Operae7e3o) d7 100
   // =================================================================
 
   // Método 1: Por quantidade produzida e velocidade nominal
@@ -525,7 +525,7 @@ export function calcularOEECompleto(
 
   // =================================================================
   // PASSO 6: CALCULAR QUALIDADE
-  // Qualidade = Qualidade_Unidades  d7 Qualidade_Retrabalho
+  // Qualidade = Qualidade_Unidades d7 Qualidade_Retrabalho
   // =================================================================
 
   // 6a. Qualidade por Unidades (Refugo e Desvios)
@@ -558,12 +558,12 @@ export function calcularOEECompleto(
 
   // =================================================================
   // PASSO 7: CALCULAR OEE
-  // OEE = Disponibilidade  d7 Performance  d7 Qualidade
+  // OEE = Disponibilidade d7 Performance d7 Qualidade
   // =================================================================
 
   const oee = (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
 
-  // Tempo Valioso = (Qualidade / 100)  d7 Tempo Operacional L edquido
+  // Tempo Valioso = (Qualidade / 100) d7 Tempo Operacional Ledquido
   const tempoValioso = (qualidade / 100) * tempoOperacionalLiquido
 
   console.log('3af OEE Final:', {
@@ -585,14 +585,14 @@ export function calcularOEECompleto(
 }
 
 /**
- * Soma dura e7 f5es de paradas em minutos
+ * Soma durae7f5es de paradas em minutos
  */
 function somarDuracoesMinutos(paradas: ParadaLocalStorage[]): number {
   return paradas.reduce((sum, p) => sum + (p.duracao_minutos || 0), 0)
 }
 
 /**
- * Arredonda n famero para 2 casas decimais
+ * Arredonda nfamero para 2 casas decimais
  */
 function arredondar(valor: number): number {
   return Math.round(valor * 100) / 100
@@ -600,21 +600,78 @@ function arredondar(valor: number): number {
 
 /**
  * Identifica tipo de parada baseado em campos da parada
- * TODO: Substituir por busca no c f3digo de parada real quando integrado com banco
+ * Versão corrigida para reconhecer CIP/SIP e outras paradas planejadas
  */
 function identificarTipoParada(parada: ParadaLocalStorage): TipoParada {
-  // Por enquanto, inferir do campo observacao ou usar padr e3o
-  // IMPORTANTE: Esta fun e7 e3o deve ser substitu edda quando integrar com c f3digos de parada reais
+  // Identifica o tipo de parada para cálculo de OEE
+  // IMPORTANTE: Paradas Estratégicas NÃO entram no tempo disponível
+  // Paradas Planejadas e Não Planejadas >= 10min afetam DISPONIBILIDADE
+  // Paradas < 10min afetam PERFORMANCE (pequenas paradas)
 
   const obs = parada.observacao?.toLowerCase() || ''
+  const codigoParada = parada.codigo_parada_id?.toLowerCase() || ''
 
-  if (obs.includes('estrateg') || obs.includes('setup') || obs.includes('troca')) {
-    return 'ESTRATEGICA'
+  // PASSO 1: Verificar PARADAS ESTRATÉGICAS
+  // Exemplos: Feriado, Inventário, Sem Programação
+  const padroesEstrategicos = [
+    'feriado', 'inventário', 'inventario',
+    'atividade programada', 'parada estratégica', 'parada estrategica',
+    'sem programação', 'sem programacao', 'sem demanda', 'ociosidade planejada'
+  ]
+
+  for (const padrao of padroesEstrategicos) {
+    if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+      return 'ESTRATEGICA'
+    }
   }
 
-  if (obs.includes('planej') || obs.includes('manuten') || obs.includes('limpeza')) {
-    return 'PLANEJADA'
+  // PASSO 2: Verificar PARADAS PLANEJADAS
+  // Exemplos: CIP/SIP, Manutenção Preventiva, Setup, Troca de Formato
+  const padroesPlaneados = [
+    // Limpeza e Sanitização (CIP/SIP é PLANEJADA, afeta disponibilidade)
+    'cip', 'sip', 'cip/sip',
+    // Manutenção
+    'manutenção preventiva', 'manutencao preventiva',
+    'manutenção planejada', 'manutencao planejada',
+    // Setup e Processos
+    'setup', 'troca de formato', 'troca de produto',
+    'troca de lote', 'troca de sku',
+    'início de produção', 'inicio de producao',
+    'fim de produção', 'fim de producao',
+    // Validação
+    'validação', 'validacao', 'qualificação', 'qualificacao',
+    'teste de filtro',
+    // Classe de parada
+    'paradas planejadas', 'planejada'
+  ]
+
+  for (const padrao of padroesPlaneados) {
+    if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+      return 'PLANEJADA'
+    }
   }
+
+  // PASSO 3: Verificar PARADAS NÃO PLANEJADAS
+  // Exemplos: Quebra, Falha, Falta de Insumo
+  const padroesNaoPlaneados = [
+    'não planejada', 'nao planejada',
+    'quebra', 'falha',
+    'falta de', 'falta insumo',
+    'emergência', 'emergencia',
+    'corretiva'
+  ]
+
+  for (const padrao of padroesNaoPlaneados) {
+    if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+      return 'NAO_PLANEJADA'
+    }
+  }
+
+  // PASSO 4: Fallback - Assume NAO_PLANEJADA para impactar disponibilidade
+  console.warn('⚠️ Tipo de parada não identificado, assumindo NAO_PLANEJADA:', {
+    codigoParada: parada.codigo_parada_id,
+    observacao: parada.observacao
+  })
 
   return 'NAO_PLANEJADA'
 }
