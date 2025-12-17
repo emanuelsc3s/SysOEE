@@ -2737,7 +2737,7 @@ export default function ApontamentoOEE() {
 
               {/* Segunda linha: Linha de Produção e Produto SKU */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-x-6 gap-y-2">
-                <div className="md:col-span-4">
+                <div className="md:col-span-6">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
                   <div className="flex gap-2">
                     <Input
@@ -2761,7 +2761,7 @@ export default function ApontamentoOEE() {
                     </Button>
                   </div>
                 </div>
-                <div className="md:col-span-8">
+                <div className="md:col-span-6">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Produto SKU</span>
                   <div className="flex gap-2">
                     <Input
