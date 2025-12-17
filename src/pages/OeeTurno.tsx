@@ -1,12 +1,12 @@
 /**
  * Página de Listagem de Apontamentos OEE por Turno
- * Exibe tabela com todos os apontamentos de produção cadastrados no localStorage
+ * Exibe tabela com todos os apontamentos de produção cadastrados na tboee_turno do Supabase
  * Implementa padrões avançados de UI: paginação, filtros, busca em tempo real
- * Baseado no layout de Turnos.tsx com dados do localStorage como em ApontamentoOEE.tsx
  */
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -31,12 +31,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { AppHeader } from '@/components/layout/AppHeader'
-import {
-  buscarTodosApontamentosProducao,
-  excluirApontamentoProducao,
-  calcularOEECompleto
-} from '@/services/localStorage/apontamento-oee.storage'
-import { ApontamentoProducao, CalculoOEE } from '@/types/apontamento-oee'
+import { useOeeTurno } from '@/hooks/useOeeTurno'
+import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
 import {
   Search,
   Pencil,
@@ -48,9 +44,9 @@ import {
   Loader2,
   Eye,
   ArrowLeft,
-  Factory,
   Package,
-  Activity
+  Activity,
+  Calendar
 } from 'lucide-react'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { format } from 'date-fns'
@@ -59,11 +55,6 @@ import { ptBR } from 'date-fns/locale'
 // Constantes estáveis no escopo do módulo para evitar warnings de dependências
 const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
-
-// Interface para apontamento com OEE calculado
-interface ApontamentoComOEE extends ApontamentoProducao {
-  oeeCalculado: CalculoOEE
-}
 
 export default function OeeTurno() {
   const navigate = useNavigate()
@@ -79,13 +70,11 @@ export default function OeeTurno() {
 
   // Estados de UI
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [apontamentoToDelete, setApontamentoToDelete] = useState<ApontamentoComOEE | null>(null)
+  const [turnoToDelete, setTurnoToDelete] = useState<OeeTurnoFormData | null>(null)
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isFetching, setIsFetching] = useState(false)
 
-  // Dados carregados do localStorage
-  const [apontamentos, setApontamentos] = useState<ApontamentoComOEE[]>([])
+  // Hook para operações com Supabase
+  const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
 
   // Refs para calcular altura disponível do grid
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
@@ -105,151 +94,69 @@ export default function OeeTurno() {
 
   // Estado de filtros aplicados (usado para consulta)
   const [appliedFilters, setAppliedFilters] = useState({
-    linha: '',
     turno: '',
-    sku: '',
-    oeeMin: '',
-    oeeMax: '',
+    produto: '',
+    status: '' as OeeTurnoStatus | '',
   })
 
   // Estado de edição (no modal) - começa com os filtros aplicados
   const [draftFilters, setDraftFilters] = useState({
-    linha: '',
     turno: '',
-    sku: '',
-    oeeMin: '',
-    oeeMax: '',
+    produto: '',
+    status: '' as OeeTurnoStatus | '',
   })
 
   // Contagem de filtros aplicados para badge
-  const appliedCount = useMemo(() => {
+  const appliedCount = (() => {
     let count = 0
     const f = appliedFilters
-    if (f.linha) count++
     if (f.turno) count++
-    if (f.sku) count++
-    if (f.oeeMin) count++
-    if (f.oeeMax) count++
+    if (f.produto) count++
+    if (f.status) count++
     return count
-  }, [appliedFilters])
+  })()
 
-  // Função para carregar dados do localStorage
-  const carregarDados = useCallback(() => {
-    setIsFetching(true)
-    try {
-      const apontamentosRaw = buscarTodosApontamentosProducao()
+  // Query para buscar dados do Supabase
+  const {
+    data: turnosData,
+    isLoading,
+    isFetching,
+    refetch
+  } = useQuery({
+    queryKey: [
+      'oee-turnos',
+      currentPage,
+      itemsPerPage,
+      searchTerm,
+      appliedFilters.turno,
+      appliedFilters.produto,
+      appliedFilters.status
+    ],
+    queryFn: async () => {
+      // Construir filtro de busca combinando texto
+      const searchFilter = [
+        searchTerm,
+        appliedFilters.turno,
+        appliedFilters.produto
+      ].filter(Boolean).join(' ')
 
-      console.log('[OeeTurno] Apontamentos carregados do localStorage:', apontamentosRaw.length)
-
-      // Calcula OEE para cada apontamento COM tratamento de erro individual
-      const apontamentosComOEE: ApontamentoComOEE[] = apontamentosRaw.map((ap) => {
-        try {
-          // Usa o linhaId para buscar paradas relacionadas
-          // O campo 'linha' armazena o nome da linha
-          const oeeCalculado = calcularOEECompleto(ap.id, ap.linha, ap.tempoDisponivel)
-          return {
-            ...ap,
-            oeeCalculado
-          }
-        } catch (err) {
-          console.error('[OeeTurno] Erro ao calcular OEE para apontamento:', ap.id, err)
-          // Retornar OEE zerado em caso de erro - permite que o apontamento ainda seja exibido
-          return {
-            ...ap,
-            oeeCalculado: {
-              disponibilidade: 0,
-              performance: 0,
-              qualidade: 0,
-              oee: 0,
-              tempoOperacionalLiquido: 0,
-              tempoValioso: 0
-            }
-          }
-        }
-      })
-
-      console.log('[OeeTurno] Apontamentos processados:', apontamentosComOEE.length)
-      setApontamentos(apontamentosComOEE)
-    } catch (error) {
-      console.error('[OeeTurno] Erro ao carregar apontamentos:', error)
-    } finally {
-      setIsFetching(false)
-      setIsLoading(false)
-    }
-  }, [])
-
-  // Carrega dados ao montar o componente
-  useEffect(() => {
-    setIsLoading(true)
-    carregarDados()
-  }, [carregarDados])
-
-  // Filtragem e paginação dos dados
-  const dadosFiltrados = useMemo(() => {
-    let filtered = [...apontamentos]
-
-    // Aplicar busca por termo
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (ap) =>
-          ap.linha.toLowerCase().includes(term) ||
-          ap.turno.toLowerCase().includes(term) ||
-          ap.sku.toLowerCase().includes(term) ||
-          ap.produto.toLowerCase().includes(term)
+      return await fetchOeeTurnos(
+        {
+          searchTerm: searchFilter || undefined,
+          status: appliedFilters.status || undefined
+        },
+        currentPage,
+        itemsPerPage
       )
-    }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000 // 10 minutos
+  })
 
-    // Aplicar filtros
-    if (appliedFilters.linha) {
-      filtered = filtered.filter((ap) =>
-        ap.linha.toLowerCase().includes(appliedFilters.linha.toLowerCase())
-      )
-    }
-
-    if (appliedFilters.turno) {
-      filtered = filtered.filter((ap) =>
-        ap.turno.toLowerCase().includes(appliedFilters.turno.toLowerCase())
-      )
-    }
-
-    if (appliedFilters.sku) {
-      filtered = filtered.filter((ap) =>
-        ap.sku.toLowerCase().includes(appliedFilters.sku.toLowerCase())
-      )
-    }
-
-    // Filtro de OEE mínimo
-    if (appliedFilters.oeeMin) {
-      const min = parseFloat(appliedFilters.oeeMin)
-      if (!isNaN(min)) {
-        filtered = filtered.filter((ap) => ap.oeeCalculado.oee >= min)
-      }
-    }
-
-    // Filtro de OEE máximo
-    if (appliedFilters.oeeMax) {
-      const max = parseFloat(appliedFilters.oeeMax)
-      if (!isNaN(max)) {
-        filtered = filtered.filter((ap) => ap.oeeCalculado.oee <= max)
-      }
-    }
-
-    // Ordenar por data mais recente
-    filtered.sort((a, b) => {
-      const dataA = new Date(a.dataApontamento + 'T' + a.horaInicio)
-      const dataB = new Date(b.dataApontamento + 'T' + b.horaInicio)
-      return dataB.getTime() - dataA.getTime()
-    })
-
-    return filtered
-  }, [apontamentos, searchTerm, appliedFilters])
-
-  // Paginação
-  const totalItems = dadosFiltrados.length
+  // Dados paginados já vêm do Supabase
+  const turnosPaginados = turnosData?.data || []
+  const totalItems = turnosData?.count || 0
   const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const apontamentosPaginados = dadosFiltrados.slice(startIndex, startIndex + itemsPerPage)
 
   // Resetar página para 1 quando searchTerm ou filtros mudarem
   useEffect(() => {
@@ -290,11 +197,9 @@ export default function OeeTurno() {
 
   const clearFilters = () => {
     const cleared = {
-      linha: '',
       turno: '',
-      sku: '',
-      oeeMin: '',
-      oeeMax: '',
+      produto: '',
+      status: '' as OeeTurnoStatus | '',
     }
     setDraftFilters(cleared)
     setAppliedFilters(cleared)
@@ -306,31 +211,31 @@ export default function OeeTurno() {
     } catch { /* noop */ }
   }
 
-  const handleVisualizar = (apontamento: ApontamentoComOEE) => {
-    // Navega para a página de apontamento OEE
-    navigate(`/apontamento-oee?id=${apontamento.id}`)
+  const handleVisualizar = (turno: OeeTurnoFormData) => {
+    // Navega para a página de apontamento OEE com o ID do turno
+    navigate(`/apontamento-oee?oeeTurnoId=${turno.id}`)
   }
 
-  const handleEditar = (apontamento: ApontamentoComOEE) => {
-    navigate(`/apontamento-oee?id=${apontamento.id}&edit=true`)
+  const handleEditar = (turno: OeeTurnoFormData) => {
+    navigate(`/apontamento-oee?oeeTurnoId=${turno.id}&edit=true`)
   }
 
-  const handleExcluirClick = (apontamento: ApontamentoComOEE) => {
-    setApontamentoToDelete(apontamento)
+  const handleExcluirClick = (turno: OeeTurnoFormData) => {
+    setTurnoToDelete(turno)
     setIsDeleteDialogOpen(true)
   }
 
   const handleExcluirConfirm = async () => {
-    if (apontamentoToDelete?.id) {
+    if (turnoToDelete?.id) {
       try {
-        const sucesso = excluirApontamentoProducao(apontamentoToDelete.id)
+        const sucesso = await deleteOeeTurno(turnoToDelete.id)
         if (sucesso) {
           setIsDeleteDialogOpen(false)
-          setApontamentoToDelete(null)
-          carregarDados() // Recarrega os dados
+          setTurnoToDelete(null)
+          refetch() // Recarrega os dados
         }
       } catch (error) {
-        console.error('Erro ao excluir apontamento:', error)
+        console.error('Erro ao excluir turno OEE:', error)
       }
     }
   }
@@ -364,22 +269,13 @@ export default function OeeTurno() {
     return hora.substring(0, 5)
   }
 
-  const formatarOEE = (valor: number) => {
-    return `${valor.toFixed(1)}%`
-  }
-
-  const getBadgeOEE = (oee: number): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' => {
-    if (oee >= 85) return 'success'
-    if (oee >= 75) return 'info'
-    if (oee >= 60) return 'warning'
-    return 'destructive'
-  }
-
-  const getBadgeDisponibilidade = (valor: number): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' => {
-    if (valor >= 90) return 'success'
-    if (valor >= 80) return 'info'
-    if (valor >= 70) return 'warning'
-    return 'destructive'
+  const getBadgeStatus = (status: OeeTurnoStatus | null): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' => {
+    switch (status) {
+      case 'Aberto': return 'info'
+      case 'Fechado': return 'success'
+      case 'Cancelado': return 'destructive'
+      default: return 'secondary'
+    }
   }
 
   return (
@@ -484,61 +380,38 @@ export default function OeeTurno() {
 
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="f-linha">Linha de Produção</Label>
-                            <Input
-                              id="f-linha"
-                              placeholder="Ex.: Linha A"
-                              value={draftFilters.linha}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, linha: e.target.value }))}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
                             <Label htmlFor="f-turno">Turno</Label>
                             <Input
                               id="f-turno"
-                              placeholder="Ex.: 1º Turno"
+                              placeholder="Ex.: D1 - Diurno"
                               value={draftFilters.turno}
                               onChange={(e) => setDraftFilters((p) => ({ ...p, turno: e.target.value }))}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="f-sku">SKU</Label>
+                            <Label htmlFor="f-produto">Produto</Label>
                             <Input
-                              id="f-sku"
-                              placeholder="Ex.: SKU001"
-                              value={draftFilters.sku}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, sku: e.target.value }))}
+                              id="f-produto"
+                              placeholder="Ex.: SOL. CLORETO"
+                              value={draftFilters.produto}
+                              onChange={(e) => setDraftFilters((p) => ({ ...p, produto: e.target.value }))}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="f-oee-min">OEE Mínimo (%)</Label>
-                            <Input
-                              id="f-oee-min"
-                              type="number"
-                              placeholder="Ex.: 70"
-                              min="0"
-                              max="100"
-                              step="0.1"
-                              value={draftFilters.oeeMin}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, oeeMin: e.target.value }))}
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="f-oee-max">OEE Máximo (%)</Label>
-                            <Input
-                              id="f-oee-max"
-                              type="number"
-                              placeholder="Ex.: 95"
-                              min="0"
-                              max="100"
-                              step="0.1"
-                              value={draftFilters.oeeMax}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, oeeMax: e.target.value }))}
-                            />
+                            <Label htmlFor="f-status">Status</Label>
+                            <select
+                              id="f-status"
+                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                              value={draftFilters.status}
+                              onChange={(e) => setDraftFilters((p) => ({ ...p, status: e.target.value as OeeTurnoStatus | '' }))}
+                            >
+                              <option value="">Todos</option>
+                              <option value="Aberto">Aberto</option>
+                              <option value="Fechado">Fechado</option>
+                              <option value="Cancelado">Cancelado</option>
+                            </select>
                           </div>
                         </div>
                       </div>
@@ -551,7 +424,7 @@ export default function OeeTurno() {
 
                   <Button
                     variant="outline"
-                    onClick={() => carregarDados()}
+                    onClick={() => refetch()}
                     disabled={isFetching}
                     className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
                     title="Atualizar lista"
@@ -576,26 +449,26 @@ export default function OeeTurno() {
 
                 {/* Cards para mobile */}
                 <div className="sm:hidden space-y-3">
-                  {apontamentosPaginados.length === 0 && !isLoading ? (
+                  {turnosPaginados.length === 0 && !isLoading ? (
                     <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-gray-500 bg-gray-50">
                       <div>
                         {searchTerm || appliedCount > 0 ?
-                          'Nenhum apontamento encontrado com os filtros aplicados.' :
-                          'Nenhum apontamento cadastrado.'
+                          'Nenhum turno encontrado com os filtros aplicados.' :
+                          'Nenhum turno cadastrado.'
                         }
                       </div>
                     </div>
                   ) : (
-                    apontamentosPaginados.map((apontamento: ApontamentoComOEE) => (
+                    turnosPaginados.map((turno: OeeTurnoFormData) => (
                       <div
-                        key={apontamento.id}
+                        key={turno.id}
                         role="button"
                         tabIndex={0}
-                        onClick={() => handleVisualizar(apontamento)}
+                        onClick={() => handleVisualizar(turno)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault()
-                            handleVisualizar(apontamento)
+                            handleVisualizar(turno)
                           }
                         }}
                         className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/60 transition cursor-pointer"
@@ -603,57 +476,44 @@ export default function OeeTurno() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-xs uppercase tracking-wide text-gray-500">Data/Turno</p>
-                            <p className="text-base font-semibold text-gray-900">{formatarData(apontamento.dataApontamento)}</p>
-                            <p className="text-sm text-gray-700 mt-1">{apontamento.turno}</p>
+                            <p className="text-base font-semibold text-gray-900">{formatarData(turno.data)}</p>
+                            <p className="text-sm text-gray-700 mt-1">{turno.turno}</p>
                           </div>
-                          <Badge variant={getBadgeOEE(apontamento.oeeCalculado.oee)} className="flex items-center">
+                          <Badge variant={getBadgeStatus(turno.status)} className="flex items-center">
                             <Target className="h-3 w-3 mr-1" />
-                            OEE: {formatarOEE(apontamento.oeeCalculado.oee)}
+                            {turno.status || 'N/A'}
                           </Badge>
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-700">
-                          <div className="flex items-start gap-2">
-                            <Factory className="h-4 w-4 text-gray-400 mt-0.5" />
-                            <div>
-                              <p className="text-xs text-gray-500">Linha</p>
-                              <p className="font-semibold text-gray-900">{apontamento.linha}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2">
+                          <div className="flex items-start gap-2 col-span-2">
                             <Package className="h-4 w-4 text-gray-400 mt-0.5" />
                             <div>
-                              <p className="text-xs text-gray-500">SKU</p>
-                              <p className="font-semibold text-gray-900">{apontamento.sku}</p>
+                              <p className="text-xs text-gray-500">Produto</p>
+                              <p className="font-semibold text-gray-900">{turno.produto}</p>
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
                             <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-xs text-gray-500">Início</p>
-                              <p className="font-semibold text-gray-900">{formatarHorario(apontamento.horaInicio)}</p>
+                              <p className="font-semibold text-gray-900">{formatarHorario(turno.horaInicio)}</p>
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
                             <Clock className="h-4 w-4 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-xs text-gray-500">Fim</p>
-                              <p className="font-semibold text-gray-900">{formatarHorario(apontamento.horaFim)}</p>
+                              <p className="font-semibold text-gray-900">{formatarHorario(turno.horaFim)}</p>
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Badge variant={getBadgeDisponibilidade(apontamento.oeeCalculado.disponibilidade)} className="text-xs">
-                            Disp: {formatarOEE(apontamento.oeeCalculado.disponibilidade)}
-                          </Badge>
-                          <Badge variant={getBadgeDisponibilidade(apontamento.oeeCalculado.performance)} className="text-xs">
-                            Perf: {formatarOEE(apontamento.oeeCalculado.performance)}
-                          </Badge>
-                          <Badge variant={getBadgeDisponibilidade(apontamento.oeeCalculado.qualidade)} className="text-xs">
-                            Qual: {formatarOEE(apontamento.oeeCalculado.qualidade)}
-                          </Badge>
-                        </div>
+                        {turno.observacao && (
+                          <div className="mt-3 text-xs text-gray-500 line-clamp-2">
+                            {turno.observacao}
+                          </div>
+                        )}
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           <Button
@@ -662,7 +522,7 @@ export default function OeeTurno() {
                             className="flex-1 min-w-[120px]"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleEditar(apontamento)
+                              handleEditar(turno)
                             }}
                           >
                             <Pencil className="h-4 w-4 mr-1" />
@@ -674,7 +534,7 @@ export default function OeeTurno() {
                             className="flex-1 min-w-[120px] text-destructive border-destructive/60 hover:border-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleExcluirClick(apontamento)
+                              handleExcluirClick(turno)
                             }}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
@@ -701,14 +561,11 @@ export default function OeeTurno() {
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
                           Data
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
                           Turno
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Linha
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          SKU
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[25ch]">
+                          Produto
                         </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
                           Início
@@ -716,41 +573,29 @@ export default function OeeTurno() {
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
                           Fim
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
-                          Qtd Prod.
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[7ch]">
-                          Disp.
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[7ch]">
-                          Perf.
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[7ch]">
-                          Qual.
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
-                          OEE
+                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                          Status
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {apontamentosPaginados.length === 0 && !isLoading ? (
+                      {turnosPaginados.length === 0 && !isLoading ? (
                         <tr>
-                          <td colSpan={12} className="px-4 md:px-6 py-8 text-center">
+                          <td colSpan={7} className="px-4 md:px-6 py-8 text-center">
                             <div className="text-gray-500">
                               {searchTerm || appliedCount > 0 ?
-                                'Nenhum apontamento encontrado com os filtros aplicados.' :
-                                'Nenhum apontamento cadastrado.'
+                                'Nenhum turno encontrado com os filtros aplicados.' :
+                                'Nenhum turno cadastrado.'
                               }
                             </div>
                           </td>
                         </tr>
                       ) : (
-                        apontamentosPaginados.map((apontamento: ApontamentoComOEE) => (
+                        turnosPaginados.map((turno: OeeTurnoFormData) => (
                           <tr
-                            key={apontamento.id}
+                            key={turno.id}
                             className="hover:bg-gray-50 cursor-pointer"
-                            onClick={() => handleVisualizar(apontamento)}
+                            onClick={() => handleVisualizar(turno)}
                           >
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                               <div className="flex justify-start gap-1">
@@ -762,7 +607,7 @@ export default function OeeTurno() {
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    handleVisualizar(apontamento)
+                                    handleVisualizar(turno)
                                   }}
                                 >
                                   <Eye className="h-4 w-4" />
@@ -775,7 +620,7 @@ export default function OeeTurno() {
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    handleEditar(apontamento)
+                                    handleEditar(turno)
                                   }}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -788,7 +633,7 @@ export default function OeeTurno() {
                                   onClick={async (e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    handleExcluirClick(apontamento)
+                                    handleExcluirClick(turno)
                                   }}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -796,57 +641,35 @@ export default function OeeTurno() {
                               </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
-                              {formatarData(apontamento.dataApontamento)}
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {apontamento.turno}
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               <div className="flex items-center gap-1">
-                                <Factory className="h-3 w-3 text-gray-400" />
-                                {apontamento.linha}
+                                <Calendar className="h-3 w-3 text-gray-400" />
+                                {formatarData(turno.data)}
                               </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Package className="h-3 w-3 text-gray-400" />
-                                {apontamento.sku}
-                              </div>
+                              {turno.turno}
                             </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3 text-gray-400" />
-                                {formatarHorario(apontamento.horaInicio)}
+                            <td className="px-4 md:px-6 py-4 text-sm text-gray-600 max-w-[300px]">
+                              <div className="flex items-center gap-1 truncate" title={turno.produto}>
+                                <Package className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <span className="truncate">{turno.produto}</span>
                               </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3 text-gray-400" />
-                                {formatarHorario(apontamento.horaFim)}
+                                {formatarHorario(turno.horaInicio)}
                               </div>
                             </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center">
-                              {apontamento.quantidadeProduzida.toLocaleString('pt-BR')}
+                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-gray-400" />
+                                {formatarHorario(turno.horaFim)}
+                              </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getBadgeDisponibilidade(apontamento.oeeCalculado.disponibilidade)} className="text-xs">
-                                {formatarOEE(apontamento.oeeCalculado.disponibilidade)}
-                              </Badge>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getBadgeDisponibilidade(apontamento.oeeCalculado.performance)} className="text-xs">
-                                {formatarOEE(apontamento.oeeCalculado.performance)}
-                              </Badge>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getBadgeDisponibilidade(apontamento.oeeCalculado.qualidade)} className="text-xs">
-                                {formatarOEE(apontamento.oeeCalculado.qualidade)}
-                              </Badge>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getBadgeOEE(apontamento.oeeCalculado.oee)}>
-                                <Target className="h-3 w-3 mr-1" />
-                                {formatarOEE(apontamento.oeeCalculado.oee)}
+                              <Badge variant={getBadgeStatus(turno.status)}>
+                                {turno.status || 'N/A'}
                               </Badge>
                             </td>
                           </tr>
@@ -890,8 +713,8 @@ export default function OeeTurno() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja excluir o apontamento de produção do turno <strong>{apontamentoToDelete?.turno}</strong> na linha <strong>{apontamentoToDelete?.linha}</strong>?
-                  Esta ação não pode ser desfeita e também removerá os registros de perdas e retrabalhos associados.
+                  Tem certeza que deseja excluir o turno <strong>{turnoToDelete?.turno}</strong> do dia <strong>{turnoToDelete?.data ? formatarData(turnoToDelete.data) : ''}</strong>?
+                  Esta ação não pode ser desfeita.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

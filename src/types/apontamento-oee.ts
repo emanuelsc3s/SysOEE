@@ -165,3 +165,78 @@ export interface CriarApontamentoProducaoDTO {
   criadoPorNome: string
 }
 
+/**
+ * Status possíveis para um turno OEE
+ */
+export type OeeTurnoStatus = 'Aberto' | 'Fechado' | 'Cancelado'
+
+/**
+ * Interface para dados do banco de dados (tboee_turno)
+ * Representa a estrutura exata da tabela no Supabase
+ */
+export interface OeeTurnoDB {
+  oeeturno_id: number
+  data: string | null
+  produto_id: number
+  produto: string
+  turno_id: number
+  turno: string
+  turno_hi: string | null  // time without time zone
+  turno_hf: string | null  // time without time zone
+  observacao: string | null
+  status: OeeTurnoStatus | null
+  deletado: string | null
+  created_at: string
+  created_by: number | null
+  updated_at: string | null
+  updated_by: number | null
+  deleted_at: string | null
+  deleted_by: number | null
+}
+
+/**
+ * Interface para dados do formulário/UI de OEE Turno
+ */
+export interface OeeTurnoFormData {
+  /** ID do registro (string para compatibilidade com formulário) */
+  id: string
+  /** Data do apontamento (formato YYYY-MM-DD) */
+  data: string
+  /** ID do produto */
+  produtoId: number
+  /** Descrição completa do produto */
+  produto: string
+  /** ID do turno */
+  turnoId: number
+  /** Nome do turno */
+  turno: string
+  /** Hora de início (formato HH:MM:SS) */
+  horaInicio: string | null
+  /** Hora de fim (formato HH:MM:SS) */
+  horaFim: string | null
+  /** Observações */
+  observacao: string | null
+  /** Status do turno */
+  status: OeeTurnoStatus | null
+  /** Data de criação */
+  createdAt: string
+  /** Usuário que criou */
+  createdBy: number | null
+}
+
+/**
+ * Interface para filtros de busca de OEE Turno
+ */
+export interface FetchOeeTurnoFilters {
+  /** Termo de busca geral */
+  searchTerm?: string
+  /** Filtrar por data específica */
+  data?: string
+  /** Filtrar por ID do turno */
+  turnoId?: number
+  /** Filtrar por ID do produto */
+  produtoId?: number
+  /** Filtrar por status */
+  status?: OeeTurnoStatus
+}
+

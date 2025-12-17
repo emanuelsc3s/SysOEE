@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
+import { supabase } from '@/lib/supabase'
 import { buscarLinhaPorId } from '@/data/mockLinhas'
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import paradasGeraisData from '../../data/paradas.json'
@@ -215,6 +216,7 @@ export default function ApontamentoOEE() {
   // ==================== Estado de Controle de Turno ====================
   const [statusTurno, setStatusTurno] = useState<StatusTurno>('NAO_INICIADO')
   const [showConfirmEncerramento, setShowConfirmEncerramento] = useState(false)
+  const [oeeTurnoId, setOeeTurnoId] = useState<number | null>(null) // ID do registro na tboee_turno
 
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
@@ -1689,13 +1691,175 @@ export default function ApontamentoOEE() {
   }, [skuCodigo])
 
   /**
+   * Verifica se já existe um turno aberto na tboee_turno para a linha/data/SKU
+   * Se existir, retorna os dados existentes
+   * Se não existir, cria um novo registro
+   *
+   * @returns ID do turno OEE (existente ou recém-criado)
+   */
+  const verificarOuCriarTurnoOEE = async (): Promise<number | null> => {
+    try {
+      // Extrair código do SKU (remover descrição se presente)
+      const codigoSKU = skuCodigo.includes(' - ')
+        ? skuCodigo.split(' - ')[0].trim()
+        : skuCodigo.trim()
+
+      const descricaoSKU = skuCodigo.includes(' - ')
+        ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
+        : skuCodigo.trim()
+
+      // Formatar data para o banco (YYYY-MM-DD)
+      const dataFormatada = data ? format(data, 'yyyy-MM-dd') : null
+
+      if (!dataFormatada || !turnoId || !codigoSKU) {
+        console.error('❌ Dados obrigatórios faltando para criar turno OEE:', {
+          data: dataFormatada,
+          turnoId,
+          codigoSKU
+        })
+        return null
+      }
+
+      // Primeiro, buscar o produto_id pelo código do SKU
+      console.log('🔍 Buscando produto_id para o código SKU:', codigoSKU)
+      let produtoId: number | null = null
+      let produtoDescricao = descricaoSKU
+
+      // Buscar produto existente
+      const { data: produtoData, error: produtoError } = await supabase
+        .from('tbproduto')
+        .select('produto_id, descricao')
+        .or(`referencia.eq.${codigoSKU},erp_codigo.eq.${codigoSKU}`)
+        .eq('deletado', 'N')
+        .limit(1)
+        .maybeSingle()
+
+      if (produtoError) {
+        console.error('❌ Erro ao buscar produto:', produtoError)
+      }
+
+      if (produtoData) {
+        produtoId = produtoData.produto_id
+        produtoDescricao = produtoData.descricao || descricaoSKU
+        console.log('📦 Produto encontrado:', { produtoId, produtoDescricao })
+      } else {
+        // Produto não existe - criar novo produto automaticamente
+        console.log('📦 Produto não encontrado. Criando novo produto...')
+
+        const novoProduto = {
+          referencia: codigoSKU,
+          erp_codigo: codigoSKU,
+          descricao: descricaoSKU,
+          deletado: 'N'
+        }
+
+        const { data: produtoCriado, error: criarProdutoError } = await supabase
+          .from('tbproduto')
+          .insert(novoProduto)
+          .select('produto_id')
+          .single()
+
+        if (criarProdutoError) {
+          console.error('❌ Erro ao criar produto:', criarProdutoError)
+          toast({
+            title: 'Erro ao cadastrar produto',
+            description: `Não foi possível cadastrar o produto ${codigoSKU} no banco de dados.`,
+            variant: 'destructive'
+          })
+          return null
+        }
+
+        produtoId = produtoCriado.produto_id
+        console.log('✅ Produto criado com sucesso:', { produtoId, codigoSKU })
+      }
+
+      if (!produtoId) {
+        console.error('❌ Não foi possível obter produto_id')
+        return null
+      }
+
+      // Verificar se já existe um turno ABERTO para esta combinação
+      // Critérios: mesma data + mesmo turno + mesmo produto + status Aberto + não deletado
+      console.log('🔍 Verificando turno existente:', {
+        data: dataFormatada,
+        turno_id: parseInt(turnoId),
+        produto_id: produtoId
+      })
+
+      const { data: turnoExistente, error: buscarError } = await supabase
+        .from('tboee_turno')
+        .select('oeeturno_id, data, produto_id, turno_id, status')
+        .eq('data', dataFormatada)
+        .eq('turno_id', parseInt(turnoId))
+        .eq('produto_id', produtoId)
+        .eq('status', 'Aberto')
+        .eq('deletado', 'N')
+        .limit(1)
+        .maybeSingle()
+
+      if (buscarError) {
+        console.error('❌ Erro ao buscar turno existente:', buscarError)
+        throw buscarError
+      }
+
+      // Se já existe um turno com essas características, retornar o ID existente
+      if (turnoExistente) {
+        console.log('✅ Turno OEE já existe:', turnoExistente)
+        return turnoExistente.oeeturno_id
+      }
+
+      // Não existe, criar novo registro com status 'Aberto'
+      console.log('📝 Criando novo registro de turno OEE...')
+
+      const novoTurno = {
+        data: dataFormatada,
+        produto_id: produtoId,
+        produto: `${codigoSKU} - ${produtoDescricao}`,
+        turno_id: parseInt(turnoId),
+        turno: turnoNome || turnoCodigo,
+        turno_hi: turnoHoraInicial || null,
+        turno_hf: turnoHoraFinal || null,
+        observacao: `Turno iniciado via sistema OEE - Linha: ${linhaNome || linhaId}`,
+        status: 'Aberto', // Status inicial do turno
+        deletado: 'N', // Flag de exclusão lógica
+        // created_at é preenchido automaticamente pelo banco
+        // created_by: TODO - adicionar quando autenticação estiver implementada
+      }
+
+      console.log('📤 Dados para inserção:', novoTurno)
+
+      const { data: turnoInserido, error: inserirError } = await supabase
+        .from('tboee_turno')
+        .insert(novoTurno)
+        .select('oeeturno_id')
+        .single()
+
+      if (inserirError) {
+        console.error('❌ Erro ao inserir turno OEE:', inserirError)
+        throw inserirError
+      }
+
+      console.log('✅ Turno OEE criado com sucesso:', turnoInserido)
+      return turnoInserido.oeeturno_id
+    } catch (error) {
+      console.error('❌ Erro ao verificar/criar turno OEE:', error)
+      toast({
+        title: 'Erro ao registrar turno',
+        description: 'Não foi possível registrar o turno no banco de dados. Os dados serão salvos localmente.',
+        variant: 'destructive'
+      })
+      return null
+    }
+  }
+
+  /**
    * Inicia o turno após validação dos campos obrigatórios
    * Bloqueia edição dos campos do cabeçalho
    * Inicializa cálculos de OEE com valores zerados
    * Aplica filtragem por Linha de Produção e SKU (ALCOA+)
    * PRÉ-CARREGA dados de produção de OPs ativas
    */
-  const handleIniciarTurno = () => {
+  const handleIniciarTurno = async () => {
     // Validação 1: Campos obrigatórios do cabeçalho
     if (!validarCamposCabecalho()) {
       toast({
@@ -1724,6 +1888,16 @@ export default function ApontamentoOEE() {
         variant: 'destructive'
       })
       return
+    }
+
+    // ==================== Persistência do Turno OEE ====================
+    // Verificar se já existe turno aberto ou criar novo registro na tboee_turno
+    const turnoOeeId = await verificarOuCriarTurnoOEE()
+    if (turnoOeeId) {
+      setOeeTurnoId(turnoOeeId)
+      console.log('✅ Turno OEE registrado/recuperado:', turnoOeeId)
+    } else {
+      console.warn('⚠️ Não foi possível registrar turno no banco. Continuando com dados locais.')
     }
 
     const dataSelecionada = data ? format(data, 'dd/MM/yyyy') : ''
@@ -2006,8 +2180,47 @@ export default function ApontamentoOEE() {
 
   /**
    * Encerra o turno após confirmação
+   * Atualiza o status no banco de dados para 'Encerrado'
    */
-  const handleEncerrarTurno = () => {
+  const handleEncerrarTurno = async () => {
+    // Atualizar status no banco de dados
+    if (oeeTurnoId) {
+      try {
+        console.log('📝 Atualizando status do turno OEE para Encerrado:', oeeTurnoId)
+
+        const { error: updateError } = await supabase
+          .from('tboee_turno')
+          .update({
+            status: 'Encerrado',
+            updated_at: new Date().toISOString()
+            // updated_by: TODO - adicionar quando autenticação estiver implementada
+          })
+          .eq('oeeturno_id', oeeTurnoId)
+
+        if (updateError) {
+          console.error('❌ Erro ao atualizar status do turno:', updateError)
+          toast({
+            title: 'Erro ao encerrar turno',
+            description: 'Não foi possível atualizar o status no banco de dados.',
+            variant: 'destructive'
+          })
+          return
+        }
+
+        console.log('✅ Status do turno OEE atualizado para Encerrado')
+      } catch (error) {
+        console.error('❌ Erro ao encerrar turno no banco:', error)
+        toast({
+          title: 'Erro ao encerrar turno',
+          description: 'Ocorreu um erro ao atualizar o status. O turno será encerrado localmente.',
+          variant: 'destructive'
+        })
+      }
+    } else {
+      console.warn('⚠️ oeeTurnoId não definido. Encerrando apenas localmente.')
+    }
+
+    // Atualizar estado local
     setStatusTurno('ENCERRADO')
     setShowConfirmEncerramento(false)
 
