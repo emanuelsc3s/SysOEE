@@ -2335,55 +2335,79 @@ export default function ApontamentoOEE() {
 
   /**
    * Encerra o turno após confirmação
-   * Atualiza o status no banco de dados para 'Encerrado'
+   * Atualiza o status no banco de dados para 'Fechado'
+   * Segue princípios ALCOA+ (registro contemporâneo e atribuível)
    */
   const handleEncerrarTurno = async () => {
+    // Fechar modal imediatamente para feedback visual
+    setShowConfirmEncerramento(false)
+
     // Atualizar status no banco de dados
     if (oeeTurnoId) {
       try {
-        console.log('📝 Atualizando status do turno OEE para Encerrado:', oeeTurnoId)
+        console.log('📝 Iniciando encerramento do turno OEE:', {
+          oeeTurnoId,
+          timestamp: new Date().toISOString()
+        })
 
-        const { error: updateError } = await supabase
+        // Usar .select() para confirmar que a atualização foi feita e retornar dados
+        const { data: updatedData, error: updateError } = await supabase
           .from('tboee_turno')
           .update({
-            status: 'Encerrado',
+            status: 'Fechado',
             updated_at: new Date().toISOString()
             // updated_by: TODO - adicionar quando autenticação estiver implementada
           })
           .eq('oeeturno_id', oeeTurnoId)
+          .select('oeeturno_id, status, updated_at')
 
         if (updateError) {
           console.error('❌ Erro ao atualizar status do turno:', updateError)
           toast({
             title: 'Erro ao encerrar turno',
-            description: 'Não foi possível atualizar o status no banco de dados.',
+            description: `Não foi possível atualizar o status: ${updateError.message}`,
             variant: 'destructive'
           })
           return
         }
 
-        console.log('✅ Status do turno OEE atualizado para Encerrado')
+        // Verificar se a atualização realmente afetou algum registro
+        if (!updatedData || updatedData.length === 0) {
+          console.error('❌ Nenhum registro foi atualizado. Verificar se o ID existe:', oeeTurnoId)
+          toast({
+            title: 'Erro ao encerrar turno',
+            description: 'Registro do turno não encontrado no banco de dados.',
+            variant: 'destructive'
+          })
+          return
+        }
+
+        console.log('✅ Status do turno OEE atualizado para Fechado:', updatedData[0])
+
+        // Atualizar estado local após sucesso confirmado no banco
+        setStatusTurno('ENCERRADO')
+
+        toast({
+          title: 'Turno Encerrado',
+          description: `Turno encerrado com sucesso às ${format(new Date(), 'HH:mm:ss')}.`,
+          variant: 'default'
+        })
       } catch (error) {
-        console.error('❌ Erro ao encerrar turno no banco:', error)
+        console.error('❌ Exceção ao encerrar turno no banco:', error)
         toast({
           title: 'Erro ao encerrar turno',
-          description: 'Ocorreu um erro ao atualizar o status. O turno será encerrado localmente.',
+          description: 'Ocorreu um erro inesperado. Por favor, tente novamente.',
           variant: 'destructive'
         })
       }
     } else {
-      console.warn('⚠️ oeeTurnoId não definido. Encerrando apenas localmente.')
+      console.warn('⚠️ oeeTurnoId não definido. Não é possível encerrar o turno.')
+      toast({
+        title: 'Erro ao encerrar turno',
+        description: 'ID do turno não encontrado. Por favor, reinicie a aplicação.',
+        variant: 'destructive'
+      })
     }
-
-    // Atualizar estado local
-    setStatusTurno('ENCERRADO')
-    setShowConfirmEncerramento(false)
-
-    toast({
-      title: 'Turno Encerrado',
-      description: `Turno encerrado às ${format(new Date(), 'HH:mm:ss')}.`,
-      variant: 'default'
-    })
   }
 
   /**
