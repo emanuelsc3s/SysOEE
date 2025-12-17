@@ -6,12 +6,16 @@
  * Layout baseado em code_oee_apontar.html
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { buscarLinhaPorId } from '@/data/mockLinhas'
+import { useOeeTurno } from '@/hooks/useOeeTurno'
+// Nota: buscarLinhaPorId foi removido pois espera IDs slug (ex: "spep-envase-e"),
+// mas o sistema agora usa IDs numéricos do banco de dados
+// Os dados da linha agora vêm de linhaProducaoSelecionada
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import paradasGeraisData from '../../data/paradas.json'
 import { Turno } from '@/types/operacao'
@@ -178,9 +182,15 @@ const TEMPO_DISPONIVEL_PADRAO = 12
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
+  const [searchParams] = useSearchParams()
+  const { fetchOeeTurno } = useOeeTurno()
+
+  // ==================== Refs para controle de carregamento ====================
+  const turnoOeeCarregadoRef = useRef<string | null>(null) // Evita loop infinito no useEffect de carregamento
 
   // ==================== Estado de Navegação ====================
   const [formularioAtivo, setFormularioAtivo] = useState<FormularioAtivo>('production-form')
+  const [modoVisualizacao, setModoVisualizacao] = useState<boolean>(false) // Quando carregado via oeeTurnoId
 
   // ==================== Estado do Cabeçalho ====================
   const [data, setData] = useState<Date | undefined>(new Date())
@@ -242,7 +252,6 @@ export default function ApontamentoOEE() {
 
   // ==================== Estado de Qualidade - Perdas ====================
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
-  const [motivoPerdas, setMotivoPerdas] = useState<string>('')
 
   // ==================== Estado de Qualidade - Retrabalho ====================
   const [quantidadeRetrabalho, setQuantidadeRetrabalho] = useState<string>('')
@@ -275,7 +284,15 @@ export default function ApontamentoOEE() {
   const [totalPerdasQualidade, setTotalPerdasQualidade] = useState<number>(0)
 
   // ==================== Dados Derivados ====================
-  const linhaSelecionada = linhaId ? buscarLinhaPorId(linhaId) : null
+  // Usar linhaProducaoSelecionada para obter dados da linha (não buscarLinhaPorId que usa IDs slug)
+  // Criamos um objeto compatível com o formato esperado em outros lugares do código
+  const linhaSelecionada = linhaProducaoSelecionada ? {
+    id: linhaProducaoSelecionada.linhaproducao_id.toString(),
+    nome: linhaProducaoSelecionada.linhaproducao,
+    setor: linhaProducaoSelecionada.departamento || 'N/A',
+    tipo: linhaProducaoSelecionada.tipo || 'Envase',
+    metaOEE: 75
+  } : null
 
   // Desabilita cabeçalho quando não está em edição ou antes do início
   const cabecalhoBloqueado = statusTurno !== 'NAO_INICIADO' && !editandoCabecalho
@@ -702,8 +719,9 @@ export default function ApontamentoOEE() {
       return
     }
 
-    const linha = buscarLinhaPorId(linhaId)
-    if (!linha) {
+    // Usar linhaProducaoSelecionada que já contém os dados da linha do banco
+    // Não usamos buscarLinhaPorId pois espera IDs slug (ex: "spep-envase-e"), mas temos IDs numéricos do BD
+    if (!linhaProducaoSelecionada) {
       toast({
         title: 'Erro',
         description: 'Linha de produção não encontrada',
@@ -737,8 +755,8 @@ export default function ApontamentoOEE() {
 
       const dto: CriarApontamentoProducaoDTO = {
         turno,
-        linha: linha.nome,
-        setor: linha.setor,
+        linha: linhaProducaoSelecionada.linhaproducao,
+        setor: linhaProducaoSelecionada.departamento || 'N/A',
         sku: codigoSKU,
         produto: descricaoSKU,
         velocidadeNominal: 4000,
@@ -764,7 +782,7 @@ export default function ApontamentoOEE() {
         data: format(data!, 'dd/MM/yyyy'),
         turno,
         linhaId,
-        linhaNome: linha.nome,
+        linhaNome: linhaProducaoSelecionada.linhaproducao,
         skuCodigo,
         horaInicio: linhaApontamento.horaInicio,
         horaFim: linhaApontamento.horaFim,
@@ -1550,6 +1568,143 @@ export default function ApontamentoOEE() {
     carregarConfiguracoes()
   }, [carregarHistorico, carregarHistoricoParadas, carregarConfiguracoes])
 
+  // ==================== Carregar dados do turno OEE via parâmetros URL ====================
+  /**
+   * Quando a página é aberta com oeeTurnoId na query string (vindo do OeeTurno),
+   * busca os dados do turno OEE e preenche o formulário automaticamente.
+   * Isso permite visualizar/editar um turno existente.
+   *
+   * IMPORTANTE: Usa uma ref para evitar loop infinito, garantindo que o carregamento
+   * ocorra apenas uma vez por oeeTurnoId.
+   */
+  useEffect(() => {
+    const oeeTurnoIdParam = searchParams.get('oeeTurnoId')
+    const editMode = searchParams.get('edit') === 'true'
+
+    // Se não há ID ou já foi carregado, sair
+    if (!oeeTurnoIdParam || turnoOeeCarregadoRef.current === oeeTurnoIdParam) {
+      return
+    }
+
+    const carregarDadosTurnoOEE = async () => {
+      // Marcar como carregado ANTES de fazer a busca para evitar chamadas duplicadas
+      turnoOeeCarregadoRef.current = oeeTurnoIdParam
+
+      console.log('🔍 Carregando dados do turno OEE:', oeeTurnoIdParam)
+
+      try {
+        // Buscar dados do turno OEE no Supabase
+        const turnoData = await fetchOeeTurno(oeeTurnoIdParam)
+
+        if (!turnoData) {
+          console.error('❌ Turno OEE não encontrado')
+          toast({
+            title: 'Erro',
+            description: 'Turno OEE não encontrado',
+            variant: 'destructive'
+          })
+          return
+        }
+
+        console.log('✅ Dados do turno OEE carregados:', turnoData)
+
+        // Popular campos do formulário com os dados recuperados
+
+        // 1. Data do turno
+        if (turnoData.data) {
+          const dataParseada = parseISO(turnoData.data)
+          setData(dataParseada)
+        }
+
+        // 2. Turno (ID, código e nome)
+        if (turnoData.turnoId) {
+          setTurnoId(turnoData.turnoId.toString())
+          // Extrair código do turno se disponível no formato "D1 - Diurno"
+          const turnoPartes = turnoData.turno.split(' - ')
+          if (turnoPartes.length >= 2) {
+            setTurnoCodigo(turnoPartes[0])
+            setTurnoNome(turnoPartes.slice(1).join(' - '))
+          } else {
+            setTurnoNome(turnoData.turno)
+          }
+          setTurno(turnoData.turno as Turno)
+        }
+
+        // 3. Hora inicial e final do turno
+        if (turnoData.horaInicio) {
+          // Remover segundos se presente (HH:MM:SS -> HH:MM)
+          const horaInicial = turnoData.horaInicio.substring(0, 5)
+          setTurnoHoraInicial(horaInicial)
+        }
+        if (turnoData.horaFim) {
+          const horaFinal = turnoData.horaFim.substring(0, 5)
+          setTurnoHoraFinal(horaFinal)
+        }
+
+        // 4. Produto/SKU
+        if (turnoData.produto) {
+          setSkuCodigo(turnoData.produto)
+        }
+
+        // 5. Observação pode conter informações da linha de produção
+        // Formato esperado: "Turno iniciado via sistema OEE - Linha: 15 - SPEP 2 - LINHA E - ENVASE"
+        if (turnoData.observacao) {
+          const matchLinha = turnoData.observacao.match(/Linha:\s*(\d+)\s*-\s*(.+)/i)
+          if (matchLinha) {
+            const linhaIdExtraido = matchLinha[1]
+            const linhaNomeExtraido = matchLinha[2]
+            setLinhaId(linhaIdExtraido)
+            setLinhaNome(linhaNomeExtraido)
+
+            // Construir objeto LinhaProducaoSelecionada diretamente dos dados extraídos
+            // Nota: buscarLinhaPorId espera IDs slug (ex: "spep-envase-e"), mas aqui temos IDs numéricos do BD
+            // Por isso, construímos o objeto diretamente com os dados disponíveis
+            setLinhaProducaoSelecionada({
+              linhaproducao_id: parseInt(linhaIdExtraido),
+              linhaproducao: linhaNomeExtraido,
+              departamento_id: null, // Não disponível na observação
+              departamento: null, // Será extraído do nome se necessário
+              tipo: null // Não disponível na observação
+            })
+          }
+        }
+
+        // 6. Definir ID do turno OEE
+        setOeeTurnoId(parseInt(oeeTurnoIdParam))
+
+        // 7. Definir modo de visualização ou edição
+        if (!editMode) {
+          setModoVisualizacao(true)
+          // Se o turno já está fechado ou cancelado, definir status
+          if (turnoData.status === 'Fechado') {
+            setStatusTurno('ENCERRADO')
+          } else if (turnoData.status === 'Aberto') {
+            setStatusTurno('INICIADO')
+          }
+        }
+
+        toast({
+          title: 'Turno carregado',
+          description: `Dados do turno OEE carregados: ${turnoData.turno} - ${format(parseISO(turnoData.data), 'dd/MM/yyyy')}`,
+          variant: 'default'
+        })
+
+      } catch (error) {
+        console.error('❌ Erro ao carregar dados do turno OEE:', error)
+        // Resetar ref em caso de erro para permitir nova tentativa
+        turnoOeeCarregadoRef.current = null
+        toast({
+          title: 'Erro ao carregar turno',
+          description: 'Não foi possível carregar os dados do turno OEE',
+          variant: 'destructive'
+        })
+      }
+    }
+
+    carregarDadosTurnoOEE()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   // ==================== Regenerar linhas de apontamento quando turno ou intervalo mudar ====================
   // IMPORTANTE: Só regenera se o turno NÃO estiver iniciado (evita sobrescrever dados durante o turno)
   // NOTA: NÃO incluir linhasApontamento nas dependências para evitar loop infinito
@@ -2296,7 +2451,11 @@ export default function ApontamentoOEE() {
     try {
       const dataFormatada = data ? format(data, 'dd/MM/yyyy') : ''
       const dataISO = data ? format(data, 'yyyy-MM-dd') : ''
-      const linhaAtualizada = linhaId ? buscarLinhaPorId(linhaId) : null
+      // Usar linhaProducaoSelecionada que contém dados do BD (não buscarLinhaPorId que usa IDs slug)
+      const linhaAtualizada = linhaProducaoSelecionada ? {
+        nome: linhaProducaoSelecionada.linhaproducao,
+        setor: linhaProducaoSelecionada.departamento || 'N/A'
+      } : null
 
       // Atualiza histórico local exibido (registros do turno) e persiste
       const historicoAtualizado = historicoProducao.map((registro) => ({
@@ -2429,17 +2588,8 @@ export default function ApontamentoOEE() {
     }
 
     // =================================================================
-    // VALIDAÇÃO 3: Verificar se os motivos estão preenchidos
+    // VALIDAÇÃO 3: Verificar se o motivo do retrabalho está preenchido
     // =================================================================
-    if (temPerdas && !motivoPerdas.trim()) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Informe o motivo das perdas',
-        variant: 'destructive'
-      })
-      return
-    }
-
     if (temRetrabalho && !motivoRetrabalho.trim()) {
       toast({
         title: 'Erro de Validação',
@@ -2460,7 +2610,7 @@ export default function ApontamentoOEE() {
         const apontamentoPerdas = salvarApontamentoPerdas(
           apontamentoProducaoId,
           Number(quantidadePerdas),
-          motivoPerdas,
+          '', // motivo removido - campo não mais obrigatório
           null, // observacao
           1, // TODO: buscar do contexto de autenticação
           'Operador' // TODO: buscar do contexto de autenticação
@@ -2475,7 +2625,7 @@ export default function ApontamentoOEE() {
           apontamentoProducaoId,
           tipo: 'PERDAS',
           quantidade: Number(quantidadePerdas),
-          motivo: motivoPerdas,
+          motivo: '', // motivo removido - campo não mais obrigatório
           dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
         }
 
@@ -2530,7 +2680,6 @@ export default function ApontamentoOEE() {
       // LIMPAR FORMULÁRIO
       // =================================================================
       setQuantidadePerdas('')
-      setMotivoPerdas('')
       setQuantidadeRetrabalho('')
       setMotivoRetrabalho('')
 
@@ -3442,18 +3591,6 @@ export default function ApontamentoOEE() {
                         onChange={(e) => setQuantidadePerdas(e.target.value)}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="loss-reason">
-                        Motivo
-                      </label>
-                      <input
-                        className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                        id="loss-reason"
-                        type="text"
-                        value={motivoPerdas}
-                        onChange={(e) => setMotivoPerdas(e.target.value)}
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -3514,13 +3651,12 @@ export default function ApontamentoOEE() {
                         <th className="px-1 py-2 font-medium" scope="col">Data/Hora</th>
                         <th className="px-1 py-2 font-medium" scope="col">Tipo</th>
                         <th className="px-1 py-2 font-medium text-right" scope="col">Quantidade</th>
-                        <th className="px-1 py-2 font-medium" scope="col">Motivo</th>
                       </tr>
                     </thead>
                     <tbody>
                       {historicoQualidade.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-1 py-4 text-center text-muted-foreground">
+                          <td colSpan={4} className="px-1 py-4 text-center text-muted-foreground">
                             Nenhum registro de qualidade encontrado
                           </td>
                         </tr>
@@ -3553,9 +3689,6 @@ export default function ApontamentoOEE() {
                             </td>
                             <td className="px-1 py-2 text-right whitespace-nowrap">
                               {formatarQuantidade(registro.quantidade)}
-                            </td>
-                            <td className="px-1 py-2 truncate max-w-xs" title={registro.motivo}>
-                              {registro.motivo}
                             </td>
                           </tr>
                         ))
