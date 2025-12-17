@@ -45,19 +45,30 @@ export function AppHeader({
   onLogout,
   onProfileClick,
 }: AppHeaderProps) {
-  return (
-    <header className="bg-white border-b h-16 flex items-center justify-between px-6 sticky top-0 z-40">
-      {/* Seção esquerda - Título */}
-      <div>
-        <h1 className="text-xl font-semibold text-primary">
-          {title}
-        </h1>
-      </div>
+	  return (
+	    <header className="bg-white border-b h-16 flex items-center justify-between px-6 sticky top-0 z-40">
+	      {/* Seção esquerda - Título */}
+	      <div className="flex items-center gap-4 min-w-0">
+	        <img
+	          src="/logo-farmace.png"
+	          alt="Logo Farmace"
+	          className="h-10 w-auto flex-shrink-0"
+	        />
 
-      {/* Seção direita - Menu do usuário */}
-      <div className="flex items-center gap-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+	        <div className="flex flex-col gap-0.5 min-w-0">
+	          <h1 className="text-xl font-semibold text-primary leading-none truncate">
+	            {title}
+	          </h1>
+	          <p className="text-xs text-muted-foreground leading-none truncate">
+	            Sistema de Monitoramento de Eficiência Operacional
+	          </p>
+	        </div>
+	      </div>
+
+	      {/* Seção direita - Menu do usuário */}
+	      <div className="flex items-center gap-4">
+	        <DropdownMenu>
+	          <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               className="flex items-center gap-2"
