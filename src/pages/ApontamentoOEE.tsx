@@ -2635,8 +2635,8 @@ export default function ApontamentoOEE() {
           {/* Dashboard OEE - Cabeçalho com Filtros */}
           <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
             <div className="flex flex-col gap-y-4">
-              {/* Primeira linha: Data, Código do Turno, Turno, Hora Inicial, Hora Final */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2">
+              {/* Primeira linha: Data, Turno, Hora Inicial, Hora Final */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="date" className="text-sm font-medium text-muted-foreground">
                     Data
@@ -2669,26 +2669,13 @@ export default function ApontamentoOEE() {
                   </Popover>
                 </div>
 
-                {/* Turno - Código */}
-                <div>
-                  <span className="block text-sm font-medium text-muted-foreground mb-1.5">Código do Turno</span>
-                  <Input
-                    type="text"
-                    value={turnoCodigo}
-                    readOnly
-                    disabled={cabecalhoBloqueado}
-                    placeholder="Código"
-                    className="bg-muted/50 cursor-not-allowed"
-                  />
-                </div>
-
-                {/* Turno - Nome com Botão de Busca */}
+                {/* Turno - Código e Nome com Botão de Busca */}
                 <div>
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
                   <div className="flex gap-2">
                     <Input
                       type="text"
-                      value={turnoNome}
+                      value={turnoCodigo && turnoNome ? `${turnoCodigo} - ${turnoNome}` : ''}
                       readOnly
                       disabled={cabecalhoBloqueado}
                       placeholder="Selecione um turno"
