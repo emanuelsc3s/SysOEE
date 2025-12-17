@@ -2636,8 +2636,8 @@ export default function ApontamentoOEE() {
           <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
             <div className="flex flex-col gap-y-4">
               {/* Primeira linha: Data, Turno, Hora Inicial, Hora Final */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-x-4 gap-y-2">
-                <div className="flex flex-col gap-1.5">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2">
+                <div className="md:col-span-3 flex flex-col gap-1.5">
                   <Label htmlFor="date" className="text-sm font-medium text-muted-foreground">
                     Data
                   </Label>
@@ -2670,7 +2670,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 {/* Turno - Código e Nome com Botão de Busca */}
-                <div>
+                <div className="md:col-span-5">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
                   <div className="flex gap-2">
                     <Input
@@ -2696,7 +2696,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 {/* Hora Inicial do Turno */}
-                <div>
+                <div className="md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Inicial</span>
                   <Input
                     type="time"
@@ -2709,7 +2709,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 {/* Hora Final do Turno */}
-                <div>
+                <div className="md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Final</span>
                   <Input
                     type="time"
