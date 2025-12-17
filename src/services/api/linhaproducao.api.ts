@@ -13,8 +13,9 @@ interface LinhaProducaoSupabase {
   linhaproducao_id: number
   linhaproducao: string
   tipo: string
-  ativo: boolean
+  bloqueado: string | null
   departamento_id: number | null
+  departamento: string | null
   tbdepartamento?: {
     departamento: string
   } | null
@@ -30,8 +31,10 @@ export interface BuscarLinhasProducaoParams {
   page?: number
   /** Itens por página */
   itemsPerPage?: number
-  /** Filtrar apenas ativos */
+  /** Filtrar apenas ativos (obsoleto, use filtroStatus) */
   apenasAtivos?: boolean
+  /** Filtro de status: 'todos', 'ativos' ou 'inativos' */
+  filtroStatus?: 'todos' | 'ativos' | 'inativos'
   /** Filtrar por departamento */
   departamentoId?: number
   /** Filtrar por tipo */
@@ -50,7 +53,8 @@ export async function buscarLinhasProducao(
     searchTerm = '',
     page = 1,
     itemsPerPage = 25,
-    apenasAtivos = true,
+    apenasAtivos,
+    filtroStatus = 'todos',
     departamentoId,
     tipo,
   } = params
@@ -72,10 +76,22 @@ export async function buscarLinhasProducao(
     // Filtrar apenas não deletados
     query = query.is('deleted_at', null)
 
-    // Filtrar apenas ativos se solicitado
-    if (apenasAtivos) {
-      query = query.eq('ativo', 'Sim')
+    // Aplicar filtro de status baseado no campo "bloqueado"
+    // bloqueado = 'Sim' significa bloqueado/inativo
+    // bloqueado = 'Não' ou NULL significa ativo
+    // Suporta tanto o parâmetro legado apenasAtivos quanto o novo filtroStatus
+    const statusEfetivo = apenasAtivos !== undefined
+      ? (apenasAtivos ? 'ativos' : 'todos')
+      : filtroStatus
+
+    if (statusEfetivo === 'ativos') {
+      // Buscar apenas ativos (não bloqueados)
+      query = query.or('bloqueado.eq.Não,bloqueado.is.null')
+    } else if (statusEfetivo === 'inativos') {
+      // Buscar apenas inativos (bloqueados)
+      query = query.eq('bloqueado', 'Sim')
     }
+    // Se filtroStatus === 'todos', não adiciona filtro de bloqueado
 
     // Filtrar por departamento
     if (departamentoId) {
@@ -116,13 +132,14 @@ export async function buscarLinhasProducao(
     })
 
     // Mapear dados para incluir nome do departamento
+    // bloqueado = 'Não' significa ativo, bloqueado = 'Sim' significa inativo
     const linhasComDepartamento = (data || []).map((linha: LinhaProducaoSupabase): Partial<LinhaProducao> => ({
       linhaproducao_id: linha.linhaproducao_id,
       linhaproducao: linha.linhaproducao,
       tipo: linha.tipo,
-      ativo: linha.ativo ? 'S' : 'N',
+      ativo: linha.bloqueado === 'Não' ? 'S' : 'N',
       departamento_id: linha.departamento_id,
-      departamento: linha.tbdepartamento?.departamento || null,
+      departamento: linha.departamento || linha.tbdepartamento?.departamento || null,
       created_at: new Date().toISOString(),
       created_by: null,
       updated_at: null,

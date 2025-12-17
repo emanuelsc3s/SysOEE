@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
-import { LINHAS_PRODUCAO, buscarLinhaPorId } from '@/data/mockLinhas'
+import { buscarLinhaPorId } from '@/data/mockLinhas'
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import paradasGeraisData from '../../data/paradas.json'
 import { Turno } from '@/types/operacao'
@@ -29,15 +29,6 @@ import {
 import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada } from '@/services/localStorage/parada.storage'
 import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -84,6 +75,7 @@ import { AppHeader } from "@/components/layout/AppHeader"
 import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
 import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
 import { ModalBuscaSKU, type SKUSelecionado } from "@/components/modal/ModalBuscaSKU"
+import { ModalBuscaLinhaProducao, type LinhaProducaoSelecionada } from "@/components/modal/modalBuscaLinhaProducao"
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -198,9 +190,12 @@ export default function ApontamentoOEE() {
   const [turnoNome, setTurnoNome] = useState<string>('') // Nome do turno
   const [modalBuscaTurnoAberto, setModalBuscaTurnoAberto] = useState<boolean>(false)
   const [modalBuscaSKUAberto, setModalBuscaSKUAberto] = useState<boolean>(false)
+  const [modalBuscaLinhaAberto, setModalBuscaLinhaAberto] = useState<boolean>(false)
   const [turnoHoraInicial, setTurnoHoraInicial] = useState<string>('') // Hora inicial do turno
   const [turnoHoraFinal, setTurnoHoraFinal] = useState<string>('') // Hora final do turno
   const [linhaId, setLinhaId] = useState<string>('')
+  const [linhaNome, setLinhaNome] = useState<string>('') // Nome da linha selecionada para exibição
+  const [linhaProducaoSelecionada, setLinhaProducaoSelecionada] = useState<LinhaProducaoSelecionada | null>(null)
   const [skuCodigo, setSkuCodigo] = useState<string>('')
   const [editandoCabecalho, setEditandoCabecalho] = useState<boolean>(false)
   const [cabecalhoOriginal, setCabecalhoOriginal] = useState<{
@@ -212,6 +207,8 @@ export default function ApontamentoOEE() {
     turnoHoraInicial: string
     turnoHoraFinal: string
     linhaId: string
+    linhaNome: string
+    linhaProducaoSelecionada: LinhaProducaoSelecionada | null
     skuCodigo: string
   } | null>(null)
 
@@ -1476,6 +1473,31 @@ export default function ApontamentoOEE() {
   }
 
   /**
+   * Abre o modal de busca de Linha de Produção
+   */
+  const abrirModalBuscaLinha = () => {
+    setModalBuscaLinhaAberto(true)
+  }
+
+  /**
+   * Callback quando uma Linha de Produção é selecionada no modal
+   */
+  const handleSelecionarLinhaModal = (linha: LinhaProducaoSelecionada) => {
+    // Armazena o ID da linha (usado internamente)
+    setLinhaId(linha.linhaproducao_id.toString())
+    // Armazena o nome da linha para exibição no campo (formato: código - nome)
+    setLinhaNome(`${linha.linhaproducao_id} - ${linha.linhaproducao}`)
+    // Armazena o objeto completo para referência
+    setLinhaProducaoSelecionada(linha)
+
+    toast({
+      title: 'Linha de Produção selecionada',
+      description: `${linha.linhaproducao_id} - ${linha.linhaproducao}${linha.departamento ? ` (${linha.departamento})` : ''}`,
+      variant: 'default'
+    })
+  }
+
+  /**
    * Calcula o tempo disponível do turno em horas
    * Baseado no turno selecionado (12 horas por turno)
    */
@@ -2009,6 +2031,8 @@ export default function ApontamentoOEE() {
       turnoHoraInicial,
       turnoHoraFinal,
       linhaId,
+      linhaNome,
+      linhaProducaoSelecionada,
       skuCodigo
     })
     setEditandoCabecalho(true)
@@ -2031,6 +2055,8 @@ export default function ApontamentoOEE() {
       setTurnoHoraInicial(cabecalhoOriginal.turnoHoraInicial)
       setTurnoHoraFinal(cabecalhoOriginal.turnoHoraFinal)
       setLinhaId(cabecalhoOriginal.linhaId)
+      setLinhaNome(cabecalhoOriginal.linhaNome)
+      setLinhaProducaoSelecionada(cabecalhoOriginal.linhaProducaoSelecionada)
       setSkuCodigo(cabecalhoOriginal.skuCodigo)
     }
     setEditandoCabecalho(false)
@@ -2711,41 +2737,31 @@ export default function ApontamentoOEE() {
 
               {/* Segunda linha: Linha de Produção e Produto SKU */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-x-6 gap-y-2">
-                <div className="md:col-span-3">
+                <div className="md:col-span-4">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
-                  <Select value={linhaId} onValueChange={setLinhaId} disabled={cabecalhoBloqueado}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectLabel>SPEP</SelectLabel>
-                        {LINHAS_PRODUCAO.filter(l => l.setor === 'SPEP').map(linha => (
-                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>SPPV</SelectLabel>
-                        {LINHAS_PRODUCAO.filter(l => l.setor === 'SPPV').map(linha => (
-                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>Líquidos</SelectLabel>
-                        {LINHAS_PRODUCAO.filter(l => l.setor === 'Líquidos').map(linha => (
-                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                      <SelectGroup>
-                        <SelectLabel>CPHD</SelectLabel>
-                        {LINHAS_PRODUCAO.filter(l => l.setor === 'CPHD').map(linha => (
-                          <SelectItem key={linha.id} value={linha.id}>{linha.nome}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={linhaNome}
+                      readOnly
+                      disabled={cabecalhoBloqueado}
+                      placeholder="Selecione uma linha de produção"
+                      className="flex-1 bg-muted/50 cursor-not-allowed"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={abrirModalBuscaLinha}
+                      disabled={cabecalhoBloqueado}
+                      title="Buscar linha de produção"
+                      className="flex-none"
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="md:col-span-9">
+                <div className="md:col-span-8">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Produto SKU</span>
                   <div className="flex gap-2">
                     <Input
@@ -4260,6 +4276,13 @@ export default function ApontamentoOEE() {
         aberto={modalBuscaSKUAberto}
         onFechar={() => setModalBuscaSKUAberto(false)}
         onSelecionarSKU={handleSelecionarSKUModal}
+      />
+
+      {/* Modal de Busca de Linha de Produção */}
+      <ModalBuscaLinhaProducao
+        aberto={modalBuscaLinhaAberto}
+        onFechar={() => setModalBuscaLinhaAberto(false)}
+        onSelecionarLinha={handleSelecionarLinhaModal}
       />
     </>
   )
