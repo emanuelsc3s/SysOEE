@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format } from 'date-fns'
 import { buscarLinhaPorId } from '@/data/mockLinhas'
@@ -2637,7 +2637,7 @@ export default function ApontamentoOEE() {
             <div className="flex flex-col gap-y-4">
               {/* Primeira linha: Data, Turno, Hora Inicial, Hora Final */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2">
-                <div className="md:col-span-3 flex flex-col gap-1.5">
+                <div className="md:col-span-2 flex flex-col gap-1.5">
                   <Label htmlFor="date" className="text-sm font-medium text-muted-foreground">
                     Data
                   </Label>
@@ -2670,7 +2670,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 {/* Turno - Código e Nome com Botão de Busca */}
-                <div className="md:col-span-5">
+                <div className="md:col-span-6">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
                   <div className="flex gap-2">
                     <Input
@@ -2698,27 +2698,33 @@ export default function ApontamentoOEE() {
                 {/* Hora Inicial do Turno */}
                 <div className="md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Inicial</span>
-                  <Input
-                    type="time"
-                    value={turnoHoraInicial}
-                    onChange={(e) => setTurnoHoraInicial(e.target.value)}
-                    disabled={cabecalhoBloqueado}
-                    placeholder="00:00"
-                    className="bg-background-light dark:bg-background-dark"
-                  />
+                  <div className="relative">
+                    <Input
+                      type="time"
+                      value={turnoHoraInicial}
+                      onChange={(e) => setTurnoHoraInicial(e.target.value)}
+                      disabled={cabecalhoBloqueado}
+                      placeholder="00:00"
+                      className="bg-background-light dark:bg-background-dark pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                    />
+                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
                 </div>
 
                 {/* Hora Final do Turno */}
                 <div className="md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Final</span>
-                  <Input
-                    type="time"
-                    value={turnoHoraFinal}
-                    onChange={(e) => setTurnoHoraFinal(e.target.value)}
-                    disabled={cabecalhoBloqueado}
-                    placeholder="00:00"
-                    className="bg-background-light dark:bg-background-dark"
-                  />
+                  <div className="relative">
+                    <Input
+                      type="time"
+                      value={turnoHoraFinal}
+                      onChange={(e) => setTurnoHoraFinal(e.target.value)}
+                      disabled={cabecalhoBloqueado}
+                      placeholder="00:00"
+                      className="bg-background-light dark:bg-background-dark pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                    />
+                    <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
