@@ -28,6 +28,49 @@ export type Turno = '1º Turno' | '2º Turno'
 export type Setor = 'SPEP' | 'SPPV' | 'Líquidos' | 'CPHD'
 
 /**
+ * Lista de setores válidos para validação em runtime
+ */
+export const SETORES_VALIDOS: readonly Setor[] = ['SPEP', 'SPPV', 'Líquidos', 'CPHD'] as const
+
+/**
+ * Setor padrão quando o valor não é reconhecido
+ * Usando SPEP como padrão pois é o maior setor (20 linhas)
+ */
+export const SETOR_PADRAO: Setor = 'SPEP'
+
+/**
+ * Converte uma string para o tipo Setor de forma segura
+ * Retorna o setor padrão (SPEP) se o valor não for válido
+ *
+ * @param valor - Valor a ser convertido (pode ser string, null ou undefined)
+ * @returns Setor válido
+ */
+export function converterParaSetor(valor: string | null | undefined): Setor {
+  if (!valor) {
+    return SETOR_PADRAO
+  }
+
+  // Verifica se o valor é um setor válido
+  if (SETORES_VALIDOS.includes(valor as Setor)) {
+    return valor as Setor
+  }
+
+  // Tenta normalizar o valor (case-insensitive)
+  const valorNormalizado = valor.trim()
+  const setorEncontrado = SETORES_VALIDOS.find(
+    setor => setor.toLowerCase() === valorNormalizado.toLowerCase()
+  )
+
+  if (setorEncontrado) {
+    return setorEncontrado
+  }
+
+  // Log para depuração em caso de valor inesperado
+  console.warn(`⚠️ Setor "${valor}" não reconhecido. Usando setor padrão: ${SETOR_PADRAO}`)
+  return SETOR_PADRAO
+}
+
+/**
  * Configuração visual das fases do Kanban
  * Centraliza cores, ícones e estilos para manter consistência
  */

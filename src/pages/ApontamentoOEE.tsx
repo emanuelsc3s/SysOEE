@@ -18,7 +18,7 @@ import { useOeeTurno } from '@/hooks/useOeeTurno'
 // Os dados da linha agora vêm de linhaProducaoSelecionada
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import paradasGeraisData from '../../data/paradas.json'
-import { Turno } from '@/types/operacao'
+import { Turno, converterParaSetor } from '@/types/operacao'
 import {
   salvarApontamentoProducao,
   calcularOEECompleto,
@@ -289,13 +289,15 @@ export default function ApontamentoOEE() {
   const linhaSelecionada = linhaProducaoSelecionada ? {
     id: linhaProducaoSelecionada.linhaproducao_id.toString(),
     nome: linhaProducaoSelecionada.linhaproducao,
-    setor: linhaProducaoSelecionada.departamento || 'N/A',
+    setor: converterParaSetor(linhaProducaoSelecionada.departamento),
     tipo: linhaProducaoSelecionada.tipo || 'Envase',
     metaOEE: 75
   } : null
 
-  // Desabilita cabeçalho quando não está em edição ou antes do início
-  const cabecalhoBloqueado = statusTurno !== 'NAO_INICIADO' && !editandoCabecalho
+  // Desabilita cabeçalho quando:
+  // - Turno já iniciado/encerrado e não está editando o cabeçalho
+  // - Ou quando está em modo de visualização (carregado via oeeTurnoId sem modo de edição)
+  const cabecalhoBloqueado = (statusTurno !== 'NAO_INICIADO' && !editandoCabecalho) || modoVisualizacao
 
   // ==================== Estado de Histórico de Produção ====================
   const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
@@ -756,7 +758,7 @@ export default function ApontamentoOEE() {
       const dto: CriarApontamentoProducaoDTO = {
         turno,
         linha: linhaProducaoSelecionada.linhaproducao,
-        setor: linhaProducaoSelecionada.departamento || 'N/A',
+        setor: converterParaSetor(linhaProducaoSelecionada.departamento),
         sku: codigoSKU,
         produto: descricaoSKU,
         velocidadeNominal: 4000,
@@ -2478,7 +2480,7 @@ export default function ApontamentoOEE() {
       // Usar linhaProducaoSelecionada que contém dados do BD (não buscarLinhaPorId que usa IDs slug)
       const linhaAtualizada = linhaProducaoSelecionada ? {
         nome: linhaProducaoSelecionada.linhaproducao,
-        setor: linhaProducaoSelecionada.departamento || 'N/A'
+        setor: converterParaSetor(linhaProducaoSelecionada.departamento)
       } : null
 
       // Atualiza histórico local exibido (registros do turno) e persiste
