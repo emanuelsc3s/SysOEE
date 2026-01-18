@@ -54,19 +54,128 @@ function MobileBackground() {
 }
 
 /**
- * Componente BrandingSection
- * Seção esquerda com vídeo de apresentação e branding
- * Inspirado no design do camera-web, adaptado para OEE SicFar
+ * ============================================================================
+ * SISTEMA DE DIVISÃO DIAGONAL - DESIGN LIMPO E ELEGANTE
+ * ============================================================================
+ *
+ * Arquitetura simplificada com foco no efeito principal:
+ * - Diagonal invertida: esquerda inferior → direita superior
+ * - Linha azul discreta como elemento de divisão
+ * - Glassmorphism sutil (~4% da tela)
+ * - Visual limpo e profissional
+ *
+ * Técnicas utilizadas:
+ * - CSS clip-path polygon para corte diagonal invertido
+ * - backdrop-filter: blur() para efeito glassmorphism sutil
+ * - Gradiente azul descendente como efeito principal
+ * ============================================================================
+ */
+
+/**
+ * DiagonalBlueBar - Linha diagonal de separação (fina e elegante)
+ *
+ * Mantém a divisão visual no estilo da referência: uma linha discreta,
+ * limpa e levemente iluminada, sem bloco pesado ou vidro dominante.
+ *
+ * - Alinhada à diagonal do clip-path
+ * - Usa a largura da seção branding + offset para alinhar a borda
+ * - Cor alinhada ao azul corporativo
+ */
+function DiagonalBlueBar() {
+  /**
+   * Clip-path da linha diagonal usando a largura real da seção de branding
+   * e a espessura total configurada no CSS.
+   */
+  const diagonalLineClipPath = `polygon(
+    calc(var(--login-branding-width) - (var(--login-diagonal-line-width) / 2)) 0,
+    calc(var(--login-branding-width) + (var(--login-diagonal-line-width) / 2)) 0,
+    calc(var(--login-branding-width) - var(--login-diagonal-offset) + (var(--login-diagonal-line-width) / 2)) 100%,
+    calc(var(--login-branding-width) - var(--login-diagonal-offset) - (var(--login-diagonal-line-width) / 2)) 100%
+  )`
+
+  return (
+    <div
+      className="hidden lg:block absolute inset-0 pointer-events-none z-30"
+      aria-hidden="true"
+    >
+      {/* Linha principal nítida (alta definição) */}
+      <div
+        className="absolute login-diagonal-line"
+        style={{
+          inset: 0,
+          // Clip-path cria uma faixa fina exatamente sobre a diagonal
+          clipPath: diagonalLineClipPath,
+          WebkitClipPath: diagonalLineClipPath,
+        }}
+      />
+
+      {/* Brilho animado (movimento de luz) */}
+      <div
+        className="absolute login-diagonal-line-shine"
+        style={{
+          inset: 0,
+          clipPath: diagonalLineClipPath,
+          WebkitClipPath: diagonalLineClipPath,
+        }}
+      />
+    </div>
+  )
+}
+
+
+
+/**
+ * BrandingSection - Seção de Branding com Diagonal Limpa
+ *
+ * Seção esquerda com sistema de divisão diagonal simplificado.
+ * Foco no efeito da barra azul descendente como elemento principal.
+ *
+ * Direção da diagonal: INVERTIDA (esquerda inferior → direita superior)
+ *
+ * Hierarquia visual simplificada:
+ * 1. Vídeo de fundo da linha de produção
+ * 2. Overlay gradiente para legibilidade
+ * 3. Glassmorphism diagonal (reduzido ~12%)
+ * 4. Sombra sutil de profundidade
+ * 5. Barra azul descendente (EFEITO PRINCIPAL)
+ * 6. Conteúdo de texto
  */
 function BrandingSection() {
+  /**
+   * Clip-path único para manter a diagonal do vídeo
+   * exatamente alinhada com a linha de divisão.
+   */
+  const diagonalClipPath = 'polygon(0 0, 100% 0, calc(100% - var(--login-diagonal-offset)) 100%, 0 100%)'
+
   return (
     <section
-      className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden login-page-section"
+      className="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden z-10 login-page-section"
       aria-label="Vídeo institucional da linha de produção"
+      style={{
+        /**
+         * Clip-path para corte diagonal INVERTIDO
+         *
+         * Nova geometria: diagonal de baixo-esquerda para cima-direita
+         * - (0 0): Canto superior esquerdo fixo
+         * - (100% 0): Canto superior direito completo
+         * - (calc(100% - offset) 100%): Inferior direito com recuo da diagonal
+         * - (0 100%): Canto inferior esquerdo fixo
+         *
+         * O resultado é uma diagonal que vai do canto inferior (com recuo)
+         * ao topo direito, criando a direção invertida solicitada.
+         */
+        clipPath: diagonalClipPath,
+        WebkitClipPath: diagonalClipPath,
+      }}
     >
-      {/* Vídeo de fundo */}
+      {/* ====== CAMADA 1: Vídeo de fundo institucional ====== */}
       <video
         className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          // Garante o corte diagonal do vídeo no lado direito
+          clipPath: diagonalClipPath,
+          WebkitClipPath: diagonalClipPath,
+        }}
         autoPlay
         loop
         muted
@@ -77,23 +186,51 @@ function BrandingSection() {
         <source src="/VideoLinhaE.mov" type="video/mp4" />
       </video>
 
-      {/* Overlay gradiente para melhor legibilidade e estética */}
+      {/* ====== CAMADA 2: Overlay gradiente para legibilidade ====== */}
       <div
-        className="absolute inset-0 bg-gradient-to-r from-primary/80 via-primary/50 to-transparent"
+        className="absolute inset-0"
         aria-hidden="true"
+        style={{
+          background: `linear-gradient(
+            to right,
+            rgba(6, 98, 195, 0.85) 0%,
+            rgba(6, 98, 195, 0.65) 30%,
+            rgba(6, 98, 195, 0.35) 60%,
+            rgba(6, 98, 195, 0.1) 85%,
+            transparent 100%
+          )`,
+        }}
       />
 
-      {/* Conteúdo sobre o vídeo */}
+      {/* NOTA: A barra azul (DiagonalBlueBar) foi movida para o container principal
+          para ficar posicionada na interseção exata entre as duas seções */}
+
+      {/* ====== CONTEÚDO: Texto e branding sobre o vídeo ====== */}
       <div className="relative z-10 flex flex-col justify-end p-12 text-white">
         <div className="max-w-md lg:max-w-none space-y-4">
+          {/* Logo e nome do sistema */}
           <div className="flex items-center gap-3 lg:w-[28rem]">
-            <Shield className="h-10 w-10" aria-hidden="true" />
-            <span className="text-2xl font-bold tracking-tight">SICFAR OEE</span>
+            <Shield className="h-10 w-10 drop-shadow-lg" aria-hidden="true" />
+            <span className="text-2xl font-bold tracking-tight drop-shadow-lg">SICFAR OEE</span>
           </div>
-          <h1 className="text-3xl lg:text-[1.75rem] font-bold leading-tight lg:w-[28rem]">
+
+          {/* Título principal com sombra para legibilidade */}
+          <h1
+            className="text-3xl lg:text-[1.75rem] font-bold leading-tight lg:w-[28rem]"
+            style={{
+              textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+            }}
+          >
             Monitoramento da Eficiência<br className="hidden lg:block" /> Operacional de Equipamentos.
           </h1>
-          <p className="text-lg text-white/90 leading-relaxed xl:whitespace-nowrap">
+
+          {/* Subtítulo */}
+          <p
+            className="text-lg text-white/90 leading-relaxed xl:whitespace-nowrap"
+            style={{
+              textShadow: '0 1px 6px rgba(0, 0, 0, 0.2)',
+            }}
+          >
             Disponibilidade, Performance e Qualidade. Tudo em um só lugar.
           </p>
         </div>
@@ -287,18 +424,42 @@ export default function Login() {
   }
 
   return (
-    <div className="login-page flex flex-col lg:flex-row">
+    <div className="login-page flex flex-col lg:flex-row relative">
       {/* Seção Branding (Esquerda) */}
       <BrandingSection />
 
-      {/* Seção Formulário (Direita) */}
+      {/* ============================================================
+          LINHA DIAGONAL - DIVISÃO SUTIL ENTRE AS SEÇÕES
+          ============================================================
+
+          Inspirada na referência enviada: uma linha fina e elegante
+          que define a separação sem pesar no layout.
+          ============================================================ */}
+      <DiagonalBlueBar />
+
+      {/* ============================================================
+          SEÇÃO FORMULÁRIO (DIREITA) - Design Limpo e Elegante
+          ============================================================
+
+          Seção com margin-left negativo para preencher o gap criado
+          pelo clip-path da seção de branding. A barra azul sobrepõe
+          a interseção, criando continuidade visual perfeita.
+
+          A classe 'login-form-section' define o margin-left responsivo:
+          - lg: margin-left = -3rem (compensa clip-path de 4rem)
+          - xl: mesma compensação
+          ============================================================ */}
       <section
         className={cn(
-          "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative",
+          "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden",
           // Mobile: fundo com área azul corporativa no topo
           "max-sm:bg-brand-bg-primary",
           // Tablet/Desktop: fundo padrão
-          "sm:bg-brand-bg-primary sm:p-4 md:p-6 lg:p-8 sm:items-center sm:justify-between"
+          "sm:bg-brand-bg-primary sm:p-4 md:p-6 lg:p-8 sm:items-center sm:justify-between",
+          // Padding para compensar o margin negativo e dar espaço ao conteúdo
+          "lg:pl-14 xl:pl-16",
+          // Classe customizada para margin-left negativo responsivo
+          "login-form-section"
         )}
         aria-label="Formulário de login"
       >

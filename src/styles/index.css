@@ -141,6 +141,12 @@
     max-height: 100dvh;
     overflow: hidden;
     width: 100%;
+    /* Variaveis da diagonal para alinhar clip-path e barra azul */
+    --login-diagonal-offset: 4rem;
+    /* Espessura total da linha diagonal */
+    --login-diagonal-line-width: 6px;
+    --login-branding-width: 50%;
+    --login-diagonal-overlap: 0.5rem;
   }
 
   .login-page-section {
@@ -189,6 +195,47 @@
       font-size: 17px;
     }
   }
+}
+
+/* Linha diagonal do login - base nítida */
+.login-diagonal-line {
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 98, 195, 0.85) 0%,
+    rgba(6, 98, 195, 1) 50%,
+    rgba(6, 98, 195, 0.85) 100%
+  );
+  box-shadow: 0 0 6px rgba(6, 98, 195, 0.25);
+  opacity: 0.95;
+}
+
+/* Movimento de luz/brilho suave */
+@keyframes diagonalLineShine {
+  0% {
+    background-position: 0% -100%;
+    opacity: 0.2;
+  }
+  50% {
+    background-position: 0% 50%;
+    opacity: 0.65;
+  }
+  100% {
+    background-position: 0% 200%;
+    opacity: 0.2;
+  }
+}
+
+.login-diagonal-line-shine {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.75) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 100% 200%;
+  animation: diagonalLineShine 4s ease-in-out infinite;
+  mix-blend-mode: screen;
+  will-change: background-position, opacity;
 }
 
 /* Animações customizadas para círculos de background */
@@ -251,6 +298,155 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shimmer 15s ease-in-out infinite;
+}
+
+/* ========================================
+   Animações Avançadas para Login Diagonal
+   Design Premium 2024 - Efeitos Sofisticados
+   ======================================== */
+
+/* Animação de luz deslizando pela diagonal */
+@keyframes diagonalLightBeam {
+  0% {
+    transform: translateY(-100%) translateX(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%) translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Animação de pulso suave para orbs flutuantes */
+@keyframes orbFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+/* Animação de rotação lenta para gradiente */
+@keyframes gradientRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animação de respiração para glassmorphism */
+@keyframes glassBreath {
+  0%, 100% {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.08);
+  }
+  50% {
+    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* Animação de onda para borda luminosa */
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0.35;
+    box-shadow: 0 0 16px rgba(6, 98, 195, 0.25), 0 0 36px rgba(6, 98, 195, 0.15);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 26px rgba(6, 98, 195, 0.4), 0 0 52px rgba(6, 98, 195, 0.22);
+  }
+}
+
+/* Animação de aurora boreal sutil */
+@keyframes auroraShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Classes de animação para a página de login */
+.login-diagonal-light {
+  animation: diagonalLightBeam 8s ease-in-out infinite;
+}
+
+.login-orb-float {
+  animation: orbFloat 6s ease-in-out infinite;
+}
+
+.login-orb-float-delayed {
+  animation: orbFloat 8s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.login-orb-float-slow {
+  animation: orbFloat 10s ease-in-out infinite;
+  animation-delay: -4s;
+}
+
+.login-glass-breath {
+  animation: glassBreath 4s ease-in-out infinite;
+}
+
+.login-border-glow {
+  animation: borderGlow 5s ease-in-out infinite;
+}
+
+.login-aurora {
+  background-size: 400% 400%;
+  animation: auroraShift 15s ease infinite;
+}
+
+/* ============================================================================
+   SISTEMA DE DIVISÃO DIAGONAL - LOGIN PAGE
+   ============================================================================
+   Classes responsivas para posicionamento da barra azul e compensação
+   do gap criado pelo clip-path na seção de branding.
+
+  Geometria da diagonal (responsivo e baseado em rem):
+  - A diagonal vai de (branding_width, 0) até (branding_width - offset, 100%)
+  - A linha usa clip-path com base em branding + offset para alinhar a divisão
+
+  Isso evita desalinhamentos quando o tamanho do rem muda em diferentes DPIs.
+   ============================================================================ */
+
+/* Margin-left negativo para preencher o gap do clip-path */
+.login-form-section {
+  margin-left: 0;
+}
+
+@media (min-width: 1024px) {
+  .login-form-section {
+    /* Compensa o espaço triangular criado pelo clip-path */
+    margin-left: calc(-1 * (var(--login-diagonal-offset) - var(--login-diagonal-overlap)));
+  }
+}
+
+@media (min-width: 1280px) {
+  .login-page {
+    --login-branding-width: 60%;
+  }
+
+  .login-form-section {
+    margin-left: calc(-1 * (var(--login-diagonal-offset) - var(--login-diagonal-overlap)));
+  }
 }
 
 /* Estilos customizados para scrollbar horizontal do Kanban */
