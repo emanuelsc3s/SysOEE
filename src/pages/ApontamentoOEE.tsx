@@ -17,7 +17,6 @@ import { useOeeTurno } from '@/hooks/useOeeTurno'
 // mas o sistema agora usa IDs numéricos do banco de dados
 // Os dados da linha agora vêm de linhaProducaoSelecionada
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
-import paradasGeraisData from '../../data/paradas.json'
 import { Turno, converterParaSetor } from '@/types/operacao'
 import {
   salvarApontamentoProducao,
@@ -258,6 +257,9 @@ export default function ApontamentoOEE() {
   const [motivoRetrabalho, setMotivoRetrabalho] = useState<string>('')
 
   // ==================== Estado de Tempo de Parada ====================
+  const [paradasGerais, setParadasGerais] = useState<ParadaGeral[]>([])
+  const [carregandoParadas, setCarregandoParadas] = useState<boolean>(false)
+  const [erroParadas, setErroParadas] = useState<string | null>(null)
   const [codigoParadaBusca, setCodigoParadaBusca] = useState<string>('')
   const [horaInicialParada, setHoraInicialParada] = useState<string>('')
   const [horaFinalParada, setHoraFinalParada] = useState<string>('')
@@ -1422,10 +1424,58 @@ export default function ApontamentoOEE() {
   }
 
   /**
+   * Busca paradas cadastradas no Supabase (tboee_parada)
+   */
+  const buscarParadasSupabase = useCallback(async () => {
+    if (carregandoParadas) {
+      return
+    }
+
+    setCarregandoParadas(true)
+    setErroParadas(null)
+
+    try {
+      const { data, error } = await supabase
+        .from('tboee_parada')
+        .select('codigo, componente, classe, natureza, parada, descricao')
+        .order('codigo', { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      const paradasFormatadas: ParadaGeral[] = (data || []).map((parada) => ({
+        codigo: parada.codigo ?? '',
+        componente: parada.componente ?? '',
+        classe: parada.classe ?? '',
+        natureza: parada.natureza ?? '',
+        parada: parada.parada ?? '',
+        descricao: parada.descricao ?? ''
+      }))
+
+      setParadasGerais(paradasFormatadas)
+    } catch (error) {
+      console.error('Erro ao buscar paradas no Supabase:', error)
+      setParadasGerais([])
+      setErroParadas('Não foi possível carregar a lista de paradas.')
+      toast({
+        title: 'Erro ao carregar paradas',
+        description: 'Não foi possível buscar os tipos de parada no Supabase.',
+        variant: 'destructive'
+      })
+    } finally {
+      setCarregandoParadas(false)
+    }
+  }, [carregandoParadas, toast])
+
+  /**
    * Abre o modal de busca de paradas
    */
   const abrirModalBuscaParadas = () => {
     setModalBuscaParadasAberto(true)
+    if (paradasGerais.length === 0 || erroParadas) {
+      buscarParadasSupabase()
+    }
   }
 
   /**
@@ -1433,11 +1483,11 @@ export default function ApontamentoOEE() {
    */
   const handleSelecionarParadaModal = (parada: ParadaGeral) => {
     setParadaSelecionada(parada)
-    setCodigoParadaBusca(parada.apontamento || '')
+    setCodigoParadaBusca(parada.codigo || '')
 
     toast({
       title: 'Parada selecionada',
-      description: `${parada.apontamento} - ${parada.descricao?.substring(0, 50)}...`,
+      description: `${parada.codigo} - ${(parada.parada || parada.descricao || '').substring(0, 50)}...`,
       variant: 'default'
     })
   }
@@ -2786,8 +2836,7 @@ export default function ApontamentoOEE() {
       linhaNome: linhaSelecionada?.nome || '',
       natureza: paradaSelecionada.natureza || '',
       classe: paradaSelecionada.classe || '',
-      grandeParada: paradaSelecionada.grandeParada || '',
-      apontamento: paradaSelecionada.apontamento || '',
+      parada: paradaSelecionada.parada || '',
       descricao: paradaSelecionada.descricao || '',
       horaInicial: horaInicialParada,
       horaFinal: horaFinalParada,
@@ -2808,13 +2857,13 @@ export default function ApontamentoOEE() {
       id: registroParada.id,
       linha_id: linhaId,
       lote_id: null,
-      codigo_parada_id: paradaSelecionada.apontamento || 'CODIGO_TEMP',
+      codigo_parada_id: paradaSelecionada.codigo || 'CODIGO_TEMP',
       turno_id: turno,
       data_parada: format(data!, 'yyyy-MM-dd'),
       hora_inicio: horaInicioFormatada,
       hora_fim: horaFimFormatada,
       duracao_minutos: duracaoMinutos,
-      observacao: `${paradaSelecionada.natureza || ''} - ${paradaSelecionada.classe || ''} - ${paradaSelecionada.grandeParada || ''} - ${observacoesParada || ''}`.trim(),
+      observacao: `${paradaSelecionada.natureza || ''} - ${paradaSelecionada.classe || ''} - ${paradaSelecionada.parada || ''} - ${observacoesParada || ''}`.trim(),
       criado_por_operador: 1,
       conferido_por_supervisor: null,
       conferido_em: null,
@@ -2839,8 +2888,8 @@ export default function ApontamentoOEE() {
       horaInicio: horaInicialParada,
       horaFim: horaFinalParada,
       duracao: duracaoMinutos,
-      tipoParada: paradaSelecionada.apontamento || paradaSelecionada.descricao || 'Parada',
-      codigoParada: paradaSelecionada.apontamento || 'CODIGO_TEMP',
+      tipoParada: paradaSelecionada.parada || paradaSelecionada.descricao || 'Parada',
+      codigoParada: paradaSelecionada.codigo || 'CODIGO_TEMP',
       descricaoParada: paradaSelecionada.descricao || '',
       observacoes: observacoesParada,
       dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
@@ -3786,8 +3835,7 @@ export default function ApontamentoOEE() {
                       <div className="space-y-1 text-sm">
                         <p><span className="font-medium">Natureza:</span> {paradaSelecionada.natureza || 'N/A'}</p>
                         <p><span className="font-medium">Classe:</span> {paradaSelecionada.classe || 'N/A'}</p>
-                        <p><span className="font-medium">Grande Parada:</span> {paradaSelecionada.grandeParada || 'N/A'}</p>
-                        <p><span className="font-medium">Apontamento:</span> {paradaSelecionada.apontamento || 'N/A'}</p>
+                        <p><span className="font-medium">Parada:</span> {paradaSelecionada.parada || 'N/A'}</p>
                         <p><span className="font-medium">Descrição:</span> {paradaSelecionada.descricao || 'N/A'}</p>
                       </div>
                     </div>
@@ -4102,7 +4150,9 @@ export default function ApontamentoOEE() {
         aberto={modalBuscaParadasAberto}
         onFechar={() => setModalBuscaParadasAberto(false)}
         onSelecionarParada={handleSelecionarParadaModal}
-        paradasGerais={paradasGeraisData}
+        paradasGerais={paradasGerais}
+        carregando={carregandoParadas}
+        erro={erroParadas}
       />
 
       {/* Modal de Busca de Turno */}
