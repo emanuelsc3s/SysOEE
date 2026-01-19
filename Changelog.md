@@ -7,3 +7,4 @@
 - Atualizado o cálculo do OEE para usar os dados de produção persistidos no Supabase.
 - Estabilizada a função de cálculo de perdas para evitar recriações e dependências instáveis no hook de recálculo do OEE.
 - Gerado CSV de produtos para importação na `tbproduto` do Supabase.
+- Modal de busca de Produto SKU agora consulta `tbproduto` no Supabase com `deletado = 'N'`.

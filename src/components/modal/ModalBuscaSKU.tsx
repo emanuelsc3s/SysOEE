@@ -1,10 +1,10 @@
 /**
  * Modal de Busca de Produto SKU
- * Permite buscar e selecionar produtos SKU do arquivo produtos-sku.json
+ * Permite buscar e selecionar produtos SKU recebidos via props
  * Segue padrão de modais de busca do projeto (ModalBuscaTurno, ModalBuscaParadas)
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -33,24 +33,13 @@ import {
 import { Search, X, Loader2, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
-// Interface para dados do JSON produtos-sku.json
-interface ProdutoSKUJSON {
+// Interface para dados do produto SKU
+export interface ProdutoSKU {
   codigo: string
-  produto: string
+  descricao: string
   bloqueado: boolean
   anvisa: string | null
   gtin: string | null
-}
-
-// Interface para estrutura completa do JSON
-interface ProdutosSKUData {
-  metadata: {
-    total_produtos: number
-    data_criacao: string
-    fonte: string
-    descricao: string
-  }
-  produtos: ProdutoSKUJSON[]
 }
 
 // Interface para retorno ao componente pai
@@ -69,6 +58,14 @@ interface ModalBuscaSKUProps {
   onFechar: () => void
   /** Callback chamado quando um SKU é selecionado */
   onSelecionarSKU: (sku: SKUSelecionado) => void
+  /** Lista de produtos carregados */
+  produtos: ProdutoSKU[]
+  /** Estado de carregamento */
+  loading: boolean
+  /** Mensagem de erro */
+  erro: string | null
+  /** Callback para tentar recarregar */
+  onRecarregar: () => void
 }
 
 // Tipo para filtro de status bloqueado
@@ -78,44 +75,13 @@ export function ModalBuscaSKU({
   aberto,
   onFechar,
   onSelecionarSKU,
+  produtos,
+  loading,
+  erro,
+  onRecarregar,
 }: ModalBuscaSKUProps) {
   const [termoBusca, setTermoBusca] = useState('')
   const [filtroBloqueado, setFiltroBloqueado] = useState<FiltroBloqueado>('todos')
-  const [produtos, setProdutos] = useState<ProdutoSKUJSON[]>([])
-  const [loading, setLoading] = useState(false)
-  const [erro, setErro] = useState<string | null>(null)
-
-  // Carregar produtos ao abrir o modal
-  useEffect(() => {
-    if (aberto) {
-      carregarProdutos()
-    }
-  }, [aberto])
-
-  // Função para carregar produtos do JSON
-  const carregarProdutos = async () => {
-    setLoading(true)
-    setErro(null)
-
-    try {
-      console.log('Carregando produtos SKU do arquivo JSON...')
-      const response = await fetch('/data/produtos-sku.json')
-
-      if (!response.ok) {
-        throw new Error(`Erro ao carregar arquivo: ${response.status}`)
-      }
-
-      const data: ProdutosSKUData = await response.json()
-      console.log(`Produtos carregados: ${data.produtos.length}`)
-      setProdutos(data.produtos)
-    } catch (error) {
-      console.error('Erro ao carregar produtos:', error)
-      setErro('Erro ao carregar produtos. Verifique se o arquivo existe.')
-      setProdutos([])
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // Filtrar produtos com base no termo de busca e status bloqueado
   const produtosFiltrados = useMemo(() => {
@@ -133,7 +99,7 @@ export function ModalBuscaSKU({
       const termo = termoBusca.toLowerCase()
       resultado = resultado.filter(p =>
         p.codigo.toLowerCase().includes(termo) ||
-        p.produto.toLowerCase().includes(termo) ||
+        p.descricao.toLowerCase().includes(termo) ||
         (p.anvisa && p.anvisa.toLowerCase().includes(termo)) ||
         (p.gtin && p.gtin.toLowerCase().includes(termo))
       )
@@ -143,10 +109,10 @@ export function ModalBuscaSKU({
   }, [produtos, termoBusca, filtroBloqueado])
 
   // Seleciona um SKU e fecha o modal
-  const handleSelecionarSKU = (produto: ProdutoSKUJSON) => {
+  const handleSelecionarSKU = (produto: ProdutoSKU) => {
     const skuSelecionado: SKUSelecionado = {
       codigo: produto.codigo,
-      descricao: produto.produto,
+      descricao: produto.descricao,
       anvisa: produto.anvisa,
       gtin: produto.gtin,
     }
@@ -249,7 +215,7 @@ export function ModalBuscaSKU({
               <p className="text-red-500">{erro}</p>
               <Button
                 variant="outline"
-                onClick={carregarProdutos}
+                onClick={onRecarregar}
                 className="mt-4"
               >
                 Tentar novamente
@@ -286,8 +252,8 @@ export function ModalBuscaSKU({
                     <TableCell className="font-mono font-medium">
                       {produto.codigo}
                     </TableCell>
-                    <TableCell className="max-w-[300px] truncate" title={produto.produto}>
-                      {produto.produto}
+                    <TableCell className="max-w-[300px] truncate" title={produto.descricao}>
+                      {produto.descricao}
                     </TableCell>
                     <TableCell className="text-center">
                       {produto.bloqueado ? (

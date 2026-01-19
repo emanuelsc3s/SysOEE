@@ -72,7 +72,7 @@ import {
 import { AppHeader } from "@/components/layout/AppHeader"
 import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/ModalBuscaParadas"
 import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
-import { ModalBuscaSKU, type SKUSelecionado } from "@/components/modal/ModalBuscaSKU"
+import { ModalBuscaSKU, type ProdutoSKU, type SKUSelecionado } from "@/components/modal/ModalBuscaSKU"
 import { ModalBuscaLinhaProducao, type LinhaProducaoSelecionada } from "@/components/modal/modalBuscaLinhaProducao"
 import { TipoParada } from '@/types/parada'
 
@@ -220,6 +220,9 @@ export default function ApontamentoOEE() {
   const [modalBuscaTurnoAberto, setModalBuscaTurnoAberto] = useState<boolean>(false)
   const [modalBuscaSKUAberto, setModalBuscaSKUAberto] = useState<boolean>(false)
   const [modalBuscaLinhaAberto, setModalBuscaLinhaAberto] = useState<boolean>(false)
+  const [produtosSKU, setProdutosSKU] = useState<ProdutoSKU[]>([])
+  const [carregandoProdutosSKU, setCarregandoProdutosSKU] = useState<boolean>(false)
+  const [erroProdutosSKU, setErroProdutosSKU] = useState<string | null>(null)
   const [turnoHoraInicial, setTurnoHoraInicial] = useState<string>('') // Hora inicial do turno
   const [turnoHoraFinal, setTurnoHoraFinal] = useState<string>('') // Hora final do turno
   const [linhaId, setLinhaId] = useState<string>('')
@@ -401,13 +404,13 @@ export default function ApontamentoOEE() {
     return hora.length === 5 ? `${hora}:00` : hora
   }
 
-  const obterMensagemErro = (error: unknown, fallback: string): string => {
+  const obterMensagemErro = useCallback((error: unknown, fallback: string): string => {
     if (error && typeof error === 'object' && 'message' in error) {
       const mensagem = (error as { message?: string }).message
       if (mensagem) return mensagem
     }
     return fallback
-  }
+  }, [])
 
   const extrairCodigoSku = (sku: string): string => {
     return sku.includes(' - ') ? sku.split(' - ')[0].trim() : sku.trim()
@@ -416,6 +419,56 @@ export default function ApontamentoOEE() {
   const extrairDescricaoSku = (sku: string): string => {
     return sku.includes(' - ') ? sku.split(' - ').slice(1).join(' - ').trim() : sku.trim()
   }
+
+  const converterBloqueadoParaBooleano = (valor: string | boolean | null): boolean => {
+    if (typeof valor === 'boolean') {
+      return valor
+    }
+
+    const texto = `${valor ?? ''}`.trim().toLowerCase()
+    return texto.startsWith('s') || texto === 'true' || texto === '1'
+  }
+
+  const buscarProdutosSKU = useCallback(async () => {
+    setCarregandoProdutosSKU(true)
+    setErroProdutosSKU(null)
+
+    try {
+      const { data: produtosData, error } = await supabase
+        .from('tbproduto')
+        .select('referencia, descricao, bloqueado, anvisa, gtin')
+        .eq('deletado', 'N')
+        .order('referencia', { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      const produtosMapeados: ProdutoSKU[] = (produtosData || [])
+        .map((produto) => ({
+          codigo: produto.referencia || '',
+          descricao: produto.descricao || '',
+          bloqueado: converterBloqueadoParaBooleano(produto.bloqueado),
+          anvisa: produto.anvisa || null,
+          gtin: produto.gtin || null,
+        }))
+        .filter((produto) => produto.codigo || produto.descricao)
+
+      setProdutosSKU(produtosMapeados)
+    } catch (error) {
+      console.error('❌ Erro ao buscar produtos SKU:', error)
+      setProdutosSKU([])
+      setErroProdutosSKU(obterMensagemErro(error, 'Erro ao carregar produtos SKU.'))
+    } finally {
+      setCarregandoProdutosSKU(false)
+    }
+  }, [obterMensagemErro])
+
+  useEffect(() => {
+    if (modalBuscaSKUAberto) {
+      buscarProdutosSKU()
+    }
+  }, [buscarProdutosSKU, modalBuscaSKUAberto])
 
   const obterUsuarioAutenticado = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -4856,6 +4909,10 @@ export default function ApontamentoOEE() {
         aberto={modalBuscaSKUAberto}
         onFechar={() => setModalBuscaSKUAberto(false)}
         onSelecionarSKU={handleSelecionarSKUModal}
+        produtos={produtosSKU}
+        loading={carregandoProdutosSKU}
+        erro={erroProdutosSKU}
+        onRecarregar={buscarProdutosSKU}
       />
 
       {/* Modal de Busca de Linha de Produção */}
