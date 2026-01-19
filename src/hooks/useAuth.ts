@@ -23,7 +23,7 @@
  * ```
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
@@ -76,7 +76,7 @@ export function useAuth(): UseAuthReturn {
    * @param userId - UUID do usuário no Supabase Auth
    * @returns Dados do usuário (usuario, perfil) ou null se não encontrado
    */
-  const fetchUserData = async (userId: string): Promise<{ usuario: string | null; perfil: string | null }> => {
+  const fetchUserData = useCallback(async (userId: string): Promise<{ usuario: string | null; perfil: string | null }> => {
     try {
       const { data, error } = await supabase
         .from('tbusuario')
@@ -93,12 +93,12 @@ export function useAuth(): UseAuthReturn {
     } catch {
       return { usuario: null, perfil: null }
     }
-  }
+  }, [])
 
   /**
    * Atualiza o estado do usuário com dados do Auth e da tbusuario
    */
-  const updateUserState = async (authUser: { id: string; email: string | null } | null) => {
+  const updateUserState = useCallback(async (authUser: { id: string; email: string | null } | null) => {
     if (!authUser) {
       setUser(null)
       setIsLoading(false)
@@ -113,7 +113,7 @@ export function useAuth(): UseAuthReturn {
       perfil: userData.perfil
     })
     setIsLoading(false)
-  }
+  }, [fetchUserData])
 
   useEffect(() => {
     /**
@@ -138,7 +138,7 @@ export function useAuth(): UseAuthReturn {
 
     // Cleanup: cancelar subscription ao desmontar
     return () => subscription.unsubscribe()
-  }, [])
+  }, [updateUserState])
 
   /**
    * Realiza logout do sistema

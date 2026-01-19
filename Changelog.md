@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Corrigida a dependência de `useEffect` no `useAuth` para evitar avisos de lint e reexecuções desnecessárias.
+- Bloqueada a exclusão de registros de produção quando o turno está Encerrado/Fechado, com validação antes do modal e antes da exclusão.
 - Corrigida a quebra do modal de busca de SKU quando a lista de produtos não está disponível.
 - Ajustadas mensagens de erro do apontamento de produção para indicar falhas de permissão no Supabase.
 - Ajustada a busca de tipos de parada para consultar `tboee_parada` no Supabase e removida a exibição de Grande Parada na hierarquia.

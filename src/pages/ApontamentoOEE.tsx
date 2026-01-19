@@ -96,6 +96,7 @@ type LinhaApontamentoProducao = {
 // Tipo para registro de produção no localStorage
 interface RegistroProducao {
   id: string
+  oeeTurnoId?: number | null
   data: string
   turno: Turno
   linhaId: string
@@ -328,6 +329,8 @@ export default function ApontamentoOEE() {
   const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
   const [showConfirmExclusao, setShowConfirmExclusao] = useState(false)
   const [registroParaExcluir, setRegistroParaExcluir] = useState<string | null>(null)
+  const [exclusaoBloqueada, setExclusaoBloqueada] = useState(false)
+  const [mensagemExclusaoBloqueada, setMensagemExclusaoBloqueada] = useState('')
 
   // ==================== Estado de Histórico de Paradas ====================
   const [historicoParadas, setHistoricoParadas] = useState<RegistroParada[]>([])
@@ -691,6 +694,7 @@ export default function ApontamentoOEE() {
 
     return {
       id: registro.oeeturnoproducao_id.toString(),
+      oeeTurnoId: registro.oeeturno_id ?? null,
       data: dataRegistro,
       turno: (registro.turno as Turno) || turno,
       linhaId: registro.linhaproducao_id?.toString() || linhaId,
@@ -1702,12 +1706,68 @@ export default function ApontamentoOEE() {
   }
 
   // ==================== Funções de Exclusão de Produção ====================
+  const mensagemTurnoEncerrado = 'O turno está encerrado e a exclusão não pode ser realizada.'
+  const mensagemFalhaStatusTurno = 'Não foi possível validar o status do turno. A exclusão foi bloqueada.'
+  const mensagemTurnoNaoIdentificado = 'Não foi possível identificar o turno associado ao registro. A exclusão foi bloqueada.'
+  const statusTurnoBloqueado = new Set(['encerrado', 'fechado'])
+
+  const obterStatusTurno = async (oeeTurnoId?: number | null) => {
+    if (!oeeTurnoId) {
+      return { status: null, erro: mensagemTurnoNaoIdentificado }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tboee_turno')
+        .select('status')
+        .eq('oeeturno_id', oeeTurnoId)
+        .eq('deletado', 'N')
+        .maybeSingle()
+
+      if (error || !data || !data.status) {
+        return { status: null, erro: mensagemFalhaStatusTurno }
+      }
+
+      return { status: data.status || null, erro: null }
+    } catch (error) {
+      console.error('❌ Erro ao consultar status do turno:', error)
+      return { status: null, erro: mensagemFalhaStatusTurno }
+    }
+  }
 
   /**
    * Abre o diálogo de confirmação de exclusão
    * @param registroId - ID do registro a ser excluído
    */
-  const confirmarExclusao = (registroId: string) => {
+  const confirmarExclusao = async (registroId: string) => {
+    setExclusaoBloqueada(false)
+    setMensagemExclusaoBloqueada('')
+
+    const registro = historicoProducao.find(r => r.id === registroId)
+    const { status, erro } = await obterStatusTurno(registro?.oeeTurnoId)
+
+    if (erro) {
+      toast({
+        title: 'Exclusão bloqueada',
+        description: erro,
+        variant: 'destructive'
+      })
+      setRegistroParaExcluir(registroId)
+      setExclusaoBloqueada(true)
+      setMensagemExclusaoBloqueada(erro)
+      setShowConfirmExclusao(true)
+      return
+    }
+
+    const statusNormalizado = status?.trim().toLowerCase()
+    if (statusNormalizado && statusTurnoBloqueado.has(statusNormalizado)) {
+      setRegistroParaExcluir(registroId)
+      setExclusaoBloqueada(true)
+      setMensagemExclusaoBloqueada(mensagemTurnoEncerrado)
+      setShowConfirmExclusao(true)
+      return
+    }
+
     setRegistroParaExcluir(registroId)
     setShowConfirmExclusao(true)
   }
@@ -1718,6 +1778,8 @@ export default function ApontamentoOEE() {
   const cancelarExclusao = () => {
     setRegistroParaExcluir(null)
     setShowConfirmExclusao(false)
+    setExclusaoBloqueada(false)
+    setMensagemExclusaoBloqueada('')
   }
 
   /**
@@ -1728,6 +1790,27 @@ export default function ApontamentoOEE() {
     if (!registroParaExcluir) return
 
     try {
+      const registro = historicoProducao.find(r => r.id === registroParaExcluir)
+      const { status, erro } = await obterStatusTurno(registro?.oeeTurnoId)
+
+      if (erro) {
+        toast({
+          title: 'Exclusão bloqueada',
+          description: erro,
+          variant: 'destructive'
+        })
+        setExclusaoBloqueada(true)
+        setMensagemExclusaoBloqueada(erro)
+        return
+      }
+
+    const statusNormalizado = status?.trim().toLowerCase()
+      if (statusNormalizado && statusTurnoBloqueado.has(statusNormalizado)) {
+        setExclusaoBloqueada(true)
+        setMensagemExclusaoBloqueada(mensagemTurnoEncerrado)
+        return
+      }
+
       const usuario = await obterUsuarioAutenticado()
       if (!usuario) {
         return
@@ -3735,24 +3818,45 @@ export default function ApontamentoOEE() {
           <AlertDialog open={showConfirmExclusao} onOpenChange={setShowConfirmExclusao}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Exclusão de Registro</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {exclusaoBloqueada ? 'Exclusão Bloqueada' : 'Confirmar Exclusão de Registro'}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja excluir este registro de produção? Esta ação não pode ser desfeita.
-                  {registroParaExcluir && (
-                    <span className="block mt-2 font-medium text-text-primary-light dark:text-text-primary-dark">
-                      Registro: {historicoProducao.find(r => r.id === registroParaExcluir)?.dataHoraRegistro}
-                    </span>
+                  {exclusaoBloqueada ? (
+                    <>
+                      {mensagemExclusaoBloqueada || mensagemTurnoEncerrado}
+                      {registroParaExcluir && (
+                        <span className="block mt-2 font-medium text-text-primary-light dark:text-text-primary-dark">
+                          Registro: {historicoProducao.find(r => r.id === registroParaExcluir)?.dataHoraRegistro}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      Tem certeza que deseja excluir este registro de produção? Esta ação não pode ser desfeita.
+                      {registroParaExcluir && (
+                        <span className="block mt-2 font-medium text-text-primary-light dark:text-text-primary-dark">
+                          Registro: {historicoProducao.find(r => r.id === registroParaExcluir)?.dataHoraRegistro}
+                        </span>
+                      )}
+                    </>
                   )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={cancelarExclusao}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleExcluirProducao}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                >
-                  Confirmar Exclusão
-                </AlertDialogAction>
+                {exclusaoBloqueada ? (
+                  <AlertDialogAction onClick={cancelarExclusao}>Fechar</AlertDialogAction>
+                ) : (
+                  <>
+                    <AlertDialogCancel onClick={cancelarExclusao}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleExcluirProducao}
+                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                    >
+                      Confirmar Exclusão
+                    </AlertDialogAction>
+                  </>
+                )}
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
