@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
+import { useAuth } from '@/hooks/useAuth'
 import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
 import {
   Search,
@@ -75,6 +76,16 @@ export default function OeeTurno() {
 
   // Hook para operações com Supabase
   const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
+
+  // Hook de autenticação
+  const { user: authUser } = useAuth()
+
+  // Derivar dados do usuário autenticado
+  const user = {
+    name: authUser?.usuario || authUser?.email?.split('@')[0] || 'Usuário',
+    initials: (authUser?.usuario || authUser?.email)?.substring(0, 2).toUpperCase() || 'U',
+    role: authUser?.perfil || 'Operador',
+  }
 
   // Refs para calcular altura disponível do grid
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
@@ -283,8 +294,9 @@ export default function OeeTurno() {
       {/* Header da aplicação */}
       <AppHeader
         title="SICFAR OEE - Apontamentos por Turno"
-        userName="Usuário"
-        userRole="Administrador"
+        userName={user.name}
+        userInitials={user.initials}
+        userRole={user.role}
       />
 
       {/* Container mais fluido e responsivo para ocupar melhor o espaço disponível */}

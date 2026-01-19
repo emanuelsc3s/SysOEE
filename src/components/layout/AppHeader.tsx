@@ -29,6 +29,8 @@ interface AppHeaderProps {
   userName?: string
   /** Cargo/função do usuário */
   userRole?: string
+  /** Iniciais do usuário para o avatar (calculado automaticamente se não fornecido) */
+  userInitials?: string
   /** URL da foto do usuário */
   userPhotoUrl?: string
   /** Callback para logout */
@@ -41,10 +43,13 @@ export function AppHeader({
   title = "SICFAR OEE - Sistema de Monitoramento OEE",
   userName = "Usuário",
   userRole = "Operador",
+  userInitials,
   userPhotoUrl,
   onLogout,
   onProfileClick,
 }: AppHeaderProps) {
+  // Calcula as iniciais do usuário se não foram fornecidas
+  const initials = userInitials || userName.substring(0, 2).toUpperCase()
 	  return (
 	    <header className="bg-white border-b h-16 flex items-center justify-between px-6 sticky top-0 z-40">
 	      {/* Seção esquerda - Título */}
@@ -81,7 +86,7 @@ export function AppHeader({
                     <AvatarImage src={userPhotoUrl} alt={userName} />
                   ) : null}
                   <AvatarFallback className="bg-primary text-white">
-                    <User className="h-4 w-4" />
+                    {initials}
                   </AvatarFallback>
                 </Avatar>
 

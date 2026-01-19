@@ -36,6 +36,10 @@ interface AuthUser {
   id: string
   /** Email do usuário */
   email: string | null
+  /** Nome de usuário (da tbusuario) */
+  usuario: string | null
+  /** Perfil do usuário (da tbusuario) */
+  perfil: string | null
 }
 
 /**
@@ -67,14 +71,57 @@ export function useAuth(): UseAuthReturn {
   const navigate = useNavigate()
   const { toast } = useToast()
 
+  /**
+   * Busca os dados do usuário na tabela tbusuario
+   * @param userId - UUID do usuário no Supabase Auth
+   * @returns Dados do usuário (usuario, perfil) ou null se não encontrado
+   */
+  const fetchUserData = async (userId: string): Promise<{ usuario: string | null; perfil: string | null }> => {
+    try {
+      const { data, error } = await supabase
+        .from('tbusuario')
+        .select('usuario, perfil')
+        .eq('user_id', userId)
+        .eq('deletado', 'N')
+        .single()
+
+      if (error || !data) {
+        return { usuario: null, perfil: null }
+      }
+
+      return { usuario: data.usuario, perfil: data.perfil }
+    } catch {
+      return { usuario: null, perfil: null }
+    }
+  }
+
+  /**
+   * Atualiza o estado do usuário com dados do Auth e da tbusuario
+   */
+  const updateUserState = async (authUser: { id: string; email: string | null } | null) => {
+    if (!authUser) {
+      setUser(null)
+      setIsLoading(false)
+      return
+    }
+
+    const userData = await fetchUserData(authUser.id)
+    setUser({
+      id: authUser.id,
+      email: authUser.email,
+      usuario: userData.usuario,
+      perfil: userData.perfil
+    })
+    setIsLoading(false)
+  }
+
   useEffect(() => {
     /**
      * Verificar sessão inicial
      * Busca a sessão atual do Supabase ao montar o componente
      */
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
-      setIsLoading(false)
+      updateUserState(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
     })
 
     /**
@@ -86,8 +133,7 @@ export function useAuth(): UseAuthReturn {
      * - Logout acontece em outra aba (sincronização automática)
      */
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
-      setIsLoading(false)
+      updateUserState(session?.user ? { id: session.user.id, email: session.user.email ?? null } : null)
     })
 
     // Cleanup: cancelar subscription ao desmontar

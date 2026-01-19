@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { BrandingSection } from '@/components/branding/BrandingSection'
 import { NavigationCard } from '@/components/navigation/NavigationCard'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -76,10 +77,11 @@ export default function Home() {
 
   // Derivar dados do usuário autenticado
   const user = {
-    name: authUser?.email?.split('@')[0] || 'Usuário',
+    name: authUser?.usuario || authUser?.email?.split('@')[0] || 'Usuário',
     email: authUser?.email || '',
-    initials: authUser?.email?.substring(0, 2).toUpperCase() || 'U',
+    initials: (authUser?.usuario || authUser?.email)?.substring(0, 2).toUpperCase() || 'U',
     photoUrl: null,
+    role: authUser?.perfil || 'Operador',
   }
 
   // Obtém a saudação baseada no horário
@@ -250,15 +252,27 @@ export default function Home() {
 
                 {/* Dropdown Menu com Avatar */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center space-x-2 tab-prod:space-x-1 cursor-pointer hover:opacity-80 transition-opacity">
+                  <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                    aria-label="Menu do usuário"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                  >
                     <Avatar className="h-10 w-10 tab-prod:h-8 tab-prod:w-8">
                       {user.photoUrl && <AvatarImage src={user.photoUrl} alt={user.name} />}
                       <AvatarFallback className="bg-primary text-white tab-prod:text-xs">
                         {isLoading ? '...' : user.initials}
                       </AvatarFallback>
                     </Avatar>
+                    <div className="text-sm text-left hidden md:block">
+                      <p className="font-medium leading-none mb-1">{user.name}</p>
+                      <p className="text-xs text-muted-foreground leading-none">{user.role}</p>
+                    </div>
                     <ChevronDown className="h-4 w-4 tab-prod:h-3 tab-prod:w-3 text-muted-foreground" />
-                  </DropdownMenuTrigger>
+                  </Button>
+                </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                     <DropdownMenuSeparator />
