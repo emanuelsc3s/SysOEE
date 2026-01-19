@@ -3418,7 +3418,7 @@ export default function ApontamentoOEE() {
 
   // ==================== Handlers do Header CRUD ====================
   const handleVoltar = () => {
-    window.history.back()
+    navigate('/oee-turno')
   }
 
   const handleAjuda = () => {

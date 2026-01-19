@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o botão Voltar no `ApontamentoOEE` para sempre redirecionar para `OeeTurno`.
 - Removido o botão de Dashboard do cabeçalho do Diário de Bordo no `ApontamentoOEE`.
 - Corrigida a dependência de `useEffect` no `useAuth` para evitar avisos de lint e reexecuções desnecessárias.
 - Bloqueada a exclusão de registros de produção quando o turno está Encerrado/Fechado, com validação antes do modal e antes da exclusão.
