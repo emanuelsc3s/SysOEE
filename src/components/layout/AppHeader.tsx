@@ -54,17 +54,17 @@ export function AppHeader({
 	    <header className="bg-white border-b h-16 flex items-center justify-between px-6 sticky top-0 z-40">
 	      {/* Seção esquerda - Título */}
 	      <div className="flex items-center gap-4 min-w-0">
-	        <img
-	          src="/logo-farmace.png"
-	          alt="Logo Farmace"
-	          className="h-10 w-auto flex-shrink-0"
-	        />
+        <img
+          src="/logo-farmace.png"
+          alt="Logo Farmace"
+          className="h-full w-[136px] flex-shrink-0"
+        />
 
-	        <div className="flex flex-col gap-0.5 min-w-0">
-	          <h1 className="text-xl font-semibold text-primary leading-none truncate">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-primary leading-tight tracking-tight truncate">
 	            {title}
 	          </h1>
-	          <p className="text-xs text-muted-foreground leading-none truncate">
+          <p className="text-sm text-muted-foreground leading-tight truncate">
 	            Sistema de Monitoramento de Eficiência Operacional
 	          </p>
 	        </div>
