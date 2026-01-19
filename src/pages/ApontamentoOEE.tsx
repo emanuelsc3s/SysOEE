@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale'
 import { format, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
+import { useAuth } from '@/hooks/useAuth'
 // Nota: buscarLinhaPorId foi removido pois espera IDs slug (ex: "spep-envase-e"),
 // mas o sistema agora usa IDs numéricos do banco de dados
 // Os dados da linha agora vêm de linhaProducaoSelecionada
@@ -202,6 +203,7 @@ export default function ApontamentoOEE() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { fetchOeeTurno } = useOeeTurno()
+  const { user, signOut } = useAuth()
 
   // ==================== Refs para controle de carregamento ====================
   const turnoOeeCarregadoRef = useRef<string | null>(null) // Evita loop infinito no useEffect de carregamento
@@ -3276,8 +3278,9 @@ export default function ApontamentoOEE() {
       {/* Cabeçalho da Aplicação */}
       <AppHeader
         title="SysOEE - Sistema de Monitoramento OEE"
-        userName="Emanuel Silva"
-        userRole="Administrador"
+        userName={user?.usuario || 'Usuário'}
+        userRole={user?.perfil || 'Operador'}
+        onLogout={signOut}
       />
 
       {/* Header CRUD */}
