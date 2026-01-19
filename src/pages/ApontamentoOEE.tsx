@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
-import { format, parseISO } from 'date-fns'
+import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
@@ -468,6 +468,25 @@ export default function ApontamentoOEE() {
 		return texto
 	}
 
+  const formatarDataRegistro = useCallback((valor: string | null | undefined): string => {
+    if (!valor) return ''
+
+    const texto = String(valor).trim()
+    if (!texto) return ''
+
+    const dataIso = parseISO(texto)
+    if (!Number.isNaN(dataIso.getTime())) {
+      return format(dataIso, 'dd/MM/yyyy')
+    }
+
+    const dataPt = parse(texto, 'dd/MM/yyyy', new Date())
+    if (!Number.isNaN(dataPt.getTime())) {
+      return format(dataPt, 'dd/MM/yyyy')
+    }
+
+    return texto
+  }, [])
+
   const obterMensagemErro = useCallback((error: unknown, fallback: string): string => {
     if (error && typeof error === 'object') {
       if ('status' in error && (error as { status?: number }).status === 403) {
@@ -664,7 +683,7 @@ export default function ApontamentoOEE() {
   }, [toast])
 
   const mapearRegistroSupabase = useCallback((registro: ProducaoSupabase): RegistroProducao => {
-    const dataRegistro = registro.data ? format(parseISO(registro.data), 'dd/MM/yyyy') : ''
+    const dataRegistro = formatarDataRegistro(registro.data)
 		const horaInicio = formatarHoraPtBr(registro.hora_inicio, false)
 		const horaFim = formatarHoraPtBr(registro.hora_final, false)
     const createdAtIso = registro.updated_at || registro.created_at
@@ -684,7 +703,7 @@ export default function ApontamentoOEE() {
       createdAt: createdAt.toISOString(),
       velocidade: registro.velocidade ? Number(registro.velocidade) : undefined
     }
-  }, [linhaId, linhaSelecionada?.nome, skuCodigo, turno])
+  }, [formatarDataRegistro, linhaId, linhaSelecionada?.nome, skuCodigo, turno])
 
   const montarLinhasApontamentoComRegistros = useCallback((registros: RegistroProducao[]) => {
     if (!turnoHoraInicial || !turnoHoraFinal || intervaloApontamento <= 0) {
@@ -753,34 +772,42 @@ export default function ApontamentoOEE() {
     return linhas
   }, [intervaloApontamento, turnoHoraFinal, turnoHoraInicial])
 
+  const aplicarRegistrosProducao = useCallback((producoesData: ProducaoSupabase[]) => {
+    const registros = (producoesData || []).map((registro) =>
+      mapearRegistroSupabase(registro as ProducaoSupabase)
+    )
+
+    setHistoricoProducao(registros)
+    setLinhasApontamento(montarLinhasApontamentoComRegistros(registros))
+
+    if (registros.length > 0) {
+      const registroMaisRecente = [...registros].sort((a, b) => {
+        const dataA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        const dataB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+        return dataB - dataA
+      })[0]
+      setApontamentoProducaoId(registroMaisRecente.id)
+    } else {
+      setApontamentoProducaoId(null)
+    }
+
+    return registros
+  }, [mapearRegistroSupabase, montarLinhasApontamentoComRegistros])
+
   const carregarProducoesSupabase = useCallback(async (oeeturnoIdAtual: number) => {
     try {
       const { data: producoesData, error: producoesError } = await supabase
         .from('tboee_turno_producao')
         .select('*')
         .eq('oeeturno_id', oeeturnoIdAtual)
-        .eq('deletado', 'N')
+        .or('deletado.is.null,deletado.eq.N')
         .order('hora_inicio', { ascending: true })
 
       if (producoesError) {
         throw producoesError
       }
 
-      const registros = (producoesData || []).map((registro) => mapearRegistroSupabase(registro as ProducaoSupabase))
-
-      setHistoricoProducao(registros)
-      setLinhasApontamento(montarLinhasApontamentoComRegistros(registros))
-
-      if (registros.length > 0) {
-        const registroMaisRecente = [...registros].sort((a, b) => {
-          const dataA = a.createdAt ? new Date(a.createdAt).getTime() : 0
-          const dataB = b.createdAt ? new Date(b.createdAt).getTime() : 0
-          return dataB - dataA
-        })[0]
-        setApontamentoProducaoId(registroMaisRecente.id)
-      } else {
-        setApontamentoProducaoId(null)
-      }
+      const registros = aplicarRegistrosProducao((producoesData || []) as ProducaoSupabase[])
 
       producaoCarregadaRef.current = oeeturnoIdAtual
       return registros
@@ -796,7 +823,42 @@ export default function ApontamentoOEE() {
       setApontamentoProducaoId(null)
       return []
     }
-  }, [mapearRegistroSupabase, montarLinhasApontamentoComRegistros, toast])
+  }, [aplicarRegistrosProducao, toast])
+
+  const carregarProducoesSupabasePorChaves = useCallback(async (filtros: {
+    data: string
+    turnoId: number
+    produtoId: number
+    linhaId?: number | null
+  }) => {
+    try {
+      let query = supabase
+        .from('tboee_turno_producao')
+        .select('*')
+        .eq('data', filtros.data)
+        .eq('turno_id', filtros.turnoId)
+        .eq('produto_id', filtros.produtoId)
+        .is('oeeturno_id', null)
+        .order('hora_inicio', { ascending: true })
+
+      if (filtros.linhaId) {
+        query = query.eq('linhaproducao_id', filtros.linhaId)
+      }
+
+      query = query.or('deletado.is.null,deletado.eq.N')
+
+      const { data: producoesData, error: producoesError } = await query
+
+      if (producoesError) {
+        throw producoesError
+      }
+
+      return aplicarRegistrosProducao((producoesData || []) as ProducaoSupabase[])
+    } catch (error) {
+      console.error('❌ Erro ao carregar produção por filtros:', error)
+      return []
+    }
+  }, [aplicarRegistrosProducao])
 
   /**
    * Carrega configurações do localStorage
@@ -2143,9 +2205,10 @@ export default function ApontamentoOEE() {
   useEffect(() => {
     const oeeTurnoIdParam = searchParams.get('oeeTurnoId')
     const editMode = searchParams.get('edit') === 'true'
+    const oeeTurnoIdNumero = oeeTurnoIdParam ? Number(oeeTurnoIdParam) : NaN
 
     // Se não há ID ou já foi carregado, sair
-    if (!oeeTurnoIdParam || turnoOeeCarregadoRef.current === oeeTurnoIdParam) {
+    if (!oeeTurnoIdParam || !Number.isFinite(oeeTurnoIdNumero) || turnoOeeCarregadoRef.current === oeeTurnoIdParam) {
       return
     }
 
@@ -2210,6 +2273,8 @@ export default function ApontamentoOEE() {
           setProdutoId(turnoData.produtoId)
         }
 
+        let linhaIdExtraidoNumero: number | null = null
+
         // 5. Observação pode conter informações da linha de produção
         // Formato esperado: "Turno iniciado via sistema OEE - Linha: 15 - SPEP 2 - LINHA E - ENVASE"
         if (turnoData.observacao) {
@@ -2220,11 +2285,14 @@ export default function ApontamentoOEE() {
             setLinhaId(linhaIdExtraido)
             setLinhaNome(linhaNomeExtraido)
 
+            const linhaIdNumero = Number(linhaIdExtraido)
+            linhaIdExtraidoNumero = Number.isFinite(linhaIdNumero) ? linhaIdNumero : null
+
             // Construir objeto LinhaProducaoSelecionada diretamente dos dados extraídos
             // Nota: buscarLinhaPorId espera IDs slug (ex: "spep-envase-e"), mas aqui temos IDs numéricos do BD
             // Por isso, construímos o objeto diretamente com os dados disponíveis
             setLinhaProducaoSelecionada({
-              linhaproducao_id: parseInt(linhaIdExtraido),
+              linhaproducao_id: linhaIdExtraidoNumero ?? 0,
               linhaproducao: linhaNomeExtraido,
               departamento_id: null, // Não disponível na observação
               departamento: null, // Será extraído do nome se necessário
@@ -2234,7 +2302,31 @@ export default function ApontamentoOEE() {
         }
 
         // 6. Definir ID do turno OEE
-        setOeeTurnoId(parseInt(oeeTurnoIdParam))
+        setOeeTurnoId(oeeTurnoIdNumero)
+
+        const producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdNumero)
+
+        if (
+          producoesCarregadas.length === 0 &&
+          turnoData.data &&
+          turnoData.turnoId &&
+          turnoData.produtoId
+        ) {
+          const producoesFallback = await carregarProducoesSupabasePorChaves({
+            data: turnoData.data,
+            turnoId: turnoData.turnoId,
+            produtoId: turnoData.produtoId,
+            linhaId: linhaIdExtraidoNumero
+          })
+
+          if (producoesFallback.length > 0) {
+            toast({
+              title: 'Produções recuperadas',
+              description: 'Registros localizados por data/turno/produto sem vínculo ao turno.',
+              variant: 'default'
+            })
+          }
+        }
 
         // 7. Definir modo de visualização ou edição
         if (!editMode) {
@@ -2247,9 +2339,11 @@ export default function ApontamentoOEE() {
           }
         }
 
+        const dataTurnoFormatada = formatarDataRegistro(turnoData.data)
+
         toast({
           title: 'Turno carregado',
-          description: `Dados do turno OEE carregados: ${turnoData.turno} - ${format(parseISO(turnoData.data), 'dd/MM/yyyy')}`,
+          description: `Dados do turno OEE carregados: ${turnoData.turno} - ${dataTurnoFormatada || '-'}`,
           variant: 'default'
         })
 
