@@ -182,8 +182,7 @@ function BrandingSection() {
         playsInline
         aria-hidden="true"
       >
-        <source src="/VideoLinhaE.mov" type="video/quicktime" />
-        <source src="/VideoLinhaE.mov" type="video/mp4" />
+        <source src="/VideoLinhaE.mp4" type="video/mp4" />
       </video>
 
       {/* ====== CAMADA 2: Overlay gradiente para legibilidade ====== */}

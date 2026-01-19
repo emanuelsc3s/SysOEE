@@ -7,8 +7,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -199,6 +199,7 @@ const TEMPO_DISPONIVEL_PADRAO = 12
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { fetchOeeTurno } = useOeeTurno()
 
@@ -3249,6 +3250,10 @@ export default function ApontamentoOEE() {
     })
   }
 
+  const handleAjuda = () => {
+    navigate('/whats-new-oee')
+  }
+
   const handleSalvar = () => {
     // TODO: Implementar lógica de salvamento geral do apontamento
     toast({
@@ -3343,6 +3348,10 @@ export default function ApontamentoOEE() {
                     <DropdownMenuItem onClick={() => console.log('Tecnologia da Informação')}>
                       Tecnologia da Informação
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleAjuda}>
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      Ajuda
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -3361,6 +3370,14 @@ export default function ApontamentoOEE() {
                 >
                   <Save className="mr-2 h-4 w-4" />
                   Salvar
+                </Button>
+
+                <Button
+                  className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                  onClick={handleAjuda}
+                >
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  Ajuda
                 </Button>
               </div>
             </div>
