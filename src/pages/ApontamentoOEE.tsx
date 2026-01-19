@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, LayoutDashboard, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -3421,14 +3421,6 @@ export default function ApontamentoOEE() {
     window.history.back()
   }
 
-  const handleDashboard = () => {
-    // TODO: Navegar para o dashboard principal quando a rota estiver definida
-    toast({
-      title: 'Navegação',
-      description: 'Redirecionando para o dashboard...'
-    })
-  }
-
   const handleAjuda = () => {
     navigate('/whats-new-oee')
   }
@@ -3484,14 +3476,6 @@ export default function ApontamentoOEE() {
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Voltar
-                </Button>
-
-                <Button
-                  className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
-                  onClick={handleDashboard}
-                >
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Dashboard
                 </Button>
 
                 {/* Dropdown de Complemento */}
