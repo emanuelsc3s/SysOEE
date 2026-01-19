@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o padding direito do cabeçalho do `ApontamentoOEE` para alinhar o espaço externo dos botões com a lateral direita.
+- Ajustado o estilo e as dimensões dos botões do `ApontamentoOEE` para o padrão visual do `OeeTurno`.
 - Ajustado o botão Voltar no `ApontamentoOEE` para sempre redirecionar para `OeeTurno`.
 - Removido o botão de Dashboard do cabeçalho do Diário de Bordo no `ApontamentoOEE`.
 - Corrigida a dependência de `useEffect` no `useAuth` para evitar avisos de lint e reexecuções desnecessárias.

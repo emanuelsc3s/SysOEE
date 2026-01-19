@@ -3455,7 +3455,7 @@ export default function ApontamentoOEE() {
       {/* Header CRUD */}
       <div className="bg-background-light dark:bg-background-dark">
         <div className="flex justify-center">
-          <div className="w-full max-w-[1600px] px-3.5 pr-1.5 pt-3.5 pb-0">
+          <div className="w-full max-w-[1600px] px-3.5 pr-4 pt-3.5 pb-0">
             <div className="flex items-center justify-between">
               {/* Seção Esquerda - Título e Subtítulo */}
               <div>
@@ -3471,10 +3471,10 @@ export default function ApontamentoOEE() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="border-gray-300 hover:bg-gray-100 min-w-[120px] justify-center"
+                  className="flex items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-10 px-4"
                   onClick={handleVoltar}
                 >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" />
                   Voltar
                 </Button>
 
@@ -3482,11 +3482,11 @@ export default function ApontamentoOEE() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                    className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
                     >
-                      <FileText className="mr-2 h-4 w-4" />
+                    <FileText className="h-4 w-4" />
                       Complemento
-                      <ChevronDownIcon className="ml-2 h-4 w-4" />
+                    <ChevronDownIcon className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -3521,26 +3521,26 @@ export default function ApontamentoOEE() {
 
                 <Button
                   variant="destructive"
-                  className="min-w-[120px] justify-center"
+                  className="flex items-center justify-center gap-2 min-h-10 px-4"
                   onClick={handleExcluir}
                 >
-                  <Trash className="mr-2 h-4 w-4" />
+                  <Trash className="h-4 w-4" />
                   Excluir
                 </Button>
 
                 <Button
-                  className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                  className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
                   onClick={handleSalvar}
                 >
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="h-4 w-4" />
                   Salvar
                 </Button>
 
                 <Button
-                  className="bg-brand-primary hover:bg-brand-primary/90 text-white min-w-[120px] justify-center"
+                  className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
                   onClick={handleAjuda}
                 >
-                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <HelpCircle className="h-4 w-4" />
                   Ajuda
                 </Button>
               </div>
