@@ -404,6 +404,67 @@ export default function ApontamentoOEE() {
     return hora.length === 5 ? `${hora}:00` : hora
   }
 
+	/**
+	 * Formata um valor de hora para o padrão brasileiro 24h.
+	 *
+	 * Observação: inputs nativos `type="time"` podem exibir AM/PM dependendo do SO/navegador.
+	 * Para garantir consistência visual (ex.: tabelas/históricos), renderizamos o texto já formatado.
+	 */
+	const formatarHoraPtBr = (valor: string | null | undefined, incluirSegundos = false): string => {
+		if (!valor) return ''
+
+		const texto = String(valor).trim()
+		if (!texto) return ''
+
+		const formatarDate = (data: Date): string => {
+			const opcoes: Intl.DateTimeFormatOptions = {
+				hour: '2-digit',
+				minute: '2-digit',
+				hour12: false
+			}
+			if (incluirSegundos) {
+				opcoes.second = '2-digit'
+			}
+			return data.toLocaleTimeString('pt-BR', opcoes)
+		}
+
+		// 1) ISO ou data/hora completa (ex.: 2026-01-19T14:30:00.000Z)
+		if (texto.includes('T')) {
+			const data = new Date(texto)
+			if (!Number.isNaN(data.getTime())) {
+				return formatarDate(data)
+			}
+		}
+
+		// 2) Hora simples (aceita HH:mm, HH:mm:ss e também h:mm AM/PM)
+		const match = texto.match(/^([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?\s*(AM|PM)?$/i)
+		if (match) {
+			let horas = Number(match[1])
+			const minutos = Number(match[2])
+			const segundos = match[3] ? Number(match[3]) : 0
+			const sufixo = match[4]?.toUpperCase()
+
+			if (sufixo === 'PM' && horas < 12) horas += 12
+			if (sufixo === 'AM' && horas === 12) horas = 0
+
+			const hh = String(horas).padStart(2, '0')
+			const mm = String(minutos).padStart(2, '0')
+			if (incluirSegundos) {
+				const ss = String(segundos).padStart(2, '0')
+				return `${hh}:${mm}:${ss}`
+			}
+			return `${hh}:${mm}`
+		}
+
+		// 3) Fallback: tenta interpretar como Date
+		const dataFallback = new Date(texto)
+		if (!Number.isNaN(dataFallback.getTime())) {
+			return formatarDate(dataFallback)
+		}
+
+		return texto
+	}
+
   const obterMensagemErro = useCallback((error: unknown, fallback: string): string => {
     if (error && typeof error === 'object') {
       if ('status' in error && (error as { status?: number }).status === 403) {
@@ -601,8 +662,8 @@ export default function ApontamentoOEE() {
 
   const mapearRegistroSupabase = useCallback((registro: ProducaoSupabase): RegistroProducao => {
     const dataRegistro = registro.data ? format(parseISO(registro.data), 'dd/MM/yyyy') : ''
-    const horaInicio = registro.hora_inicio ? registro.hora_inicio.substring(0, 5) : ''
-    const horaFim = registro.hora_final ? registro.hora_final.substring(0, 5) : ''
+		const horaInicio = formatarHoraPtBr(registro.hora_inicio, false)
+		const horaFim = formatarHoraPtBr(registro.hora_final, false)
     const createdAtIso = registro.updated_at || registro.created_at
     const createdAt = createdAtIso ? new Date(createdAtIso) : new Date()
 
@@ -1923,22 +1984,25 @@ export default function ApontamentoOEE() {
    * Callback quando um turno é selecionado no modal
    */
   const handleSelecionarTurnoModal = (turnoSelecionado: TurnoSelecionado) => {
+		const horaInicioFormatada = formatarHoraPtBr(turnoSelecionado.horaInicio, false)
+		const horaFimFormatada = formatarHoraPtBr(turnoSelecionado.horaFim, false)
+
     setTurnoId(turnoSelecionado.turno_id)
     setTurnoCodigo(turnoSelecionado.codigo)
     setTurnoNome(turnoSelecionado.turno)
     setTurno(turnoSelecionado.turno as Turno)  // Sincroniza o estado turno para o DTO de salvamento
-    setTurnoHoraInicial(turnoSelecionado.horaInicio)
-    setTurnoHoraFinal(turnoSelecionado.horaFim)
+		setTurnoHoraInicial(horaInicioFormatada)
+		setTurnoHoraFinal(horaFimFormatada)
 
     // Gerar linhas de apontamento automaticamente
     // IMPORTANTE: Só gera se o turno ainda não foi iniciado (evita sobrescrever dados do histórico)
     if (statusTurno === 'NAO_INICIADO') {
-      gerarLinhasApontamento(turnoSelecionado.horaInicio, turnoSelecionado.horaFim, intervaloApontamento)
+			gerarLinhasApontamento(horaInicioFormatada, horaFimFormatada, intervaloApontamento)
     }
 
     toast({
       title: 'Turno selecionado',
-      description: `${turnoSelecionado.codigo} - ${turnoSelecionado.turno} (${turnoSelecionado.horaInicio} - ${turnoSelecionado.horaFim})`,
+			description: `${turnoSelecionado.codigo} - ${turnoSelecionado.turno} (${horaInicioFormatada} - ${horaFimFormatada})`,
       variant: 'default'
     })
   }
@@ -2128,13 +2192,10 @@ export default function ApontamentoOEE() {
 
         // 3. Hora inicial e final do turno
         if (turnoData.horaInicio) {
-          // Remover segundos se presente (HH:MM:SS -> HH:MM)
-          const horaInicial = turnoData.horaInicio.substring(0, 5)
-          setTurnoHoraInicial(horaInicial)
+	        setTurnoHoraInicial(formatarHoraPtBr(turnoData.horaInicio, false))
         }
         if (turnoData.horaFim) {
-          const horaFinal = turnoData.horaFim.substring(0, 5)
-          setTurnoHoraFinal(horaFinal)
+	        setTurnoHoraFinal(formatarHoraPtBr(turnoData.horaFim, false))
         }
 
         // 4. Produto/SKU
@@ -3673,7 +3734,7 @@ export default function ApontamentoOEE() {
               {/* Cards de Seleção de Formulário */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                 <div
-                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border-l-4 border-l-primary border cursor-pointer hover:shadow-md transition-shadow ${
                     formularioAtivo === 'production-form'
                       ? 'border-primary ring-1 ring-primary'
                       : 'border-border-light dark:border-border-dark'
@@ -3749,19 +3810,21 @@ export default function ApontamentoOEE() {
                             >
                               <td className="px-4 py-3">
                                 <Input
-                                  type="time"
-                                  value={linha.horaInicio}
+											type="text"
+											value={formatarHoraPtBr(linha.horaInicio, false)}
                                   readOnly
                                   disabled={linha.editavel === false}
+											inputMode="numeric"
                                   className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
                               <td className="px-4 py-3">
                                 <Input
-                                  type="time"
-                                  value={linha.horaFim}
+											type="text"
+											value={formatarHoraPtBr(linha.horaFim, false)}
                                   readOnly
                                   disabled={linha.editavel === false}
+											inputMode="numeric"
                                   className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
@@ -3876,8 +3939,8 @@ export default function ApontamentoOEE() {
                               </Button>
                             </td>
                             <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
-                            <td className="px-1 py-2 whitespace-nowrap">{registro.horaInicio}</td>
-                            <td className="px-1 py-2 whitespace-nowrap">{registro.horaFim}</td>
+							<td className="px-1 py-2 whitespace-nowrap">{formatarHoraPtBr(registro.horaInicio, false)}</td>
+							<td className="px-1 py-2 whitespace-nowrap">{formatarHoraPtBr(registro.horaFim, false)}</td>
                             <td className="px-1 py-2 text-right whitespace-nowrap">{formatarQuantidade(registro.quantidadeProduzida)}</td>
                           </tr>
                         ))
@@ -4225,7 +4288,7 @@ export default function ApontamentoOEE() {
         </div>
 
         {/* Sidebar Direita - OEE Real */}
-        <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark">
+        <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto">
 
           {/* Cards de Métricas - Grid 2x2 (FORA do aside) */}
           <div className="grid grid-cols-2 gap-3 mb-4 w-full">
@@ -4256,7 +4319,7 @@ export default function ApontamentoOEE() {
 
           {/* Aside do OEE Real - Velocímetro e Barras */}
           <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
-            <div className="sticky top-6 w-full">
+            <div className="w-full">
               <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
                 OEE Real
               </h2>

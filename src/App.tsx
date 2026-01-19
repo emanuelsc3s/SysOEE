@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Operacao from './pages/Operacao'
 import OperacaoPorEquipamento from './pages/OperacaoPorEquipamento'
 import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
+import WhatsNewOEE from './pages/oee/whats-new/WhatsNewOEE'
 import ArmazemSaldo from './pages/ArmazemSaldo'
 import ColaboradorPerfil from './pages/ColaboradorPerfil'
 import LinhaProducaoConsulta from './pages/LinhaProducaoConsulta'
@@ -45,6 +46,9 @@ function App() {
 
         {/* Página de Apontamento de OEE */}
         <Route path="/apontamento-oee" element={<ProtectedRoute><ApontamentoOEE /></ProtectedRoute>} />
+
+        {/* Página de Novidades do Sistema OEE */}
+        <Route path="/whats-new-oee" element={<ProtectedRoute><WhatsNewOEE /></ProtectedRoute>} />
 
         {/* Página de Listagem de Apontamentos OEE por Turno */}
         <Route path="/oee-turno" element={<ProtectedRoute><OeeTurno /></ProtectedRoute>} />
