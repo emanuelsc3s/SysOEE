@@ -511,7 +511,7 @@ export default function Login() {
                     type="text"
                     placeholder="Digite seu usuário"
                     value={formData.credential}
-                    onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, credential: e.target.value.toLowerCase() })}
                     disabled={isLoading}
                     required
                     autoComplete="username"
@@ -606,7 +606,7 @@ export default function Login() {
                         type="text"
                         placeholder="Digite seu usuário"
                         value={formData.credential}
-                        onChange={(e) => setFormData({ ...formData, credential: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, credential: e.target.value.toLowerCase() })}
                         disabled={isLoading}
                         required
                         autoComplete="username"
