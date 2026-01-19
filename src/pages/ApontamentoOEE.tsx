@@ -19,19 +19,13 @@ import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import { Turno, converterParaSetor } from '@/types/operacao'
 import {
-  salvarApontamentoProducao,
-  calcularOEECompleto,
-  excluirApontamentoProducao,
-  buscarApontamentoProducaoPorId,
-  atualizarApontamentoProducao,
   salvarApontamentoPerdas,
   salvarApontamentoRetrabalho,
   buscarTodosApontamentosPerdas,
-  buscarTodosApontamentosRetrabalho,
-  calcularTotalPerdasPorLinhaESku
+  buscarTodosApontamentosRetrabalho
 } from '@/services/localStorage/apontamento-oee.storage'
-import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada } from '@/services/localStorage/parada.storage'
-import { CalculoOEE, CriarApontamentoProducaoDTO } from '@/types/apontamento-oee'
+import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada, buscarParadasPorLinha } from '@/services/localStorage/parada.storage'
+import { CalculoOEE } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -80,6 +74,7 @@ import { ModalBuscaParadas, type ParadaGeral } from "@/components/apontamento/Mo
 import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/ModalBuscaTurno"
 import { ModalBuscaSKU, type SKUSelecionado } from "@/components/modal/ModalBuscaSKU"
 import { ModalBuscaLinhaProducao, type LinhaProducaoSelecionada } from "@/components/modal/modalBuscaLinhaProducao"
+import { TipoParada } from '@/types/parada'
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -109,6 +104,8 @@ interface RegistroProducao {
   horaFim: string
   quantidadeProduzida: number
   dataHoraRegistro: string
+  createdAt?: string
+  velocidade?: number
 }
 
 // Tipo para registro de parada no localStorage
@@ -136,6 +133,7 @@ interface RegistroQualidade {
   linhaId: string
   linhaNome: string
   apontamentoProducaoId: string
+  skuCodigo?: string
   tipo: 'PERDAS' | 'RETRABALHO'
   quantidade: number
   motivo: string
@@ -166,6 +164,26 @@ interface DadosLote {
   quantidadeProduzidaFinal: number
 }
 
+interface ProducaoSupabase {
+  oeeturnoproducao_id: number
+  linhaproducao_id: number | null
+  linhaproducao: string | null
+  departamento_id: number | null
+  departamento: string | null
+  produto_id: number | null
+  produto: string | null
+  velocidade: number | null
+  quantidade: number | null
+  data: string | null
+  hora_inicio: string | null
+  hora_final: string | null
+  turno_id: number | null
+  turno: string | null
+  oeeturno_id: number | null
+  created_at: string | null
+  updated_at: string | null
+}
+
 // Estado inicial do formulário de lote
 const estadoInicialLote: DadosLote = {
   numeroLote: '',
@@ -186,6 +204,7 @@ export default function ApontamentoOEE() {
 
   // ==================== Refs para controle de carregamento ====================
   const turnoOeeCarregadoRef = useRef<string | null>(null) // Evita loop infinito no useEffect de carregamento
+  const producaoCarregadaRef = useRef<number | null>(null) // Evita recargas repetidas da produção
 
   // ==================== Estado de Navegação ====================
   const [formularioAtivo, setFormularioAtivo] = useState<FormularioAtivo>('production-form')
@@ -207,6 +226,8 @@ export default function ApontamentoOEE() {
   const [linhaNome, setLinhaNome] = useState<string>('') // Nome da linha selecionada para exibição
   const [linhaProducaoSelecionada, setLinhaProducaoSelecionada] = useState<LinhaProducaoSelecionada | null>(null)
   const [skuCodigo, setSkuCodigo] = useState<string>('')
+  const [produtoId, setProdutoId] = useState<number | null>(null)
+  const [produtoDescricao, setProdutoDescricao] = useState<string>('')
   const [editandoCabecalho, setEditandoCabecalho] = useState<boolean>(false)
   const [cabecalhoOriginal, setCabecalhoOriginal] = useState<{
     data: Date | undefined
@@ -220,6 +241,8 @@ export default function ApontamentoOEE() {
     linhaNome: string
     linhaProducaoSelecionada: LinhaProducaoSelecionada | null
     skuCodigo: string
+    produtoId: number | null
+    produtoDescricao: string
   } | null>(null)
 
   // ==================== Estado de Controle de Turno ====================
@@ -242,12 +265,6 @@ export default function ApontamentoOEE() {
 
   // ==================== Estado de Linhas de Apontamento de Produção ====================
   const [linhasApontamento, setLinhasApontamento] = useState<LinhaApontamentoProducao[]>([])
-
-  // ==================== Estado de Produção ====================
-  // Estados usados para restaurar dados ao editar um registro existente
-  const [, setHoraInicio] = useState<string>('')
-  const [, setHoraFim] = useState<string>('')
-  const [, setQuantidadeProduzida] = useState<string>('')
 
   // ==================== Estado de Qualidade - Perdas ====================
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
@@ -316,38 +333,10 @@ export default function ApontamentoOEE() {
   const [showConfirmExclusaoQualidade, setShowConfirmExclusaoQualidade] = useState(false)
   const [qualidadeParaExcluir, setQualidadeParaExcluir] = useState<string | null>(null)
 
-  // ==================== Constante para chave do localStorage ====================
-  const STORAGE_KEY = 'oee_production_records'
+  // ==================== Constantes para chaves do localStorage ====================
   const STORAGE_KEY_PARADAS = 'oee_downtime_records'
   const STORAGE_KEY_QUALIDADE = 'oee_quality_records'
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
-
-  // ==================== Funções de localStorage ====================
-  const carregarHistorico = useCallback((): RegistroProducao[] => {
-    try {
-      const dados = localStorage.getItem(STORAGE_KEY)
-      if (dados) {
-        return JSON.parse(dados)
-      }
-      return []
-    } catch (error) {
-      console.error('Erro ao carregar histórico do localStorage:', error)
-      return []
-    }
-  }, [])
-
-  const salvarNoLocalStorage = (registros: RegistroProducao[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(registros))
-    } catch (error) {
-      console.error('Erro ao salvar no localStorage:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível salvar os dados',
-        variant: 'destructive'
-      })
-    }
-  }
 
   const carregarHistoricoParadas = useCallback((): RegistroParada[] => {
     try {
@@ -406,6 +395,272 @@ export default function ApontamentoOEE() {
       })
     }
   }
+
+  const normalizarHora = (hora: string): string => {
+    if (!hora) return ''
+    return hora.length === 5 ? `${hora}:00` : hora
+  }
+
+  const obterMensagemErro = (error: unknown, fallback: string): string => {
+    if (error && typeof error === 'object' && 'message' in error) {
+      const mensagem = (error as { message?: string }).message
+      if (mensagem) return mensagem
+    }
+    return fallback
+  }
+
+  const extrairCodigoSku = (sku: string): string => {
+    return sku.includes(' - ') ? sku.split(' - ')[0].trim() : sku.trim()
+  }
+
+  const extrairDescricaoSku = (sku: string): string => {
+    return sku.includes(' - ') ? sku.split(' - ').slice(1).join(' - ').trim() : sku.trim()
+  }
+
+  const obterUsuarioAutenticado = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      toast({
+        title: 'Usuário não autenticado',
+        description: 'Faça login para continuar.',
+        variant: 'destructive'
+      })
+      return null
+    }
+
+    return user
+  }, [toast])
+
+  const garantirProdutoPorSku = useCallback(async () => {
+    const codigoSKU = extrairCodigoSku(skuCodigo)
+    const descricaoSKU = extrairDescricaoSku(skuCodigo)
+
+    if (!codigoSKU) {
+      toast({
+        title: 'SKU obrigatório',
+        description: 'Informe o SKU para continuar.',
+        variant: 'destructive'
+      })
+      return { produtoId: null, produtoDescricao: '' }
+    }
+
+    try {
+      const { data: produtoData, error: produtoError } = await supabase
+        .from('tbproduto')
+        .select('produto_id, descricao')
+        .or(`referencia.eq.${codigoSKU},erp_codigo.eq.${codigoSKU}`)
+        .eq('deletado', 'N')
+        .limit(1)
+        .maybeSingle()
+
+      if (produtoError) {
+        throw produtoError
+      }
+
+      if (produtoData) {
+        setProdutoId(produtoData.produto_id)
+        setProdutoDescricao(produtoData.descricao || descricaoSKU)
+        return { produtoId: produtoData.produto_id, produtoDescricao: produtoData.descricao || descricaoSKU }
+      }
+
+      const novoProduto = {
+        referencia: codigoSKU,
+        erp_codigo: codigoSKU,
+        descricao: descricaoSKU,
+        deletado: 'N'
+      }
+
+      const { data: produtoCriado, error: criarProdutoError } = await supabase
+        .from('tbproduto')
+        .insert(novoProduto)
+        .select('produto_id, descricao')
+        .single()
+
+      if (criarProdutoError) {
+        throw criarProdutoError
+      }
+
+      setProdutoId(produtoCriado.produto_id)
+      setProdutoDescricao(produtoCriado.descricao || descricaoSKU)
+      return { produtoId: produtoCriado.produto_id, produtoDescricao: produtoCriado.descricao || descricaoSKU }
+    } catch (error) {
+      console.error('❌ Erro ao garantir produto:', error)
+      toast({
+        title: 'Erro ao cadastrar produto',
+        description: 'Não foi possível localizar ou cadastrar o produto.',
+        variant: 'destructive'
+      })
+      return { produtoId: null, produtoDescricao: '' }
+    }
+  }, [skuCodigo, toast])
+
+  const buscarVelocidadeNominal = useCallback(async (linhaProducaoId: number, produtoAtualId: number) => {
+    try {
+      const { data: velocidadeData, error: velocidadeError } = await supabase
+        .from('tbvelocidadenominal')
+        .select('velocidade')
+        .eq('linhaproducao_id', linhaProducaoId)
+        .eq('produto_id', produtoAtualId)
+        .eq('deletado', 'N')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (velocidadeError) {
+        throw velocidadeError
+      }
+
+      if (!velocidadeData?.velocidade) {
+        return null
+      }
+
+      return Number(velocidadeData.velocidade)
+    } catch (error) {
+      console.error('❌ Erro ao buscar velocidade nominal:', error)
+      toast({
+        title: 'Erro ao buscar velocidade nominal',
+        description: 'Não foi possível localizar a velocidade nominal para a linha e produto.',
+        variant: 'destructive'
+      })
+      return null
+    }
+  }, [toast])
+
+  const mapearRegistroSupabase = useCallback((registro: ProducaoSupabase): RegistroProducao => {
+    const dataRegistro = registro.data ? format(parseISO(registro.data), 'dd/MM/yyyy') : ''
+    const horaInicio = registro.hora_inicio ? registro.hora_inicio.substring(0, 5) : ''
+    const horaFim = registro.hora_final ? registro.hora_final.substring(0, 5) : ''
+    const createdAtIso = registro.updated_at || registro.created_at
+    const createdAt = createdAtIso ? new Date(createdAtIso) : new Date()
+
+    return {
+      id: registro.oeeturnoproducao_id.toString(),
+      data: dataRegistro,
+      turno: (registro.turno as Turno) || turno,
+      linhaId: registro.linhaproducao_id?.toString() || linhaId,
+      linhaNome: registro.linhaproducao || linhaSelecionada?.nome || '',
+      skuCodigo: registro.produto || skuCodigo,
+      horaInicio,
+      horaFim,
+      quantidadeProduzida: Number(registro.quantidade || 0),
+      dataHoraRegistro: format(createdAt, 'dd/MM/yyyy HH:mm:ss'),
+      createdAt: createdAt.toISOString(),
+      velocidade: registro.velocidade ? Number(registro.velocidade) : undefined
+    }
+  }, [linhaId, linhaSelecionada?.nome, skuCodigo, turno])
+
+  const montarLinhasApontamentoComRegistros = useCallback((registros: RegistroProducao[]) => {
+    if (!turnoHoraInicial || !turnoHoraFinal || intervaloApontamento <= 0) {
+      return registros.map((registro) => ({
+        id: registro.id,
+        horaInicio: registro.horaInicio,
+        horaFim: registro.horaFim,
+        quantidadeProduzida: registro.quantidadeProduzida.toString(),
+        apontamentoId: registro.id,
+        editavel: false
+      }))
+    }
+
+    const mapaHistorico = new Map<string, RegistroProducao>()
+    registros.forEach((registro) => {
+      mapaHistorico.set(registro.horaInicio, registro)
+    })
+
+    const [turnoInicioH, turnoInicioM] = turnoHoraInicial.split(':').map(Number)
+    const [turnoFimH, turnoFimM] = turnoHoraFinal.split(':').map(Number)
+
+    let minutoAtual = turnoInicioH * 60 + turnoInicioM
+    let minutoFimTurno = turnoFimH * 60 + turnoFimM
+
+    if (minutoFimTurno < minutoAtual) {
+      minutoFimTurno += 24 * 60
+    }
+
+    const intervaloMinutos = intervaloApontamento * 60
+    const linhas: LinhaApontamentoProducao[] = []
+
+    const formatarHora = (minutos: number): string => {
+      const horas = Math.floor(minutos / 60) % 24
+      const mins = minutos % 60
+      return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+    }
+
+    while (minutoAtual < minutoFimTurno) {
+      const proximoMinuto = Math.min(minutoAtual + intervaloMinutos, minutoFimTurno)
+      const horaInicio = formatarHora(minutoAtual)
+      const horaFim = formatarHora(proximoMinuto)
+      const registroHistorico = mapaHistorico.get(horaInicio)
+
+      if (registroHistorico) {
+        linhas.push({
+          id: registroHistorico.id,
+          horaInicio: registroHistorico.horaInicio,
+          horaFim: registroHistorico.horaFim,
+          quantidadeProduzida: registroHistorico.quantidadeProduzida.toString(),
+          apontamentoId: registroHistorico.id,
+          editavel: false
+        })
+      } else {
+        linhas.push({
+          id: `linha-${Date.now()}-${minutoAtual}`,
+          horaInicio,
+          horaFim,
+          quantidadeProduzida: '',
+          editavel: true
+        })
+      }
+
+      minutoAtual = proximoMinuto
+    }
+
+    return linhas
+  }, [intervaloApontamento, turnoHoraFinal, turnoHoraInicial])
+
+  const carregarProducoesSupabase = useCallback(async (oeeturnoIdAtual: number) => {
+    try {
+      const { data: producoesData, error: producoesError } = await supabase
+        .from('tboee_turno_producao')
+        .select('*')
+        .eq('oeeturno_id', oeeturnoIdAtual)
+        .eq('deletado', 'N')
+        .order('hora_inicio', { ascending: true })
+
+      if (producoesError) {
+        throw producoesError
+      }
+
+      const registros = (producoesData || []).map((registro) => mapearRegistroSupabase(registro as ProducaoSupabase))
+
+      setHistoricoProducao(registros)
+      setLinhasApontamento(montarLinhasApontamentoComRegistros(registros))
+
+      if (registros.length > 0) {
+        const registroMaisRecente = [...registros].sort((a, b) => {
+          const dataA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dataB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dataB - dataA
+        })[0]
+        setApontamentoProducaoId(registroMaisRecente.id)
+      } else {
+        setApontamentoProducaoId(null)
+      }
+
+      producaoCarregadaRef.current = oeeturnoIdAtual
+      return registros
+    } catch (error) {
+      console.error('❌ Erro ao carregar produção do Supabase:', error)
+      toast({
+        title: 'Erro ao carregar produção',
+        description: 'Não foi possível carregar os registros de produção no Supabase.',
+        variant: 'destructive'
+      })
+      setHistoricoProducao([])
+      setLinhasApontamento([])
+      setApontamentoProducaoId(null)
+      return []
+    }
+  }, [mapearRegistroSupabase, montarLinhasApontamentoComRegistros, toast])
 
   /**
    * Carrega configurações do localStorage
@@ -734,14 +989,6 @@ export default function ApontamentoOEE() {
       return
     }
 
-    const codigoSKU = skuCodigo.includes(' - ')
-      ? skuCodigo.split(' - ')[0].trim()
-      : skuCodigo.trim()
-
-    const descricaoSKU = skuCodigo.includes(' - ')
-      ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
-      : skuCodigo.trim()
-
     try {
       const tempoOperacaoHoras = calcularDiferencaHoras(
         linhaApontamento.horaInicio,
@@ -757,63 +1004,120 @@ export default function ApontamentoOEE() {
         return
       }
 
-      const dto: CriarApontamentoProducaoDTO = {
-        turno,
-        linha: linhaProducaoSelecionada.linhaproducao,
-        setor: converterParaSetor(linhaProducaoSelecionada.departamento),
-        sku: codigoSKU,
-        produto: descricaoSKU,
-        velocidadeNominal: 4000,
-        quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
-        tempoOperacao: tempoOperacaoHoras,
-        tempoDisponivel: 12,
-        dataApontamento: format(data, 'yyyy-MM-dd'),
-        horaInicio: linhaApontamento.horaInicio.includes(':')
-          ? linhaApontamento.horaInicio + ':00'
-          : linhaApontamento.horaInicio,
-        horaFim: linhaApontamento.horaFim.includes(':')
-          ? linhaApontamento.horaFim + ':00'
-          : linhaApontamento.horaFim,
-        criadoPor: 1,
-        criadoPorNome: 'Emanuel Silva'
+      const turnoAtualId = oeeTurnoId || await verificarOuCriarTurnoOEE()
+
+      if (!turnoAtualId) {
+        toast({
+          title: 'Erro ao registrar turno',
+          description: 'Não foi possível obter o turno OEE para salvar a produção.',
+          variant: 'destructive'
+        })
+        return
       }
 
-      const apontamento = salvarApontamentoProducao(dto)
-
-      // Criar registro para histórico
-      const novoRegistro: RegistroProducao = {
-        id: apontamento.id,
-        data: format(data!, 'dd/MM/yyyy'),
-        turno,
-        linhaId,
-        linhaNome: linhaProducaoSelecionada.linhaproducao,
-        skuCodigo,
-        horaInicio: linhaApontamento.horaInicio,
-        horaFim: linhaApontamento.horaFim,
-        quantidadeProduzida: Number(linhaApontamento.quantidadeProduzida),
-        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+      if (!oeeTurnoId) {
+        setOeeTurnoId(turnoAtualId)
       }
 
-      // Atualizar histórico
-      const novoHistorico = [novoRegistro, ...historicoProducao]
-      setHistoricoProducao(novoHistorico)
-      salvarNoLocalStorage(novoHistorico)
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
 
-      // Atualizar linha com ID do apontamento e desabilitar edição
+      const produtoAtualId = produtoId ?? (await garantirProdutoPorSku()).produtoId
+
+      if (!produtoAtualId) {
+        return
+      }
+
+      const velocidadeNominal = await buscarVelocidadeNominal(
+        linhaProducaoSelecionada.linhaproducao_id,
+        produtoAtualId
+      )
+
+      if (!velocidadeNominal) {
+        toast({
+          title: 'Velocidade nominal não encontrada',
+          description: 'Cadastre a velocidade nominal para a linha e produto antes de salvar.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const payload = {
+        linhaproducao_id: linhaProducaoSelecionada.linhaproducao_id,
+        linhaproducao: linhaProducaoSelecionada.linhaproducao,
+        departamento_id: linhaProducaoSelecionada.departamento_id,
+        departamento: linhaProducaoSelecionada.departamento,
+        produto_id: produtoAtualId,
+        produto: skuCodigo,
+        velocidade: velocidadeNominal,
+        quantidade: Number(linhaApontamento.quantidadeProduzida),
+        data: format(data, 'yyyy-MM-dd'),
+        hora_inicio: normalizarHora(linhaApontamento.horaInicio),
+        hora_final: normalizarHora(linhaApontamento.horaFim),
+        turno_id: parseInt(turnoId),
+        turno: turno,
+        oeeturno_id: turnoAtualId,
+        updated_at: new Date().toISOString(),
+        updated_by: usuario.id
+      }
+
+      let registroSalvo: ProducaoSupabase | null = null
+
+      if (linhaApontamento.apontamentoId) {
+        const { data: registroAtualizado, error } = await supabase
+          .from('tboee_turno_producao')
+          .update(payload)
+          .eq('oeeturnoproducao_id', parseInt(linhaApontamento.apontamentoId))
+          .select('*')
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        registroSalvo = registroAtualizado as ProducaoSupabase
+      } else {
+        const { data: registroCriado, error } = await supabase
+          .from('tboee_turno_producao')
+          .insert({
+            ...payload,
+            created_at: new Date().toISOString(),
+            created_by: usuario.id,
+            deletado: 'N'
+          })
+          .select('*')
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        registroSalvo = registroCriado as ProducaoSupabase
+      }
+
+      if (!registroSalvo) {
+        throw new Error('Registro de produção não retornado pelo Supabase')
+      }
+
+      const registroMapeado = mapearRegistroSupabase(registroSalvo)
+      const historicoAtualizado = linhaApontamento.apontamentoId
+        ? historicoProducao.map((registro) => registro.id === registroMapeado.id ? registroMapeado : registro)
+        : [registroMapeado, ...historicoProducao]
+
+      setHistoricoProducao(historicoAtualizado)
+      setApontamentoProducaoId(registroMapeado.id)
+      setHorasRestantes(calcularHorasRestantes(historicoAtualizado))
+      recalcularOeeComHistorico(historicoAtualizado)
+
       setLinhasApontamento(linhas =>
         linhas.map(l =>
           l.id === linhaApontamento.id
-            ? { ...l, apontamentoId: apontamento.id, editavel: false }
+            ? { ...l, apontamentoId: registroMapeado.id, editavel: false }
             : l
         )
       )
-
-      // Atualizar OEE
-      if (linhaId) {
-        setApontamentoProducaoId(apontamento.id)
-        const novoOEE = calcularOEECompleto(apontamento.id, linhaId, 12)
-        setOeeCalculado(novoOEE)
-      }
 
       toast({
         title: '✅ Linha Salva',
@@ -824,7 +1128,7 @@ export default function ApontamentoOEE() {
       console.error('❌ Erro ao salvar linha:', error)
       toast({
         title: 'Erro ao salvar',
-        description: 'Não foi possível salvar o apontamento. Tente novamente.',
+        description: obterMensagemErro(error, 'Não foi possível salvar o apontamento. Tente novamente.'),
         variant: 'destructive'
       })
     }
@@ -833,7 +1137,7 @@ export default function ApontamentoOEE() {
   /**
    * Exclui uma linha individual de apontamento
    */
-  const handleExcluirLinha = (linhaApontamento: LinhaApontamentoProducao) => {
+  const handleExcluirLinha = async (linhaApontamento: LinhaApontamentoProducao) => {
     if (!linhaApontamento.apontamentoId) {
       // Se não foi salvo ainda, apenas limpa a quantidade
       setLinhasApontamento(linhas =>
@@ -852,25 +1156,28 @@ export default function ApontamentoOEE() {
 
     // Se já foi salvo, confirmar exclusão
     try {
-      // Buscar o registro no histórico
-      const registro = historicoProducao.find(r => r.id === linhaApontamento.apontamentoId)
-
-      if (!registro) {
-        toast({
-          title: 'Erro',
-          description: 'Registro não encontrado',
-          variant: 'destructive'
-        })
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
         return
       }
 
-      // Remover do histórico
+      const { error } = await supabase
+        .from('tboee_turno_producao')
+        .update({
+          deletado: 'S',
+          deleted_at: new Date().toISOString(),
+          deleted_by: usuario.id,
+          updated_at: new Date().toISOString(),
+          updated_by: usuario.id
+        })
+        .eq('oeeturnoproducao_id', parseInt(linhaApontamento.apontamentoId))
+
+      if (error) {
+        throw error
+      }
+
       const novoHistorico = historicoProducao.filter(r => r.id !== linhaApontamento.apontamentoId)
       setHistoricoProducao(novoHistorico)
-      salvarNoLocalStorage(novoHistorico)
-
-      // Remover do serviço de apontamentos
-      excluirApontamentoProducao(linhaApontamento.apontamentoId)
 
       // Limpar a linha
       setLinhasApontamento(linhas =>
@@ -881,8 +1188,8 @@ export default function ApontamentoOEE() {
         )
       )
 
-      // Recalcular OEE
-      recalcularIndicadoresAposExclusao(registro, novoHistorico)
+      setHorasRestantes(calcularHorasRestantes(novoHistorico))
+      recalcularOeeComHistorico(novoHistorico)
 
       toast({
         title: '✅ Linha Excluída',
@@ -893,7 +1200,7 @@ export default function ApontamentoOEE() {
       console.error('❌ Erro ao excluir linha:', error)
       toast({
         title: 'Erro ao excluir',
-        description: 'Não foi possível excluir o apontamento. Tente novamente.',
+        description: obterMensagemErro(error, 'Não foi possível excluir o apontamento. Tente novamente.'),
         variant: 'destructive'
       })
     }
@@ -914,57 +1221,176 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Converte string de data/hora no padrão BR para timestamp
-   * Mantém compatibilidade com registros já salvos no localStorage
+   * Soma perdas e retrabalhos por linha, turno e SKU
+   * Usa histórico local de qualidade até a migração completa para Supabase
    */
-  const paraTimestamp = (dataHora: string): number => {
-    try {
-      const [dataParte, horaParte = '00:00:00'] = dataHora.split(' ')
-      const [dia, mes, ano] = dataParte.split('/').map(Number)
-      const [hora, minuto, segundo = 0] = horaParte.split(':').map(Number)
-      return new Date(ano, mes - 1, dia, hora, minuto, segundo).getTime()
-    } catch (error) {
-      console.warn('Não foi possível converter data/hora:', dataHora, error)
-      return 0
-    }
+  const calcularTotalPerdasDoApontamento = useCallback(
+    (registrosQualidade = historicoQualidade): number => {
+      if (!data || !linhaId || !skuCodigo) {
+        return 0
+      }
+
+      const dataSelecionada = format(data, 'dd/MM/yyyy')
+      const skuAtual = skuCodigo.trim()
+
+      return registrosQualidade
+        .filter((registro) =>
+          registro.data === dataSelecionada &&
+          registro.turno === turno &&
+          registro.linhaId === linhaId &&
+          (!registro.skuCodigo || registro.skuCodigo === skuAtual)
+        )
+        .reduce((total, registro) => total + (registro.quantidade || 0), 0)
+    },
+    [data, linhaId, skuCodigo, turno, historicoQualidade]
+  )
+
+  const somarDuracoesMinutos = (paradas: ParadaLocalStorage[]): number => {
+    return paradas.reduce((sum, parada) => sum + (parada.duracao_minutos || 0), 0)
   }
 
-  /**
-   * Converte data no formato dd/MM/yyyy para objeto Date
-   */
-  const converterDataBRParaDate = (dataTexto: string): Date | undefined => {
-    try {
-      const [dia, mes, ano] = dataTexto.split('/').map(Number)
-      return new Date(ano, mes - 1, dia)
-    } catch (error) {
-      console.warn('Não foi possível converter data:', dataTexto, error)
-      return undefined
-    }
+  const arredondar = (valor: number): number => {
+    return Math.round(valor * 100) / 100
   }
 
-  /**
-   * Soma perdas e retrabalhos por linha e SKU
-   * OEE é calculado por linha de produção e código SKU, não por apontamento individual
-   */
-  const calcularTotalPerdasDoApontamento = (): number => {
-    // Extrair apenas o código do SKU (sem a descrição)
-    // skuCodigo pode ser "07010001 - SOL. CLORETO DE SODIO..." ou apenas "07010001"
-    const codigoSKU = skuCodigo.includes(' - ')
-      ? skuCodigo.split(' - ')[0].trim()
-      : skuCodigo.trim()
+  const identificarTipoParada = (parada: ParadaLocalStorage): TipoParada => {
+    const obs = parada.observacao?.toLowerCase() || ''
+    const codigoParada = parada.codigo_parada_id?.toLowerCase() || ''
 
-    // Verificar se há linha e SKU selecionados
-    if (!linhaId || !codigoSKU) {
-      return 0
+    const padroesEstrategicos = [
+      'feriado', 'inventário', 'inventario',
+      'atividade programada', 'parada estratégica', 'parada estrategica',
+      'sem programação', 'sem programacao', 'sem demanda', 'ociosidade planejada'
+    ]
+
+    for (const padrao of padroesEstrategicos) {
+      if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+        return 'ESTRATEGICA'
+      }
     }
 
-    // Obter o nome da linha a partir do ID
-    const linhaNome = linhaSelecionada?.nome
+    const padroesPlaneados = [
+      'cip', 'sip', 'cip/sip',
+      'manutenção preventiva', 'manutencao preventiva',
+      'manutenção planejada', 'manutencao planejada',
+      'setup', 'troca de formato', 'troca de produto',
+      'troca de lote', 'troca de sku',
+      'início de produção', 'inicio de producao',
+      'fim de produção', 'fim de producao',
+      'validação', 'validacao', 'qualificação', 'qualificacao',
+      'teste de filtro',
+      'paradas planejadas', 'planejada'
+    ]
 
-    // Usar a nova função que soma TODAS as perdas da linha e SKU
-    // Passamos tanto o ID quanto o nome da linha para garantir a busca correta
-    return calcularTotalPerdasPorLinhaESku(linhaId, codigoSKU, linhaNome)
+    for (const padrao of padroesPlaneados) {
+      if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+        return 'PLANEJADA'
+      }
+    }
+
+    const padroesNaoPlaneados = [
+      'não planejada', 'nao planejada',
+      'quebra', 'falha',
+      'falta de', 'falta insumo',
+      'emergência', 'emergencia',
+      'corretiva'
+    ]
+
+    for (const padrao of padroesNaoPlaneados) {
+      if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+        return 'NAO_PLANEJADA'
+      }
+    }
+
+    return 'NAO_PLANEJADA'
   }
+
+  const recalcularOeeComHistorico = useCallback((
+    registrosProducao: RegistroProducao[],
+    registrosQualidade = historicoQualidade
+  ) => {
+    if (!linhaId) {
+      return
+    }
+
+    if (registrosProducao.length === 0) {
+      setApontamentoProducaoId(null)
+      setOeeCalculado({
+        disponibilidade: 0,
+        performance: 0,
+        qualidade: 0,
+        oee: 0,
+        tempoOperacionalLiquido: 0,
+        tempoValioso: 0
+      })
+      setTotalPerdasQualidade(0)
+      return
+    }
+
+    const quantidadeProduzidaTotal = registrosProducao.reduce(
+      (total, registro) => total + registro.quantidadeProduzida,
+      0
+    )
+
+    const velocidadeNominal = registrosProducao.find((registro) => registro.velocidade && registro.velocidade > 0)?.velocidade || 0
+    const paradas = buscarParadasPorLinha(linhaId)
+
+    const paradasEstrategicas = paradas.filter((parada) =>
+      identificarTipoParada(parada) === 'ESTRATEGICA' && parada.duracao_minutos !== null
+    )
+
+    const paradasGrandes = paradas.filter((parada) =>
+      identificarTipoParada(parada) !== 'ESTRATEGICA' &&
+      parada.duracao_minutos !== null &&
+      parada.duracao_minutos >= 10
+    )
+
+    const tempoDisponivelHoras = TEMPO_DISPONIVEL_PADRAO
+    const tempoEstrategicoHoras = somarDuracoesMinutos(paradasEstrategicas) / 60
+    const tempoParadasGrandesHoras = somarDuracoesMinutos(paradasGrandes) / 60
+
+    const tempoDisponivelAjustado = tempoDisponivelHoras - tempoEstrategicoHoras
+    const tempoOperacao = tempoDisponivelAjustado - tempoParadasGrandesHoras
+
+    const disponibilidade = tempoDisponivelAjustado > 0
+      ? (tempoOperacao / tempoDisponivelAjustado) * 100
+      : 0
+
+    const tempoOperacionalLiquido = velocidadeNominal > 0
+      ? quantidadeProduzidaTotal / velocidadeNominal
+      : 0
+
+    const performanceBruta = tempoOperacao > 0
+      ? (tempoOperacionalLiquido / tempoOperacao) * 100
+      : 0
+
+    const performance = Math.min(performanceBruta, 100)
+    const totalPerdas = calcularTotalPerdasDoApontamento(registrosQualidade)
+    const unidadesBoas = quantidadeProduzidaTotal - totalPerdas
+
+    const qualidadeUnidades = quantidadeProduzidaTotal > 0
+      ? (unidadesBoas / quantidadeProduzidaTotal) * 100
+      : 100
+
+    const qualidadeRetrabalho = tempoOperacao > 0
+      ? ((tempoOperacao - 0) / tempoOperacao) * 100
+      : 100
+
+    const qualidade = (qualidadeUnidades / 100) * (qualidadeRetrabalho / 100) * 100
+    const oee = (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
+    const tempoValioso = (qualidade / 100) * tempoOperacionalLiquido
+
+    setOeeCalculado({
+      disponibilidade: arredondar(disponibilidade),
+      performance: arredondar(performance),
+      qualidade: arredondar(qualidade),
+      oee: arredondar(oee),
+      tempoOperacionalLiquido: arredondar(tempoOperacionalLiquido),
+      tempoValioso: arredondar(tempoValioso)
+    })
+
+    setTotalPerdasQualidade(totalPerdas)
+  }, [calcularTotalPerdasDoApontamento, historicoQualidade, linhaId])
 
   /**
    * Formata percentual no padrão brasileiro (pt-BR)
@@ -1042,46 +1468,20 @@ export default function ApontamentoOEE() {
    * Recalcula OEE e indicadores derivados após exclusão de um registro
    * garantindo atualização imediata da UI para o período afetado.
    */
-  const recalcularIndicadoresAposExclusao = (
-    registroExcluido: RegistroProducao,
-    historicoAtualizado: RegistroProducao[]
-  ) => {
-    const historicoDoPeriodo = [...historicoAtualizado]
-      .filter(
-        (registro) =>
-          registro.data === registroExcluido.data &&
-          registro.turno === registroExcluido.turno &&
-          registro.linhaId === registroExcluido.linhaId &&
-          registro.skuCodigo === registroExcluido.skuCodigo
-      )
-      .sort((a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro))
+  const recalcularIndicadoresAposExclusao = (historicoAtualizado: RegistroProducao[]) => {
+    setHorasRestantes(calcularHorasRestantes(historicoAtualizado))
 
-    const apontamentoReferencia = historicoDoPeriodo[0]
-
-    const paradasDoPeriodo = carregarHistoricoParadas().filter(
-      (registroParada) =>
-        registroParada.data === registroExcluido.data &&
-        registroParada.turno === registroExcluido.turno &&
-        registroParada.linhaId === registroExcluido.linhaId
-    )
-
-    const totalHorasParadasCalculado = paradasDoPeriodo.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60
-    setTotalHorasParadas(totalHorasParadasCalculado)
-    setHorasRestantes(calcularHorasRestantes())
-
-    if (apontamentoReferencia) {
-      try {
-        const novoOEE = calcularOEECompleto(apontamentoReferencia.id, linhaId, TEMPO_DISPONIVEL_PADRAO)
-        setOeeCalculado(novoOEE)
-        setApontamentoProducaoId(apontamentoReferencia.id)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
-        return
-      } catch (error) {
-        console.error('Erro ao recalcular OEE após exclusão:', error)
-      }
+    if (historicoAtualizado.length > 0) {
+      const registroMaisRecente = [...historicoAtualizado].sort((a, b) => {
+        const dataA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        const dataB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+        return dataB - dataA
+      })[0]
+      setApontamentoProducaoId(registroMaisRecente.id)
+      recalcularOeeComHistorico(historicoAtualizado)
+      return
     }
 
-    // Quando não há mais registros relevantes, zera os indicadores para evitar ruído visual.
     setApontamentoProducaoId(null)
     setOeeCalculado({
       disponibilidade: 0,
@@ -1117,48 +1517,54 @@ export default function ApontamentoOEE() {
    * Exclui um registro de produção do histórico
    * Remove do localStorage e recalcula o OEE
    */
-  const handleExcluirProducao = () => {
+  const handleExcluirProducao = async () => {
     if (!registroParaExcluir) return
 
     try {
-      // Buscar o registro no histórico para obter o apontamentoProducaoId
-      const registro = historicoProducao.find(r => r.id === registroParaExcluir)
-
-      if (!registro) {
-        toast({
-          title: 'Erro',
-          description: 'Registro não encontrado',
-          variant: 'destructive'
-        })
-        cancelarExclusao()
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
         return
       }
 
-      // Remover do histórico local e persistir
+      const { error } = await supabase
+        .from('tboee_turno_producao')
+        .update({
+          deletado: 'S',
+          deleted_at: new Date().toISOString(),
+          deleted_by: usuario.id,
+          updated_at: new Date().toISOString(),
+          updated_by: usuario.id
+        })
+        .eq('oeeturnoproducao_id', parseInt(registroParaExcluir))
+
+      if (error) {
+        throw error
+      }
+
       const novoHistorico = historicoProducao.filter(r => r.id !== registroParaExcluir)
       setHistoricoProducao(novoHistorico)
-      salvarNoLocalStorage(novoHistorico)
 
-      // Remover também do serviço de apontamentos persistido
-      excluirApontamentoProducao(registroParaExcluir)
+      setLinhasApontamento((linhas) =>
+        linhas.map((linha) =>
+          linha.apontamentoId === registroParaExcluir
+            ? { ...linha, quantidadeProduzida: '', apontamentoId: undefined, editavel: false }
+            : linha
+        )
+      )
 
-      // Recalcular todos os indicadores impactados (OEE e secundários) para o período afetado
-      recalcularIndicadoresAposExclusao(registro, novoHistorico)
+      recalcularIndicadoresAposExclusao(novoHistorico)
 
-      // Feedback de sucesso
       toast({
         title: '✅ Registro Excluído',
         description: 'O registro de produção foi excluído e os indicadores foram recalculados',
       })
 
-      // Fechar diálogo
       cancelarExclusao()
-
     } catch (error) {
       console.error('Erro ao excluir registro de produção:', error)
       toast({
         title: 'Erro ao excluir',
-        description: 'Não foi possível excluir o registro. Tente novamente.',
+        description: obterMensagemErro(error, 'Não foi possível excluir o registro. Tente novamente.'),
         variant: 'destructive'
       })
       cancelarExclusao()
@@ -1187,71 +1593,16 @@ export default function ApontamentoOEE() {
    * garantindo atualização imediata da UI para o período afetado.
    */
   const recalcularIndicadoresAposExclusaoParada = (
-    paradaExcluida: RegistroParada,
     historicoParadasAtualizado: RegistroParada[]
   ) => {
-    // Buscar o apontamento de produção ativo para o mesmo período
-    const historicoProducao = carregarHistorico()
-    const producoesDoPeriodo = historicoProducao.filter(
-      (registro) =>
-        registro.data === paradaExcluida.data &&
-        registro.turno === paradaExcluida.turno &&
-        registro.linhaId === paradaExcluida.linhaId
-    )
-
-    // Ordenar por data de registro (mais recente primeiro)
-    const producoesOrdenadas = [...producoesDoPeriodo].sort(
-      (a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro)
-    )
-
-    const apontamentoReferencia = producoesOrdenadas[0]
-
-    // Recalcular total de horas paradas com o histórico atualizado
-    const paradasDoPeriodo = historicoParadasAtualizado.filter(
-      (registroParada) =>
-        registroParada.data === paradaExcluida.data &&
-        registroParada.turno === paradaExcluida.turno &&
-        registroParada.linhaId === paradaExcluida.linhaId
-    )
-
-    const totalHorasParadasCalculado = paradasDoPeriodo.reduce(
+    const totalHorasParadasCalculado = historicoParadasAtualizado.reduce(
       (total, parada) => total + (parada.duracao || 0),
       0
     ) / 60
     setTotalHorasParadas(totalHorasParadasCalculado)
-
-    // Recalcular horas restantes
     setHorasRestantes(calcularHorasRestantes())
 
-    // Se houver apontamento de produção ativo, recalcular OEE
-    if (apontamentoReferencia) {
-      try {
-        const novoOEE = calcularOEECompleto(
-          apontamentoReferencia.id,
-          paradaExcluida.linhaId,
-          TEMPO_DISPONIVEL_PADRAO
-        )
-        setOeeCalculado(novoOEE)
-        setApontamentoProducaoId(apontamentoReferencia.id)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
-
-        console.log('✅ OEE recalculado após exclusão de parada:', {
-          paradaExcluida: paradaExcluida.id,
-          apontamentoReferencia: apontamentoReferencia.id,
-          oee: `${novoOEE.oee.toFixed(2)}%`,
-          disponibilidade: `${novoOEE.disponibilidade.toFixed(2)}%`,
-          performance: `${novoOEE.performance.toFixed(2)}%`,
-          qualidade: `${novoOEE.qualidade.toFixed(2)}%`,
-          totalHorasParadas: totalHorasParadasCalculado.toFixed(2)
-        })
-        return
-      } catch (error) {
-        console.error('❌ Erro ao recalcular OEE após exclusão de parada:', error)
-      }
-    }
-
-    // Se não houver apontamento de produção, apenas atualizar métricas de paradas
-    console.log('ℹ️ Nenhum apontamento de produção ativo para recalcular OEE')
+    recalcularOeeComHistorico(historicoProducao)
   }
 
   /**
@@ -1291,7 +1642,7 @@ export default function ApontamentoOEE() {
       })
 
       // Recalcular todos os indicadores impactados (OEE e secundários) para o período afetado
-      recalcularIndicadoresAposExclusaoParada(paradaExcluida, novoHistorico)
+      recalcularIndicadoresAposExclusaoParada(novoHistorico)
 
       // Feedback de sucesso
       toast({
@@ -1375,19 +1726,7 @@ export default function ApontamentoOEE() {
         quantidade: qualidadeExcluida.quantidade
       })
 
-      // Recalcular OEE se houver apontamento de produção ativo
-      if (apontamentoProducaoId && linhaId) {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
-        setOeeCalculado(novoOEE)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
-
-        console.log('✅ OEE recalculado após exclusão de qualidade:', {
-          qualidadeExcluida: qualidadeExcluida.id,
-          tipo: qualidadeExcluida.tipo,
-          oee: `${novoOEE.oee.toFixed(2)}%`,
-          qualidade: `${novoOEE.qualidade.toFixed(2)}%`
-        })
-      }
+      recalcularOeeComHistorico(historicoProducao, novoHistorico)
 
       toast({
         title: '✅ Qualidade Excluída',
@@ -1536,6 +1875,8 @@ export default function ApontamentoOEE() {
   const handleSelecionarSKUModal = (skuSelecionado: SKUSelecionado) => {
     // Preenche o campo SKU com código + descrição
     setSkuCodigo(`${skuSelecionado.codigo} - ${skuSelecionado.descricao}`)
+    setProdutoId(null)
+    setProdutoDescricao(skuSelecionado.descricao)
 
     toast({
       title: 'Produto selecionado',
@@ -1583,42 +1924,64 @@ export default function ApontamentoOEE() {
    * Baseado no tempo disponível menos o tempo já apontado
    * Filtra por Data + Turno + Linha + SKU (ALCOA+)
    */
-  const calcularHorasRestantes = useCallback((): number => {
+  const calcularHorasRestantes = useCallback((registros = historicoProducao): number => {
     const tempoDisponivel = calcularTempoDisponivelTurno()
-    const historico = carregarHistorico()
 
-    // Filtrar apontamentos do turno atual por Data + Turno + Linha + SKU
-    const apontamentosTurnoAtual = historico.filter(
-      h => h.data === format(data!, 'dd/MM/yyyy') &&
-           h.turno === turno &&
-           h.linhaId === linhaId &&
-           h.skuCodigo === skuCodigo // Filtro adicional por SKU
+    if (!data || !linhaId || !skuCodigo) {
+      return tempoDisponivel
+    }
+
+    const dataSelecionada = format(data, 'dd/MM/yyyy')
+
+    const apontamentosTurnoAtual = registros.filter(
+      (registro) =>
+        registro.data === dataSelecionada &&
+        registro.turno === turno &&
+        registro.linhaId === linhaId &&
+        registro.skuCodigo === skuCodigo
     )
 
-    // Calcular total de horas já apontadas
     const horasApontadas = apontamentosTurnoAtual.reduce((total, apontamento) => {
+      if (!apontamento.horaInicio || !apontamento.horaFim) {
+        return total
+      }
+
       const [horaInicioH, horaInicioM] = apontamento.horaInicio.split(':').map(Number)
       const [horaFimH, horaFimM] = apontamento.horaFim.split(':').map(Number)
+
       const minutosInicio = horaInicioH * 60 + horaInicioM
-      const minutosFim = horaFimH * 60 + horaFimM
+      let minutosFim = horaFimH * 60 + horaFimM
+
+      if (minutosFim < minutosInicio) {
+        minutosFim += 24 * 60
+      }
+
       const duracaoMinutos = minutosFim - minutosInicio
       return total + (duracaoMinutos / 60)
     }, 0)
 
     return Math.max(0, tempoDisponivel - horasApontadas)
-  }, [calcularTempoDisponivelTurno, carregarHistorico, data, linhaId, turno, skuCodigo])
+  }, [calcularTempoDisponivelTurno, data, historicoProducao, linhaId, skuCodigo, turno])
 
   // ==================== Carregar histórico ao montar o componente ====================
   useEffect(() => {
-    const historico = carregarHistorico()
-    setHistoricoProducao(historico)
-
     const historicoParadas = carregarHistoricoParadas()
     setHistoricoParadas(historicoParadas)
 
-    // Carregar configurações
     carregarConfiguracoes()
-  }, [carregarHistorico, carregarHistoricoParadas, carregarConfiguracoes])
+  }, [carregarHistoricoParadas, carregarConfiguracoes])
+
+  useEffect(() => {
+    if (!oeeTurnoId) {
+      return
+    }
+
+    if (producaoCarregadaRef.current === oeeTurnoId) {
+      return
+    }
+
+    carregarProducoesSupabase(oeeTurnoId)
+  }, [carregarProducoesSupabase, oeeTurnoId])
 
   // ==================== Carregar dados do turno OEE via parâmetros URL ====================
   /**
@@ -1696,6 +2059,10 @@ export default function ApontamentoOEE() {
         // 4. Produto/SKU
         if (turnoData.produto) {
           setSkuCodigo(turnoData.produto)
+          setProdutoDescricao(extrairDescricaoSku(turnoData.produto))
+        }
+        if (turnoData.produtoId) {
+          setProdutoId(turnoData.produtoId)
         }
 
         // 5. Observação pode conter informações da linha de produção
@@ -1769,20 +2136,12 @@ export default function ApontamentoOEE() {
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
-    if (apontamentoProducaoId && linhaId) {
-      try {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, 12)
-        setOeeCalculado(novoOEE)
-        console.log('f504 OEE recalculado automaticamente:', {
-          apontamentoId: apontamentoProducaoId,
-          linhaId,
-          oee: `${novoOEE.oee}%`
-        })
-      } catch (error) {
-        console.error(' d7❌ Erro ao recalcular OEE:', error)
-      }
+    if (!linhaId) {
+      return
     }
-  }, [apontamentoProducaoId, linhaId])
+
+    recalcularOeeComHistorico(historicoProducao)
+  }, [historicoParadas, historicoProducao, historicoQualidade, linhaId, recalcularOeeComHistorico])
 
   // ==================== Atualiza métricas quando turno está ativo ====================
   useEffect(() => {
@@ -1830,6 +2189,7 @@ export default function ApontamentoOEE() {
       const dataLimite = new Date()
       dataLimite.setDate(dataLimite.getDate() - 30)
 
+      const codigoSKUAtual = extrairCodigoSku(skuCodigo)
       let opsRelevantes = todasOPs.filter(op => {
         // Converter data de emissão (DD/MM/YYYY) para Date
         const [dia, mes, ano] = op.C2_EMISSAO.split('/')
@@ -1840,7 +2200,7 @@ export default function ApontamentoOEE() {
         const temQuantidade = op.C2_QUANT > 0
 
         // Se SKU já estiver preenchido, filtrar apenas OPs do mesmo SKU
-        const mesmoSKU = !skuCodigo || op.C2_PRODUTO === skuCodigo
+        const mesmoSKU = !codigoSKUAtual || op.C2_PRODUTO === codigoSKUAtual
 
         return dentroDataLimite && temQuantidade && mesmoSKU
       })
@@ -1906,16 +2266,9 @@ export default function ApontamentoOEE() {
    */
   const verificarOuCriarTurnoOEE = async (): Promise<number | null> => {
     try {
-      // Extrair código do SKU (remover descrição se presente)
-      const codigoSKU = skuCodigo.includes(' - ')
-        ? skuCodigo.split(' - ')[0].trim()
-        : skuCodigo.trim()
+      const codigoSKU = extrairCodigoSku(skuCodigo)
+      const descricaoSKU = extrairDescricaoSku(skuCodigo)
 
-      const descricaoSKU = skuCodigo.includes(' - ')
-        ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
-        : skuCodigo.trim()
-
-      // Formatar data para o banco (YYYY-MM-DD)
       const dataFormatada = data ? format(data, 'yyyy-MM-dd') : null
 
       if (!dataFormatada || !turnoId || !codigoSKU) {
@@ -1927,61 +2280,9 @@ export default function ApontamentoOEE() {
         return null
       }
 
-      // Primeiro, buscar o produto_id pelo código do SKU
-      console.log('🔍 Buscando produto_id para o código SKU:', codigoSKU)
-      let produtoId: number | null = null
-      let produtoDescricao = descricaoSKU
+      const { produtoId: produtoIdAtual, produtoDescricao: produtoDescricaoAtual } = await garantirProdutoPorSku()
 
-      // Buscar produto existente
-      const { data: produtoData, error: produtoError } = await supabase
-        .from('tbproduto')
-        .select('produto_id, descricao')
-        .or(`referencia.eq.${codigoSKU},erp_codigo.eq.${codigoSKU}`)
-        .eq('deletado', 'N')
-        .limit(1)
-        .maybeSingle()
-
-      if (produtoError) {
-        console.error('❌ Erro ao buscar produto:', produtoError)
-      }
-
-      if (produtoData) {
-        produtoId = produtoData.produto_id
-        produtoDescricao = produtoData.descricao || descricaoSKU
-        console.log('📦 Produto encontrado:', { produtoId, produtoDescricao })
-      } else {
-        // Produto não existe - criar novo produto automaticamente
-        console.log('📦 Produto não encontrado. Criando novo produto...')
-
-        const novoProduto = {
-          referencia: codigoSKU,
-          erp_codigo: codigoSKU,
-          descricao: descricaoSKU,
-          deletado: 'N'
-        }
-
-        const { data: produtoCriado, error: criarProdutoError } = await supabase
-          .from('tbproduto')
-          .insert(novoProduto)
-          .select('produto_id')
-          .single()
-
-        if (criarProdutoError) {
-          console.error('❌ Erro ao criar produto:', criarProdutoError)
-          toast({
-            title: 'Erro ao cadastrar produto',
-            description: `Não foi possível cadastrar o produto ${codigoSKU} no banco de dados.`,
-            variant: 'destructive'
-          })
-          return null
-        }
-
-        produtoId = produtoCriado.produto_id
-        console.log('✅ Produto criado com sucesso:', { produtoId, codigoSKU })
-      }
-
-      if (!produtoId) {
-        console.error('❌ Não foi possível obter produto_id')
+      if (!produtoIdAtual) {
         return null
       }
 
@@ -1990,7 +2291,7 @@ export default function ApontamentoOEE() {
       console.log('🔍 Verificando turno existente:', {
         data: dataFormatada,
         turno_id: parseInt(turnoId),
-        produto_id: produtoId
+        produto_id: produtoIdAtual
       })
 
       const { data: turnoExistente, error: buscarError } = await supabase
@@ -1998,7 +2299,7 @@ export default function ApontamentoOEE() {
         .select('oeeturno_id, data, produto_id, turno_id, status')
         .eq('data', dataFormatada)
         .eq('turno_id', parseInt(turnoId))
-        .eq('produto_id', produtoId)
+        .eq('produto_id', produtoIdAtual)
         .eq('status', 'Aberto')
         .eq('deletado', 'N')
         .limit(1)
@@ -2020,8 +2321,8 @@ export default function ApontamentoOEE() {
 
       const novoTurno = {
         data: dataFormatada,
-        produto_id: produtoId,
-        produto: `${codigoSKU} - ${produtoDescricao}`,
+        produto_id: produtoIdAtual,
+        produto: `${codigoSKU} - ${produtoDescricaoAtual || descricaoSKU}`,
         turno_id: parseInt(turnoId),
         turno: turnoNome || turnoCodigo,
         turno_hi: turnoHoraInicial || null,
@@ -2104,22 +2405,12 @@ export default function ApontamentoOEE() {
       setOeeTurnoId(turnoOeeId)
       console.log('✅ Turno OEE registrado/recuperado:', turnoOeeId)
     } else {
-      console.warn('⚠️ Não foi possível registrar turno no banco. Continuando com dados locais.')
+      console.warn('⚠️ Não foi possível registrar turno no banco. Salvamento de produção ficará indisponível.')
     }
 
     const dataSelecionada = data ? format(data, 'dd/MM/yyyy') : ''
-    const historico = carregarHistorico()
     const historicoParadasSalvo = carregarHistoricoParadas()
-
-    // Filtra dados do turno atual para manter contemporaneidade (ALCOA+)
-    // IMPORTANTE: Aplica filtros de Data + Turno + Linha + SKU simultaneamente
-    const producoesDoTurno = historico.filter(
-      (registro) =>
-        registro.data === dataSelecionada &&
-        registro.turno === turno &&
-        registro.linhaId === linhaId &&
-        registro.skuCodigo === skuCodigo // Filtro adicional por SKU
-    )
+    const producoesDoTurno = turnoOeeId ? await carregarProducoesSupabase(turnoOeeId) : []
 
     // Paradas são filtradas apenas por Data + Turno + Linha
     // (paradas não são específicas de SKU, mas sim da linha)
@@ -2144,64 +2435,9 @@ export default function ApontamentoOEE() {
     })
 
     if (temDadosSalvos) {
-      const producaoReferencia = [...producoesDoTurno].sort(
-        (a, b) => paraTimestamp(b.dataHoraRegistro) - paraTimestamp(a.dataHoraRegistro)
-      )[0]
-
-      // Carrega valores do cabeçalho e formulários com última produção registrada
-      if (producaoReferencia) {
-        const dataConvertida = converterDataBRParaDate(producaoReferencia.data)
-        if (dataConvertida) setData(dataConvertida)
-
-        setTurno(producaoReferencia.turno)
-        setLinhaId(producaoReferencia.linhaId)
-        setSkuCodigo(producaoReferencia.skuCodigo)
-        setHoraInicio(producaoReferencia.horaInicio)
-        setHoraFim(producaoReferencia.horaFim)
-        setQuantidadeProduzida(producaoReferencia.quantidadeProduzida.toString())
-        setApontamentoProducaoId(producaoReferencia.id)
-
-        const apontamentoExistente = buscarApontamentoProducaoPorId(producaoReferencia.id)
-
-        if (apontamentoExistente) {
-          try {
-            const oeeRecalculado = calcularOEECompleto(
-              producaoReferencia.id,
-              linhaId,
-              12
-            )
-            setOeeCalculado(oeeRecalculado)
-            setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
-          } catch (error) {
-            console.error('Erro ao recalcular OEE carregado:', error)
-            setOeeCalculado({
-              disponibilidade: 0,
-              performance: 0,
-              qualidade: 0,
-              oee: 0,
-              tempoOperacionalLiquido: 0,
-              tempoValioso: 0
-            })
-            setTotalPerdasQualidade(0)
-          }
-        }
-      } else {
-        setApontamentoProducaoId(null)
-        setOeeCalculado({
-          disponibilidade: 0,
-          performance: 0,
-          qualidade: 0,
-          oee: 0,
-          tempoOperacionalLiquido: 0,
-          tempoValioso: 0
-        })
-        setTotalPerdasQualidade(0)
-      }
-
       setHistoricoProducao(producoesDoTurno)
       setHistoricoParadas(paradasDoTurno)
 
-      // Carregar histórico de qualidade do turno
       const qualidadeDoTurno = carregarHistoricoQualidade().filter(
         (registro) =>
           data && registro.data === format(data, 'dd/MM/yyyy') &&
@@ -2210,104 +2446,12 @@ export default function ApontamentoOEE() {
       )
       setHistoricoQualidade(qualidadeDoTurno)
 
-      // GERAR TODAS AS LINHAS DO TURNO (do início ao fim) e preencher com dados do histórico
-      let todasAsLinhas: LinhaApontamentoProducao[] = []
-
-      if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0) {
-        // Criar um mapa de registros do histórico por hora de início para busca rápida
-        const mapaHistorico = new Map<string, RegistroProducao>()
-        producoesDoTurno.forEach(registro => {
-          mapaHistorico.set(registro.horaInicio, registro)
-        })
-
-        // Calcular minutos de início e fim do turno
-        const [turnoInicioH, turnoInicioM] = turnoHoraInicial.split(':').map(Number)
-        const [turnoFimH, turnoFimM] = turnoHoraFinal.split(':').map(Number)
-
-        let minutoAtual = turnoInicioH * 60 + turnoInicioM
-        let minutoFimTurno = turnoFimH * 60 + turnoFimM
-
-        // Se hora final do turno for menor que hora inicial, significa que passa da meia-noite
-        if (minutoFimTurno < minutoAtual) {
-          minutoFimTurno += 24 * 60
-        }
-
-        const intervaloMinutos = intervaloApontamento * 60
-
-        // Função auxiliar para formatar minutos em HH:MM
-        const formatarHora = (minutos: number): string => {
-          const horas = Math.floor(minutos / 60) % 24
-          const mins = minutos % 60
-          return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
-        }
-
-        // Gerar todas as linhas do turno
-        while (minutoAtual < minutoFimTurno) {
-          const proximoMinuto = Math.min(minutoAtual + intervaloMinutos, minutoFimTurno)
-          const horaInicio = formatarHora(minutoAtual)
-          const horaFim = formatarHora(proximoMinuto)
-
-          // Verificar se existe registro do histórico para este horário
-          const registroHistorico = mapaHistorico.get(horaInicio)
-
-          if (registroHistorico) {
-            // Linha do histórico (pré-preenchida e bloqueada)
-            todasAsLinhas.push({
-              id: registroHistorico.id,
-              horaInicio: registroHistorico.horaInicio,
-              horaFim: registroHistorico.horaFim,
-              quantidadeProduzida: registroHistorico.quantidadeProduzida.toString(),
-              apontamentoId: registroHistorico.id,
-              editavel: false // Bloqueado
-            })
-          } else {
-            // Linha vazia (editável)
-            todasAsLinhas.push({
-              id: `linha-${Date.now()}-${minutoAtual}`,
-              horaInicio,
-              horaFim,
-              quantidadeProduzida: '',
-              editavel: true // Editável
-            })
-          }
-
-          minutoAtual = proximoMinuto
-        }
-
-        const linhasHistorico = todasAsLinhas.filter(l => l.apontamentoId).length
-        const linhasVazias = todasAsLinhas.filter(l => !l.apontamentoId).length
-
-        console.log(`✅ Tabela de produção montada em ordem cronológica: ${linhasHistorico} do histórico + ${linhasVazias} vazias = ${todasAsLinhas.length} total`)
-      } else {
-        // Fallback: Se não houver configuração de turno, apenas converter histórico
-        todasAsLinhas = producoesDoTurno.map((registro) => ({
-          id: registro.id,
-          horaInicio: registro.horaInicio,
-          horaFim: registro.horaFim,
-          quantidadeProduzida: registro.quantidadeProduzida.toString(),
-          apontamentoId: registro.id,
-          editavel: false
-        }))
-      }
-
-      // Pré-preencher a tabela "Registro de Produção" com todas as linhas ordenadas
-      setLinhasApontamento(todasAsLinhas)
-
-      console.log(`✅ Tabela de produção pré-preenchida com ${todasAsLinhas.length} linhas`, {
-        linhas: todasAsLinhas.map(l => ({
-          horaInicio: l.horaInicio,
-          horaFim: l.horaFim,
-          quantidade: l.quantidadeProduzida || '(vazio)',
-          salvo: !!l.apontamentoId
-        }))
-      })
-
-      // Atualiza métricas derivadas
       const totalHorasParadasCalculado =
         paradasDoTurno.reduce((total, parada) => total + parada.duracao, 0) / 60
       setTotalHorasParadas(totalHorasParadasCalculado)
-      setHorasRestantes(calcularHorasRestantes())
+      setHorasRestantes(calcularHorasRestantes(producoesDoTurno))
 
+      recalcularOeeComHistorico(producoesDoTurno)
       setStatusTurno('INICIADO')
 
       const linhaNome = linhaSelecionada?.nome || 'Linha não identificada'
@@ -2477,7 +2621,9 @@ export default function ApontamentoOEE() {
       linhaId,
       linhaNome,
       linhaProducaoSelecionada,
-      skuCodigo
+      skuCodigo,
+      produtoId,
+      produtoDescricao
     })
     setEditandoCabecalho(true)
     toast({
@@ -2502,6 +2648,8 @@ export default function ApontamentoOEE() {
       setLinhaNome(cabecalhoOriginal.linhaNome)
       setLinhaProducaoSelecionada(cabecalhoOriginal.linhaProducaoSelecionada)
       setSkuCodigo(cabecalhoOriginal.skuCodigo)
+      setProdutoId(cabecalhoOriginal.produtoId)
+      setProdutoDescricao(cabecalhoOriginal.produtoDescricao)
     }
     setEditandoCabecalho(false)
     setCabecalhoOriginal(null)
@@ -2514,7 +2662,7 @@ export default function ApontamentoOEE() {
   /**
    * Aplica alterações do cabeçalho, persiste e recalcula OEE
    */
-  const handleContinuarTurno = () => {
+  const handleContinuarTurno = async () => {
     if (!validarCamposCabecalho()) {
       toast({
         title: 'Campos obrigatórios',
@@ -2524,43 +2672,71 @@ export default function ApontamentoOEE() {
       return
     }
 
+    if (!oeeTurnoId) {
+      toast({
+        title: 'Turno não encontrado',
+        description: 'Não foi possível localizar o turno OEE para atualizar.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     try {
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
       const dataFormatada = data ? format(data, 'dd/MM/yyyy') : ''
       const dataISO = data ? format(data, 'yyyy-MM-dd') : ''
-      // Usar linhaProducaoSelecionada que contém dados do BD (não buscarLinhaPorId que usa IDs slug)
       const linhaAtualizada = linhaProducaoSelecionada ? {
         nome: linhaProducaoSelecionada.linhaproducao,
         setor: converterParaSetor(linhaProducaoSelecionada.departamento)
       } : null
 
-      // Atualiza histórico local exibido (registros do turno) e persiste
-      const historicoAtualizado = historicoProducao.map((registro) => ({
-        ...registro,
-        data: dataFormatada,
-        turno,
-        linhaId,
-        linhaNome: linhaAtualizada?.nome || registro.linhaNome,
-        skuCodigo
-      }))
+      const produtoAtualId = produtoId ?? (await garantirProdutoPorSku()).produtoId
 
-      setHistoricoProducao(historicoAtualizado)
-      salvarNoLocalStorage(historicoAtualizado)
+      if (!produtoAtualId || !linhaProducaoSelecionada) {
+        return
+      }
 
-      // Propaga atualização para o storage principal (cálculo de OEE)
-      historicoAtualizado.forEach((registro) => {
-        atualizarApontamentoProducao(registro.id, {
-          turno,
-          linha: linhaAtualizada?.nome || registro.linhaNome,
-          setor: linhaAtualizada?.setor,
-          sku: skuCodigo.includes(' - ') ? skuCodigo.split(' - ')[0].trim() : skuCodigo.trim(),
-          produto: skuCodigo.includes(' - ')
-            ? skuCodigo.split(' - ').slice(1).join(' - ').trim()
-            : skuCodigo.trim(),
-          dataApontamento: dataISO || registro.data
+      const velocidadeNominal = await buscarVelocidadeNominal(
+        linhaProducaoSelecionada.linhaproducao_id,
+        produtoAtualId
+      )
+
+      if (!velocidadeNominal) {
+        toast({
+          title: 'Velocidade nominal não encontrada',
+          description: 'Cadastre a velocidade nominal para atualizar o cabeçalho.',
+          variant: 'destructive'
         })
-      })
+        return
+      }
 
-      // Atualiza histórico de paradas exibido e storage para manter o vínculo
+      const { error: atualizarErro } = await supabase
+        .from('tboee_turno_producao')
+        .update({
+          data: dataISO,
+          turno_id: parseInt(turnoId),
+          turno: turno,
+          linhaproducao_id: linhaProducaoSelecionada.linhaproducao_id,
+          linhaproducao: linhaProducaoSelecionada.linhaproducao,
+          departamento_id: linhaProducaoSelecionada.departamento_id,
+          departamento: linhaProducaoSelecionada.departamento,
+          produto_id: produtoAtualId,
+          produto: skuCodigo,
+          velocidade: velocidadeNominal,
+          updated_at: new Date().toISOString(),
+          updated_by: usuario.id
+        })
+        .eq('oeeturno_id', oeeTurnoId)
+        .eq('deletado', 'N')
+
+      if (atualizarErro) {
+        throw atualizarErro
+      }
+
       const historicoParadasAtualizado = historicoParadas.map((parada) => ({
         ...parada,
         data: dataFormatada,
@@ -2580,19 +2756,22 @@ export default function ApontamentoOEE() {
         })
       })
 
-      // Recarrega dados mais recentes gravados
-      setHistoricoProducao(carregarHistorico())
-      setHistoricoParadas(carregarHistoricoParadas())
+      const historicoQualidadeAtualizado = historicoQualidade.map((registro) => ({
+        ...registro,
+        data: dataFormatada,
+        turno,
+        linhaId,
+        linhaNome: linhaAtualizada?.nome || registro.linhaNome,
+        skuCodigo
+      }))
 
-      // Recalcula indicadores
+      setHistoricoQualidade(historicoQualidadeAtualizado)
+      salvarQualidadeNoLocalStorage(historicoQualidadeAtualizado)
+
+      const producoesAtualizadas = await carregarProducoesSupabase(oeeTurnoId)
+      setHorasRestantes(calcularHorasRestantes(producoesAtualizadas))
       setTotalHorasParadas(historicoParadasAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
-      setHorasRestantes(calcularHorasRestantes())
-
-      if (apontamentoProducaoId && linhaId) {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
-        setOeeCalculado(novoOEE)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
-      }
+      recalcularOeeComHistorico(producoesAtualizadas, historicoQualidadeAtualizado)
 
       setEditandoCabecalho(false)
       setCabecalhoOriginal(null)
@@ -2605,7 +2784,7 @@ export default function ApontamentoOEE() {
       console.error('Erro ao continuar turno com cabeçalho editado:', error)
       toast({
         title: 'Erro ao salvar alterações',
-        description: 'Não foi possível atualizar o cabeçalho. Tente novamente.',
+        description: obterMensagemErro(error, 'Não foi possível atualizar o cabeçalho. Tente novamente.'),
         variant: 'destructive'
       })
     }
@@ -2699,6 +2878,7 @@ export default function ApontamentoOEE() {
           linhaId: linhaId!,
           linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
           apontamentoProducaoId,
+          skuCodigo,
           tipo: 'PERDAS',
           quantidade: Number(quantidadePerdas),
           motivo: '', // motivo removido - campo não mais obrigatório
@@ -2727,6 +2907,7 @@ export default function ApontamentoOEE() {
           linhaId: linhaId!,
           linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
           apontamentoProducaoId,
+          skuCodigo,
           tipo: 'RETRABALHO',
           quantidade: Number(quantidadeRetrabalho),
           motivo: motivoRetrabalho,
@@ -2743,14 +2924,7 @@ export default function ApontamentoOEE() {
       setHistoricoQualidade(novoHistorico)
       salvarQualidadeNoLocalStorage(novoHistorico)
 
-      // =================================================================
-      // RECALCULAR OEE
-      // =================================================================
-      if (linhaId) {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
-        setOeeCalculado(novoOEE)
-        setTotalPerdasQualidade(calcularTotalPerdasDoApontamento())
-      }
+      recalcularOeeComHistorico(historicoProducao, novoHistorico)
 
       // =================================================================
       // LIMPAR FORMULÁRIO
@@ -2900,16 +3074,7 @@ export default function ApontamentoOEE() {
     salvarParadasNoLocalStorage(historicoAtualizado)
     setTotalHorasParadas(historicoAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
 
-    // Recalcular OEE se houver apontamento de produção e linha
-    if (apontamentoProducaoId && linhaId) {
-      try {
-        const novoOEE = calcularOEECompleto(apontamentoProducaoId, linhaId, TEMPO_DISPONIVEL_PADRAO)
-        setOeeCalculado(novoOEE)
-        console.log('🔄 OEE recalculado após parada:', novoOEE)
-      } catch (error) {
-        console.error('Erro ao recalcular OEE após parada:', error)
-      }
-    }
+    recalcularOeeComHistorico(historicoProducao)
 
     // Limpar formulário
     setCodigoParadaBusca('')
