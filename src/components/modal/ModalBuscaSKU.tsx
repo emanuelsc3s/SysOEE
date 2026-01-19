@@ -85,7 +85,8 @@ export function ModalBuscaSKU({
 
   // Filtrar produtos com base no termo de busca e status bloqueado
   const produtosFiltrados = useMemo(() => {
-    let resultado = produtos
+    const listaProdutos = Array.isArray(produtos) ? produtos : []
+    let resultado = listaProdutos
 
     // Filtrar por status bloqueado
     if (filtroBloqueado === 'sim') {
@@ -199,7 +200,7 @@ export function ModalBuscaSKU({
             ) : erro ? (
               <span className="text-red-500">{erro}</span>
             ) : (
-              `${produtosFiltrados.length} produto(s) encontrado(s) de ${produtos.length} total`
+              `${produtosFiltrados.length} produto(s) encontrado(s) de ${Array.isArray(produtos) ? produtos.length : 0} total`
             )}
           </p>
         </div>

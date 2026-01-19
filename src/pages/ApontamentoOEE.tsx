@@ -405,9 +405,28 @@ export default function ApontamentoOEE() {
   }
 
   const obterMensagemErro = useCallback((error: unknown, fallback: string): string => {
-    if (error && typeof error === 'object' && 'message' in error) {
-      const mensagem = (error as { message?: string }).message
-      if (mensagem) return mensagem
+    if (error && typeof error === 'object') {
+      if ('status' in error && (error as { status?: number }).status === 403) {
+        return 'Sem permissão para acessar o Supabase. Verifique as políticas RLS e o login.'
+      }
+      if ('code' in error && (error as { code?: string }).code === '42501') {
+        return 'Permissão negada pelo banco de dados. Verifique as políticas de acesso.'
+      }
+      if ('message' in error) {
+        const mensagem = (error as { message?: string }).message
+        if (mensagem) {
+          const mensagemNormalizada = mensagem.toLowerCase()
+          if (
+            mensagemNormalizada.includes('row level security') ||
+            mensagemNormalizada.includes('row-level security') ||
+            mensagemNormalizada.includes('permission denied') ||
+            mensagemNormalizada.includes('permissão negada')
+          ) {
+            return 'Sem permissão para gravar no Supabase. Verifique as políticas RLS.'
+          }
+          return mensagem
+        }
+      }
     }
     return fallback
   }, [])
@@ -999,6 +1018,15 @@ export default function ApontamentoOEE() {
       toast({
         title: 'Campo obrigatório',
         description: 'Selecione o Turno',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (!data) {
+      toast({
+        title: 'Campo obrigatório',
+        description: 'Selecione a Data',
         variant: 'destructive'
       })
       return

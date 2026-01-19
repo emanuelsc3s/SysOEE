@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Corrigida a quebra do modal de busca de SKU quando a lista de produtos não está disponível.
+- Ajustadas mensagens de erro do apontamento de produção para indicar falhas de permissão no Supabase.
 - Ajustada a busca de tipos de parada para consultar `tboee_parada` no Supabase e removida a exibição de Grande Parada na hierarquia.
 - Implementada persistência da produção no Supabase (`tboee_turno_producao`) com CRUD, auditoria e soft delete na guia Produção.
 - Integrada a velocidade nominal via `tbvelocidadenominal` para salvar registros de produção.
