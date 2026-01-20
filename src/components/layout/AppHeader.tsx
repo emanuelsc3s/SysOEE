@@ -57,7 +57,7 @@ export function AppHeader({
         <img
           src="/logo-farmace.png"
           alt="Logo Farmace"
-          className="h-full w-[136px] flex-shrink-0"
+          className="h-full w-[132px] flex-shrink-0"
         />
 
         <div className="flex flex-col gap-0 min-w-0 leading-[18px]">

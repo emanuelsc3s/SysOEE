@@ -6,6 +6,7 @@
 - Ajustado o espaçamento e a altura de linha do bloco de título no `AppHeader`.
 - Ajustado o tamanho da logomarca no `AppHeader` para ficar mais proporcional ao cabeçalho.
 - Ajustadas a largura e a altura da logomarca no `AppHeader` para ocupar melhor o cabeçalho.
+- Ajustada a largura da logomarca no `AppHeader` para 132px.
 - Ajustado o padding direito do cabeçalho do `ApontamentoOEE` para alinhar o espaço externo dos botões com a lateral direita.
 - Ajustado o estilo e as dimensões dos botões do `ApontamentoOEE` para o padrão visual do `OeeTurno`.
 - Ajustado o botão Voltar no `ApontamentoOEE` para sempre redirecionar para `OeeTurno`.
