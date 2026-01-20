@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -227,6 +227,10 @@ export default function ApontamentoOEE() {
   const [produtosSKU, setProdutosSKU] = useState<ProdutoSKU[]>([])
   const [carregandoProdutosSKU, setCarregandoProdutosSKU] = useState<boolean>(false)
   const [erroProdutosSKU, setErroProdutosSKU] = useState<string | null>(null)
+  const [modalSKUBloqueadoAberto, setModalSKUBloqueadoAberto] = useState<boolean>(false)
+  const [skuBloqueadoInfo, setSkuBloqueadoInfo] = useState<{ codigo: string; descricao: string } | null>(null)
+  const [modalLinhaInativaAberto, setModalLinhaInativaAberto] = useState<boolean>(false)
+  const [linhaInativaInfo, setLinhaInativaInfo] = useState<{ id: number; nome: string } | null>(null)
   const [turnoHoraInicial, setTurnoHoraInicial] = useState<string>('') // Hora inicial do turno
   const [turnoHoraFinal, setTurnoHoraFinal] = useState<string>('') // Hora final do turno
   const [linhaId, setLinhaId] = useState<string>('')
@@ -2281,7 +2285,20 @@ export default function ApontamentoOEE() {
    * Callback quando um SKU é selecionado no modal
    */
   const handleSelecionarSKUModal = (skuSelecionado: SKUSelecionado) => {
-    // Preenche o campo SKU com código + descrição
+    // Verifica se o produto está bloqueado na lista de produtos
+    const produtoEncontrado = produtosSKU.find(p => p.codigo === skuSelecionado.codigo)
+    
+    if (produtoEncontrado?.bloqueado) {
+      // Produto bloqueado - exibe modal de alerta e não permite seleção
+      setSkuBloqueadoInfo({
+        codigo: skuSelecionado.codigo,
+        descricao: skuSelecionado.descricao
+      })
+      setModalSKUBloqueadoAberto(true)
+      return
+    }
+
+    // Produto não bloqueado - permite seleção normalmente
     setSkuCodigo(`${skuSelecionado.codigo} - ${skuSelecionado.descricao}`)
     setProdutoId(null)
     setProdutoDescricao(skuSelecionado.descricao)
@@ -2304,6 +2321,18 @@ export default function ApontamentoOEE() {
    * Callback quando uma Linha de Produção é selecionada no modal
    */
   const handleSelecionarLinhaModal = (linha: LinhaProducaoSelecionada) => {
+    // Verifica se a linha está inativa
+    if (linha.ativo === 'N') {
+      // Linha inativa - exibe modal de alerta e não permite seleção
+      setLinhaInativaInfo({
+        id: linha.linhaproducao_id,
+        nome: linha.linhaproducao
+      })
+      setModalLinhaInativaAberto(true)
+      return
+    }
+
+    // Linha ativa - permite seleção normalmente
     // Armazena o ID da linha (usado internamente)
     setLinhaId(linha.linhaproducao_id.toString())
     // Armazena o nome da linha para exibição no campo (formato: código - nome)
@@ -2494,7 +2523,8 @@ export default function ApontamentoOEE() {
               linhaproducao: linhaNomeExtraido,
               departamento_id: null, // Não disponível na observação
               departamento: null, // Será extraído do nome se necessário
-              tipo: null // Não disponível na observação
+              tipo: null, // Não disponível na observação
+              ativo: 'S' // Assumimos ativo ao carregar de turno existente
             })
           }
         }
@@ -5357,6 +5387,58 @@ export default function ApontamentoOEE() {
         erro={erroProdutosSKU}
         onRecarregar={buscarProdutosSKU}
       />
+
+      {/* Alert Dialog: SKU Bloqueado */}
+      <AlertDialog open={modalSKUBloqueadoAberto} onOpenChange={setModalSKUBloqueadoAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Produto Bloqueado
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              O produto <strong>{skuBloqueadoInfo?.codigo}</strong> - {skuBloqueadoInfo?.descricao} está bloqueado e não pode ser selecionado.
+              <br />
+              <br />
+              Por favor, selecione outro produto para continuar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setModalSKUBloqueadoAberto(false)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Entendi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Alert Dialog: Linha de Produção Inativa */}
+      <AlertDialog open={modalLinhaInativaAberto} onOpenChange={setModalLinhaInativaAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Linha de Produção Inativa
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              A linha de produção <strong>{linhaInativaInfo?.id}</strong> - {linhaInativaInfo?.nome} está inativa e não pode ser selecionada.
+              <br />
+              <br />
+              Por favor, selecione uma linha ativa para continuar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setModalLinhaInativaAberto(false)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Entendi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Modal de Busca de Linha de Produção */}
       <ModalBuscaLinhaProducao

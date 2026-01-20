@@ -44,6 +44,7 @@ export interface LinhaProducaoSelecionada {
   departamento_id: number | null
   departamento: string | null
   tipo: string | null
+  ativo: string | null
 }
 
 interface ModalBuscaLinhaProducaoProps {
@@ -136,6 +137,7 @@ export function ModalBuscaLinhaProducao({
       departamento_id: linha.departamento_id,
       departamento: linha.departamento || null,
       tipo: linha.tipo,
+      ativo: linha.ativo,
     }
     onSelecionarLinha(linhaSelecionada)
     handleFechar()
