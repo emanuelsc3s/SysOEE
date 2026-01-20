@@ -14,7 +14,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(kill:*)",
       "Bash(python3:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

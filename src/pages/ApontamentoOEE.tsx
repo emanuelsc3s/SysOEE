@@ -928,6 +928,48 @@ export default function ApontamentoOEE() {
   }, [aplicarRegistrosProducao])
 
   /**
+   * Carrega TODAS as produções acumuladas para uma linha de produção + produto
+   * independente do turno OEE específico.
+   *
+   * Usado para calcular OEE acumulativo da linha para um determinado produto.
+   * NÃO filtra por oeeturno_id, data ou turno.
+   *
+   * @param linhaProducaoId - ID da linha de produção (numérico)
+   * @param produtoId - ID do produto (numérico)
+   * @returns Lista de registros de produção mapeados para RegistroProducao[]
+   */
+  const carregarProducoesAcumulativas = useCallback(async (
+    linhaProducaoId: number,
+    produtoId: number
+  ): Promise<RegistroProducao[]> => {
+    try {
+      console.log('📊 Carregando produções acumulativas:', { linhaProducaoId, produtoId })
+
+      const { data: producoesData, error: producoesError } = await supabase
+        .from('tboee_turno_producao')
+        .select('*')
+        .eq('linhaproducao_id', linhaProducaoId)
+        .eq('produto_id', produtoId)
+        .or('deletado.is.null,deletado.eq.N')
+        .order('data', { ascending: true })
+        .order('hora_inicio', { ascending: true })
+
+      if (producoesError) throw producoesError
+
+      console.log(`✅ Encontradas ${producoesData?.length || 0} produções acumuladas`)
+      return aplicarRegistrosProducao((producoesData || []) as ProducaoSupabase[])
+    } catch (error) {
+      console.error('❌ Erro ao carregar produções acumulativas:', error)
+      toast({
+        title: 'Erro ao carregar produção acumulada',
+        description: 'Não foi possível carregar o histórico de produção da linha.',
+        variant: 'destructive'
+      })
+      return []
+    }
+  }, [aplicarRegistrosProducao, toast])
+
+  /**
    * Carrega configurações do localStorage
    */
   const carregarConfiguracoes = useCallback(() => {
@@ -2806,7 +2848,18 @@ export default function ApontamentoOEE() {
 
     const dataSelecionada = data ? format(data, 'dd/MM/yyyy') : ''
     const historicoParadasSalvo = carregarHistoricoParadas()
-    const producoesDoTurno = turnoOeeId ? await carregarProducoesSupabase(turnoOeeId) : []
+
+    // Garantir produto antes de carregar produções (necessário para filtro acumulativo)
+    const { produtoId: produtoIdAtual } = await garantirProdutoPorSku()
+
+    // Carregar produções ACUMULATIVAS por linha + produto (independente do turno)
+    // OEE é acumulativo da linha de produção para um determinado produto
+    const producoesAcumuladas = (produtoIdAtual && linhaProducaoSelecionada?.linhaproducao_id)
+      ? await carregarProducoesAcumulativas(
+          linhaProducaoSelecionada.linhaproducao_id,
+          produtoIdAtual
+        )
+      : []
 
     // Paradas são filtradas apenas por Data + Turno + Linha
     // (paradas não são específicas de SKU, mas sim da linha)
@@ -2817,21 +2870,23 @@ export default function ApontamentoOEE() {
         registro.linhaId === linhaId
     )
 
-    const temDadosSalvos = producoesDoTurno.length > 0 || paradasDoTurno.length > 0
+    const temDadosSalvos = producoesAcumuladas.length > 0 || paradasDoTurno.length > 0
 
     // Log dos filtros aplicados para auditoria (ALCOA+)
-    console.log('🔍 Filtros aplicados ao iniciar turno:', {
+    console.log('🔍 Filtros aplicados ao iniciar turno (OEE acumulativo):', {
       data: dataSelecionada,
       turno,
       linhaId,
+      linhaProducaoId: linhaProducaoSelecionada?.linhaproducao_id,
       linhaNome: linhaSelecionada?.nome || 'Não encontrada',
       skuCodigo,
-      producoesEncontradas: producoesDoTurno.length,
+      produtoId: produtoIdAtual,
+      producoesAcumuladas: producoesAcumuladas.length,
       paradasEncontradas: paradasDoTurno.length
     })
 
     if (temDadosSalvos) {
-      setHistoricoProducao(producoesDoTurno)
+      setHistoricoProducao(producoesAcumuladas)
       setHistoricoParadas(paradasDoTurno)
 
       const qualidadeDoTurno = carregarHistoricoQualidade().filter(
@@ -2845,15 +2900,15 @@ export default function ApontamentoOEE() {
       const totalHorasParadasCalculado =
         paradasDoTurno.reduce((total, parada) => total + parada.duracao, 0) / 60
       setTotalHorasParadas(totalHorasParadasCalculado)
-      setHorasRestantes(calcularHorasRestantes(producoesDoTurno))
+      setHorasRestantes(calcularHorasRestantes(producoesAcumuladas))
 
-      recalcularOeeComHistorico(producoesDoTurno)
+      recalcularOeeComHistorico(producoesAcumuladas)
       setStatusTurno('INICIADO')
 
       const linhaNome = linhaSelecionada?.nome || 'Linha não identificada'
       toast({
         title: 'Turno Iniciado',
-        description: `Dados carregados para ${linhaNome} - SKU ${skuCodigo}: ${producoesDoTurno.length} produções e ${paradasDoTurno.length} paradas`,
+        description: `Dados carregados para ${linhaNome} - SKU ${skuCodigo}: ${producoesAcumuladas.length} produções acumuladas e ${paradasDoTurno.length} paradas`,
         variant: 'default'
       })
       return
