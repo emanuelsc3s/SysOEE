@@ -23,3 +23,5 @@
 - Gerado CSV de produtos para importação na `tbproduto` do Supabase.
 - Modal de busca de Produto SKU agora consulta `tbproduto` no Supabase com `deletado = 'N'`.
 - Ajustado o carregamento de produção no `ApontamentoOEE` ao abrir turnos pela lista, com fallback por data/turno/produto.
+- Ajustado o idioma dos campos de hora do `ApontamentoOEE` para exibição em formato 24h pt-BR.
+- Forçado o formato 24h nos campos de hora do `ApontamentoOEE` com entrada textual e normalização de valores.

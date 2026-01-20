@@ -410,6 +410,69 @@ export default function ApontamentoOEE() {
     return hora.length === 5 ? `${hora}:00` : hora
   }
 
+  /**
+   * Limpa a hora digitada mantendo apenas números e ":".
+   * Aceita entrada livre (ex.: "0730" ou "07:30") para formatação posterior.
+   */
+  const limparHoraDigitada = (valor: string): string => {
+    const permitido = valor.replace(/[^\d:]/g, '')
+    if (!permitido.includes(':')) {
+      return permitido.slice(0, 4)
+    }
+
+    const [horas, minutos] = permitido.split(':')
+    const horasLimitadas = (horas || '').slice(0, 2)
+    const minutosLimitados = (minutos || '').slice(0, 2)
+    return `${horasLimitadas}:${minutosLimitados}`
+  }
+
+  /**
+   * Normaliza a hora digitada para o formato 24h (HH:mm).
+   * - Se permitirSomenteHora = false, exige pelo menos hora e minuto.
+   * - Se permitirSomenteHora = true, aceita só hora e completa com ":00".
+   */
+  const normalizarHoraDigitada = (valor: string, permitirSomenteHora = false): string => {
+    const valorLimpo = valor.replace(/[^\d:]/g, '')
+    const partes = valorLimpo.split(':')
+    if (partes.length > 1) {
+      const horasTexto = (partes[0] || '').slice(0, 2)
+      const minutosTexto = (partes[1] || '').slice(0, 2)
+      if (!horasTexto) return ''
+
+      const horas = Number(horasTexto)
+      if (Number.isNaN(horas) || horas > 23) return ''
+
+      if (!minutosTexto) {
+        if (!permitirSomenteHora) return ''
+        return `${String(horas).padStart(2, '0')}:00`
+      }
+
+      const minutos = Number(minutosTexto.padStart(2, '0'))
+      if (Number.isNaN(minutos) || minutos > 59) return ''
+      return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`
+    }
+
+    const numeros = valorLimpo.replace(/\D/g, '').slice(0, 4)
+    if (!numeros) return ''
+
+    if (numeros.length <= 2) {
+      if (!permitirSomenteHora) return ''
+      const horas = Number(numeros)
+      if (Number.isNaN(horas) || horas > 23) return ''
+      return `${String(horas).padStart(2, '0')}:00`
+    }
+
+    const horas = Number(numeros.slice(0, 2))
+    const minutos = Number(numeros.slice(2).padEnd(2, '0'))
+    if (Number.isNaN(horas) || Number.isNaN(minutos) || horas > 23 || minutos > 59) return ''
+    return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`
+  }
+
+  const turnoHoraInicialNormalizada = normalizarHoraDigitada(turnoHoraInicial)
+  const turnoHoraFinalNormalizada = normalizarHoraDigitada(turnoHoraFinal)
+  const horaInicialParadaNormalizada = normalizarHoraDigitada(horaInicialParada, true)
+  const horaFinalParadaNormalizada = normalizarHoraDigitada(horaFinalParada, true)
+
 	/**
 	 * Formata um valor de hora para o padrão brasileiro 24h.
 	 *
@@ -710,7 +773,7 @@ export default function ApontamentoOEE() {
   }, [formatarDataRegistro, linhaId, linhaSelecionada?.nome, skuCodigo, turno])
 
   const montarLinhasApontamentoComRegistros = useCallback((registros: RegistroProducao[]) => {
-    if (!turnoHoraInicial || !turnoHoraFinal || intervaloApontamento <= 0) {
+    if (!turnoHoraInicialNormalizada || !turnoHoraFinalNormalizada || intervaloApontamento <= 0) {
       return registros.map((registro) => ({
         id: registro.id,
         horaInicio: registro.horaInicio,
@@ -726,8 +789,8 @@ export default function ApontamentoOEE() {
       mapaHistorico.set(registro.horaInicio, registro)
     })
 
-    const [turnoInicioH, turnoInicioM] = turnoHoraInicial.split(':').map(Number)
-    const [turnoFimH, turnoFimM] = turnoHoraFinal.split(':').map(Number)
+    const [turnoInicioH, turnoInicioM] = turnoHoraInicialNormalizada.split(':').map(Number)
+    const [turnoFimH, turnoFimM] = turnoHoraFinalNormalizada.split(':').map(Number)
 
     let minutoAtual = turnoInicioH * 60 + turnoInicioM
     let minutoFimTurno = turnoFimH * 60 + turnoFimM
@@ -774,7 +837,7 @@ export default function ApontamentoOEE() {
     }
 
     return linhas
-  }, [intervaloApontamento, turnoHoraFinal, turnoHoraInicial])
+  }, [intervaloApontamento, turnoHoraFinalNormalizada, turnoHoraInicialNormalizada])
 
   const aplicarRegistrosProducao = useCallback((producoesData: ProducaoSupabase[]) => {
     const registros = (producoesData || []).map((registro) =>
@@ -896,8 +959,8 @@ export default function ApontamentoOEE() {
 
       // Regenerar linhas de apontamento se o turno já estiver selecionado
       // IMPORTANTE: Só regenera se o turno NÃO estiver iniciado
-      if (turnoHoraInicial && turnoHoraFinal && statusTurno === 'NAO_INICIADO') {
-        gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
+      if (turnoHoraInicialNormalizada && turnoHoraFinalNormalizada && statusTurno === 'NAO_INICIADO') {
+        gerarLinhasApontamento(turnoHoraInicialNormalizada, turnoHoraFinalNormalizada, intervaloApontamento)
       }
     } catch (error) {
       console.error('Erro ao salvar configurações:', error)
@@ -917,7 +980,8 @@ export default function ApontamentoOEE() {
     return (
       dadosLote.numeroLote.trim() !== '' &&
       dadosLote.data !== '' &&
-      dadosLote.horaInicial !== '' &&
+      normalizarHoraDigitada(dadosLote.horaInicial, true) !== '' &&
+      (!dadosLote.horaFinal || normalizarHoraDigitada(dadosLote.horaFinal, true) !== '') &&
       (dadosLote.quantidadeProduzidaInicial > 0 || dadosLote.quantidadeProduzidaFinal > 0)
     )
   }
@@ -999,6 +1063,16 @@ export default function ApontamentoOEE() {
 
     setSalvandoLote(true)
 
+    const horaInicialNormalizada = normalizarHoraDigitada(dadosLote.horaInicial, true)
+    const horaFinalNormalizada = dadosLote.horaFinal
+      ? normalizarHoraDigitada(dadosLote.horaFinal, true)
+      : ''
+    const dadosLoteNormalizados = {
+      ...dadosLote,
+      horaInicial: horaInicialNormalizada,
+      horaFinal: horaFinalNormalizada
+    }
+
     // Calcular quantidade produzida (Final - Inicial), apenas se a quantidade final for maior que zero
     const quantidadeProduzidaCalculada = dadosLote.quantidadeProduzidaFinal > 0
       ? dadosLote.quantidadeProduzidaFinal - dadosLote.quantidadeProduzidaInicial
@@ -1010,25 +1084,25 @@ export default function ApontamentoOEE() {
         setLotesProducao(prev =>
           prev.map(lote =>
             lote.id === loteEmEdicao
-              ? { ...lote, ...dadosLote, quantidadeProduzida: quantidadeProduzidaCalculada }
+              ? { ...lote, ...dadosLoteNormalizados, quantidadeProduzida: quantidadeProduzidaCalculada }
               : lote
           )
         )
         toast({
           title: '✅ Lote Atualizado',
-          description: `O lote ${dadosLote.numeroLote} foi atualizado com sucesso.`
+          description: `O lote ${dadosLoteNormalizados.numeroLote} foi atualizado com sucesso.`
         })
       } else {
         // Criar novo lote com ID único
         const novoLote: LoteProducao = {
           id: `lote-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          ...dadosLote,
+          ...dadosLoteNormalizados,
           quantidadeProduzida: quantidadeProduzidaCalculada
         }
         setLotesProducao(prev => [...prev, novoLote])
         toast({
           title: '✅ Lote Adicionado',
-          description: `O lote ${dadosLote.numeroLote} foi adicionado com sucesso.`
+          description: `O lote ${dadosLoteNormalizados.numeroLote} foi adicionado com sucesso.`
         })
       }
 
@@ -2450,11 +2524,11 @@ export default function ApontamentoOEE() {
   // IMPORTANTE: Só regenera se o turno NÃO estiver iniciado (evita sobrescrever dados durante o turno)
   // NOTA: NÃO incluir linhasApontamento nas dependências para evitar loop infinito
   useEffect(() => {
-    if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0 && statusTurno === 'NAO_INICIADO') {
-      gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
+    if (turnoHoraInicialNormalizada && turnoHoraFinalNormalizada && intervaloApontamento > 0 && statusTurno === 'NAO_INICIADO') {
+      gerarLinhasApontamento(turnoHoraInicialNormalizada, turnoHoraFinalNormalizada, intervaloApontamento)
       console.log('✅ Linhas de apontamento geradas automaticamente (useEffect)')
     }
-  }, [turnoHoraInicial, turnoHoraFinal, intervaloApontamento, gerarLinhasApontamento, statusTurno])
+  }, [turnoHoraInicialNormalizada, turnoHoraFinalNormalizada, intervaloApontamento, gerarLinhasApontamento, statusTurno])
 
   // ==================== Recalcula OEE quando dados mudam ====================
   useEffect(() => {
@@ -2647,8 +2721,8 @@ export default function ApontamentoOEE() {
         produto: `${codigoSKU} - ${produtoDescricaoAtual || descricaoSKU}`,
         turno_id: parseInt(turnoId),
         turno: turnoNome || turnoCodigo,
-        turno_hi: turnoHoraInicial || null,
-        turno_hf: turnoHoraFinal || null,
+        turno_hi: turnoHoraInicialNormalizada || null,
+        turno_hf: turnoHoraFinalNormalizada || null,
         observacao: `Turno iniciado via sistema OEE - Linha: ${linhaNome || linhaId}`,
         status: 'Aberto', // Status inicial do turno
         deletado: 'N', // Flag de exclusão lógica
@@ -2821,9 +2895,9 @@ export default function ApontamentoOEE() {
 
     // GERAR LINHAS DE APONTAMENTO VAZIAS baseadas no intervalo configurado
     // Isso garante que sempre haverá linhas para o usuário preencher
-    if (turnoHoraInicial && turnoHoraFinal && intervaloApontamento > 0) {
-      gerarLinhasApontamento(turnoHoraInicial, turnoHoraFinal, intervaloApontamento)
-      console.log(`✅ Linhas de apontamento geradas automaticamente (${turnoHoraInicial} - ${turnoHoraFinal}, intervalo: ${intervaloApontamento}h)`)
+    if (turnoHoraInicialNormalizada && turnoHoraFinalNormalizada && intervaloApontamento > 0) {
+      gerarLinhasApontamento(turnoHoraInicialNormalizada, turnoHoraFinalNormalizada, intervaloApontamento)
+      console.log(`✅ Linhas de apontamento geradas automaticamente (${turnoHoraInicialNormalizada} - ${turnoHoraFinalNormalizada}, intervalo: ${intervaloApontamento}h)`)
     }
 
     setStatusTurno('INICIADO')
@@ -3288,27 +3362,27 @@ export default function ApontamentoOEE() {
       return
     }
 
-    if (!horaInicialParada) {
+    if (!horaInicialParadaNormalizada) {
       toast({
         title: 'Erro de Validação',
-        description: 'Por favor, informe a hora inicial da parada',
+        description: 'Por favor, informe a hora inicial da parada em formato 24h',
         variant: 'destructive'
       })
       return
     }
 
-    if (!horaFinalParada) {
+    if (!horaFinalParadaNormalizada) {
       toast({
         title: 'Erro de Validação',
-        description: 'Por favor, informe a hora final da parada',
+        description: 'Por favor, informe a hora final da parada em formato 24h',
         variant: 'destructive'
       })
       return
     }
 
     // Calcular duração em minutos
-    const [horaIni, minIni] = horaInicialParada.split(':').map(Number)
-    const [horaFin, minFin] = horaFinalParada.split(':').map(Number)
+    const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
+    const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
     const minutosInicio = horaIni * 60 + minIni
     const minutosFim = horaFin * 60 + minFin
     const duracaoMinutos = minutosFim - minutosInicio
@@ -3334,8 +3408,8 @@ export default function ApontamentoOEE() {
       classe: paradaSelecionada.classe || '',
       parada: paradaSelecionada.parada || '',
       descricao: paradaSelecionada.descricao || '',
-      horaInicial: horaInicialParada,
-      horaFinal: horaFinalParada,
+      horaInicial: horaInicialParadaNormalizada,
+      horaFinal: horaFinalParadaNormalizada,
       duracaoMinutos,
       observacoes: observacoesParada,
       dataHoraRegistro: new Date().toISOString()
@@ -3344,10 +3418,8 @@ export default function ApontamentoOEE() {
     console.log('Registro de Parada (UI):', registroParada)
 
     // Converter para formato ParadaLocalStorage (para cálculo do OEE)
-    const horaInicioFormatada =
-      horaInicialParada.length === 5 ? `${horaInicialParada}:00` : horaInicialParada
-    const horaFimFormatada =
-      horaFinalParada.length === 5 ? `${horaFinalParada}:00` : horaFinalParada
+    const horaInicioFormatada = normalizarHora(horaInicialParadaNormalizada)
+    const horaFimFormatada = normalizarHora(horaFinalParadaNormalizada)
 
     const paradaData: ParadaLocalStorage = {
       id: registroParada.id,
@@ -3381,8 +3453,8 @@ export default function ApontamentoOEE() {
       turno,
       linhaId,
       linhaNome: linhaSelecionada?.nome || '',
-      horaInicio: horaInicialParada,
-      horaFim: horaFinalParada,
+      horaInicio: horaInicialParadaNormalizada,
+      horaFim: horaFinalParadaNormalizada,
       duracao: duracaoMinutos,
       tipoParada: paradaSelecionada.parada || paradaSelecionada.descricao || 'Parada',
       codigoParada: paradaSelecionada.codigo || 'CODIGO_TEMP',
@@ -3625,11 +3697,15 @@ export default function ApontamentoOEE() {
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Inicial</span>
                   <div className="relative">
                     <Input
-                      type="time"
+                      type="text"
                       value={turnoHoraInicial}
-                      onChange={(e) => setTurnoHoraInicial(e.target.value)}
+                      onChange={(e) => setTurnoHoraInicial(limparHoraDigitada(e.target.value))}
+                      onBlur={(e) => setTurnoHoraInicial(normalizarHoraDigitada(e.target.value, true))}
                       disabled={cabecalhoBloqueado}
                       placeholder="00:00"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={5}
                       className="bg-background-light dark:bg-background-dark pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -3641,11 +3717,15 @@ export default function ApontamentoOEE() {
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Final</span>
                   <div className="relative">
                     <Input
-                      type="time"
+                      type="text"
                       value={turnoHoraFinal}
-                      onChange={(e) => setTurnoHoraFinal(e.target.value)}
+                      onChange={(e) => setTurnoHoraFinal(limparHoraDigitada(e.target.value))}
+                      onBlur={(e) => setTurnoHoraFinal(normalizarHoraDigitada(e.target.value, true))}
                       disabled={cabecalhoBloqueado}
                       placeholder="00:00"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={5}
                       className="bg-background-light dark:bg-background-dark pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -4362,9 +4442,13 @@ export default function ApontamentoOEE() {
                       <input
                         className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         id="hora-inicial-parada"
-                        type="time"
+                        type="text"
                         value={horaInicialParada}
-                        onChange={(e) => setHoraInicialParada(e.target.value)}
+                        onChange={(e) => setHoraInicialParada(limparHoraDigitada(e.target.value))}
+                        onBlur={(e) => setHoraInicialParada(normalizarHoraDigitada(e.target.value, true))}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={5}
                       />
                     </div>
 
@@ -4376,20 +4460,24 @@ export default function ApontamentoOEE() {
                       <input
                         className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         id="hora-final-parada"
-                        type="time"
+                        type="text"
                         value={horaFinalParada}
-                        onChange={(e) => setHoraFinalParada(e.target.value)}
+                        onChange={(e) => setHoraFinalParada(limparHoraDigitada(e.target.value))}
+                        onBlur={(e) => setHoraFinalParada(normalizarHoraDigitada(e.target.value, true))}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={5}
                       />
                     </div>
                   </div>
 
                   {/* Exibir duração calculada automaticamente */}
-                  {horaInicialParada && horaFinalParada && (
+                  {horaInicialParadaNormalizada && horaFinalParadaNormalizada && (
                     <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
                         Duração calculada: {(() => {
-                          const [horaIni, minIni] = horaInicialParada.split(':').map(Number)
-                          const [horaFin, minFin] = horaFinalParada.split(':').map(Number)
+                          const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
+                          const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
                           const minutosInicio = horaIni * 60 + minIni
                           const minutosFim = horaFin * 60 + minFin
                           const duracaoMinutos = minutosFim - minutosInicio
@@ -4981,9 +5069,13 @@ export default function ApontamentoOEE() {
                     </Label>
                     <Input
                       id="hora-inicial-lote"
-                      type="time"
+                      type="text"
                       value={dadosLote.horaInicial}
-                      onChange={(e) => setDadosLote(prev => ({ ...prev, horaInicial: e.target.value }))}
+                      onChange={(e) => setDadosLote(prev => ({ ...prev, horaInicial: limparHoraDigitada(e.target.value) }))}
+                      onBlur={(e) => setDadosLote(prev => ({ ...prev, horaInicial: normalizarHoraDigitada(e.target.value, true) }))}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={5}
                       className="h-9"
                     />
                   </div>
@@ -4995,9 +5087,13 @@ export default function ApontamentoOEE() {
                     </Label>
                     <Input
                       id="hora-final-lote"
-                      type="time"
+                      type="text"
                       value={dadosLote.horaFinal}
-                      onChange={(e) => setDadosLote(prev => ({ ...prev, horaFinal: e.target.value }))}
+                      onChange={(e) => setDadosLote(prev => ({ ...prev, horaFinal: limparHoraDigitada(e.target.value) }))}
+                      onBlur={(e) => setDadosLote(prev => ({ ...prev, horaFinal: normalizarHoraDigitada(e.target.value, true) }))}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={5}
                       className="h-9"
                     />
                   </div>
