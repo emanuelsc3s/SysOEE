@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Removido o ícone SVG da coluna "Linha de Produção" na tabela da página de Velocidade Nominal.
+- Removida a coluna ID da visualização da tabela na página de Velocidade Nominal.
 - Alterado o rótulo do card "Equipamentos" para "Linha de Produção" na página Home.
 - Adicionado card de navegação para "Velocidade Nominal" na página Home, redirecionando para `/oee-linha-velocidade`, posicionado logo após o card de "Equipamentos".
 - Ajustado o estilo tipográfico do título e subtítulo no `AppHeader` para melhorar legibilidade e hierarquia visual.

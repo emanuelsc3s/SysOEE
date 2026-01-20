@@ -52,7 +52,6 @@ import {
   Loader2,
   ArrowLeft,
   Plus,
-  Factory,
   Package,
   Gauge,
   Calendar
@@ -772,9 +771,6 @@ export default function OeeLinhaVelocidade() {
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Acoes
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[6ch]">
-                          ID
-                        </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[20ch]">
                           Linha de Producao
                         </th>
@@ -795,7 +791,7 @@ export default function OeeLinhaVelocidade() {
                     <tbody className="divide-y divide-gray-200">
                       {velocidadesPaginadas.length === 0 && !isLoading ? (
                         <tr>
-                          <td colSpan={7} className="px-4 md:px-6 py-8 text-center">
+                          <td colSpan={6} className="px-4 md:px-6 py-8 text-center">
                             <div className="text-gray-500">
                               {searchTerm || appliedCount > 0 ?
                                 'Nenhuma velocidade encontrada com os filtros aplicados.' :
@@ -832,14 +828,8 @@ export default function OeeLinhaVelocidade() {
                                 </Button>
                               </div>
                             </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                              {velocidade.id}
-                            </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Factory className="h-3 w-3 text-gray-400" />
-                                {velocidade.linhaProducaoNome || '-'}
-                              </div>
+                              {velocidade.linhaProducaoNome || '-'}
                             </td>
                             <td className="px-4 md:px-6 py-4 text-sm text-gray-600 max-w-[350px]">
                               <div className="flex items-center gap-1">
