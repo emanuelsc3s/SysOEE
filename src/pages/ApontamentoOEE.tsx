@@ -951,8 +951,7 @@ export default function ApontamentoOEE() {
         .eq('linhaproducao_id', linhaProducaoId)
         .eq('produto_id', produtoId)
         .or('deletado.is.null,deletado.eq.N')
-        .order('data', { ascending: true })
-        .order('hora_inicio', { ascending: true })
+        .order('oeeturnoproducao_id', { ascending: true })
 
       if (producoesError) throw producoesError
 
