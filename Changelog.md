@@ -3,6 +3,7 @@
 ## [Unreleased]
 - Ajustado o estilo tipográfico do título e subtítulo no `AppHeader` para melhorar legibilidade e hierarquia visual.
 - Reduzido o espaçamento vertical entre título e subtítulo no `AppHeader`.
+- Ajustado o espaçamento e a altura de linha do bloco de título no `AppHeader`.
 - Ajustado o tamanho da logomarca no `AppHeader` para ficar mais proporcional ao cabeçalho.
 - Ajustadas a largura e a altura da logomarca no `AppHeader` para ocupar melhor o cabeçalho.
 - Ajustado o padding direito do cabeçalho do `ApontamentoOEE` para alinhar o espaço externo dos botões com a lateral direita.

@@ -60,7 +60,7 @@ export function AppHeader({
           className="h-full w-[136px] flex-shrink-0"
         />
 
-        <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex flex-col gap-0 min-w-0 leading-[18px]">
           <h1 className="text-lg sm:text-xl font-semibold text-primary leading-tight tracking-tight truncate">
 	            {title}
 	          </h1>
