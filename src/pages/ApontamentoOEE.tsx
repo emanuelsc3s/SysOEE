@@ -3895,8 +3895,8 @@ export default function ApontamentoOEE() {
                   </div>
                 )}
 
-                {/* Botão Lotes - disponível quando o turno está iniciado */}
-                {statusTurno === 'INICIADO' && !editandoCabecalho && (
+                {/* Botão Lotes - disponível quando o turno está iniciado ou encerrado */}
+                {(statusTurno === 'INICIADO' || statusTurno === 'ENCERRADO') && !editandoCabecalho && (
                   <Button
                     variant="outline"
                     onClick={() => setModalLotesAberto(true)}
@@ -5082,25 +5082,29 @@ export default function ApontamentoOEE() {
               Controle de Lotes
             </DialogTitle>
             <DialogDescription>
-              Visualize e gerencie os lotes de produção do turno atual. Utilize o botão abaixo para adicionar novos lotes.
+              {statusTurno === 'ENCERRADO' 
+                ? 'Visualize os lotes de produção do turno encerrado. O turno está encerrado, portanto não é possível adicionar ou editar lotes.'
+                : 'Visualize e gerencie os lotes de produção do turno atual. Utilize o botão abaixo para adicionar novos lotes.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden flex flex-col gap-4 py-4">
             {/* Botão para adicionar novo lote */}
-            <div className="flex justify-end">
-              <Button
-                onClick={handleNovoLote}
-                className="bg-brand-primary hover:bg-brand-primary/90"
-                disabled={formularioLoteAberto}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Lote
-              </Button>
-            </div>
+            {statusTurno !== 'ENCERRADO' && (
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleNovoLote}
+                  className="bg-brand-primary hover:bg-brand-primary/90"
+                  disabled={formularioLoteAberto}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Lote
+                </Button>
+              </div>
+            )}
 
             {/* Formulário inline para adicionar/editar lote */}
-            {formularioLoteAberto && (
+            {formularioLoteAberto && statusTurno !== 'ENCERRADO' && (
               <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">
@@ -5315,26 +5319,32 @@ export default function ApontamentoOEE() {
                           {lote.quantidadePerdas.toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditarLote(lote)}
-                              className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700"
-                              title="Editar lote"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleExcluirLote(lote.id)}
-                              className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-700"
-                              title="Excluir lote"
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          {statusTurno !== 'ENCERRADO' ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditarLote(lote)}
+                                className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700"
+                                title="Editar lote"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleExcluirLote(lote.id)}
+                                className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-700"
+                                title="Excluir lote"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center text-muted-foreground text-xs">
+                              Consulta
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
