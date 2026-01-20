@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Alterado o rótulo do card "Equipamentos" para "Linha de Produção" na página Home.
+- Adicionado card de navegação para "Velocidade Nominal" na página Home, redirecionando para `/oee-linha-velocidade`, posicionado logo após o card de "Equipamentos".
 - Ajustado o estilo tipográfico do título e subtítulo no `AppHeader` para melhorar legibilidade e hierarquia visual.
 - Reduzido o espaçamento vertical entre título e subtítulo no `AppHeader`.
 - Ajustado o espaçamento e a altura de linha do bloco de título no `AppHeader`.

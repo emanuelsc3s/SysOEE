@@ -13,7 +13,8 @@ import {
   Wrench,
   Shield,
   ChevronDown,
-  LogOut
+  LogOut,
+  Gauge
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { BrandingSection } from '@/components/branding/BrandingSection'
@@ -174,10 +175,16 @@ export default function Home() {
       description: 'Análise de paradas e Books de Paradas'
     },
     {
-      title: 'Equipamentos',
+      title: 'Linha de Produção',
       icon: <Wrench size={40} />,
       path: '/equipamentos',
       description: 'Cadastro de linhas e setores'
+    },
+    {
+      title: 'Velocidade Nominal',
+      icon: <Gauge size={40} />,
+      path: '/oee-linha-velocidade',
+      description: 'Cadastro de velocidades nominais por linha e produto'
     },
     {
       title: 'Turnos',
