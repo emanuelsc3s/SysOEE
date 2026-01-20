@@ -662,10 +662,7 @@ export default function OeeTurno() {
                               {turno.turno}
                             </td>
                             <td className="px-4 md:px-6 py-4 text-sm text-gray-600 max-w-[300px]">
-                              <div className="flex items-center gap-1 truncate" title={turno.produto}>
-                                <Package className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                                <span className="truncate">{turno.produto}</span>
-                              </div>
+                              <span className="truncate block" title={turno.produto}>{turno.produto}</span>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               <div className="flex items-center gap-1">
