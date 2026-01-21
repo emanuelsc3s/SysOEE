@@ -15,14 +15,29 @@ import { TipoParada } from '@/types/parada'
 const STORAGE_KEY_PRODUCAO = 'sysoee_apontamentos_producao'
 const STORAGE_KEY_PERDAS = 'sysoee_apontamentos_perdas'
 
-const gerarUuid = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
+type CryptoLike = {
+  randomUUID?: () => string
+  getRandomValues?: (array: Uint8Array) => Uint8Array
+}
+
+const obterCrypto = (): CryptoLike | null => {
+  if (typeof globalThis === 'undefined') {
+    return null
   }
 
-  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+  const cryptoGlobal = (globalThis as { crypto?: CryptoLike }).crypto
+  return cryptoGlobal ?? null
+}
+
+const gerarUuid = (): string => {
+  const cryptoGlobal = obterCrypto()
+  if (cryptoGlobal?.randomUUID) {
+    return cryptoGlobal.randomUUID()
+  }
+
+  if (cryptoGlobal?.getRandomValues) {
     const bytes = new Uint8Array(16)
-    crypto.getRandomValues(bytes)
+    cryptoGlobal.getRandomValues(bytes)
     bytes[6] = (bytes[6] & 0x0f) | 0x40
     bytes[8] = (bytes[8] & 0x3f) | 0x80
     const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')

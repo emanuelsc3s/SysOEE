@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a tipagem do gerador de UUID para compatibilidade com build em TypeScript sem depender do tipo global de `crypto`.
 - Adicionado fallback de geração de UUID nos apontamentos locais para evitar erro `crypto.randomUUID` em ambientes sem suporte.
 - Corrigida a normalização do valor de perdas no `ApontamentoOEE` para evitar escala incorreta ao salvar no banco.
 - Melhorada a entrada de perdas no `ApontamentoOEE` com formatação pt-BR em tempo real, limite de 15 dígitos e até 4 casas decimais.
