@@ -15,6 +15,24 @@ import { TipoParada } from '@/types/parada'
 const STORAGE_KEY_PRODUCAO = 'sysoee_apontamentos_producao'
 const STORAGE_KEY_PERDAS = 'sysoee_apontamentos_perdas'
 
+const gerarUuid = (): string => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const bytes = new Uint8Array(16)
+    crypto.getRandomValues(bytes)
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  }
+
+  // Fallback simples para ambientes sem crypto disponível
+  return `uuid-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}${Math.random().toString(16).slice(2, 10)}`
+}
+
 // ==================== APONTAMENTOS DE PRODUÇÃO ====================
 
 /**
@@ -45,7 +63,7 @@ export function buscarApontamentoProducaoPorId(id: string): ApontamentoProducao 
 export function salvarApontamentoProducao(dto: CriarApontamentoProducaoDTO): ApontamentoProducao {
   try {
     const apontamento: ApontamentoProducao = {
-      id: crypto.randomUUID(),
+      id: gerarUuid(),
       ...dto,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -131,7 +149,7 @@ export function salvarApontamentoPerdas(
 ): ApontamentoQualidadePerdas {
   try {
     const apontamento: ApontamentoQualidadePerdas = {
-      id: crypto.randomUUID(),
+      id: gerarUuid(),
       apontamentoProducaoId,
       unidadesRejeitadas,
       motivoRejeicao,

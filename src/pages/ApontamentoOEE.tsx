@@ -1556,6 +1556,61 @@ export default function ApontamentoOEE() {
     return quantidade.toLocaleString('pt-BR')
   }
 
+  const normalizarPerdaPtBr = (valor: string) => {
+    if (!valor) {
+      return {
+        formatado: '',
+        valorNormalizado: '',
+        valorNumero: Number.NaN
+      }
+    }
+
+    const somenteNumerosEVirgula = valor.replace(/[^\d,]/g, '')
+    const partes = somenteNumerosEVirgula.split(',')
+    const temVirgula = partes.length > 1
+
+    const totalMaximoDigitos = 15
+    const inteiroRaw = partes[0] ?? ''
+    let decimaisRaw = temVirgula ? partes.slice(1).join('') : ''
+
+    let inteiroNumeros = inteiroRaw.replace(/^0+(?=\d)/, '')
+    if (inteiroNumeros.length > totalMaximoDigitos) {
+      inteiroNumeros = inteiroNumeros.slice(0, totalMaximoDigitos)
+    }
+
+    const maxDecimaisDisponiveis = Math.max(totalMaximoDigitos - inteiroNumeros.length, 0)
+    const limiteDecimais = Math.min(4, maxDecimaisDisponiveis)
+    if (decimaisRaw.length > limiteDecimais) {
+      decimaisRaw = decimaisRaw.slice(0, limiteDecimais)
+    }
+
+    if (!inteiroNumeros && temVirgula) {
+      inteiroNumeros = '0'
+    }
+
+    const inteiroFormatado = inteiroNumeros
+      ? inteiroNumeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+      : ''
+
+    const formatado = temVirgula ? `${inteiroFormatado},${decimaisRaw}` : inteiroFormatado
+    const valorNormalizado = inteiroNumeros
+      ? `${inteiroNumeros}${decimaisRaw ? `.${decimaisRaw}` : ''}`
+      : temVirgula
+        ? `0${decimaisRaw ? `.${decimaisRaw}` : ''}`
+        : ''
+    const valorNumero = valorNormalizado ? Number(valorNormalizado) : Number.NaN
+
+    return {
+      formatado,
+      valorNormalizado,
+      valorNumero
+    }
+  }
+
+  const formatarPerdaPtBr = (valor: string): string => {
+    return normalizarPerdaPtBr(valor).formatado
+  }
+
   /**
    * Formata horas decimais para formato HH:MM
    * @param horas - Horas em formato decimal (ex: 1.5 = 1h30min)
@@ -3339,7 +3394,7 @@ export default function ApontamentoOEE() {
     // =================================================================
     // VALIDAÇÃO 2: Verificar se a quantidade de perdas está preenchida
     // =================================================================
-    const perdaValor = Number(quantidadePerdas)
+    const { valorNormalizado: perdaNormalizada, valorNumero: perdaValor } = normalizarPerdaPtBr(quantidadePerdas)
     const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
 
     if (!temPerdas) {
@@ -3378,7 +3433,7 @@ export default function ApontamentoOEE() {
         .from('tboee_turno_perda')
         .insert({
           oeeturno_id: oeeTurnoId,
-          perda: perdaValor,
+          perda: perdaNormalizada,
           created_by: usuario.id,
           updated_at: new Date().toISOString(),
           updated_by: usuario.id
@@ -4347,10 +4402,11 @@ export default function ApontamentoOEE() {
                         <input
                           className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
                           id="loss-quantity"
-                          type="number"
-                          placeholder="ex: 500"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="ex: 1.234,56"
                           value={quantidadePerdas}
-                          onChange={(e) => setQuantidadePerdas(e.target.value)}
+                          onChange={(e) => setQuantidadePerdas(formatarPerdaPtBr(e.target.value))}
                         />
                       </div>
 

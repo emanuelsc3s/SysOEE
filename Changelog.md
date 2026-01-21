@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado fallback de geração de UUID nos apontamentos locais para evitar erro `crypto.randomUUID` em ambientes sem suporte.
+- Corrigida a normalização do valor de perdas no `ApontamentoOEE` para evitar escala incorreta ao salvar no banco.
+- Melhorada a entrada de perdas no `ApontamentoOEE` com formatação pt-BR em tempo real, limite de 15 dígitos e até 4 casas decimais.
 - Corrigida a geração das linhas horárias no registro de produção ao carregar turnos por `oeeturno_id`, exibindo todas as horas do turno com mesclagem dos dados existentes.
 - Adicionado redirecionamento do OeeTurno com `oeeturno_id` e exibição do ID no título do Diário de Bordo.
 - Removida a funcionalidade de retrabalho no apontamento de qualidade, cálculo do OEE e persistência local.
