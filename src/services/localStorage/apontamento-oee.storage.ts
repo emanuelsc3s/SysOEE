@@ -6,7 +6,6 @@
 import {
   ApontamentoProducao,
   ApontamentoQualidadePerdas,
-  ApontamentoQualidadeRetrabalho,
   CriarApontamentoProducaoDTO,
   CalculoOEE
 } from '@/types/apontamento-oee'
@@ -15,7 +14,6 @@ import { TipoParada } from '@/types/parada'
 
 const STORAGE_KEY_PRODUCAO = 'sysoee_apontamentos_producao'
 const STORAGE_KEY_PERDAS = 'sysoee_apontamentos_perdas'
-const STORAGE_KEY_RETRABALHO = 'sysoee_apontamentos_retrabalho'
 
 // ==================== APONTAMENTOS DE PRODUÇÃO ====================
 
@@ -156,30 +154,6 @@ export function salvarApontamentoPerdas(
   }
 }
 
-// ==================== APONTAMENTOS DE RETRABALHO ====================
-
-/**
- * Busca todos os apontamentos de retrabalho
- */
-export function buscarTodosApontamentosRetrabalho(): ApontamentoQualidadeRetrabalho[] {
-  try {
-    const dados = localStorage.getItem(STORAGE_KEY_RETRABALHO)
-    if (!dados) return []
-    return JSON.parse(dados)
-  } catch (error) {
-    console.error('❌ Erro ao buscar apontamentos de retrabalho:', error)
-    return []
-  }
-}
-
-/**
- * Busca apontamentos de retrabalho por ID de apontamento de produção
- */
-export function buscarApontamentosRetrabalhoPorProducao(apontamentoProducaoId: string): ApontamentoQualidadeRetrabalho[] {
-  const apontamentos = buscarTodosApontamentosRetrabalho()
-  return apontamentos.filter(a => a.apontamentoProducaoId === apontamentoProducaoId)
-}
-
 /**
  * Busca apontamentos de perdas por linha e SKU
  * Soma todas as perdas de todos os apontamentos de produção da mesma linha e SKU
@@ -204,74 +178,11 @@ export function buscarApontamentosPerdasPorLinhaESku(linhaId: string, skuCodigo:
 }
 
 /**
- * Busca apontamentos de retrabalho por linha e SKU
- * Soma todos os retrabalhos de todos os apontamentos de produção da mesma linha e SKU
- */
-export function buscarApontamentosRetrabalhoPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): ApontamentoQualidadeRetrabalho[] {
-  // Busca todos os apontamentos de produção da linha e SKU
-  // Compara tanto pelo ID quanto pelo nome da linha para garantir compatibilidade
-  const apontamentosProducao = buscarTodosApontamentosProducao().filter(a => {
-    const matchLinha = a.linha === linhaId || a.linha === linhaNome || (linhaNome && a.linha === linhaNome)
-    const matchSku = a.sku === skuCodigo
-    return matchLinha && matchSku
-  })
-
-  // Busca todos os retrabalhos associados a esses apontamentos
-  const todosRetrabalhos = buscarTodosApontamentosRetrabalho()
-  const idsProducao = apontamentosProducao.map(a => a.id)
-
-  return todosRetrabalhos.filter(r => idsProducao.includes(r.apontamentoProducaoId))
-}
-
-/**
- * Calcula o total de perdas (perdas + retrabalhos) por linha e SKU
+ * Calcula o total de perdas por linha e SKU
  */
 export function calcularTotalPerdasPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): number {
   const perdas = buscarApontamentosPerdasPorLinhaESku(linhaId, skuCodigo, linhaNome)
-  const retrabalhos = buscarApontamentosRetrabalhoPorLinhaESku(linhaId, skuCodigo, linhaNome)
-
-  const totalPerdas = perdas.reduce((total, p) => total + p.unidadesRejeitadas, 0)
-  const totalRetrabalho = retrabalhos.reduce((total, r) => total + r.unidadesRetrabalho, 0)
-
-  return totalPerdas + totalRetrabalho
-}
-
-/**
- * Salva um novo apontamento de retrabalho
- */
-export function salvarApontamentoRetrabalho(
-  apontamentoProducaoId: string,
-  unidadesRetrabalho: number,
-  tempoRetrabalho: number,
-  motivoRetrabalho: string,
-  observacao: string | null,
-  criadoPor: number,
-  criadoPorNome: string
-): ApontamentoQualidadeRetrabalho {
-  try {
-    const apontamento: ApontamentoQualidadeRetrabalho = {
-      id: crypto.randomUUID(),
-      apontamentoProducaoId,
-      unidadesRetrabalho,
-      tempoRetrabalho,
-      motivoRetrabalho,
-      observacao,
-      criadoPor,
-      criadoPorNome,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    const apontamentos = buscarTodosApontamentosRetrabalho()
-    apontamentos.push(apontamento)
-    localStorage.setItem(STORAGE_KEY_RETRABALHO, JSON.stringify(apontamentos))
-
-    console.log('✅ Apontamento de retrabalho salvo:', apontamento)
-    return apontamento
-  } catch (error) {
-    console.error('❌ Erro ao salvar apontamento de retrabalho:', error)
-    throw error
-  }
+  return perdas.reduce((total, p) => total + p.unidadesRejeitadas, 0)
 }
 
 // ==================== CÁLCULO DE OEE ====================
@@ -294,7 +205,6 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
   }
 
   const perdas = buscarApontamentosPerdasPorProducao(apontamentoProducaoId)
-  const retrabalhos = buscarApontamentosRetrabalhoPorProducao(apontamentoProducaoId)
 
   // 1. Disponibilidade = (Tempo de Operação / Tempo Disponível) × 100
   const disponibilidade = apontamento.tempoDisponivel > 0
@@ -311,23 +221,12 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
     ? (tempoOperacionalLiquido / apontamento.tempoOperacao) * 100
     : 0
 
-  // 3. Qualidade = Qualidade_Unidades × Qualidade_Retrabalho
-
-  // 3a. Qualidade por Unidades (Refugo e Desvios)
+  // 3. Qualidade = (Unidades Boas / Unidades Produzidas) × 100
   const totalPerdas = perdas.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
   const unidadesBoas = apontamento.quantidadeProduzida - totalPerdas
-  const qualidadeUnidades = apontamento.quantidadeProduzida > 0
+  const qualidade = apontamento.quantidadeProduzida > 0
     ? (unidadesBoas / apontamento.quantidadeProduzida) * 100
     : 100
-
-  // 3b. Qualidade por Retrabalho
-  const totalTempoRetrabalho = retrabalhos.reduce((sum, r) => sum + r.tempoRetrabalho, 0)
-  const qualidadeRetrabalho = apontamento.tempoOperacao > 0
-    ? ((apontamento.tempoOperacao - totalTempoRetrabalho) / apontamento.tempoOperacao) * 100
-    : 100
-
-  // Qualidade Total
-  const qualidade = (qualidadeUnidades / 100) * (qualidadeRetrabalho / 100) * 100
 
   // 4. OEE = Disponibilidade × Performance × Qualidade
   const oee = (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
@@ -346,7 +245,7 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
 }
 
 /**
- * Calcula OEE completo integrando paradas, perdas e retrabalhos
+ * Calcula OEE completo integrando paradas e perdas
  * Baseado em docs/example/EXEMPLOS-CODIGO-OEE.md
  *
  * @param apontamentoProducaoId - ID do apontamento de produção
@@ -387,7 +286,7 @@ export function calcularOEECompleto(
     a.turno === apontamentoReferencia.turno
   )
 
-  // IDs de todos os apontamentos do turno para buscar perdas e retrabalhos
+  // IDs de todos os apontamentos do turno para buscar perdas
   const idsApontamentos = apontamentosDoTurno.map(a => a.id)
 
   // Somar quantidades produzidas de todos os apontamentos do turno
@@ -401,12 +300,10 @@ export function calcularOEECompleto(
   // OEE é calculado por LINHA
   const paradas = buscarParadasPorLinha(linhaId)
 
-  // Buscar TODAS as perdas e retrabalhos de TODOS os apontamentos do turno
+  // Buscar TODAS as perdas de TODOS os apontamentos do turno
   const todasPerdas = buscarTodosApontamentosPerdas()
   const perdas = todasPerdas.filter(p => idsApontamentos.includes(p.apontamentoProducaoId))
 
-  const todosRetrabalhos = buscarTodosApontamentosRetrabalho()
-  const retrabalhos = todosRetrabalhos.filter(r => idsApontamentos.includes(r.apontamentoProducaoId))
 
   console.log('4ca Calculando OEE:', {
     apontamentoReferencia: apontamentoProducaoId,
@@ -416,7 +313,6 @@ export function calcularOEECompleto(
     quantidadeProduzidaTotal,
     totalParadas: paradas.length,
     totalPerdas: perdas.length,
-    totalRetrabalhos: retrabalhos.length
   })
 
   // =================================================================
@@ -525,35 +421,22 @@ export function calcularOEECompleto(
 
   // =================================================================
   // PASSO 6: CALCULAR QUALIDADE
-  // Qualidade = Qualidade_Unidades d7 Qualidade_Retrabalho
+  // Qualidade = (Unidades Boas / Unidades Produzidas) × 100
   // =================================================================
 
-  // 6a. Qualidade por Unidades (Refugo e Desvios)
+  // Qualidade por Unidades (Refugo e Desvios)
   // Usa quantidadeProduzidaTotal (soma de todos apontamentos do turno)
   const totalPerdas = perdas.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
   const unidadesBoas = quantidadeProduzidaTotal - totalPerdas
 
-  const qualidadeUnidades = quantidadeProduzidaTotal > 0
+  const qualidade = quantidadeProduzidaTotal > 0
     ? (unidadesBoas / quantidadeProduzidaTotal) * 100
     : 100
-
-  // 6b. Qualidade por Retrabalho
-  const totalTempoRetrabalho = retrabalhos.reduce((sum, r) => sum + r.tempoRetrabalho, 0)
-
-  const qualidadeRetrabalho = tempoOperacao > 0
-    ? ((tempoOperacao - totalTempoRetrabalho) / tempoOperacao) * 100
-    : 100
-
-  // 6c. Qualidade Total
-  const qualidade = (qualidadeUnidades / 100) * (qualidadeRetrabalho / 100) * 100
 
   console.log('728 Qualidade:', {
     totalPerdas,
     unidadesBoas,
-    qualidadeUnidades: `${arredondar(qualidadeUnidades)}%`,
-    totalTempoRetrabalho,
-    qualidadeRetrabalho: `${arredondar(qualidadeRetrabalho)}%`,
-    qualidadeTotal: `${arredondar(qualidade)}%`
+    qualidade: `${arredondar(qualidade)}%`
   })
 
   // =================================================================
@@ -678,7 +561,7 @@ function identificarTipoParada(parada: ParadaLocalStorage): TipoParada {
 
 /**
  * Exclui um apontamento de produção específico do localStorage
- * Também remove os apontamentos de perdas e retrabalho relacionados
+ * Também remove os apontamentos de perdas relacionados
  *
  * @param id - ID do apontamento de produção a ser excluído
  * @returns true se o apontamento foi excluído com sucesso, false caso contrário
@@ -707,10 +590,6 @@ export function excluirApontamentoProducao(id: string): boolean {
     const perdasAtualizadas = perdas.filter(p => p.apontamentoProducaoId !== id)
     localStorage.setItem(STORAGE_KEY_PERDAS, JSON.stringify(perdasAtualizadas))
 
-    // Remover apontamentos de retrabalho relacionados
-    const retrabalhos = buscarTodosApontamentosRetrabalho()
-    const retrabalhosAtualizados = retrabalhos.filter(r => r.apontamentoProducaoId !== id)
-    localStorage.setItem(STORAGE_KEY_RETRABALHO, JSON.stringify(retrabalhosAtualizados))
 
     console.log('✅ Apontamento de produção excluído com sucesso:', {
       id,
@@ -731,7 +610,6 @@ export function excluirApontamentoProducao(id: string): boolean {
 export function limparTodosApontamentos(): void {
   localStorage.removeItem(STORAGE_KEY_PRODUCAO)
   localStorage.removeItem(STORAGE_KEY_PERDAS)
-  localStorage.removeItem(STORAGE_KEY_RETRABALHO)
   console.log('🗑️ Todos os apontamentos foram removidos do localStorage')
 }
 

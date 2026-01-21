@@ -107,7 +107,7 @@ CREATE TRIGGER trg_atualizar_lote_qualidade
   FOR EACH ROW EXECUTE FUNCTION atualizar_totais_lote();
 
 COMMENT ON TRIGGER trg_atualizar_lote_qualidade ON tbapontamentoqualidade
-  IS 'Atualiza tblote.unidades_refugo e tempo_retrabalho quando apontamentos de qualidade mudam';
+  IS 'Atualiza tblote.unidades_refugo quando apontamentos de qualidade mudam';
 
 -- =====================================================
 -- TRIGGER DE CACHE DE OEE

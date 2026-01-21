@@ -87,10 +87,8 @@ CREATE TABLE IF NOT EXISTS tboee (
     )
   ) STORED,
 
-  -- Tempo de retrabalho (afeta Qualidade)
-  tempo_retrabalho_minutos INTEGER DEFAULT 0 CHECK (tempo_retrabalho_minutos >= 0),
 
-  -- Tempo valioso = Op. Líquido - Retrabalho
+  -- Tempo valioso = Tempo Operacional Líquido
   tempo_valioso_minutos INTEGER GENERATED ALWAYS AS (
     GREATEST(0,
       tempo_calendario_minutos
@@ -98,7 +96,6 @@ CREATE TABLE IF NOT EXISTS tboee (
       - tempo_paradas_planejadas_minutos
       - tempo_paradas_nao_planejadas_minutos
       - tempo_pequenas_paradas_minutos
-      - tempo_retrabalho_minutos
     )
   ) STORED,
 
@@ -109,7 +106,6 @@ CREATE TABLE IF NOT EXISTS tboee (
   unidades_produzidas INTEGER NOT NULL DEFAULT 0 CHECK (unidades_produzidas >= 0),
   unidades_boas INTEGER NOT NULL DEFAULT 0 CHECK (unidades_boas >= 0),
   unidades_refugadas INTEGER DEFAULT 0 CHECK (unidades_refugadas >= 0),
-  unidades_retrabalhadas INTEGER DEFAULT 0 CHECK (unidades_retrabalhadas >= 0),
 
   -- ========================================
   -- COMPONENTES DO OEE (%)
@@ -171,63 +167,15 @@ CREATE TABLE IF NOT EXISTS tboee (
     END
   ) STORED,
 
-  -- Qualidade Retrabalho = ((Tempo Op - Tempo Retrabalho) / Tempo Op) × 100
-  qualidade_retrabalho NUMERIC(5,2) GENERATED ALWAYS AS (
+  -- Qualidade = (Unidades Boas / Unidades Produzidas) × 100
+  qualidade NUMERIC(5,2) GENERATED ALWAYS AS (
     CASE
-      WHEN (tempo_calendario_minutos
-            - tempo_paradas_estrategicas_minutos
-            - tempo_paradas_planejadas_minutos
-            - tempo_paradas_nao_planejadas_minutos) = 0 THEN 100
+      WHEN unidades_produzidas = 0 THEN 100
       ELSE ROUND(
-        (tempo_calendario_minutos
-         - tempo_paradas_estrategicas_minutos
-         - tempo_paradas_planejadas_minutos
-         - tempo_paradas_nao_planejadas_minutos
-         - tempo_retrabalho_minutos
-        )::NUMERIC
-        / NULLIF(
-          tempo_calendario_minutos
-          - tempo_paradas_estrategicas_minutos
-          - tempo_paradas_planejadas_minutos
-          - tempo_paradas_nao_planejadas_minutos,
-          0
-        )
-        * 100,
+        unidades_boas::NUMERIC / NULLIF(unidades_produzidas, 0) * 100,
         2
       )
     END
-  ) STORED,
-
-  -- Qualidade Total = Qualidade_Unidades × Qualidade_Retrabalho / 100
-  qualidade NUMERIC(5,2) GENERATED ALWAYS AS (
-    ROUND(
-      (CASE
-        WHEN unidades_produzidas = 0 THEN 100
-        ELSE ROUND(
-          unidades_boas::NUMERIC / NULLIF(unidades_produzidas, 0) * 100,
-          2
-        )
-      END
-      *
-      CASE
-        WHEN (tempo_calendario_minutos
-              - tempo_paradas_estrategicas_minutos
-              - tempo_paradas_planejadas_minutos
-              - tempo_paradas_nao_planejadas_minutos) = 0 THEN 100
-        ELSE ROUND(
-          (tempo_calendario_minutos
-           - tempo_paradas_estrategicas_minutos
-           - tempo_paradas_planejadas_minutos
-           - tempo_paradas_nao_planejadas_minutos
-           - tempo_retrabalho_minutos
-          )::NUMERIC
-          / NULLIF(
-            tempo_calendario_minutos
-            - tempo_paradas_estrategicas_minutos
-            - tempo_paradas_planejadas_minutos
-            - tempo_paradas_nao_planejadas_minutos,
-            0
-          )
           * 100,
           2
         )
@@ -300,7 +248,6 @@ CREATE TABLE IF NOT EXISTS tboee (
                - tempo_paradas_estrategicas_minutos
                - tempo_paradas_planejadas_minutos
                - tempo_paradas_nao_planejadas_minutos
-               - tempo_retrabalho_minutos
               )::NUMERIC
               / NULLIF(
                 tempo_calendario_minutos
@@ -384,7 +331,6 @@ CREATE TABLE IF NOT EXISTS tboee (
                  - tempo_paradas_estrategicas_minutos
                  - tempo_paradas_planejadas_minutos
                  - tempo_paradas_nao_planejadas_minutos
-                 - tempo_retrabalho_minutos
                 )::NUMERIC
                 / NULLIF(
                   tempo_calendario_minutos

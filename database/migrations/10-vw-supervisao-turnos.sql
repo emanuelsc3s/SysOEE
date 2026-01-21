@@ -112,13 +112,6 @@ SELECT
   ) AS total_refugo,
 
   (
-    SELECT COALESCE(SUM(tempo_retrabalho_minutos), 0)
-    FROM tbapontamentoqualidade aq
-    WHERE aq.lote_id = l.lote_id
-      AND aq.tipo_perda = 'RETRABALHO'
-  ) AS total_minutos_retrabalho,
-
-  (
     SELECT COUNT(*)
     FROM tbapontamentoqualidade aq
     WHERE aq.lote_id = l.lote_id

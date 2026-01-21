@@ -7,7 +7,7 @@
  * Recursos apresentados:
  * - Velocímetro de OEE em tempo real
  * - Registro de produção por intervalos
- * - Gestão de qualidade (perdas e retrabalho)
+ * - Gestão de qualidade (perdas)
  * - Registro de paradas
  * - Controle de lotes de produção
  * - Dashboard de métricas
@@ -68,12 +68,12 @@ const recursos = [
     id: 'qualidade',
     categoria: 'QUALIDADE',
     categoriaClasse: 'badge-quality',
-    titulo: 'Gestão de Qualidade: Perdas e Retrabalho',
-    descricao: 'Registre perdas de produção e retrabalhos que impactam diretamente no cálculo do índice de Qualidade do OEE.',
+    titulo: 'Gestão de Qualidade: Perdas',
+    descricao: 'Registre perdas de produção que impactam diretamente no cálculo do índice de Qualidade do OEE.',
     instrucoes: [
       'Acesse a aba "Qualidade" no formulário de apontamento',
       'Informe a quantidade de perdas ocorridas no turno',
-      'Registre retrabalhos com quantidade e motivo detalhado'
+      'As perdas serão descontadas das unidades produzidas no cálculo de Qualidade'
     ],
     icone: CheckCircle2,
     imagemReal: imgQualidade

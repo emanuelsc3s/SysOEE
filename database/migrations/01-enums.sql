@@ -54,7 +54,6 @@ COMMENT ON TYPE fonte_dados_enum IS 'Origem dos dados de produção (ALCOA+ - ra
 -- Tipo de perda de qualidade
 CREATE TYPE tipo_perda_qualidade_enum AS ENUM (
   'REFUGO',      -- Unidades descartadas (não conformes)
-  'RETRABALHO',  -- Tempo gasto em reprocessamento
   'DESVIO',      -- Desvio de especificação
   'BLOQUEIO'     -- Produto bloqueado pela Qualidade
 );

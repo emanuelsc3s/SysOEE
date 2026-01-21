@@ -42,7 +42,6 @@ SELECT
   -- Totais
   l.unidades_boas,
   l.unidades_refugo,
-  l.tempo_retrabalho_minutos,
 
   -- Assinaturas
   u_op.nome_completo AS operador,

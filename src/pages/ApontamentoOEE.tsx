@@ -1,6 +1,6 @@
 /**
  * Página de Apontamento de OEE
- * Permite apontamento de produção, qualidade (perdas e retrabalho) e paradas
+ * Permite apontamento de produção, qualidade (perdas) e paradas
  * Calcula OEE em tempo real e exibe em velocímetro
  *
  * Layout baseado em code_oee_apontar.html
@@ -21,9 +21,7 @@ import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import { Turno, converterParaSetor } from '@/types/operacao'
 import {
   salvarApontamentoPerdas,
-  salvarApontamentoRetrabalho,
   buscarTodosApontamentosPerdas,
-  buscarTodosApontamentosRetrabalho
 } from '@/services/localStorage/apontamento-oee.storage'
 import { salvarParada, ParadaLocalStorage, atualizarParada, excluirParada, buscarParadasPorLinha } from '@/services/localStorage/parada.storage'
 import { CalculoOEE } from '@/types/apontamento-oee'
@@ -136,7 +134,7 @@ interface RegistroQualidade {
   linhaNome: string
   apontamentoProducaoId: string
   skuCodigo?: string
-  tipo: 'PERDAS' | 'RETRABALHO'
+  tipo: 'PERDAS'
   quantidade: number
   motivo: string
   dataHoraRegistro: string
@@ -280,10 +278,6 @@ export default function ApontamentoOEE() {
   // ==================== Estado de Qualidade - Perdas ====================
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
 
-  // ==================== Estado de Qualidade - Retrabalho ====================
-  const [quantidadeRetrabalho, setQuantidadeRetrabalho] = useState<string>('')
-  const [motivoRetrabalho, setMotivoRetrabalho] = useState<string>('')
-
   // ==================== Estado de Tempo de Parada ====================
   const [paradasGerais, setParadasGerais] = useState<ParadaGeral[]>([])
   const [carregandoParadas, setCarregandoParadas] = useState<boolean>(false)
@@ -382,9 +376,21 @@ export default function ApontamentoOEE() {
    */
   const carregarHistoricoQualidade = useCallback((): RegistroQualidade[] => {
     try {
+      // Limpar dados legados de retrabalho no localStorage
+      localStorage.removeItem('sysoee_apontamentos_retrabalho')
+
       const dados = localStorage.getItem(STORAGE_KEY_QUALIDADE)
       if (dados) {
-        return JSON.parse(dados)
+        const registros = JSON.parse(dados)
+        if (Array.isArray(registros)) {
+          const registrosFiltrados = registros.filter((registro) => registro?.tipo === 'PERDAS')
+
+          if (registrosFiltrados.length !== registros.length) {
+            localStorage.setItem(STORAGE_KEY_QUALIDADE, JSON.stringify(registrosFiltrados))
+          }
+
+          return registrosFiltrados
+        }
       }
       return []
     } catch (error) {
@@ -1551,7 +1557,7 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Soma perdas e retrabalhos por linha, turno e SKU
+   * Soma perdas por linha, turno e SKU
    * Usa histórico local de qualidade até a migração completa para Supabase
    */
   const calcularTotalPerdasDoApontamento = useCallback(
@@ -1702,11 +1708,7 @@ export default function ApontamentoOEE() {
       ? (unidadesBoas / quantidadeProduzidaTotal) * 100
       : 100
 
-    const qualidadeRetrabalho = tempoOperacao > 0
-      ? ((tempoOperacao - 0) / tempoOperacao) * 100
-      : 100
-
-    const qualidade = (qualidadeUnidades / 100) * (qualidadeRetrabalho / 100) * 100
+    const qualidade = qualidadeUnidades
     const oee = (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
     const tempoValioso = (qualidade / 100) * tempoOperacionalLiquido
 
@@ -2118,15 +2120,11 @@ export default function ApontamentoOEE() {
       setHistoricoQualidade(novoHistorico)
       salvarQualidadeNoLocalStorage(novoHistorico)
 
-      // Remover do serviço de apontamentos (localStorage de perdas/retrabalho)
+      // Remover do serviço de apontamentos (localStorage de perdas)
       if (qualidadeExcluida.tipo === 'PERDAS') {
         const perdas = buscarTodosApontamentosPerdas()
         const perdasAtualizadas = perdas.filter(p => p.id !== qualidadeParaExcluir)
         localStorage.setItem('sysoee_apontamentos_perdas', JSON.stringify(perdasAtualizadas))
-      } else if (qualidadeExcluida.tipo === 'RETRABALHO') {
-        const retrabalhos = buscarTodosApontamentosRetrabalho()
-        const retrabalhosAtualizados = retrabalhos.filter(r => r.id !== qualidadeParaExcluir)
-        localStorage.setItem('sysoee_apontamentos_retrabalho', JSON.stringify(retrabalhosAtualizados))
       }
 
       console.log('🗑️ Qualidade excluída:', {
@@ -2422,7 +2420,7 @@ export default function ApontamentoOEE() {
 
   // ==================== Carregar dados do turno OEE via parâmetros URL ====================
   /**
-   * Quando a página é aberta com oeeTurnoId na query string (vindo do OeeTurno),
+   * Quando a página é aberta com oeeturno_id na query string (vindo do OeeTurno),
    * busca os dados do turno OEE e preenche o formulário automaticamente.
    * Isso permite visualizar/editar um turno existente.
    *
@@ -2430,7 +2428,7 @@ export default function ApontamentoOEE() {
    * ocorra apenas uma vez por oeeTurnoId.
    */
   useEffect(() => {
-    const oeeTurnoIdParam = searchParams.get('oeeTurnoId')
+    const oeeTurnoIdParam = searchParams.get('oeeturno_id') || searchParams.get('oeeTurnoId')
     const editMode = searchParams.get('edit') === 'true'
     const oeeTurnoIdNumero = oeeTurnoIdParam ? Number(oeeTurnoIdParam) : NaN
 
@@ -3292,7 +3290,7 @@ export default function ApontamentoOEE() {
   // ==================== Handlers ====================
 
   /**
-   * Adiciona registro de qualidade (perdas e/ou retrabalho)
+   * Adiciona registro de qualidade (perdas)
    */
   const handleAdicionarQualidade = () => {
     // =================================================================
@@ -3308,99 +3306,50 @@ export default function ApontamentoOEE() {
     }
 
     // =================================================================
-    // VALIDAÇÃO 2: Verificar se pelo menos um campo está preenchido
+    // VALIDAÇÃO 2: Verificar se a quantidade de perdas está preenchida
     // =================================================================
     const temPerdas = quantidadePerdas && Number(quantidadePerdas) > 0
-    const temRetrabalho = quantidadeRetrabalho && Number(quantidadeRetrabalho) > 0
 
-    if (!temPerdas && !temRetrabalho) {
+    if (!temPerdas) {
       toast({
         title: 'Erro de Validação',
-        description: 'Informe a quantidade de perdas e/ou retrabalho',
+        description: 'Informe a quantidade de perdas',
         variant: 'destructive'
       })
       return
     }
 
     // =================================================================
-    // VALIDAÇÃO 3: Verificar se o motivo do retrabalho está preenchido
-    // =================================================================
-    if (temRetrabalho && !motivoRetrabalho.trim()) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Informe o motivo do retrabalho',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // SALVAMENTO: Salvar perdas e/ou retrabalho
+    // SALVAMENTO: Salvar perdas
     // =================================================================
     try {
-      const novosRegistros: RegistroQualidade[] = []
+      const apontamentoPerdas = salvarApontamentoPerdas(
+        apontamentoProducaoId,
+        Number(quantidadePerdas),
+        '', // motivo removido - campo não mais obrigatório
+        null, // observacao
+        1, // TODO: buscar do contexto de autenticação
+        'Operador' // TODO: buscar do contexto de autenticação
+      )
 
-      // Salvar perdas se informado
-      if (temPerdas) {
-        const apontamentoPerdas = salvarApontamentoPerdas(
-          apontamentoProducaoId,
-          Number(quantidadePerdas),
-          '', // motivo removido - campo não mais obrigatório
-          null, // observacao
-          1, // TODO: buscar do contexto de autenticação
-          'Operador' // TODO: buscar do contexto de autenticação
-        )
-
-        const registroPerdas: RegistroQualidade = {
-          id: apontamentoPerdas.id,
-          data: format(data!, 'dd/MM/yyyy'),
-          turno,
-          linhaId: linhaId!,
-          linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
-          apontamentoProducaoId,
-          skuCodigo,
-          tipo: 'PERDAS',
-          quantidade: Number(quantidadePerdas),
-          motivo: '', // motivo removido - campo não mais obrigatório
-          dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
-        }
-
-        novosRegistros.push(registroPerdas)
-      }
-
-      // Salvar retrabalho se informado
-      if (temRetrabalho) {
-        const apontamentoRetrabalho = salvarApontamentoRetrabalho(
-          apontamentoProducaoId,
-          Number(quantidadeRetrabalho),
-          0, // tempoRetrabalho - TODO: adicionar campo no formulário
-          motivoRetrabalho,
-          null, // observacao
-          1, // TODO: buscar do contexto de autenticação
-          'Operador' // TODO: buscar do contexto de autenticação
-        )
-
-        const registroRetrabalho: RegistroQualidade = {
-          id: apontamentoRetrabalho.id,
-          data: format(data!, 'dd/MM/yyyy'),
-          turno,
-          linhaId: linhaId!,
-          linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
-          apontamentoProducaoId,
-          skuCodigo,
-          tipo: 'RETRABALHO',
-          quantidade: Number(quantidadeRetrabalho),
-          motivo: motivoRetrabalho,
-          dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
-        }
-
-        novosRegistros.push(registroRetrabalho)
+      const registroPerdas: RegistroQualidade = {
+        id: apontamentoPerdas.id,
+        data: format(data!, 'dd/MM/yyyy'),
+        turno,
+        linhaId: linhaId!,
+        linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
+        apontamentoProducaoId,
+        skuCodigo,
+        tipo: 'PERDAS',
+        quantidade: Number(quantidadePerdas),
+        motivo: '', // motivo removido - campo não mais obrigatório
+        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
       }
 
       // =================================================================
       // ATUALIZAR HISTÓRICO E LOCALSTORAGE
       // =================================================================
-      const novoHistorico = [...novosRegistros, ...historicoQualidade]
+      const novoHistorico = [registroPerdas, ...historicoQualidade]
       setHistoricoQualidade(novoHistorico)
       salvarQualidadeNoLocalStorage(novoHistorico)
 
@@ -3410,19 +3359,13 @@ export default function ApontamentoOEE() {
       // LIMPAR FORMULÁRIO
       // =================================================================
       setQuantidadePerdas('')
-      setQuantidadeRetrabalho('')
-      setMotivoRetrabalho('')
 
       // =================================================================
       // FEEDBACK PARA O USUÁRIO
       // =================================================================
-      const mensagens: string[] = []
-      if (temPerdas) mensagens.push(`${Number(quantidadePerdas).toLocaleString('pt-BR')} unidades de perdas`)
-      if (temRetrabalho) mensagens.push(`${Number(quantidadeRetrabalho).toLocaleString('pt-BR')} unidades de retrabalho`)
-
       toast({
         title: '✅ Qualidade Registrada',
-        description: `Registrado: ${mensagens.join(' e ')}. OEE atualizado.`
+        description: `Registrado: ${Number(quantidadePerdas).toLocaleString('pt-BR')} unidades de perdas. OEE atualizado.`
       })
 
     } catch (error) {
@@ -3616,7 +3559,7 @@ export default function ApontamentoOEE() {
               {/* Seção Esquerda - Título e Subtítulo */}
               <div>
                 <h1 className="text-2xl font-bold text-brand-primary">
-                  Diário de Bordo
+                  Diário de Bordo{oeeTurnoId ? `: [${oeeTurnoId}]` : ''}
                 </h1>
                 <p className="text-brand-text-secondary">
                   Registro de produção, qualidade e paradas
@@ -4123,7 +4066,7 @@ export default function ApontamentoOEE() {
                 >
                   <h3 className="font-display text-lg font-bold text-primary mb-2">Qualidade</h3>
                   <p className="text-sm text-muted-foreground">
-                    Registro de perdas e retrabalhos
+                    Registro de perdas
                   </p>
                 </div>
 
@@ -4197,7 +4140,6 @@ export default function ApontamentoOEE() {
                               <td className="px-4 py-3">
                                 <Input
                                   type="number"
-                                  placeholder="ex: 10000"
                                   value={linha.quantidadeProduzida}
                                   onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
                                   className={`w-48 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -4328,64 +4270,33 @@ export default function ApontamentoOEE() {
                     Perdas
                   </h3>
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="loss-quantity">
-                        Quantidade
-                      </label>
-                      <input
-                        className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
-                        id="loss-quantity"
-                        type="number"
-                        placeholder="ex: 500"
-                        value={quantidadePerdas}
-                        onChange={(e) => setQuantidadePerdas(e.target.value)}
-                      />
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="loss-quantity">
+                          Quantidade
+                        </label>
+                        <input
+                          className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
+                          id="loss-quantity"
+                          type="number"
+                          placeholder="ex: 500"
+                          value={quantidadePerdas}
+                          onChange={(e) => setQuantidadePerdas(e.target.value)}
+                        />
+                      </div>
+
+                      <button
+                        className="h-9 bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+                        type="button"
+                        onClick={handleAdicionarQualidade}
+                        disabled={statusTurno !== 'INICIADO'}
+                      >
+                        <CheckCircle className="h-5 w-5" />
+                        Registrar Perda
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-2 border-b border-border-light dark:border-border-dark pb-2">
-                    Retrabalho
-                  </h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="rework-quantity">
-                        Quantidade
-                      </label>
-                      <input
-                        className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
-                        id="rework-quantity"
-                        type="number"
-                        placeholder="ex: 200"
-                        value={quantidadeRetrabalho}
-                        onChange={(e) => setQuantidadeRetrabalho(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="rework-reason">
-                        Motivo
-                      </label>
-                      <input
-                        className="w-full rounded-md border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark focus:ring-primary focus:border-primary"
-                        id="rework-reason"
-                        type="text"
-                        value={motivoRetrabalho}
-                        onChange={(e) => setMotivoRetrabalho(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  className="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
-                  type="button"
-                  onClick={handleAdicionarQualidade}
-                  disabled={statusTurno !== 'INICIADO'}
-                >
-                  <CheckCircle className="h-5 w-5" />
-                  Adicionar Registro de Qualidade
-                </button>
               </div>
 
               {/* Histórico de Registros de Qualidade */}
@@ -5038,7 +4949,7 @@ export default function ApontamentoOEE() {
                 <div className="flex items-start gap-2">
                   <span className="font-semibold min-w-[140px]">Qualidade:</span>
                   <span className="text-muted-foreground">
-                    {formatarPercentual(oeeCalculado.qualidade)}% - Percentual de produtos sem defeitos ou retrabalho
+                    {formatarPercentual(oeeCalculado.qualidade)}% - Percentual de produtos sem defeitos
                   </span>
                 </div>
               </div>

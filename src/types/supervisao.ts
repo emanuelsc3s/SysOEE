@@ -39,7 +39,6 @@ export interface TurnoSupervisao {
 
   // Resumo de qualidade
   total_refugo: number;
-  total_minutos_retrabalho: number;
   total_apontamentos_qualidade: number;
 
   // Parâmetros para OEE
@@ -126,9 +125,8 @@ export interface ApontamentoQualidade {
   linha_id: string;
   turno_id: string;
   data_apontamento: string;
-  tipo_perda: 'REFUGO' | 'RETRABALHO' | 'DESVIO' | 'BLOQUEIO';
+  tipo_perda: 'REFUGO' | 'DESVIO' | 'BLOQUEIO';
   unidades_refugadas: number | null;
-  tempo_retrabalho_minutos: number | null;
   motivo: string | null;
   origem_dados: 'CLP_AUTOMATICO' | 'MANUAL' | 'TOTVS';
   totvs_integrado: boolean;

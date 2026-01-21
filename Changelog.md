@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado redirecionamento do OeeTurno com `oeeturno_id` e exibição do ID no título do Diário de Bordo.
+- Removida a funcionalidade de retrabalho no apontamento de qualidade, cálculo do OEE e persistência local.
 - Ajustada a ordenação da listagem de velocidades nominais para usar ordem natural/ascendente por linha e depois por referência do produto (ex: 07030001 antes de 07030003 dentro da mesma linha).
 - Removido o ícone SVG da coluna "Linha de Produção" na tabela da página de Velocidade Nominal.
 - Removida a coluna ID da visualização da tabela na página de Velocidade Nominal.
@@ -39,3 +41,4 @@
 - Adicionada cor marrom suave para o badge de "Embalagem" no modal de busca de linha de produção.
 - Adicionada cor âmbar suave para o badge de "Envase+Embalagem" no modal de busca de linha de produção.
 - Reordenada a coluna "Status" para ficar logo após "Código" na tabela do modal de busca de linha de produção.
+- Alinhado o botão de registro de qualidade com o campo de quantidade no `ApontamentoOEE`.

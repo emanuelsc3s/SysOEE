@@ -224,11 +224,11 @@ export default function OeeTurno() {
 
   const handleVisualizar = (turno: OeeTurnoFormData) => {
     // Navega para a página de apontamento OEE com o ID do turno
-    navigate(`/apontamento-oee?oeeTurnoId=${turno.id}`)
+    navigate(`/apontamento-oee?oeeturno_id=${turno.id}`)
   }
 
   const handleEditar = (turno: OeeTurnoFormData) => {
-    navigate(`/apontamento-oee?oeeTurnoId=${turno.id}&edit=true`)
+    navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`)
   }
 
   const handleExcluirClick = (turno: OeeTurnoFormData) => {

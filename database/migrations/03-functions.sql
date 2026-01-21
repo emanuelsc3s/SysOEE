@@ -131,11 +131,6 @@ BEGIN
   FROM tbapontamentoqualidade
       WHERE lote_id = v_lote_id AND tipo_perda = 'REFUGO'
     ), 0),
-    tempo_retrabalho_minutos = COALESCE((
-      SELECT SUM(tempo_retrabalho_minutos)
-  FROM tbapontamentoqualidade
-      WHERE lote_id = v_lote_id AND tipo_perda = 'RETRABALHO'
-    ), 0),
     unidades_boas = GREATEST(
       COALESCE((
         SELECT SUM(unidades_produzidas)
@@ -257,7 +252,6 @@ RETURNS TABLE (
   tempo_paradas_planejadas DECIMAL(6,2),
   tempo_paradas_nao_planejadas DECIMAL(6,2),
   tempo_pequenas_paradas DECIMAL(6,2),
-  tempo_retrabalho DECIMAL(6,2),
 
   -- Unidades
   unidades_produzidas INTEGER,
@@ -269,7 +263,6 @@ RETURNS TABLE (
   disponibilidade DECIMAL(5,2),
   performance DECIMAL(5,2),
   qualidade_unidades DECIMAL(5,2),
-  qualidade_retrabalho DECIMAL(5,2),
   qualidade DECIMAL(5,2),
 
   -- OEE Final (%)
@@ -291,7 +284,6 @@ DECLARE
   v_tempo_planejadas DECIMAL(6,2) := 0;
   v_tempo_nao_planejadas DECIMAL(6,2) := 0;
   v_tempo_pequenas_paradas DECIMAL(6,2) := 0;
-  v_tempo_retrabalho DECIMAL(6,2);
 
   -- Unidades
   v_unidades_produzidas INTEGER;
@@ -302,7 +294,6 @@ DECLARE
   v_disponibilidade DECIMAL(5,2);
   v_performance DECIMAL(5,2);
   v_qualidade_unidades DECIMAL(5,2);
-  v_qualidade_retrabalho DECIMAL(5,2);
   v_qualidade DECIMAL(5,2);
   v_oee DECIMAL(5,2);
 BEGIN
@@ -317,7 +308,6 @@ BEGIN
     l.unidades_produzidas,
     l.unidades_boas,
     l.unidades_refugo,
-    l.tempo_retrabalho_minutos,
     t.hora_inicio AS turno_hora_inicio,
     t.hora_fim AS turno_hora_fim
   INTO v_lote
@@ -382,7 +372,6 @@ BEGIN
   v_unidades_produzidas := COALESCE(v_lote.unidades_produzidas, 0);
   v_unidades_boas := COALESCE(v_lote.unidades_boas, 0);
   v_unidades_refugadas := COALESCE(v_lote.unidades_refugo, 0);
-  v_tempo_retrabalho := COALESCE(v_lote.tempo_retrabalho_minutos, 0) / 60.0;
 
   -- 6. TEMPO OPERACIONAL LÍQUIDO = Unidades Produzidas / Velocidade Nominal
   v_tempo_operacional_liquido := v_unidades_produzidas / v_velocidade;
@@ -403,24 +392,12 @@ BEGIN
     v_performance := 0;
   END IF;
 
-  -- 7.3 QUALIDADE (duas parcelas)
-
-  -- 7.3.1 Qualidade por Unidades = (Unidades Boas / Unidades Produzidas) × 100
+  -- 7.3 QUALIDADE = (Unidades Boas / Unidades Produzidas) × 100
   IF v_unidades_produzidas > 0 THEN
-    v_qualidade_unidades := (v_unidades_boas::DECIMAL / v_unidades_produzidas) * 100;
+    v_qualidade := (v_unidades_boas::DECIMAL / v_unidades_produzidas) * 100;
   ELSE
-    v_qualidade_unidades := 100;
+    v_qualidade := 100;
   END IF;
-
-  -- 7.3.2 Qualidade por Retrabalho = ((Tempo Operação - Tempo Retrabalho) / Tempo Operação) × 100
-  IF v_tempo_operacao > 0 THEN
-    v_qualidade_retrabalho := ((v_tempo_operacao - v_tempo_retrabalho) / v_tempo_operacao) * 100;
-  ELSE
-    v_qualidade_retrabalho := 100;
-  END IF;
-
-  -- 7.3.3 Qualidade Total = Qualidade Unidades × Qualidade Retrabalho
-  v_qualidade := (v_qualidade_unidades / 100) * v_qualidade_retrabalho;
 
   -- 7.4 Tempo Valioso = (Qualidade × Tempo Operacional Líquido) / 100
   v_tempo_valioso := (v_qualidade / 100) * v_tempo_operacional_liquido;
@@ -445,15 +422,12 @@ BEGIN
     v_tempo_planejadas,
     v_tempo_nao_planejadas,
     v_tempo_pequenas_paradas,
-    v_tempo_retrabalho,
     v_unidades_produzidas,
     v_unidades_boas,
     v_unidades_refugadas,
     v_velocidade,
     v_disponibilidade,
     v_performance,
-    v_qualidade_unidades,
-    v_qualidade_retrabalho,
     v_qualidade,
     v_oee;
 END;
@@ -486,7 +460,7 @@ BEGIN
       tempo_calendario, tempo_disponivel, tempo_operacao,
       tempo_operacional_liquido, tempo_valioso,
       tempo_paradas_estrategicas, tempo_paradas_planejadas,
-      tempo_paradas_nao_planejadas, tempo_retrabalho,
+      tempo_paradas_nao_planejadas,
       unidades_produzidas, unidades_boas, unidades_refugadas,
       velocidade_nominal,
       disponibilidade, performance, qualidade, oee,
@@ -496,7 +470,7 @@ BEGIN
       v_oee.tempo_calendario, v_oee.tempo_disponivel, v_oee.tempo_operacao,
       v_oee.tempo_operacional_liquido, v_oee.tempo_valioso,
       v_oee.tempo_paradas_estrategicas, v_oee.tempo_paradas_planejadas,
-      v_oee.tempo_paradas_nao_planejadas, v_oee.tempo_retrabalho,
+      v_oee.tempo_paradas_nao_planejadas,
       v_oee.unidades_produzidas, v_oee.unidades_boas, v_oee.unidades_refugadas,
       v_oee.velocidade_nominal,
       v_oee.disponibilidade, v_oee.performance, v_oee.qualidade, v_oee.oee,
@@ -511,7 +485,6 @@ BEGIN
       tempo_paradas_estrategicas = EXCLUDED.tempo_paradas_estrategicas,
       tempo_paradas_planejadas = EXCLUDED.tempo_paradas_planejadas,
       tempo_paradas_nao_planejadas = EXCLUDED.tempo_paradas_nao_planejadas,
-      tempo_retrabalho = EXCLUDED.tempo_retrabalho,
       unidades_produzidas = EXCLUDED.unidades_produzidas,
       unidades_boas = EXCLUDED.unidades_boas,
       unidades_refugadas = EXCLUDED.unidades_refugadas,

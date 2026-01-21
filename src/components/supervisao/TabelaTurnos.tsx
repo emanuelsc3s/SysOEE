@@ -154,11 +154,6 @@ export function TabelaTurnos({ turnos, onSelecionarTurno }: TabelaTurnosProps) {
                   <div className="text-sm font-medium text-gray-900">
                     {turno.total_refugo.toLocaleString('pt-BR')}
                   </div>
-                  {turno.total_minutos_retrabalho > 0 && (
-                    <div className="text-xs text-gray-500">
-                      {turno.total_minutos_retrabalho} min retrab.
-                    </div>
-                  )}
                 </td>
 
                 <td className="px-6 py-4 whitespace-nowrap text-center">

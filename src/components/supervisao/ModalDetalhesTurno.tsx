@@ -109,14 +109,6 @@ export function ModalDetalhesTurno({
                 </div>
                 <div className="text-xs text-gray-500">unidades</div>
               </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm text-gray-600">Retrabalho</div>
-                <div className="text-2xl font-bold text-yellow-600">
-                  {turno.total_minutos_retrabalho}
-                </div>
-                <div className="text-xs text-gray-500">minutos</div>
-              </div>
             </div>
 
             {/* Alertas */}
@@ -262,11 +254,6 @@ export function ModalDetalhesTurno({
                               {qual.unidades_refugadas && (
                                 <span className="text-sm font-medium text-red-600">
                                   {qual.unidades_refugadas.toLocaleString('pt-BR')} unidades
-                                </span>
-                              )}
-                              {qual.tempo_retrabalho_minutos && (
-                                <span className="text-sm font-medium text-yellow-600">
-                                  {qual.tempo_retrabalho_minutos} minutos
                                 </span>
                               )}
                             </div>

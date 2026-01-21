@@ -90,39 +90,6 @@ export interface ApontamentoQualidadePerdas {
 }
 
 /**
- * Interface para Apontamento de Qualidade - Retrabalho
- */
-export interface ApontamentoQualidadeRetrabalho {
-  /** ID único do apontamento */
-  id: string
-
-  /** ID do apontamento de produção relacionado */
-  apontamentoProducaoId: string
-
-  /** Quantidade de unidades em retrabalho */
-  unidadesRetrabalho: number
-
-  /** Tempo de retrabalho em horas */
-  tempoRetrabalho: number
-
-  /** Motivo do retrabalho */
-  motivoRetrabalho: string
-
-  /** Observações adicionais */
-  observacao: string | null
-
-  /** ID do usuário que fez o apontamento */
-  criadoPor: number
-
-  /** Nome do usuário que fez o apontamento */
-  criadoPorNome: string
-
-  /** Campos de auditoria ALCOA+ */
-  created_at: string
-  updated_at: string
-}
-
-/**
  * Interface para cálculo de OEE em tempo real
  */
 export interface CalculoOEE {

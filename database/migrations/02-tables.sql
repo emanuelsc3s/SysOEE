@@ -359,7 +359,6 @@ CREATE TABLE tblote (
   unidades_produzidas INTEGER DEFAULT 0 CHECK (unidades_produzidas >= 0),
   unidades_boas INTEGER DEFAULT 0 CHECK (unidades_boas >= 0),
   unidades_refugo INTEGER DEFAULT 0 CHECK (unidades_refugo >= 0),
-  tempo_retrabalho_minutos INTEGER DEFAULT 0 CHECK (tempo_retrabalho_minutos >= 0),
 
   status status_lote_enum NOT NULL DEFAULT 'EM_ANDAMENTO',
   observacoes TEXT,
@@ -489,7 +488,7 @@ COMMENT ON COLUMN tbapontamentoproducao.clp_timestamp IS 'Timestamp original do 
 
 -- ----------------------------------------------------
 -- TBAPONTAMENTOQUALIDADE
--- Apontamentos de qualidade (refugo, retrabalho)
+-- Apontamentos de qualidade (refugo)
 -- ----------------------------------------------------
 CREATE TABLE tbapontamentoqualidade (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -500,9 +499,8 @@ CREATE TABLE tbapontamentoqualidade (
   data_apontamento DATE NOT NULL,
   tipo_perda tipo_perda_qualidade_enum NOT NULL,
 
-  -- Refugo ou Retrabalho
+  -- Refugo
   unidades_refugadas INTEGER CHECK (unidades_refugadas >= 0),
-  tempo_retrabalho_minutos INTEGER CHECK (tempo_retrabalho_minutos >= 0),
 
   motivo TEXT,
 
@@ -526,15 +524,14 @@ CREATE TABLE tbapontamentoqualidade (
   deleted_at TIMESTAMP WITHOUT TIME ZONE,
   deleted_by BIGINT REFERENCES tbusuario(id),
 
-  -- Validação: refugo OU retrabalho deve estar preenchido
+  -- Validação: refugo deve estar preenchido
   CONSTRAINT ck_qualidade CHECK (
     (tipo_perda = 'REFUGO' AND unidades_refugadas > 0) OR
-    (tipo_perda = 'RETRABALHO' AND tempo_retrabalho_minutos > 0) OR
     (tipo_perda IN ('DESVIO', 'BLOQUEIO'))
   )
 );
 
-COMMENT ON TABLE tbapontamentoqualidade IS 'Apontamentos de perdas de qualidade (refugo, retrabalho)';
+COMMENT ON TABLE tbapontamentoqualidade IS 'Apontamentos de perdas de qualidade (refugo)';
 COMMENT ON COLUMN tbapontamentoqualidade.totvs_integrado IS 'TRUE quando sincronizado com TOTVS';
 
 -- =====================================================
@@ -564,7 +561,6 @@ CREATE TABLE tboeecalculado (
   tempo_paradas_estrategicas DECIMAL(6,2) DEFAULT 0,
   tempo_paradas_planejadas DECIMAL(6,2) DEFAULT 0,
   tempo_paradas_nao_planejadas DECIMAL(6,2) DEFAULT 0,
-  tempo_retrabalho DECIMAL(6,2) DEFAULT 0,
 
   -- Unidades
   unidades_produzidas INTEGER NOT NULL,
