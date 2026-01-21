@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, X, Loader2, Factory } from 'lucide-react'
+import { Search, X, Loader2, Factory, RefreshCw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { buscarLinhasProducao } from '@/services/api/linhaproducao.api'
 import { LinhaProducao } from '@/types/linhaproducao'
@@ -155,12 +155,23 @@ export function ModalBuscaLinhaProducao({
   /**
    * Retorna a cor do badge de acordo com o tipo da linha
    */
-  const getCorTipo = (tipo: string | null): "default" | "secondary" | "destructive" | "outline" => {
-    switch (tipo?.toLowerCase()) {
+  const getCorTipo = (
+    tipo: string | null,
+  ):
+    | 'default'
+    | 'secondary'
+    | 'destructive'
+    | 'outline'
+    | 'embalagem'
+    | 'envaseEmbalagem' => {
+    const tipoNormalizado = tipo?.toLowerCase().replace(/\s+/g, '') || ''
+    switch (tipoNormalizado) {
       case 'envase':
         return 'default'
       case 'embalagem':
-        return 'secondary'
+        return 'embalagem'
+      case 'envase+embalagem':
+        return 'envaseEmbalagem'
       default:
         return 'outline'
     }
@@ -181,51 +192,65 @@ export function ModalBuscaLinhaProducao({
 
         {/* Campo de Busca e Filtros */}
         <div className="px-6 py-4 border-b bg-muted/30">
-          <div className="flex gap-4 items-end">
-            {/* Campo de busca por texto */}
-            <div className="flex-1">
-              <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                Buscar
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Digite nome da linha, departamento ou tipo..."
-                  value={termoBusca}
-                  onChange={(e) => setTermoBusca(e.target.value)}
-                  className="pl-10 pr-10 h-11 text-base"
-                  autoFocus
-                />
-                {termoBusca && (
-                  <button
-                    onClick={() => setTermoBusca('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                )}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 md:gap-3 w-full md:flex-1 min-w-0">
+              {/* Campo de busca por texto */}
+              <div className="flex-1 min-w-0">
+                <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                  Buscar
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Digite nome da linha, departamento ou tipo..."
+                    value={termoBusca}
+                    onChange={(e) => setTermoBusca(e.target.value)}
+                    className={`pl-10 py-2 w-full border border-gray-200 rounded-md text-sm${termoBusca ? ' pr-10' : ''}`}
+                    autoFocus
+                  />
+                  {termoBusca && (
+                    <button
+                      onClick={() => setTermoBusca('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Filtro de status */}
+              <div className="w-full sm:w-48">
+                <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
+                  Status
+                </label>
+                <Select
+                  value={filtroStatus}
+                  onValueChange={(value: FiltroStatus) => setFiltroStatus(value)}
+                >
+                <SelectTrigger className="h-9 border-gray-200 rounded-md text-sm">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="ativos">Sim (Ativos)</SelectItem>
+                    <SelectItem value="inativos">Não (Inativos)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            {/* Filtro de status */}
-            <div className="w-48">
-              <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
-                Status
-              </label>
-              <Select
-                value={filtroStatus}
-                onValueChange={(value: FiltroStatus) => setFiltroStatus(value)}
+            <div className="flex flex-col sm:flex-row gap-2 md:shrink-0 md:self-end">
+              <Button
+                variant="outline"
+                onClick={carregarLinhas}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                title="Atualizar lista"
               >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="ativos">Sim (Ativos)</SelectItem>
-                  <SelectItem value="inativos">Não (Inativos)</SelectItem>
-                </SelectContent>
-              </Select>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-3">

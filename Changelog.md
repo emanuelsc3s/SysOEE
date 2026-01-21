@@ -30,3 +30,11 @@
 - Ajustado o carregamento de produção no `ApontamentoOEE` ao abrir turnos pela lista, com fallback por data/turno/produto.
 - Ajustado o idioma dos campos de hora do `ApontamentoOEE` para exibição em formato 24h pt-BR.
 - Forçado o formato 24h nos campos de hora do `ApontamentoOEE` com entrada textual e normalização de valores.
+- Adicionado botão de atualização da consulta no modal de busca de linha de produção.
+- Ajustado o layout do bloco de busca do modal de linha de produção para seguir o padrão do OeeTurno.
+- Corrigido o alinhamento do botão Atualizar no modal de busca de linha de produção.
+- Ajustado o alinhamento responsivo do bloco de busca do modal de linha de produção.
+- Ajustado o estilo do campo de busca do modal de linha de produção para seguir o padrão do OeeTurno.
+- Ajustado o estilo do seletor de status no modal de linha de produção para seguir o padrão do OeeTurno.
+- Adicionada cor marrom suave para o badge de "Embalagem" no modal de busca de linha de produção.
+- Adicionada cor âmbar suave para o badge de "Envase+Embalagem" no modal de busca de linha de produção.

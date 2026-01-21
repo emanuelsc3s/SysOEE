@@ -264,13 +264,12 @@ export default function LinhaProducaoConsulta() {
                 {/* Botão Atualizar */}
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 bg-[#242f65] text-white border-[#242f65] hover:bg-[#1a2148] hover:border-[#1a2148] hover:text-white"
                   onClick={() => refetch()}
                   disabled={isFetching}
+                  className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                  title="Atualizar lista"
                 >
-                  <RefreshCw
-                    className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
-                  />
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
                   Atualizar
                 </Button>
               </div>
