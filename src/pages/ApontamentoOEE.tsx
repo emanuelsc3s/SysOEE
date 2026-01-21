@@ -277,6 +277,7 @@ export default function ApontamentoOEE() {
 
   // ==================== Estado de Qualidade - Perdas ====================
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
+  const [salvandoQualidade, setSalvandoQualidade] = useState(false)
 
   // ==================== Estado de Tempo de Parada ====================
   const [paradasGerais, setParadasGerais] = useState<ParadaGeral[]>([])
@@ -3322,7 +3323,7 @@ export default function ApontamentoOEE() {
   /**
    * Adiciona registro de qualidade (perdas)
    */
-  const handleAdicionarQualidade = () => {
+  const handleAdicionarQualidade = async () => {
     // =================================================================
     // VALIDAÇÃO 1: Verificar se existe apontamento de produção ativo
     // =================================================================
@@ -3338,7 +3339,8 @@ export default function ApontamentoOEE() {
     // =================================================================
     // VALIDAÇÃO 2: Verificar se a quantidade de perdas está preenchida
     // =================================================================
-    const temPerdas = quantidadePerdas && Number(quantidadePerdas) > 0
+    const perdaValor = Number(quantidadePerdas)
+    const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
 
     if (!temPerdas) {
       toast({
@@ -3350,12 +3352,47 @@ export default function ApontamentoOEE() {
     }
 
     // =================================================================
-    // SALVAMENTO: Salvar perdas
+    // VALIDAÇÃO 3: Verificar se existe turno OEE válido
+    // =================================================================
+    if (!oeeTurnoId) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Turno OEE não encontrado. Inicie o turno antes de registrar perdas.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const usuario = await obterUsuarioAutenticado()
+    if (!usuario) {
+      return
+    }
+
+    // =================================================================
+    // SALVAMENTO: Salvar perdas no Supabase e no histórico local
     // =================================================================
     try {
+      setSalvandoQualidade(true)
+
+      const { error: erroPerda } = await supabase
+        .from('tboee_turno_perda')
+        .insert({
+          oeeturno_id: oeeTurnoId,
+          perda: perdaValor,
+          created_by: usuario.id,
+          updated_at: new Date().toISOString(),
+          updated_by: usuario.id
+        })
+        .select('oeeturnoperda_id')
+        .single()
+
+      if (erroPerda) {
+        throw erroPerda
+      }
+
       const apontamentoPerdas = salvarApontamentoPerdas(
         apontamentoProducaoId,
-        Number(quantidadePerdas),
+        perdaValor,
         '', // motivo removido - campo não mais obrigatório
         null, // observacao
         1, // TODO: buscar do contexto de autenticação
@@ -3371,7 +3408,7 @@ export default function ApontamentoOEE() {
         apontamentoProducaoId,
         skuCodigo,
         tipo: 'PERDAS',
-        quantidade: Number(quantidadePerdas),
+        quantidade: perdaValor,
         motivo: '', // motivo removido - campo não mais obrigatório
         dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
       }
@@ -3395,16 +3432,18 @@ export default function ApontamentoOEE() {
       // =================================================================
       toast({
         title: '✅ Qualidade Registrada',
-        description: `Registrado: ${Number(quantidadePerdas).toLocaleString('pt-BR')} unidades de perdas. OEE atualizado.`
+        description: `Registrado: ${perdaValor.toLocaleString('pt-BR')} unidades de perdas. OEE atualizado.`
       })
 
     } catch (error) {
       console.error('❌ Erro ao salvar apontamento de qualidade:', error)
       toast({
         title: 'Erro ao salvar',
-        description: 'Não foi possível salvar o apontamento de qualidade. Tente novamente.',
+        description: obterMensagemErro(error, 'Não foi possível salvar o apontamento de qualidade. Tente novamente.'),
         variant: 'destructive'
       })
+    } finally {
+      setSalvandoQualidade(false)
     }
   }
 
@@ -4319,10 +4358,14 @@ export default function ApontamentoOEE() {
                         className="h-9 bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
                         type="button"
                         onClick={handleAdicionarQualidade}
-                        disabled={statusTurno !== 'INICIADO'}
+                        disabled={statusTurno !== 'INICIADO' || salvandoQualidade}
                       >
-                        <CheckCircle className="h-5 w-5" />
-                        Registrar Perda
+                        {salvandoQualidade ? (
+                          <Timer className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-5 w-5" />
+                        )}
+                        {salvandoQualidade ? 'Registrando...' : 'Registrar Perda'}
                       </button>
                     </div>
                   </div>

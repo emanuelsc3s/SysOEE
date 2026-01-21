@@ -43,3 +43,4 @@
 - Adicionada cor âmbar suave para o badge de "Envase+Embalagem" no modal de busca de linha de produção.
 - Reordenada a coluna "Status" para ficar logo após "Código" na tabela do modal de busca de linha de produção.
 - Alinhado o botão de registro de qualidade com o campo de quantidade no `ApontamentoOEE`.
+- Implementada a persistência de perdas de qualidade no Supabase (`tboee_turno_perda`) na guia Qualidade do `ApontamentoOEE`.
