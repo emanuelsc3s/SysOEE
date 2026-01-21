@@ -51,7 +51,7 @@ export function useVelocidadeNominal() {
       setLoading(true)
 
       // Construir query base com JOINs
-      // Ordenacao por campos de tabelas relacionadas sera feita apos o mapeamento
+      // Buscar todos os dados primeiro para ordenar corretamente antes de paginar
       let query = supabase
         .from('tbvelocidadenominal')
         .select(`
@@ -75,11 +75,6 @@ export function useVelocidadeNominal() {
         query = query.eq('produto_id', filters.produtoId)
       }
 
-      // Paginação
-      const from = (page - 1) * itemsPerPage
-      const to = from + itemsPerPage - 1
-      query = query.range(from, to)
-
       console.log('🔍 useVelocidadeNominal: Executando query no Supabase...')
       const { data, error, count } = await query
 
@@ -90,28 +85,36 @@ export function useVelocidadeNominal() {
 
       console.log('✅ useVelocidadeNominal: Dados recebidos:', data?.length || 0, 'registros')
 
-      // Mapear e ordenar por linha de producao (alfabetica) e referencia do produto
+      // Mapear e ordenar por linha de producao (alfabetica) e referencia do produto (numerica)
       const velocidadesMapeadas = (data || [])
         .map(mapDbToForm)
         .sort((a, b) => {
-          // Primeiro: ordenar por linha de producao (alfabetica)
-          const linhaA = (a.linhaProducaoNome || '').toLowerCase()
-          const linhaB = (b.linhaProducaoNome || '').toLowerCase()
-          if (linhaA < linhaB) return -1
-          if (linhaA > linhaB) return 1
-          // Segundo: ordenar por referencia do produto (alfabetica)
-          const produtoA = (a.produtoCodigo || '').toLowerCase()
-          const produtoB = (b.produtoCodigo || '').toLowerCase()
-          if (produtoA < produtoB) return -1
-          if (produtoA > produtoB) return 1
+          // Primeiro: ordenar por linha de producao (ordem natural/alfanumerica)
+          const linhaA = (a.linhaProducaoNome || '').trim()
+          const linhaB = (b.linhaProducaoNome || '').trim()
+          if (linhaA !== linhaB) {
+            return linhaA.localeCompare(linhaB, 'pt-BR', { numeric: true, sensitivity: 'base' })
+          }
+          // Segundo: ordenar por referencia do produto (ordem natural/alfanumerica)
+          const produtoA = (a.produtoCodigo || '').trim()
+          const produtoB = (b.produtoCodigo || '').trim()
+          if (produtoA !== produtoB) {
+            return produtoA.localeCompare(produtoB, 'pt-BR', { numeric: true, sensitivity: 'base' })
+          }
           return 0
         })
+
+      // Aplicar paginacao apos ordenacao
+      const totalItems = count || velocidadesMapeadas.length
+      const from = (page - 1) * itemsPerPage
+      const to = from + itemsPerPage
+      const velocidadesPaginadas = velocidadesMapeadas.slice(from, to)
 
       setVelocidades(velocidadesMapeadas)
 
       return {
-        data: velocidadesMapeadas,
-        count: count || velocidadesMapeadas.length
+        data: velocidadesPaginadas,
+        count: totalItems
       }
     } catch (error) {
       console.error('❌ useVelocidadeNominal: Erro ao buscar velocidades:', error)

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a ordenação da listagem de velocidades nominais para usar ordem natural/ascendente por linha e depois por referência do produto (ex: 07030001 antes de 07030003 dentro da mesma linha).
 - Removido o ícone SVG da coluna "Linha de Produção" na tabela da página de Velocidade Nominal.
 - Removida a coluna ID da visualização da tabela na página de Velocidade Nominal.
 - Alterado o rótulo do card "Equipamentos" para "Linha de Produção" na página Home.
