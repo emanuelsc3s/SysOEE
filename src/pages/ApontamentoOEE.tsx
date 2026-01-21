@@ -268,6 +268,7 @@ export default function ApontamentoOEE() {
   const [modalLotesAberto, setModalLotesAberto] = useState(false)
   const [lotesProducao, setLotesProducao] = useState<LoteProducao[]>([]) // Lista de lotes cadastrados
   const [dadosLote, setDadosLote] = useState<DadosLote>(estadoInicialLote)
+  const [dataLoteDigitada, setDataLoteDigitada] = useState<string>('') // Data digitada no formato dd/mm/aaaa
   const [salvandoLote, setSalvandoLote] = useState(false)
   const [formularioLoteAberto, setFormularioLoteAberto] = useState(false) // Controla exibição do formulário inline
   const [loteEmEdicao, setLoteEmEdicao] = useState<string | null>(null) // ID do lote sendo editado
@@ -477,6 +478,64 @@ export default function ApontamentoOEE() {
     const minutos = Number(numeros.slice(2).padEnd(2, '0'))
     if (Number.isNaN(horas) || Number.isNaN(minutos) || horas > 23 || minutos > 59) return ''
     return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`
+  }
+
+  /**
+   * Formata a data digitada para o padrão dd/mm/aaaa usando apenas números.
+   */
+  const formatarDataDigitada = (valor: string): string => {
+    const numeros = valor.replace(/\D/g, '').slice(0, 8)
+    const dia = numeros.slice(0, 2)
+    const mes = numeros.slice(2, 4)
+    const ano = numeros.slice(4, 8)
+    const partes = []
+    if (dia) partes.push(dia)
+    if (mes) partes.push(mes)
+    if (ano) partes.push(ano)
+    return partes.join('/')
+  }
+
+  /**
+   * Converte data no formato dd/mm/aaaa para ISO (aaaa-mm-dd).
+   * Retorna string vazia se a data for inválida ou incompleta.
+   */
+  const converterDataBrParaIso = (dataBr: string): string => {
+    const partes = dataBr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+    if (!partes) return ''
+
+    const dia = Number(partes[1])
+    const mes = Number(partes[2])
+    const ano = Number(partes[3])
+    if (Number.isNaN(dia) || Number.isNaN(mes) || Number.isNaN(ano)) return ''
+    if (mes < 1 || mes > 12) return ''
+
+    const data = new Date(ano, mes - 1, dia)
+    if (
+      Number.isNaN(data.getTime()) ||
+      data.getFullYear() !== ano ||
+      data.getMonth() !== mes - 1 ||
+      data.getDate() !== dia
+    ) {
+      return ''
+    }
+
+    return `${String(ano).padStart(4, '0')}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+  }
+
+  /**
+   * Converte data ISO (aaaa-mm-dd) para dd/mm/aaaa.
+   */
+  const formatarDataIsoParaBr = (dataIso: string): string => {
+    if (!dataIso) return ''
+    if (dataIso.includes('/')) return dataIso
+
+    const partes = dataIso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (!partes) return dataIso
+
+    const ano = partes[1]
+    const mes = partes[2]
+    const dia = partes[3]
+    return `${dia}/${mes}/${ano}`
   }
 
   const turnoHoraInicialNormalizada = normalizarHoraDigitada(turnoHoraInicial)
@@ -1063,6 +1122,7 @@ export default function ApontamentoOEE() {
    */
   const resetarFormularioLote = () => {
     setDadosLote(estadoInicialLote)
+    setDataLoteDigitada('')
     setLoteEmEdicao(null)
     setFormularioLoteAberto(false)
   }
@@ -1094,6 +1154,7 @@ export default function ApontamentoOEE() {
    * Abre o formulário para editar um lote existente
    */
   const handleEditarLote = (lote: LoteProducao) => {
+    setDataLoteDigitada(formatarDataIsoParaBr(lote.data))
     setDadosLote({
       numeroLote: lote.numeroLote,
       data: lote.data,
@@ -5194,9 +5255,26 @@ export default function ApontamentoOEE() {
                     </Label>
                     <Input
                       id="data-lote"
-                      type="date"
-                      value={dadosLote.data}
-                      onChange={(e) => setDadosLote(prev => ({ ...prev, data: e.target.value }))}
+                    type="text"
+                    value={dataLoteDigitada}
+                    onChange={(e) => {
+                      const valorFormatado = formatarDataDigitada(e.target.value)
+                      setDataLoteDigitada(valorFormatado)
+                      const dataIso = converterDataBrParaIso(valorFormatado)
+                      setDadosLote(prev => ({ ...prev, data: dataIso }))
+                    }}
+                    onBlur={(e) => {
+                      const valorFormatado = formatarDataDigitada(e.target.value)
+                      const dataIso = converterDataBrParaIso(valorFormatado)
+                      if (dataIso) {
+                        setDataLoteDigitada(formatarDataIsoParaBr(dataIso))
+                        setDadosLote(prev => ({ ...prev, data: dataIso }))
+                        return
+                      }
+                      setDataLoteDigitada(valorFormatado)
+                      setDadosLote(prev => ({ ...prev, data: '' }))
+                    }}
+                    inputMode="numeric"
                       className="h-9"
                     />
                   </div>

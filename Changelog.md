@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o campo de data dos lotes no `ApontamentoOEE` para entrada e exibição em formato brasileiro (dd/mm/aaaa) com validação.
 - Tratado erro de sessão expirada ao validar usuário no `ApontamentoOEE`, com limpeza de sessão e aviso para novo login.
 - Ajustada a tipagem do gerador de UUID para compatibilidade com build em TypeScript sem depender do tipo global de `crypto`.
 - Adicionado fallback de geração de UUID nos apontamentos locais para evitar erro `crypto.randomUUID` em ambientes sem suporte.
