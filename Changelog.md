@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Corrigida a geração das linhas horárias no registro de produção ao carregar turnos por `oeeturno_id`, exibindo todas as horas do turno com mesclagem dos dados existentes.
 - Adicionado redirecionamento do OeeTurno com `oeeturno_id` e exibição do ID no título do Diário de Bordo.
 - Removida a funcionalidade de retrabalho no apontamento de qualidade, cálculo do OEE e persistência local.
 - Ajustada a ordenação da listagem de velocidades nominais para usar ordem natural/ascendente por linha e depois por referência do produto (ex: 07030001 antes de 07030003 dentro da mesma linha).

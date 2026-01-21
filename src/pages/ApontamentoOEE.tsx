@@ -782,8 +782,17 @@ export default function ApontamentoOEE() {
     }
   }, [formatarDataRegistro, linhaId, linhaSelecionada?.nome, skuCodigo, turno])
 
-  const montarLinhasApontamentoComRegistros = useCallback((registros: RegistroProducao[]) => {
-    if (!turnoHoraInicialNormalizada || !turnoHoraFinalNormalizada || intervaloApontamento <= 0) {
+  const montarLinhasApontamentoComRegistros = useCallback((
+    registros: RegistroProducao[],
+    horaInicioOverride?: string,
+    horaFimOverride?: string,
+    intervaloOverride?: number
+  ) => {
+    const horaInicioEfetiva = horaInicioOverride || turnoHoraInicialNormalizada
+    const horaFimEfetiva = horaFimOverride || turnoHoraFinalNormalizada
+    const intervaloEfetivo = intervaloOverride ?? intervaloApontamento
+
+    if (!horaInicioEfetiva || !horaFimEfetiva || intervaloEfetivo <= 0) {
       return registros.map((registro) => ({
         id: registro.id,
         horaInicio: registro.horaInicio,
@@ -799,8 +808,8 @@ export default function ApontamentoOEE() {
       mapaHistorico.set(registro.horaInicio, registro)
     })
 
-    const [turnoInicioH, turnoInicioM] = turnoHoraInicialNormalizada.split(':').map(Number)
-    const [turnoFimH, turnoFimM] = turnoHoraFinalNormalizada.split(':').map(Number)
+    const [turnoInicioH, turnoInicioM] = horaInicioEfetiva.split(':').map(Number)
+    const [turnoFimH, turnoFimM] = horaFimEfetiva.split(':').map(Number)
 
     let minutoAtual = turnoInicioH * 60 + turnoInicioM
     let minutoFimTurno = turnoFimH * 60 + turnoFimM
@@ -809,7 +818,7 @@ export default function ApontamentoOEE() {
       minutoFimTurno += 24 * 60
     }
 
-    const intervaloMinutos = intervaloApontamento * 60
+    const intervaloMinutos = intervaloEfetivo * 60
     const linhas: LinhaApontamentoProducao[] = []
 
     const formatarHora = (minutos: number): string => {
@@ -2482,11 +2491,15 @@ export default function ApontamentoOEE() {
         }
 
         // 3. Hora inicial e final do turno
+        let horaInicioTurnoFormatada = ''
+        let horaFimTurnoFormatada = ''
         if (turnoData.horaInicio) {
-	        setTurnoHoraInicial(formatarHoraPtBr(turnoData.horaInicio, false))
+          horaInicioTurnoFormatada = formatarHoraPtBr(turnoData.horaInicio, false)
+	        setTurnoHoraInicial(horaInicioTurnoFormatada)
         }
         if (turnoData.horaFim) {
-	        setTurnoHoraFinal(formatarHoraPtBr(turnoData.horaFim, false))
+          horaFimTurnoFormatada = formatarHoraPtBr(turnoData.horaFim, false)
+	        setTurnoHoraFinal(horaFimTurnoFormatada)
         }
 
         // 4. Produto/SKU
@@ -2530,7 +2543,7 @@ export default function ApontamentoOEE() {
         // 6. Definir ID do turno OEE
         setOeeTurnoId(oeeTurnoIdNumero)
 
-        const producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdNumero)
+        let producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdNumero)
 
         if (
           producoesCarregadas.length === 0 &&
@@ -2546,6 +2559,7 @@ export default function ApontamentoOEE() {
           })
 
           if (producoesFallback.length > 0) {
+            producoesCarregadas = producoesFallback
             toast({
               title: 'Produções recuperadas',
               description: 'Registros localizados por data/turno/produto sem vínculo ao turno.',
@@ -2553,6 +2567,22 @@ export default function ApontamentoOEE() {
             })
           }
         }
+
+        const horaInicioOverride = horaInicioTurnoFormatada
+          ? normalizarHoraDigitada(horaInicioTurnoFormatada, true)
+          : ''
+        const horaFimOverride = horaFimTurnoFormatada
+          ? normalizarHoraDigitada(horaFimTurnoFormatada, true)
+          : ''
+
+        setLinhasApontamento(
+          montarLinhasApontamentoComRegistros(
+            producoesCarregadas,
+            horaInicioOverride,
+            horaFimOverride,
+            intervaloApontamento
+          )
+        )
 
         // 7. Definir modo de visualização ou edição
         if (!editMode) {
