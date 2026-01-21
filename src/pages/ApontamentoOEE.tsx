@@ -650,9 +650,20 @@ export default function ApontamentoOEE() {
   }, [buscarProdutosSKU, modalBuscaSKUAberto])
 
   const obterUsuarioAutenticado = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (error) {
+      console.error('❌ Erro ao validar sessão do usuário:', error)
+      await supabase.auth.signOut()
+      toast({
+        title: 'Sessão expirada',
+        description: 'Faça login novamente para continuar.',
+        variant: 'destructive'
+      })
+      return null
+    }
+
+    if (!data?.user) {
       toast({
         title: 'Usuário não autenticado',
         description: 'Faça login para continuar.',
@@ -661,7 +672,7 @@ export default function ApontamentoOEE() {
       return null
     }
 
-    return user
+    return data.user
   }, [toast])
 
   const garantirProdutoPorSku = useCallback(async () => {
