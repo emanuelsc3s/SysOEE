@@ -38,3 +38,4 @@
 - Ajustado o estilo do seletor de status no modal de linha de produção para seguir o padrão do OeeTurno.
 - Adicionada cor marrom suave para o badge de "Embalagem" no modal de busca de linha de produção.
 - Adicionada cor âmbar suave para o badge de "Envase+Embalagem" no modal de busca de linha de produção.
+- Reordenada a coluna "Status" para ficar logo após "Código" na tabela do modal de busca de linha de produção.

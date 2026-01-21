@@ -296,10 +296,10 @@ export function ModalBuscaLinhaProducao({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[8%]">Código</TableHead>
+                  <TableHead className="w-[10%] text-center">Status</TableHead>
                   <TableHead className="w-[32%]">Linha de Produção</TableHead>
                   <TableHead className="w-[25%]">Departamento</TableHead>
                   <TableHead className="w-[15%] text-center">Tipo</TableHead>
-                  <TableHead className="w-[10%] text-center">Status</TableHead>
                   <TableHead className="w-[10%] text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
@@ -315,6 +315,17 @@ export function ModalBuscaLinhaProducao({
                     <TableCell className="font-mono font-medium">
                       {linha.linhaproducao_id}
                     </TableCell>
+                    <TableCell className="text-center">
+                      {linha.ativo === 'N' ? (
+                        <Badge variant="destructive" className="text-xs">
+                          Inativo
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="text-xs bg-green-600">
+                          Ativo
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-[300px] truncate" title={linha.linhaproducao || '--'}>
                       {linha.linhaproducao || '--'}
                     </TableCell>
@@ -328,17 +339,6 @@ export function ModalBuscaLinhaProducao({
                         </Badge>
                       ) : (
                         '--'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {linha.ativo === 'N' ? (
-                        <Badge variant="destructive" className="text-xs">
-                          Inativo
-                        </Badge>
-                      ) : (
-                        <Badge variant="default" className="text-xs bg-green-600">
-                          Ativo
-                        </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
