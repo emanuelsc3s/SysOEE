@@ -12,6 +12,7 @@ const STORAGE_KEY = 'sysoee_paradas'
  */
 export interface ParadaLocalStorage extends Omit<ApontamentoParada, 'id'> {
   id: string
+  oeeturno_id?: number | null
 }
 
 /**
@@ -63,6 +64,15 @@ export function buscarParadasPorLote(loteId: string): ParadaLocalStorage[] {
 export function buscarParadasPorLinha(linhaId: string): ParadaLocalStorage[] {
   const todasParadas = buscarTodasParadas()
   return todasParadas.filter(p => p.linha_id === linhaId)
+}
+
+/**
+ * Busca todas as paradas de um turno OEE específico
+ * Usado para cálculo de OEE por oeeturno_id
+ */
+export function buscarParadasPorOeeTurno(oeeturnoId: number): ParadaLocalStorage[] {
+  const todasParadas = buscarTodasParadas()
+  return todasParadas.filter(p => p.oeeturno_id === oeeturnoId)
 }
 
 /**

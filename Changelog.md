@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Atualizado o cálculo do OEE para filtrar produção, paradas e perdas pelo `oeeturno_id`, evitando mistura entre turnos.
 - Ajustado o campo de data dos lotes no `ApontamentoOEE` para entrada e exibição em formato brasileiro (dd/mm/aaaa) com validação.
 - Tratado erro de sessão expirada ao validar usuário no `ApontamentoOEE`, com limpeza de sessão e aviso para novo login.
 - Ajustada a tipagem do gerador de UUID para compatibilidade com build em TypeScript sem depender do tipo global de `crypto`.
