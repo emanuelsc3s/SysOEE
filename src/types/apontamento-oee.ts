@@ -144,6 +144,7 @@ export type OeeTurnoStatus = 'Aberto' | 'Fechado' | 'Cancelado'
 export interface OeeTurnoDB {
   oeeturno_id: number
   data: string | null
+  linhaproducao_id: number | null
   produto_id: number
   produto: string
   turno_id: number
@@ -159,6 +160,9 @@ export interface OeeTurnoDB {
   updated_by: number | null
   deleted_at: string | null
   deleted_by: number | null
+  tblinhaproducao?: {
+    linhaproducao: string | null
+  }
 }
 
 /**
@@ -169,6 +173,10 @@ export interface OeeTurnoFormData {
   id: string
   /** Data do apontamento (formato YYYY-MM-DD) */
   data: string
+  /** ID da linha de produção */
+  linhaProducaoId: number | null
+  /** Nome da linha de produção */
+  linhaProducaoNome: string
   /** ID do produto */
   produtoId: number
   /** Descrição completa do produto */

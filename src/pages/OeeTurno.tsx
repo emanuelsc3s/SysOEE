@@ -280,6 +280,17 @@ export default function OeeTurno() {
     return hora.substring(0, 5)
   }
 
+  const formatarLinhaProducao = (turno: OeeTurnoFormData) => {
+    const nomeLinha = turno.linhaProducaoNome?.trim()
+    if (nomeLinha) {
+      return nomeLinha
+    }
+    if (turno.linhaProducaoId) {
+      return `ID ${turno.linhaProducaoId}`
+    }
+    return 'N/A'
+  }
+
   const getBadgeStatus = (status: OeeTurnoStatus | null): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' => {
     switch (status) {
       case 'Aberto': return 'info'
@@ -503,6 +514,7 @@ export default function OeeTurno() {
                             <div>
                               <p className="text-xs text-gray-500">Produto</p>
                               <p className="font-semibold text-gray-900">{turno.produto}</p>
+                            <p className="text-xs text-gray-500 mt-1">Linha: {formatarLinhaProducao(turno)}</p>
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
@@ -667,7 +679,12 @@ export default function OeeTurno() {
                               {turno.turno}
                             </td>
                             <td className="px-4 md:px-6 py-4 text-sm text-gray-600 max-w-[300px]">
-                              <span className="truncate block" title={turno.produto}>{turno.produto}</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="truncate block" title={turno.produto}>{turno.produto}</span>
+                                <span className="truncate text-xs text-gray-500" title={formatarLinhaProducao(turno)}>
+                                  Linha: {formatarLinhaProducao(turno)}
+                                </span>
+                              </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               <div className="flex items-center gap-1">

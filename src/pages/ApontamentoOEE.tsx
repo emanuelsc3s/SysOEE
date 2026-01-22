@@ -2902,6 +2902,7 @@ export default function ApontamentoOEE() {
         produto: `${codigoSKU} - ${produtoDescricaoAtual || descricaoSKU}`,
         turno_id: parseInt(turnoId),
         turno: turnoNome || turnoCodigo,
+        linhaproducao_id: linhaProducaoSelecionada?.linhaproducao_id ?? null,
         turno_hi: turnoHoraInicialNormalizada || null,
         turno_hf: turnoHoraFinalNormalizada || null,
         observacao: `Turno iniciado via sistema OEE - Linha: ${linhaNome || linhaId}`,

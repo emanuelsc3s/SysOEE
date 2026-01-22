@@ -15,10 +15,12 @@ import { toast } from '@/hooks/use-toast'
 /**
  * Mapeia dados do banco para o formato do formulário/UI
  */
-function mapDbToForm(db: OeeTurnoDB): OeeTurnoFormData {
+function mapDbToForm(db: OeeTurnoDB, linhaProducaoNome = ''): OeeTurnoFormData {
   return {
     id: db.oeeturno_id.toString(),
     data: db.data || '',
+    linhaProducaoId: db.linhaproducao_id ?? null,
+    linhaProducaoNome,
     produtoId: db.produto_id,
     produto: db.produto,
     turnoId: db.turno_id,
@@ -102,7 +104,35 @@ export function useOeeTurno() {
 
       console.log('✅ useOeeTurno: Dados recebidos:', data?.length || 0, 'registros')
 
-      const turnosMapeados = (data || []).map(mapDbToForm)
+      const linhaIds = Array.from(new Set(
+        (data || [])
+          .map((registro) => registro.linhaproducao_id)
+          .filter((id): id is number => typeof id === 'number')
+      ))
+
+      const linhaMap = new Map<number, string>()
+
+      if (linhaIds.length > 0) {
+        const { data: linhasData, error: linhasError } = await supabase
+          .from('tblinhaproducao')
+          .select('linhaproducao_id, linhaproducao')
+          .in('linhaproducao_id', linhaIds)
+          .is('deleted_at', null)
+
+        if (linhasError) {
+          console.warn('⚠️ useOeeTurno: Erro ao buscar linhas de produção:', linhasError)
+        } else {
+          ;(linhasData || []).forEach((linha) => {
+            if (linha.linhaproducao_id) {
+              linhaMap.set(linha.linhaproducao_id, linha.linhaproducao || '')
+            }
+          })
+        }
+      }
+
+      const turnosMapeados = (data || []).map((registro) =>
+        mapDbToForm(registro, linhaMap.get(registro.linhaproducao_id ?? -1) || '')
+      )
       setTurnos(turnosMapeados)
 
       return {
@@ -142,7 +172,24 @@ export function useOeeTurno() {
         throw new Error('Turno OEE não encontrado')
       }
 
-      return mapDbToForm(data)
+      let linhaProducaoNome = ''
+
+      if (data.linhaproducao_id) {
+        const { data: linhaData, error: linhaError } = await supabase
+          .from('tblinhaproducao')
+          .select('linhaproducao')
+          .eq('linhaproducao_id', data.linhaproducao_id)
+          .is('deleted_at', null)
+          .maybeSingle()
+
+        if (linhaError) {
+          console.warn('⚠️ useOeeTurno: Erro ao buscar linha de produção:', linhaError)
+        } else {
+          linhaProducaoNome = linhaData?.linhaproducao || ''
+        }
+      }
+
+      return mapDbToForm(data, linhaProducaoNome)
     } catch (error) {
       const errorMessage = handleSupabaseError(error)
       toast({

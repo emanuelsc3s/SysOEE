@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionada a sublinha com a linha de produção na lista do `OeeTurno`, baseada no `linhaproducao_id`.
+- Corrigida a consulta de turnos OEE ao carregar nomes de linha sem join direto, evitando erro 400 no Supabase.
+- Incluída a persistência do `linhaproducao_id` ao criar turnos OEE no `ApontamentoOEE`.
 - Atualizado o cálculo do OEE para filtrar produção, paradas e perdas pelo `oeeturno_id`, evitando mistura entre turnos.
 - Ajustado o campo de data dos lotes no `ApontamentoOEE` para entrada e exibição em formato brasileiro (dd/mm/aaaa) com validação.
 - Tratado erro de sessão expirada ao validar usuário no `ApontamentoOEE`, com limpeza de sessão e aviso para novo login.
