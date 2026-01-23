@@ -5120,7 +5120,7 @@ export default function ApontamentoOEE() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-[1296px] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5 text-blue-600" />
@@ -5359,6 +5359,7 @@ export default function ApontamentoOEE() {
                       <TableHead className="font-semibold text-right">Qtd/Ciclo Final</TableHead>
                       <TableHead className="font-semibold text-right">Qtd. Produzida</TableHead>
                       <TableHead className="font-semibold text-right">Perdas</TableHead>
+                      <TableHead className="font-semibold text-right">Total Produção</TableHead>
                       <TableHead className="font-semibold text-center">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -5385,6 +5386,9 @@ export default function ApontamentoOEE() {
                         </TableCell>
                         <TableCell className="text-right text-red-600">
                           {lote.quantidadePerdas.toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="font-semibold text-right">
+                          {((lote.quantidadeProduzida ?? 0) - (lote.quantidadePerdas ?? 0)).toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell>
                           {statusTurno !== 'ENCERRADO' ? (
@@ -5428,6 +5432,9 @@ export default function ApontamentoOEE() {
                       </TableCell>
                       <TableCell className="text-right text-red-700">
                         {calcularTotaisLotes().totalPerdas.toLocaleString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="font-semibold text-right">
+                        {(calcularTotaisLotes().totalProduzido - calcularTotaisLotes().totalPerdas).toLocaleString('pt-BR')}
                       </TableCell>
                       <TableCell></TableCell>
                     </TableRow>
