@@ -1178,9 +1178,9 @@ export default function ApontamentoOEE() {
       horaFinal: horaFinalNormalizada
     }
 
-    // Calcular quantidade produzida (Final - Inicial), permitindo zero como valor válido
+    // Calcular quantidade produzida (valor absoluto), permitindo zero como valor válido
     const quantidadeProduzidaCalculada = dadosLote.quantidadeProduzidaFinal >= 0
-      ? dadosLote.quantidadeProduzidaFinal - dadosLote.quantidadeProduzidaInicial
+      ? Math.abs(dadosLote.quantidadeProduzidaFinal - dadosLote.quantidadeProduzidaInicial)
       : 0
 
     try {

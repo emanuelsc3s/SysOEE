@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o cálculo da "Qtd. Produzida" no controle de lotes para usar valor absoluto e evitar negativos no `ApontamentoOEE`.
 - Aumentada a largura do modal de controle de lotes em 40% no `ApontamentoOEE`.
 - Adicionada a coluna "Total Produção" no controle de lotes do `ApontamentoOEE`, calculada por quantidade produzida menos perdas.
 - Ajustada a validação e o tratamento dos campos "Qtd/Ciclo Inicial" e "Qtd/Ciclo Final" no `ApontamentoOEE` para aceitar valor zero.
