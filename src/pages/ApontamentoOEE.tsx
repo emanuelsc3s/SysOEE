@@ -1085,7 +1085,7 @@ export default function ApontamentoOEE() {
       dadosLote.data !== '' &&
       normalizarHoraDigitada(dadosLote.horaInicial, true) !== '' &&
       (!dadosLote.horaFinal || normalizarHoraDigitada(dadosLote.horaFinal, true) !== '') &&
-      (dadosLote.quantidadeProduzidaInicial > 0 || dadosLote.quantidadeProduzidaFinal > 0)
+      (dadosLote.quantidadeProduzidaInicial >= 0 && dadosLote.quantidadeProduzidaFinal >= 0)
     )
   }
 
@@ -1178,8 +1178,8 @@ export default function ApontamentoOEE() {
       horaFinal: horaFinalNormalizada
     }
 
-    // Calcular quantidade produzida (Final - Inicial), apenas se a quantidade final for maior que zero
-    const quantidadeProduzidaCalculada = dadosLote.quantidadeProduzidaFinal > 0
+    // Calcular quantidade produzida (Final - Inicial), permitindo zero como valor válido
+    const quantidadeProduzidaCalculada = dadosLote.quantidadeProduzidaFinal >= 0
       ? dadosLote.quantidadeProduzidaFinal - dadosLote.quantidadeProduzidaInicial
       : 0
 
@@ -2648,7 +2648,7 @@ export default function ApontamentoOEE() {
         // 6. Definir ID do turno OEE
         setOeeTurnoId(oeeTurnoIdNumero)
 
-        let producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdNumero)
+        const producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdNumero)
 
         const horaInicioOverride = horaInicioTurnoFormatada
           ? normalizarHoraDigitada(horaInicioTurnoFormatada, true)
@@ -5257,11 +5257,14 @@ export default function ApontamentoOEE() {
                       id="quantidade-produzida-inicial-lote"
                       type="number"
                       min="0"
-                      value={dadosLote.quantidadeProduzidaInicial || ''}
-                      onChange={(e) => setDadosLote(prev => ({
-                        ...prev,
-                        quantidadeProduzidaInicial: parseInt(e.target.value) || 0
-                      }))}
+                      value={dadosLote.quantidadeProduzidaInicial ?? ''}
+                      onChange={(e) => {
+                        const valor = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                        setDadosLote(prev => ({
+                          ...prev,
+                          quantidadeProduzidaInicial: isNaN(valor) ? 0 : valor
+                        }))
+                      }}
                       placeholder="0"
                       className="h-9"
                     />
@@ -5276,11 +5279,14 @@ export default function ApontamentoOEE() {
                       id="quantidade-produzida-final-lote"
                       type="number"
                       min="0"
-                      value={dadosLote.quantidadeProduzidaFinal || ''}
-                      onChange={(e) => setDadosLote(prev => ({
-                        ...prev,
-                        quantidadeProduzidaFinal: parseInt(e.target.value) || 0
-                      }))}
+                      value={dadosLote.quantidadeProduzidaFinal ?? ''}
+                      onChange={(e) => {
+                        const valor = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                        setDadosLote(prev => ({
+                          ...prev,
+                          quantidadeProduzidaFinal: isNaN(valor) ? 0 : valor
+                        }))
+                      }}
                       placeholder="0"
                       className="h-9"
                     />

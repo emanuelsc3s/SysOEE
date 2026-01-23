@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a validação e o tratamento dos campos "Qtd/Ciclo Inicial" e "Qtd/Ciclo Final" no `ApontamentoOEE` para aceitar valor zero.
 - Adicionada a sublinha com a linha de produção na lista do `OeeTurno`, baseada no `linhaproducao_id`.
 - Corrigida a consulta de turnos OEE ao carregar nomes de linha sem join direto, evitando erro 400 no Supabase.
 - Incluída a persistência do `linhaproducao_id` ao criar turnos OEE no `ApontamentoOEE`.
