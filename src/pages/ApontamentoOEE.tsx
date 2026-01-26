@@ -3761,13 +3761,13 @@ export default function ApontamentoOEE() {
       <div className="bg-background-light dark:bg-background-dark">
         <div className="flex justify-center">
           <div className="w-full max-w-[1600px] px-3.5 pr-4 pt-3.5 pb-0">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               {/* Seção Esquerda - Título e Subtítulo */}
-              <div>
-                <h1 className="text-2xl font-bold text-brand-primary">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-brand-primary truncate">
                   Diário de Bordo{oeeTurnoId ? `: [${oeeTurnoId}]` : ''}
                 </h1>
-                <p className="text-brand-text-secondary">
+                <p className="text-brand-text-secondary truncate">
                   Registro de produção, qualidade e paradas
                 </p>
               </div>
@@ -3859,7 +3859,7 @@ export default function ApontamentoOEE() {
         {/* Container com largura máxima centralizado */}
         <div className="w-full max-w-[1600px] flex gap-0">
           {/* Conteúdo Principal */}
-          <div className="flex-grow flex flex-col">
+          <div className="flex-grow flex flex-col min-w-0">
             {/* Main Content */}
             <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
           {/* Dashboard OEE - Cabeçalho com Filtros */}
@@ -4309,8 +4309,8 @@ export default function ApontamentoOEE() {
                       <table className="w-full text-sm">
                         <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark">
                           <tr>
-                            <th className="px-4 py-3 text-left font-medium">Hora Início</th>
-                            <th className="px-4 py-3 text-left font-medium">Hora Fim</th>
+                            <th className="px-2 py-3 text-left font-medium w-24">Hora Início</th>
+                            <th className="px-2 py-3 text-left font-medium w-24">Hora Fim</th>
                             <th className="px-4 py-3 text-left font-medium">Quantidade Produzida</th>
                             <th className="px-4 py-3 text-center font-medium">Ações</th>
                           </tr>
@@ -4323,24 +4323,24 @@ export default function ApontamentoOEE() {
                                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                               }`}
                             >
-                              <td className="px-4 py-3">
+                              <td className="px-2 py-3">
                                 <Input
 											type="text"
 											value={formatarHoraPtBr(linha.horaInicio, false)}
                                   readOnly
                                   disabled={linha.editavel === false}
 											inputMode="numeric"
-                                  className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  className={`w-20 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
-                              <td className="px-4 py-3">
+                              <td className="px-2 py-3">
                                 <Input
 											type="text"
 											value={formatarHoraPtBr(linha.horaFim, false)}
                                   readOnly
                                   disabled={linha.editavel === false}
 											inputMode="numeric"
-                                  className={`w-32 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                  className={`w-20 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                 />
                               </td>
                               <td className="px-4 py-3">
@@ -4353,7 +4353,7 @@ export default function ApontamentoOEE() {
                                 />
                               </td>
                               <td className="px-4 py-3">
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex flex-wrap items-center justify-center gap-2">
                                   {!linha.editavel && (
                                     <Button
                                       variant="ghost"

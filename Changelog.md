@@ -60,3 +60,6 @@
 - Implementada a persistência de perdas de qualidade no Supabase (`tboee_turno_perda`) na guia Qualidade do `ApontamentoOEE`.
 - Adicionada linha de totalização da coluna "Quantidade" no histórico de registros de qualidade do `ApontamentoOEE`.
 - Ajustada a gravação de `created_at`, `updated_at` e `deleted_at` das perdas para usar data e hora local do frontend (sem GMT).
+- Ajustado o cabeçalho e o container principal do `ApontamentoOEE` para permitir truncamento e encolhimento, evitando overflow horizontal em 1280px.
+- Ajustado o agrupamento de botões no "Registro de Produção" do `ApontamentoOEE` para permitir quebra de linha e remover rolagem horizontal desnecessária.
+- Reduzida a largura dos inputs de "Hora Início" e "Hora Fim" e o espaçamento das colunas no "Registro de Produção" do `ApontamentoOEE`.
