@@ -59,3 +59,4 @@
 - Alinhado o botão de registro de qualidade com o campo de quantidade no `ApontamentoOEE`.
 - Implementada a persistência de perdas de qualidade no Supabase (`tboee_turno_perda`) na guia Qualidade do `ApontamentoOEE`.
 - Adicionada linha de totalização da coluna "Quantidade" no histórico de registros de qualidade do `ApontamentoOEE`.
+- Ajustada a gravação de `created_at`, `updated_at` e `deleted_at` das perdas para usar data e hora local do frontend (sem GMT).

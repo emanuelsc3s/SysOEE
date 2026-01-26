@@ -461,6 +461,10 @@ export default function ApontamentoOEE() {
     return hora.length === 5 ? `${hora}:00` : hora
   }
 
+  const gerarTimestampLocal = (): string => {
+    return format(new Date(), "yyyy-MM-dd'T'HH:mm:ss")
+  }
+
   /**
    * Limpa a hora digitada mantendo apenas números e ":".
    * Aceita entrada livre (ex.: "0730" ou "07:30") para formatação posterior.
@@ -2236,7 +2240,7 @@ export default function ApontamentoOEE() {
       const { error: erroExclusao } = await supabase
         .from('tboee_turno_perda')
         .update({
-          deleted_at: new Date().toISOString(),
+          deleted_at: gerarTimestampLocal(),
           deleted_by: usuario.id,
           deletado: 'S'
         })
@@ -3438,7 +3442,7 @@ export default function ApontamentoOEE() {
         .from('tboee_turno_perda')
         .update({
           perda: perdaNormalizada,
-          updated_at: new Date().toISOString(),
+          updated_at: gerarTimestampLocal(),
           updated_by: usuario.id
         })
         .eq('oeeturnoperda_id', oeeturnoperdaId)
@@ -3531,6 +3535,7 @@ export default function ApontamentoOEE() {
         .insert({
           oeeturno_id: oeeTurnoId,
           perda: perdaNormalizada,
+          created_at: gerarTimestampLocal(),
           created_by: usuario.id
         })
         .select('oeeturnoperda_id')

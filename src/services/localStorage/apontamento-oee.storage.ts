@@ -13,7 +13,6 @@ import { buscarParadasPorLinha, ParadaLocalStorage } from '@/services/localStora
 import { TipoParada } from '@/types/parada'
 
 const STORAGE_KEY_PRODUCAO = 'sysoee_apontamentos_producao'
-const STORAGE_KEY_PERDAS = 'sysoee_apontamentos_perdas'
 
 type CryptoLike = {
   randomUUID?: () => string
@@ -127,103 +126,15 @@ export function atualizarApontamentoProducao(
   }
 }
 
-// ==================== APONTAMENTOS DE PERDAS ====================
-
-/**
- * Busca todos os apontamentos de perdas
- */
-export function buscarTodosApontamentosPerdas(): ApontamentoQualidadePerdas[] {
-  try {
-    const dados = localStorage.getItem(STORAGE_KEY_PERDAS)
-    if (!dados) return []
-    return JSON.parse(dados)
-  } catch (error) {
-    console.error('❌ Erro ao buscar apontamentos de perdas:', error)
-    return []
-  }
-}
-
-/**
- * Busca apontamentos de perdas por ID de apontamento de produção
- */
-export function buscarApontamentosPerdasPorProducao(apontamentoProducaoId: string): ApontamentoQualidadePerdas[] {
-  const apontamentos = buscarTodosApontamentosPerdas()
-  return apontamentos.filter(a => a.apontamentoProducaoId === apontamentoProducaoId)
-}
-
-/**
- * Salva um novo apontamento de perdas
- */
-export function salvarApontamentoPerdas(
-  apontamentoProducaoId: string,
-  unidadesRejeitadas: number,
-  motivoRejeicao: string,
-  observacao: string | null,
-  criadoPor: number,
-  criadoPorNome: string
-): ApontamentoQualidadePerdas {
-  try {
-    const apontamento: ApontamentoQualidadePerdas = {
-      id: gerarUuid(),
-      apontamentoProducaoId,
-      unidadesRejeitadas,
-      motivoRejeicao,
-      observacao,
-      criadoPor,
-      criadoPorNome,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    const apontamentos = buscarTodosApontamentosPerdas()
-    apontamentos.push(apontamento)
-    localStorage.setItem(STORAGE_KEY_PERDAS, JSON.stringify(apontamentos))
-
-    console.log('✅ Apontamento de perdas salvo:', apontamento)
-    return apontamento
-  } catch (error) {
-    console.error('❌ Erro ao salvar apontamento de perdas:', error)
-    throw error
-  }
-}
-
-/**
- * Busca apontamentos de perdas por linha e SKU
- * Soma todas as perdas de todos os apontamentos de produção da mesma linha e SKU
- *
- * IMPORTANTE: O campo 'linha' no ApontamentoProducao armazena o NOME da linha (ex: "Linha A"),
- * enquanto linhaId é o ID da linha (ex: "spep-envase-a"). Precisamos buscar pelo nome.
- */
-export function buscarApontamentosPerdasPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): ApontamentoQualidadePerdas[] {
-  // Busca todos os apontamentos de produção da linha e SKU
-  // Compara tanto pelo ID quanto pelo nome da linha para garantir compatibilidade
-  const apontamentosProducao = buscarTodosApontamentosProducao().filter(a => {
-    const matchLinha = a.linha === linhaId || a.linha === linhaNome || (linhaNome && a.linha === linhaNome)
-    const matchSku = a.sku === skuCodigo
-    return matchLinha && matchSku
-  })
-
-  // Busca todas as perdas associadas a esses apontamentos
-  const todasPerdas = buscarTodosApontamentosPerdas()
-  const idsProducao = apontamentosProducao.map(a => a.id)
-
-  return todasPerdas.filter(p => idsProducao.includes(p.apontamentoProducaoId))
-}
-
-/**
- * Calcula o total de perdas por linha e SKU
- */
-export function calcularTotalPerdasPorLinhaESku(linhaId: string, skuCodigo: string, linhaNome?: string): number {
-  const perdas = buscarApontamentosPerdasPorLinhaESku(linhaId, skuCodigo, linhaNome)
-  return perdas.reduce((total, p) => total + p.unidadesRejeitadas, 0)
-}
-
 // ==================== CÁLCULO DE OEE ====================
 
 /**
  * Calcula OEE em tempo real baseado nos apontamentos
  */
-export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
+export function calcularOEE(
+  apontamentoProducaoId: string,
+  perdas: ApontamentoQualidadePerdas[] = []
+): CalculoOEE {
   const apontamento = buscarApontamentoProducaoPorId(apontamentoProducaoId)
 
   if (!apontamento) {
@@ -237,7 +148,9 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
     }
   }
 
-  const perdas = buscarApontamentosPerdasPorProducao(apontamentoProducaoId)
+  const perdasDoApontamento = perdas.filter(
+    (perda) => perda.apontamentoProducaoId === apontamentoProducaoId
+  )
 
   // 1. Disponibilidade = (Tempo de Operação / Tempo Disponível) × 100
   const disponibilidade = apontamento.tempoDisponivel > 0
@@ -255,7 +168,7 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
     : 0
 
   // 3. Qualidade = (Unidades Boas / Unidades Produzidas) × 100
-  const totalPerdas = perdas.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
+  const totalPerdas = perdasDoApontamento.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
   const unidadesBoas = apontamento.quantidadeProduzida - totalPerdas
   const qualidade = apontamento.quantidadeProduzida > 0
     ? (unidadesBoas / apontamento.quantidadeProduzida) * 100
@@ -288,7 +201,8 @@ export function calcularOEE(apontamentoProducaoId: string): CalculoOEE {
 export function calcularOEECompleto(
   apontamentoProducaoId: string,
   linhaId: string,
-  tempoDisponivelTurno: number = 12
+  tempoDisponivelTurno: number = 12,
+  perdas: ApontamentoQualidadePerdas[] = []
 ): CalculoOEE {
   // =================================================================
   // PASSO 1: BUSCAR DADOS DO APONTAMENTO DE REFERÊNCIA
@@ -333,9 +247,8 @@ export function calcularOEECompleto(
   // OEE é calculado por LINHA
   const paradas = buscarParadasPorLinha(linhaId)
 
-  // Buscar TODAS as perdas de TODOS os apontamentos do turno
-  const todasPerdas = buscarTodosApontamentosPerdas()
-  const perdas = todasPerdas.filter(p => idsApontamentos.includes(p.apontamentoProducaoId))
+  // Perdas do turno devem ser fornecidas pelo chamador
+  const perdasDoTurno = perdas.filter(p => idsApontamentos.includes(p.apontamentoProducaoId))
 
 
   console.log('4ca Calculando OEE:', {
@@ -345,7 +258,7 @@ export function calcularOEECompleto(
     apontamentosDoTurno: apontamentosDoTurno.length,
     quantidadeProduzidaTotal,
     totalParadas: paradas.length,
-    totalPerdas: perdas.length,
+    totalPerdas: perdasDoTurno.length,
   })
 
   // =================================================================
@@ -459,7 +372,7 @@ export function calcularOEECompleto(
 
   // Qualidade por Unidades (Refugo e Desvios)
   // Usa quantidadeProduzidaTotal (soma de todos apontamentos do turno)
-  const totalPerdas = perdas.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
+  const totalPerdas = perdasDoTurno.reduce((sum, p) => sum + p.unidadesRejeitadas, 0)
   const unidadesBoas = quantidadeProduzidaTotal - totalPerdas
 
   const qualidade = quantidadeProduzidaTotal > 0
@@ -594,7 +507,6 @@ function identificarTipoParada(parada: ParadaLocalStorage): TipoParada {
 
 /**
  * Exclui um apontamento de produção específico do localStorage
- * Também remove os apontamentos de perdas relacionados
  *
  * @param id - ID do apontamento de produção a ser excluído
  * @returns true se o apontamento foi excluído com sucesso, false caso contrário
@@ -618,12 +530,6 @@ export function excluirApontamentoProducao(id: string): boolean {
     // Salvar a lista atualizada
     localStorage.setItem(STORAGE_KEY_PRODUCAO, JSON.stringify(apontamentos))
 
-    // Remover apontamentos de perdas relacionados
-    const perdas = buscarTodosApontamentosPerdas()
-    const perdasAtualizadas = perdas.filter(p => p.apontamentoProducaoId !== id)
-    localStorage.setItem(STORAGE_KEY_PERDAS, JSON.stringify(perdasAtualizadas))
-
-
     console.log('✅ Apontamento de produção excluído com sucesso:', {
       id,
       sku: apontamentoExcluido.sku,
@@ -642,7 +548,6 @@ export function excluirApontamentoProducao(id: string): boolean {
  */
 export function limparTodosApontamentos(): void {
   localStorage.removeItem(STORAGE_KEY_PRODUCAO)
-  localStorage.removeItem(STORAGE_KEY_PERDAS)
   console.log('🗑️ Todos os apontamentos foram removidos do localStorage')
 }
 
