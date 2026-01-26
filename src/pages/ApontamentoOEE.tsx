@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -351,6 +351,12 @@ export default function ApontamentoOEE() {
     }
     return total + registro.quantidade
   }, 0)
+
+  // ==================== Estado do Modal de Anotações ====================
+  const [modalAnotacoesAberto, setModalAnotacoesAberto] = useState(false)
+  const [linhaAnotacaoSelecionada, setLinhaAnotacaoSelecionada] = useState<LinhaApontamentoProducao | null>(null)
+  const [textoAnotacao, setTextoAnotacao] = useState<string>('')
+  const [salvandoAnotacao, setSalvandoAnotacao] = useState(false)
 
   // ==================== Constantes para chaves do localStorage ====================
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
@@ -1639,6 +1645,109 @@ export default function ApontamentoOEE() {
         variant: 'destructive'
       })
     }
+  }
+
+  /**
+   * Abre o modal de anotações para uma linha específica
+   * Carrega a anotação existente do banco de dados se houver
+   */
+  const handleAbrirAnotacoes = async (linhaApontamento: LinhaApontamentoProducao) => {
+    if (!linhaApontamento.apontamentoId) {
+      toast({
+        title: 'Linha não salva',
+        description: 'Salve a linha antes de adicionar anotações',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setLinhaAnotacaoSelecionada(linhaApontamento)
+    setTextoAnotacao('')
+
+    // Buscar anotação existente do banco de dados
+    try {
+      const { data: registro, error } = await supabase
+        .from('tboee_turno_producao')
+        .select('anotacao')
+        .eq('oeeturnoproducao_id', parseInt(linhaApontamento.apontamentoId))
+        .single()
+
+      if (error) {
+        console.error('Erro ao buscar anotação:', error)
+      } else if (registro?.anotacao) {
+        setTextoAnotacao(registro.anotacao)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar anotação:', error)
+    }
+
+    setModalAnotacoesAberto(true)
+  }
+
+  /**
+   * Salva a anotação no banco de dados seguindo princípios ALCOA+
+   * Inclui timestamp e usuário que criou/atualizou a anotação
+   */
+  const handleSalvarAnotacao = async () => {
+    if (!linhaAnotacaoSelecionada?.apontamentoId) {
+      toast({
+        title: 'Erro',
+        description: 'Nenhuma linha selecionada para salvar anotação',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setSalvandoAnotacao(true)
+
+    try {
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        setSalvandoAnotacao(false)
+        return
+      }
+
+      const { error } = await supabase
+        .from('tboee_turno_producao')
+        .update({
+          anotacao: textoAnotacao.trim() || null,
+          updated_at: new Date().toISOString(),
+          updated_by: usuario.id
+        })
+        .eq('oeeturnoproducao_id', parseInt(linhaAnotacaoSelecionada.apontamentoId))
+
+      if (error) {
+        throw error
+      }
+
+      toast({
+        title: '✅ Anotação salva',
+        description: 'Anotação registrada com sucesso'
+      })
+
+      setModalAnotacoesAberto(false)
+      setLinhaAnotacaoSelecionada(null)
+      setTextoAnotacao('')
+
+    } catch (error) {
+      console.error('❌ Erro ao salvar anotação:', error)
+      toast({
+        title: 'Erro ao salvar anotação',
+        description: obterMensagemErro(error, 'Não foi possível salvar a anotação. Tente novamente.'),
+        variant: 'destructive'
+      })
+    } finally {
+      setSalvandoAnotacao(false)
+    }
+  }
+
+  /**
+   * Fecha o modal de anotações e limpa os estados
+   */
+  const handleFecharModalAnotacoes = () => {
+    setModalAnotacoesAberto(false)
+    setLinhaAnotacaoSelecionada(null)
+    setTextoAnotacao('')
   }
 
   const formatarQuantidade = (quantidade: number): string => {
@@ -4480,6 +4589,21 @@ export default function ApontamentoOEE() {
                                     <Trash className="h-4 w-4 mr-1" />
                                     Excluir
                                   </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleAbrirAnotacoes(linha)}
+                                    className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    title="Anotações"
+                                    disabled={
+                                      !linha.apontamentoId ||
+                                      !linha.quantidadeProduzida ||
+                                      Number(linha.quantidadeProduzida) <= 0
+                                    }
+                                  >
+                                    <StickyNote className="h-4 w-4 mr-1" />
+                                    Anotações
+                                  </Button>
                                 </div>
                               </td>
                             </tr>
@@ -5775,6 +5899,125 @@ export default function ApontamentoOEE() {
         onFechar={() => setModalBuscaLinhaAberto(false)}
         onSelecionarLinha={handleSelecionarLinhaModal}
       />
+
+      {/* Modal de Anotações da Linha de Produção */}
+      <Dialog open={modalAnotacoesAberto} onOpenChange={(open) => {
+        if (!open) handleFecharModalAnotacoes()
+      }}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <StickyNote className="h-5 w-5 text-blue-500" />
+              Anotações do Registro de Produção
+            </DialogTitle>
+            <DialogDescription>
+              Adicione observações ou anotações adicionais sobre este registro de produção.
+              As anotações são salvas seguindo os princípios ALCOA+ (com timestamp e usuário).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            {/* Lado Esquerdo - Informações do Registro */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Informações do Registro
+              </h3>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Linha:</span>
+                  <span className="text-sm">{linhaNome || 'Não definida'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Turno:</span>
+                  <span className="text-sm">{turnoNome || turno || 'Não definido'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Data:</span>
+                  <span className="text-sm">{data ? format(data, 'dd/MM/yyyy', { locale: ptBR }) : 'Não definida'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Produto (SKU):</span>
+                  <span className="text-sm">{skuCodigo || 'Não definido'}</span>
+                </div>
+                {linhaAnotacaoSelecionada && (
+                  <>
+                    <hr className="border-gray-200 dark:border-gray-700" />
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Hora Início:</span>
+                      <span className="text-sm">{linhaAnotacaoSelecionada.horaInicio}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Hora Fim:</span>
+                      <span className="text-sm">{linhaAnotacaoSelecionada.horaFim}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Quantidade:</span>
+                      <span className="text-sm font-bold text-green-600">
+                        {formatarQuantidade(Number(linhaAnotacaoSelecionada.quantidadeProduzida))}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Lado Direito - Textarea para Anotações */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                Anotações / Observações
+              </h3>
+              <div className="space-y-2">
+                <Label htmlFor="anotacao" className="sr-only">Anotação</Label>
+                <textarea
+                  id="anotacao"
+                  placeholder="Digite aqui suas anotações ou observações sobre este registro de produção..."
+                  value={textoAnotacao}
+                  onChange={(e) => setTextoAnotacao(e.target.value)}
+                  className="w-full min-h-[200px] p-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  disabled={salvandoAnotacao}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {textoAnotacao.length} caracteres
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleFecharModalAnotacoes}
+              disabled={salvandoAnotacao}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSalvarAnotacao}
+              disabled={salvandoAnotacao}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {salvandoAnotacao ? (
+                <>
+                  <Timer className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Anotação
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
