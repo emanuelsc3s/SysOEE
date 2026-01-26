@@ -19,13 +19,6 @@ import { useAuth } from '@/hooks/useAuth'
 // Os dados da linha agora vêm de linhaProducaoSelecionada
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import { Turno, converterParaSetor } from '@/types/operacao'
-import {
-  salvarParada,
-  ParadaLocalStorage,
-  atualizarParada,
-  excluirParada,
-  buscarParadasPorOeeTurno
-} from '@/services/localStorage/parada.storage'
 import { CalculoOEE } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from "@/components/ui/button"
@@ -297,7 +290,8 @@ export default function ApontamentoOEE() {
   const [horaFinalParada, setHoraFinalParada] = useState<string>('')
   const [observacoesParada, setObservacoesParada] = useState<string>('')
   const [paradaSelecionada, setParadaSelecionada] = useState<ParadaGeral | null>(null)
-  const [paradasAtivas] = useState<ParadaLocalStorage[]>([]) // Lista de paradas em andamento (setter não usado ainda)
+  // Paradas em andamento ainda não são rastreadas no Supabase.
+  const paradasAtivas: RegistroParada[] = []
   const [mostrarFormularioParada, setMostrarFormularioParada] = useState<boolean>(false)
   const [modalBuscaParadasAberto, setModalBuscaParadasAberto] = useState<boolean>(false)
 
@@ -358,53 +352,107 @@ export default function ApontamentoOEE() {
   }, 0)
 
   // ==================== Constantes para chaves do localStorage ====================
-  const STORAGE_KEY_PARADAS = 'oee_downtime_records'
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
 
-  const carregarHistoricoParadas = useCallback((oeeTurnoIdFiltro?: number | null): RegistroParada[] => {
+  /**
+   * Carrega histórico de paradas do Supabase (tboee_turno_parada)
+   * Filtra por oeeTurnoId, deletado = 'N' e ordena por created_at decrescente
+   */
+  const carregarHistoricoParadasSupabase = useCallback(async (oeeTurnoIdFiltro?: number | null): Promise<RegistroParada[]> => {
+    if (!oeeTurnoIdFiltro) {
+      return []
+    }
+
     try {
-      const dados = localStorage.getItem(STORAGE_KEY_PARADAS)
-      if (dados) {
-        const registros = JSON.parse(dados) as RegistroParada[]
-        if (!oeeTurnoIdFiltro) {
-          return []
-        }
-        return registros.filter((registro) => registro?.oeeTurnoId === oeeTurnoIdFiltro)
+      const { data, error } = await supabase
+        .from('tboee_turno_parada')
+        .select(`
+          oeeturnoparada_id,
+          oeeturno_id,
+          oeeparada_id,
+          parada,
+          natureza,
+          classe,
+          hora_inicio,
+          hora_fim,
+          observacao,
+          created_at,
+          deletado
+        `)
+        .eq('oeeturno_id', oeeTurnoIdFiltro)
+        .eq('deletado', 'N')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Erro ao carregar histórico de paradas do Supabase:', error)
+        return []
       }
-      return []
+
+      if (!data || data.length === 0) {
+        return []
+      }
+
+      // Converter registros do Supabase para o formato RegistroParada
+      const registrosConvertidos: RegistroParada[] = data.map((registro) => {
+        // Calcular duração em minutos
+        let duracaoMinutos = 0
+        if (registro.hora_inicio && registro.hora_fim) {
+          const [hIni, mIni] = registro.hora_inicio.split(':').map(Number)
+          const [hFim, mFim] = registro.hora_fim.split(':').map(Number)
+          duracaoMinutos = (hFim * 60 + mFim) - (hIni * 60 + mIni)
+          if (duracaoMinutos < 0) duracaoMinutos += 24 * 60 // Passou da meia-noite
+        }
+
+        return {
+          id: String(registro.oeeturnoparada_id),
+          oeeTurnoId: registro.oeeturno_id,
+          data: registro.created_at ? format(new Date(registro.created_at), 'dd/MM/yyyy') : '',
+          turno: turno,
+          linhaId: linhaId || '',
+          linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
+          horaInicio: registro.hora_inicio ? registro.hora_inicio.substring(0, 5) : '',
+          horaFim: registro.hora_fim ? registro.hora_fim.substring(0, 5) : '',
+          duracao: duracaoMinutos,
+          tipoParada: registro.parada || '',
+          codigoParada: String(registro.oeeparada_id || ''),
+          descricaoParada: `${registro.natureza || ''} - ${registro.classe || ''}`.trim(),
+          observacoes: registro.observacao || '',
+          dataHoraRegistro: registro.created_at ? format(new Date(registro.created_at), 'dd/MM/yyyy HH:mm:ss') : ''
+        }
+      })
+
+      return registrosConvertidos
     } catch (error) {
-      console.error('Erro ao carregar histórico de paradas do localStorage:', error)
+      console.error('Erro ao carregar histórico de paradas:', error)
       return []
+    }
+  }, [turno, linhaId, linhaSelecionada?.nome])
+
+  /**
+   * Busca o oeeparada_id pelo código da parada na tabela tboee_parada
+   */
+  const buscarOeeparadaIdPorCodigo = useCallback(async (codigo: string): Promise<number | null> => {
+    if (!codigo) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('tboee_parada')
+        .select('oeeparada_id')
+        .eq('codigo', codigo)
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Erro ao buscar oeeparada_id:', error)
+        return null
+      }
+
+      return data?.oeeparada_id || null
+    } catch (error) {
+      console.error('Erro ao buscar oeeparada_id:', error)
+      return null
     }
   }, [])
-
-  const salvarParadasNoLocalStorage = (registros: RegistroParada[]) => {
-    try {
-      const dadosExistentes = localStorage.getItem(STORAGE_KEY_PARADAS)
-      const registrosExistentes = dadosExistentes ? JSON.parse(dadosExistentes) as RegistroParada[] : []
-
-      if (!oeeTurnoId) {
-        const mapaRegistros = new Map(registrosExistentes.map((registro) => [registro.id, registro]))
-        registros.forEach((registro) => mapaRegistros.set(registro.id, registro))
-        localStorage.setItem(STORAGE_KEY_PARADAS, JSON.stringify(Array.from(mapaRegistros.values())))
-        return
-      }
-
-      const registrosOutrosTurnos = registrosExistentes.filter(
-        (registro) => registro?.oeeTurnoId !== oeeTurnoId
-      )
-      const registrosAtualizados = [...registrosOutrosTurnos, ...registros]
-
-      localStorage.setItem(STORAGE_KEY_PARADAS, JSON.stringify(registrosAtualizados))
-    } catch (error) {
-      console.error('Erro ao salvar paradas no localStorage:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível salvar os dados de paradas',
-        variant: 'destructive'
-      })
-    }
-  }
 
   /**
    * Carrega histórico de qualidade do Supabase (tboee_turno_perda)
@@ -1678,17 +1726,19 @@ export default function ApontamentoOEE() {
     [historicoQualidade, oeeTurnoId]
   )
 
-  const somarDuracoesMinutos = (paradas: ParadaLocalStorage[]): number => {
-    return paradas.reduce((sum, parada) => sum + (parada.duracao_minutos || 0), 0)
+  const somarDuracoesMinutos = (paradas: RegistroParada[]): number => {
+    return paradas.reduce((sum, parada) => sum + (parada.duracao || 0), 0)
   }
 
   const arredondar = (valor: number): number => {
     return Math.round(valor * 100) / 100
   }
 
-  const identificarTipoParada = (parada: ParadaLocalStorage): TipoParada => {
-    const obs = parada.observacao?.toLowerCase() || ''
-    const codigoParada = parada.codigo_parada_id?.toLowerCase() || ''
+  const identificarTipoParada = (parada: RegistroParada): TipoParada => {
+    const obs = parada.observacoes?.toLowerCase() || ''
+    const codigoParada = parada.codigoParada?.toLowerCase() || ''
+    const tipoParada = parada.tipoParada?.toLowerCase() || ''
+    const descricaoParada = parada.descricaoParada?.toLowerCase() || ''
 
     const padroesEstrategicos = [
       'feriado', 'inventário', 'inventario',
@@ -1697,7 +1747,7 @@ export default function ApontamentoOEE() {
     ]
 
     for (const padrao of padroesEstrategicos) {
-      if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+      if (codigoParada.includes(padrao) || obs.includes(padrao) || tipoParada.includes(padrao) || descricaoParada.includes(padrao)) {
         return 'ESTRATEGICA'
       }
     }
@@ -1716,7 +1766,7 @@ export default function ApontamentoOEE() {
     ]
 
     for (const padrao of padroesPlaneados) {
-      if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+      if (codigoParada.includes(padrao) || obs.includes(padrao) || tipoParada.includes(padrao) || descricaoParada.includes(padrao)) {
         return 'PLANEJADA'
       }
     }
@@ -1730,7 +1780,7 @@ export default function ApontamentoOEE() {
     ]
 
     for (const padrao of padroesNaoPlaneados) {
-      if (codigoParada.includes(padrao) || obs.includes(padrao)) {
+      if (codigoParada.includes(padrao) || obs.includes(padrao) || tipoParada.includes(padrao) || descricaoParada.includes(padrao)) {
         return 'NAO_PLANEJADA'
       }
     }
@@ -1740,7 +1790,8 @@ export default function ApontamentoOEE() {
 
   const recalcularOeeComHistorico = useCallback((
     registrosProducao: RegistroProducao[],
-    registrosQualidade = historicoQualidade
+    registrosQualidade = historicoQualidade,
+    registrosParadas = historicoParadas
   ) => {
     if (!linhaId || !oeeTurnoId) {
       setApontamentoProducaoId(null)
@@ -1776,16 +1827,16 @@ export default function ApontamentoOEE() {
     )
 
     const velocidadeNominal = registrosProducao.find((registro) => registro.velocidade && registro.velocidade > 0)?.velocidade || 0
-    const paradas = buscarParadasPorOeeTurno(oeeTurnoId)
+    const paradas = registrosParadas.filter((parada) => parada.oeeTurnoId === oeeTurnoId)
+    const paradasComDuracao = paradas.filter((parada) => Number.isFinite(parada.duracao) && parada.duracao > 0)
 
-    const paradasEstrategicas = paradas.filter((parada) =>
-      identificarTipoParada(parada) === 'ESTRATEGICA' && parada.duracao_minutos !== null
+    const paradasEstrategicas = paradasComDuracao.filter((parada) =>
+      identificarTipoParada(parada) === 'ESTRATEGICA'
     )
 
-    const paradasGrandes = paradas.filter((parada) =>
+    const paradasGrandes = paradasComDuracao.filter((parada) =>
       identificarTipoParada(parada) !== 'ESTRATEGICA' &&
-      parada.duracao_minutos !== null &&
-      parada.duracao_minutos >= 10
+      parada.duracao >= 10
     )
 
     const tempoDisponivelHoras = TEMPO_DISPONIVEL_PADRAO
@@ -1829,7 +1880,7 @@ export default function ApontamentoOEE() {
     })
 
     setTotalPerdasQualidade(totalPerdas)
-  }, [calcularTotalPerdasDoApontamento, historicoQualidade, linhaId, oeeTurnoId])
+  }, [calcularTotalPerdasDoApontamento, historicoParadas, historicoQualidade, linhaId, oeeTurnoId])
 
   /**
    * Formata percentual no padrão brasileiro (pt-BR)
@@ -2119,14 +2170,14 @@ export default function ApontamentoOEE() {
     setTotalHorasParadas(totalHorasParadasCalculado)
     setHorasRestantes(calcularHorasRestantes())
 
-    recalcularOeeComHistorico(historicoProducao)
+    recalcularOeeComHistorico(historicoProducao, historicoQualidade, historicoParadasAtualizado)
   }
 
   /**
    * Exclui um registro de parada do histórico
-   * Remove do localStorage e recalcula OEE automaticamente
+   * Faz soft delete no Supabase e recalcula OEE automaticamente
    */
-  const handleExcluirParada = () => {
+  const handleExcluirParada = async () => {
     if (!paradaParaExcluir) return
 
     try {
@@ -2143,27 +2194,49 @@ export default function ApontamentoOEE() {
         return
       }
 
-      // Remover do histórico local (oee_downtime_records)
-      const novoHistorico = historicoParadas.filter(r => r.id !== paradaParaExcluir)
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        cancelarExclusaoParada()
+        return
+      }
+
+      const oeeturnoparadaId = Number(paradaExcluida.id)
+      if (!Number.isFinite(oeeturnoparadaId)) {
+        toast({
+          title: 'Erro ao excluir',
+          description: 'Registro de parada sem vínculo com o banco de dados.',
+          variant: 'destructive'
+        })
+        cancelarExclusaoParada()
+        return
+      }
+
+      // Soft delete no Supabase
+      const { error: erroExclusao } = await supabase
+        .from('tboee_turno_parada')
+        .update({
+          deleted_at: gerarTimestampLocal(),
+          deleted_by: usuario.id,
+          deletado: 'S'
+        })
+        .eq('oeeturnoparada_id', oeeturnoparadaId)
+
+      if (erroExclusao) {
+        throw erroExclusao
+      }
+
+      console.log('Parada excluída (soft delete) no Supabase:', oeeturnoparadaId)
+
+      // Recarregar histórico de paradas do Supabase
+      const novoHistorico = await carregarHistoricoParadasSupabase(oeeTurnoId)
       setHistoricoParadas(novoHistorico)
-      salvarParadasNoLocalStorage(novoHistorico)
-
-      // IMPORTANTE: Também remover do serviço de paradas (sysoee_paradas)
-      // Esta é a chave usada pelo cálculo de OEE
-      excluirParada(paradaParaExcluir)
-
-      console.log('🗑️ Parada excluída de ambos os storages:', {
-        id: paradaParaExcluir,
-        historicoLocal: 'oee_downtime_records',
-        servicoParadas: 'sysoee_paradas'
-      })
 
       // Recalcular todos os indicadores impactados (OEE e secundários) para o período afetado
       recalcularIndicadoresAposExclusaoParada(novoHistorico)
 
       // Feedback de sucesso
       toast({
-        title: '✅ Parada Excluída',
+        title: 'Parada Excluída',
         description: 'O registro de parada foi excluído e os indicadores foram recalculados',
       })
 
@@ -2171,7 +2244,7 @@ export default function ApontamentoOEE() {
       cancelarExclusaoParada()
 
     } catch (error) {
-      console.error('❌ Erro ao excluir registro de parada:', error)
+      console.error('Erro ao excluir registro de parada:', error)
       toast({
         title: 'Erro ao excluir',
         description: 'Não foi possível excluir o registro de parada. Tente novamente.',
@@ -2531,8 +2604,13 @@ export default function ApontamentoOEE() {
 
   // ==================== Carregar histórico ao montar o componente ====================
   useEffect(() => {
-    const historicoParadas = carregarHistoricoParadas(oeeTurnoId)
-    setHistoricoParadas(historicoParadas)
+    // Carregar histórico de paradas do Supabase (assíncrono)
+    const carregarParadas = async () => {
+      const paradas = await carregarHistoricoParadasSupabase(oeeTurnoId)
+      setHistoricoParadas(paradas)
+      setTotalHorasParadas(paradas.reduce((total, p) => total + (p.duracao || 0), 0) / 60)
+    }
+    carregarParadas()
 
     // Carregar histórico de qualidade do Supabase (assíncrono)
     const carregarQualidade = async () => {
@@ -2542,7 +2620,7 @@ export default function ApontamentoOEE() {
     carregarQualidade()
 
     carregarConfiguracoes()
-  }, [carregarHistoricoParadas, carregarHistoricoQualidadeSupabase, carregarConfiguracoes, oeeTurnoId])
+  }, [carregarHistoricoParadasSupabase, carregarHistoricoQualidadeSupabase, carregarConfiguracoes, oeeTurnoId])
 
   useEffect(() => {
     if (!oeeTurnoId) {
@@ -3010,7 +3088,7 @@ export default function ApontamentoOEE() {
       console.warn('⚠️ Não foi possível registrar turno no banco. Salvamento de produção ficará indisponível.')
     }
 
-    const historicoParadasSalvo = carregarHistoricoParadas(turnoOeeId)
+    const historicoParadasSalvo = await carregarHistoricoParadasSupabase(turnoOeeId)
     const qualidadeDoTurno = await carregarHistoricoQualidadeSupabase(turnoOeeId)
 
     const producoesTurno = turnoOeeId
@@ -3041,7 +3119,7 @@ export default function ApontamentoOEE() {
       setTotalHorasParadas(totalHorasParadasCalculado)
       setHorasRestantes(calcularHorasRestantes(producoesTurno))
 
-      recalcularOeeComHistorico(producoesTurno, qualidadeDoTurno)
+      recalcularOeeComHistorico(producoesTurno, qualidadeDoTurno, historicoParadasSalvo)
       setStatusTurno('INICIADO')
 
       const linhaNome = linhaSelecionada?.nome || 'Linha não identificada'
@@ -3327,24 +3405,9 @@ export default function ApontamentoOEE() {
         throw atualizarErro
       }
 
-      const historicoParadasAtualizado = historicoParadas.map((parada) => ({
-        ...parada,
-        data: dataFormatada,
-        turno,
-        linhaId,
-        linhaNome: linhaAtualizada?.nome || parada.linhaNome
-      }))
-
+      // Recarregar histórico de paradas do Supabase (dados já estão no banco)
+      const historicoParadasAtualizado = await carregarHistoricoParadasSupabase(oeeTurnoId)
       setHistoricoParadas(historicoParadasAtualizado)
-      salvarParadasNoLocalStorage(historicoParadasAtualizado)
-      historicoParadasAtualizado.forEach((parada) => {
-        atualizarParada(parada.id, {
-          linha_id: linhaId,
-          lote_id: null,
-          turno_id: turno,
-          data_parada: dataISO || parada.data
-        })
-      })
 
       // Recarregar histórico de qualidade do Supabase (dados já estão no banco)
       const historicoQualidadeAtualizado = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
@@ -3353,7 +3416,7 @@ export default function ApontamentoOEE() {
       const producoesAtualizadas = await carregarProducoesSupabase(oeeTurnoId)
       setHorasRestantes(calcularHorasRestantes(producoesAtualizadas))
       setTotalHorasParadas(historicoParadasAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
-      recalcularOeeComHistorico(producoesAtualizadas, historicoQualidadeAtualizado)
+      recalcularOeeComHistorico(producoesAtualizadas, historicoQualidadeAtualizado, historicoParadasAtualizado)
 
       setEditandoCabecalho(false)
       setCabecalhoOriginal(null)
@@ -3593,7 +3656,7 @@ export default function ApontamentoOEE() {
     }
   }
 
-  const handleRegistrarParada = () => {
+  const handleRegistrarParada = async () => {
     // Validar campos obrigatórios
     if (!paradaSelecionada) {
       toast({
@@ -3622,110 +3685,116 @@ export default function ApontamentoOEE() {
       return
     }
 
-    // Calcular duração em minutos
-    const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
-    const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
-    const minutosInicio = horaIni * 60 + minIni
-    const minutosFim = horaFin * 60 + minFin
-    const duracaoMinutos = minutosFim - minutosInicio
-
-    // Validar que hora final é maior que hora inicial
-    if (duracaoMinutos <= 0) {
+    // Validar se turno está iniciado
+    if (!oeeTurnoId) {
       toast({
-        title: 'Erro de Validação',
-        description: 'A hora final deve ser maior que a hora inicial',
+        title: 'Turno não iniciado',
+        description: 'Inicie o turno antes de registrar paradas.',
         variant: 'destructive'
       })
       return
     }
 
-    // Criar objeto de registro de parada (para exibição / debug)
-    const registroParada = {
-      id: `parada-${Date.now()}`,
-      data: format(data!, 'dd/MM/yyyy'),
-      turno,
-      linhaId,
-      linhaNome: linhaSelecionada?.nome || '',
-      natureza: paradaSelecionada.natureza || '',
-      classe: paradaSelecionada.classe || '',
-      parada: paradaSelecionada.parada || '',
-      descricao: paradaSelecionada.descricao || '',
-      horaInicial: horaInicialParadaNormalizada,
-      horaFinal: horaFinalParadaNormalizada,
-      duracaoMinutos,
-      observacoes: observacoesParada,
-      dataHoraRegistro: new Date().toISOString()
+    // Calcular duração em minutos
+    const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
+    const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
+    const minutosInicio = horaIni * 60 + minIni
+    let minutosFim = horaFin * 60 + minFin
+    if (minutosFim < minutosInicio) {
+      minutosFim += 24 * 60
+    }
+    const duracaoMinutos = minutosFim - minutosInicio
+
+    // Validar que hora final é diferente da hora inicial
+    if (duracaoMinutos <= 0) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'A hora final deve ser diferente da hora inicial',
+        variant: 'destructive'
+      })
+      return
     }
 
-    console.log('Registro de Parada (UI):', registroParada)
-
-    // Converter para formato ParadaLocalStorage (para cálculo do OEE)
-    const horaInicioFormatada = normalizarHora(horaInicialParadaNormalizada)
-    const horaFimFormatada = normalizarHora(horaFinalParadaNormalizada)
-
-    const paradaData: ParadaLocalStorage = {
-      id: registroParada.id,
-      oeeturno_id: oeeTurnoId ?? null,
-      linha_id: linhaId,
-      lote_id: null,
-      codigo_parada_id: paradaSelecionada.codigo || 'CODIGO_TEMP',
-      turno_id: turno,
-      data_parada: format(data!, 'yyyy-MM-dd'),
-      hora_inicio: horaInicioFormatada,
-      hora_fim: horaFimFormatada,
-      duracao_minutos: duracaoMinutos,
-      observacao: `${paradaSelecionada.natureza || ''} - ${paradaSelecionada.classe || ''} - ${paradaSelecionada.parada || ''} - ${observacoesParada || ''}`.trim(),
-      criado_por_operador: 1,
-      conferido_por_supervisor: null,
-      conferido_em: null,
-      created_at: new Date().toISOString(),
-      created_by: 1,
-      updated_at: new Date().toISOString(),
-      updated_by: null,
-      deleted_at: null,
-      deleted_by: null
+    // Obter usuário autenticado
+    const usuario = await obterUsuarioAutenticado()
+    if (!usuario) {
+      return
     }
 
-    // Salvar no localStorage
-    salvarParada(paradaData)
+    try {
+      // Buscar oeeparada_id pelo código (lookup na tabela tboee_parada)
+      const oeeparadaId = await buscarOeeparadaIdPorCodigo(paradaSelecionada.codigo)
+      if (!oeeparadaId) {
+        toast({
+          title: 'Parada não encontrada',
+          description: 'Não foi possível localizar o tipo de parada no banco de dados.',
+          variant: 'destructive'
+        })
+        return
+      }
 
-    // Atualiza histórico exibido imediatamente e persiste no storage da tela
-    const registroHistorico: RegistroParada = {
-      id: registroParada.id,
-      oeeTurnoId: oeeTurnoId ?? null,
-      data: format(data!, 'dd/MM/yyyy'),
-      turno,
-      linhaId,
-      linhaNome: linhaSelecionada?.nome || '',
-      horaInicio: horaInicialParadaNormalizada,
-      horaFim: horaFinalParadaNormalizada,
-      duracao: duracaoMinutos,
-      tipoParada: paradaSelecionada.parada || paradaSelecionada.descricao || 'Parada',
-      codigoParada: paradaSelecionada.codigo || 'CODIGO_TEMP',
-      descricaoParada: paradaSelecionada.descricao || '',
-      observacoes: observacoesParada,
-      dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
+      // Formatar horas para TIME (HH:MM)
+      const horaInicioFormatada = horaInicialParadaNormalizada
+      const horaFimFormatada = horaFinalParadaNormalizada
+
+      // INSERT no Supabase
+      const { data: paradaCriada, error: erroParada } = await supabase
+        .from('tboee_turno_parada')
+        .insert({
+          oeeturno_id: oeeTurnoId,
+          oeeparada_id: oeeparadaId,
+          parada: paradaSelecionada.parada || paradaSelecionada.descricao || 'Parada',
+          natureza: paradaSelecionada.natureza || null,
+          classe: paradaSelecionada.classe || null,
+          hora_inicio: horaInicioFormatada,
+          hora_fim: horaFimFormatada,
+          observacao: observacoesParada || null,
+          created_at: gerarTimestampLocal(),
+          created_by: usuario.id,
+          deletado: 'N'
+        })
+        .select('oeeturnoparada_id')
+        .single()
+
+      if (erroParada) {
+        throw erroParada
+      }
+
+      if (!paradaCriada?.oeeturnoparada_id) {
+        throw new Error('ID da parada não retornado pelo banco.')
+      }
+
+      console.log('Parada registrada no Supabase:', paradaCriada.oeeturnoparada_id)
+
+      // Recarregar histórico de paradas do Supabase
+      const historicoAtualizado = await carregarHistoricoParadasSupabase(oeeTurnoId)
+      setHistoricoParadas(historicoAtualizado)
+      setTotalHorasParadas(historicoAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
+
+      // Recalcular OEE
+      recalcularOeeComHistorico(historicoProducao, historicoQualidade, historicoAtualizado)
+
+      // Limpar formulário
+      setCodigoParadaBusca('')
+      setParadaSelecionada(null)
+      setHoraInicialParada('')
+      setHoraFinalParada('')
+      setObservacoesParada('')
+
+      toast({
+        title: 'Sucesso',
+        description: `Parada registrada: ${duracaoMinutos} minutos (${Math.floor(duracaoMinutos / 60)}h ${duracaoMinutos % 60}min)`,
+        variant: 'default'
+      })
+
+    } catch (error) {
+      console.error('Erro ao registrar parada no Supabase:', error)
+      toast({
+        title: 'Erro ao registrar parada',
+        description: 'Não foi possível salvar a parada. Tente novamente.',
+        variant: 'destructive'
+      })
     }
-
-    const historicoAtualizado = [registroHistorico, ...historicoParadas]
-    setHistoricoParadas(historicoAtualizado)
-    salvarParadasNoLocalStorage(historicoAtualizado)
-    setTotalHorasParadas(historicoAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
-
-    recalcularOeeComHistorico(historicoProducao)
-
-    // Limpar formulário
-    setCodigoParadaBusca('')
-    setParadaSelecionada(null)
-    setHoraInicialParada('')
-    setHoraFinalParada('')
-    setObservacoesParada('')
-
-    toast({
-      title: 'Sucesso',
-      description: `Parada registrada: ${duracaoMinutos} minutos (${Math.floor(duracaoMinutos / 60)}h ${duracaoMinutos % 60}min)`,
-      variant: 'default'
-    })
   }
 
   const handleNovaParada = () => {
@@ -4732,11 +4801,14 @@ export default function ApontamentoOEE() {
                           const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
                           const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
                           const minutosInicio = horaIni * 60 + minIni
-                          const minutosFim = horaFin * 60 + minFin
+                          let minutosFim = horaFin * 60 + minFin
+                          if (minutosFim < minutosInicio) {
+                            minutosFim += 24 * 60
+                          }
                           const duracaoMinutos = minutosFim - minutosInicio
 
-                          if (duracaoMinutos < 0) {
-                            return 'Hora final deve ser maior que hora inicial'
+                          if (duracaoMinutos <= 0) {
+                            return 'Hora final deve ser diferente da hora inicial'
                           }
 
                           const horas = Math.floor(duracaoMinutos / 60)
