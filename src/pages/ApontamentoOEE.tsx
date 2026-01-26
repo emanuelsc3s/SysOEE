@@ -135,6 +135,7 @@ interface RegistroParada {
 // Tipo para registro de qualidade no localStorage
 interface RegistroQualidade {
   id: string
+  oeeturnoperdaId?: number | null
   oeeTurnoId?: number | null
   data: string
   turno: Turno
@@ -146,6 +147,7 @@ interface RegistroQualidade {
   quantidade: number
   motivo: string
   dataHoraRegistro: string
+  deletado?: 'S' | 'N' | null
 }
 
 // Tipo para dados de lote com ID único
@@ -287,6 +289,7 @@ export default function ApontamentoOEE() {
   // ==================== Estado de Qualidade - Perdas ====================
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
   const [salvandoQualidade, setSalvandoQualidade] = useState(false)
+  const [qualidadeEmEdicao, setQualidadeEmEdicao] = useState<RegistroQualidade | null>(null)
 
   // ==================== Estado de Tempo de Parada ====================
   const [paradasGerais, setParadasGerais] = useState<ParadaGeral[]>([])
@@ -349,6 +352,7 @@ export default function ApontamentoOEE() {
   const [historicoQualidade, setHistoricoQualidade] = useState<RegistroQualidade[]>([])
   const [showConfirmExclusaoQualidade, setShowConfirmExclusaoQualidade] = useState(false)
   const [qualidadeParaExcluir, setQualidadeParaExcluir] = useState<string | null>(null)
+  const historicoQualidadeAtivo = historicoQualidade.filter((registro) => registro.deletado !== 'S')
 
   // ==================== Constantes para chaves do localStorage ====================
   const STORAGE_KEY_PARADAS = 'oee_downtime_records'
@@ -413,6 +417,7 @@ export default function ApontamentoOEE() {
         const registros = JSON.parse(dados)
         if (Array.isArray(registros)) {
           const registrosSemRetrabalho = registros.filter((registro) => registro?.tipo === 'PERDAS')
+          const registrosAtivos = registrosSemRetrabalho.filter((registro) => registro?.deletado !== 'S')
 
           if (registrosSemRetrabalho.length !== registros.length) {
             localStorage.setItem(STORAGE_KEY_QUALIDADE, JSON.stringify(registrosSemRetrabalho))
@@ -422,7 +427,7 @@ export default function ApontamentoOEE() {
             return []
           }
 
-          return registrosSemRetrabalho.filter(
+          return registrosAtivos.filter(
             (registro) => registro?.oeeTurnoId === oeeTurnoIdFiltro
           )
         }
@@ -1676,7 +1681,7 @@ export default function ApontamentoOEE() {
       }
 
       return registrosQualidade
-        .filter((registro) => registro.oeeTurnoId === oeeTurnoId)
+        .filter((registro) => registro.oeeTurnoId === oeeTurnoId && registro.deletado !== 'S')
         .reduce((total, registro) => total + (registro.quantidade || 0), 0)
     },
     [historicoQualidade, oeeTurnoId]
@@ -2207,9 +2212,9 @@ export default function ApontamentoOEE() {
 
   /**
    * Exclui um registro de qualidade do histórico
-   * Remove do localStorage e recalcula OEE automaticamente
+   * Marca como deletado no banco e recalcula OEE automaticamente
    */
-  const handleExcluirQualidade = () => {
+  const handleExcluirQualidade = async () => {
     if (!qualidadeParaExcluir) return
 
     try {
@@ -2226,8 +2231,40 @@ export default function ApontamentoOEE() {
         return
       }
 
-      // Remover do histórico local
-      const novoHistorico = historicoQualidade.filter(r => r.id !== qualidadeParaExcluir)
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
+      const oeeturnoperdaId = qualidadeExcluida.oeeturnoperdaId ?? Number(qualidadeExcluida.id)
+      if (!Number.isFinite(oeeturnoperdaId)) {
+        toast({
+          title: 'Erro ao excluir',
+          description: 'Registro de perda sem vínculo com o banco de dados.',
+          variant: 'destructive'
+        })
+        cancelarExclusaoQualidade()
+        return
+      }
+
+      const { error: erroExclusao } = await supabase
+        .from('tboee_turno_perda')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: usuario.id,
+          deletado: 'S'
+        })
+        .eq('oeeturnoperda_id', oeeturnoperdaId)
+
+      if (erroExclusao) {
+        throw erroExclusao
+      }
+
+      const novoHistorico: RegistroQualidade[] = historicoQualidade.map((registro) =>
+        registro.id === qualidadeParaExcluir
+          ? { ...registro, deletado: 'S' }
+          : registro
+      )
       setHistoricoQualidade(novoHistorico)
       salvarQualidadeNoLocalStorage(novoHistorico)
 
@@ -2245,6 +2282,10 @@ export default function ApontamentoOEE() {
       })
 
       recalcularOeeComHistorico(historicoProducao, novoHistorico)
+
+      if (qualidadeEmEdicao?.id === qualidadeParaExcluir) {
+        cancelarEdicaoQualidade()
+      }
 
       toast({
         title: '✅ Qualidade Excluída',
@@ -3377,6 +3418,102 @@ export default function ApontamentoOEE() {
 
   // ==================== Handlers ====================
 
+  const iniciarEdicaoQualidade = (registro: RegistroQualidade) => {
+    setQualidadeEmEdicao(registro)
+    setQuantidadePerdas(registro.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 4 }))
+  }
+
+  const cancelarEdicaoQualidade = () => {
+    setQualidadeEmEdicao(null)
+    setQuantidadePerdas('')
+  }
+
+  const handleSalvarEdicaoQualidade = async () => {
+    if (!qualidadeEmEdicao) {
+      return
+    }
+
+    const { valorNormalizado: perdaNormalizada, valorNumero: perdaValor } = normalizarPerdaPtBr(quantidadePerdas)
+    const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
+
+    if (!temPerdas) {
+      toast({
+        title: 'Erro de Validação',
+        description: 'Informe a quantidade de perdas',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const usuario = await obterUsuarioAutenticado()
+    if (!usuario) {
+      return
+    }
+
+    const oeeturnoperdaId = qualidadeEmEdicao.oeeturnoperdaId ?? Number(qualidadeEmEdicao.id)
+    if (!Number.isFinite(oeeturnoperdaId)) {
+      toast({
+        title: 'Erro ao editar',
+        description: 'Registro de perda sem vínculo com o banco de dados.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setSalvandoQualidade(true)
+
+      const { error: erroAtualizacao } = await supabase
+        .from('tboee_turno_perda')
+        .update({
+          perda: perdaNormalizada,
+          updated_at: new Date().toISOString(),
+          updated_by: usuario.id
+        })
+        .eq('oeeturnoperda_id', oeeturnoperdaId)
+        .eq('deletado', 'N')
+
+      if (erroAtualizacao) {
+        throw erroAtualizacao
+      }
+
+      const historicoAtualizado = historicoQualidade.map((registro) =>
+        registro.id === qualidadeEmEdicao.id
+          ? { ...registro, quantidade: perdaValor }
+          : registro
+      )
+
+      setHistoricoQualidade(historicoAtualizado)
+      salvarQualidadeNoLocalStorage(historicoAtualizado)
+
+      const perdas = buscarTodosApontamentosPerdas()
+      const perdasAtualizadas = perdas.map((perda) =>
+        perda.id === qualidadeEmEdicao.id
+          ? { ...perda, unidadesRejeitadas: perdaValor, updated_at: new Date().toISOString() }
+          : perda
+      )
+      localStorage.setItem('sysoee_apontamentos_perdas', JSON.stringify(perdasAtualizadas))
+
+      recalcularOeeComHistorico(historicoProducao, historicoAtualizado)
+
+      toast({
+        title: '✅ Perda Atualizada',
+        description: 'Registro de perda atualizado com sucesso.'
+      })
+
+      cancelarEdicaoQualidade()
+    } catch (error) {
+      console.error('❌ Erro ao atualizar perda:', error)
+      toast({
+        title: 'Erro ao editar',
+        description: obterMensagemErro(error, 'Não foi possível atualizar a perda. Tente novamente.'),
+        variant: 'destructive'
+      })
+    } finally {
+      setSalvandoQualidade(false)
+    }
+  }
+
   /**
    * Adiciona registro de qualidade (perdas)
    */
@@ -3431,20 +3568,22 @@ export default function ApontamentoOEE() {
     try {
       setSalvandoQualidade(true)
 
-      const { error: erroPerda } = await supabase
+      const { data: perdaCriada, error: erroPerda } = await supabase
         .from('tboee_turno_perda')
         .insert({
           oeeturno_id: oeeTurnoId,
           perda: perdaNormalizada,
-          created_by: usuario.id,
-          updated_at: new Date().toISOString(),
-          updated_by: usuario.id
+          created_by: usuario.id
         })
         .select('oeeturnoperda_id')
         .single()
 
       if (erroPerda) {
         throw erroPerda
+      }
+
+      if (!perdaCriada?.oeeturnoperda_id) {
+        throw new Error('ID da perda não retornado pelo banco.')
       }
 
       const apontamentoPerdas = salvarApontamentoPerdas(
@@ -3458,6 +3597,7 @@ export default function ApontamentoOEE() {
 
       const registroPerdas: RegistroQualidade = {
         id: apontamentoPerdas.id,
+        oeeturnoperdaId: perdaCriada.oeeturnoperda_id,
         oeeTurnoId: oeeTurnoId ?? null,
         data: format(data!, 'dd/MM/yyyy'),
         turno,
@@ -3468,7 +3608,8 @@ export default function ApontamentoOEE() {
         tipo: 'PERDAS',
         quantidade: perdaValor,
         motivo: '', // motivo removido - campo não mais obrigatório
-        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss')
+        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
+        deletado: 'N'
       }
 
       // =================================================================
@@ -4418,16 +4559,31 @@ export default function ApontamentoOEE() {
                       <button
                         className="h-9 bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
                         type="button"
-                        onClick={handleAdicionarQualidade}
+                        onClick={qualidadeEmEdicao ? handleSalvarEdicaoQualidade : handleAdicionarQualidade}
                         disabled={statusTurno !== 'INICIADO' || salvandoQualidade}
                       >
                         {salvandoQualidade ? (
                           <Timer className="h-5 w-5 animate-spin" />
+                        ) : qualidadeEmEdicao ? (
+                          <Save className="h-5 w-5" />
                         ) : (
                           <CheckCircle className="h-5 w-5" />
                         )}
-                        {salvandoQualidade ? 'Registrando...' : 'Registrar Perda'}
+                        {salvandoQualidade
+                          ? (qualidadeEmEdicao ? 'Salvando...' : 'Registrando...')
+                          : (qualidadeEmEdicao ? 'Salvar Perda' : 'Registrar Perda')}
                       </button>
+                      {qualidadeEmEdicao && (
+                        <button
+                          className="h-9 border border-input text-foreground font-semibold px-4 rounded-md hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                          type="button"
+                          onClick={cancelarEdicaoQualidade}
+                          disabled={salvandoQualidade}
+                        >
+                          <X className="h-5 w-5" />
+                          Cancelar
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4449,28 +4605,39 @@ export default function ApontamentoOEE() {
                       </tr>
                     </thead>
                     <tbody>
-                      {historicoQualidade.length === 0 ? (
+                      {historicoQualidadeAtivo.length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-1 py-4 text-center text-muted-foreground">
                             Nenhum registro de qualidade encontrado
                           </td>
                         </tr>
                       ) : (
-                        historicoQualidade.map((registro) => (
+                        historicoQualidadeAtivo.map((registro) => (
                           <tr
                             key={registro.id}
                             className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
                           >
                             <td className="px-1 py-2 whitespace-nowrap">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => confirmarExclusaoQualidade(registro.id)}
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                title="Excluir registro"
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => iniciarEdicaoQualidade(registro)}
+                                  className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
+                                  title="Editar registro"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => confirmarExclusaoQualidade(registro.id)}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Excluir registro"
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </td>
                             <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
                             <td className="px-1 py-2 whitespace-nowrap">
