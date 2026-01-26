@@ -13,6 +13,8 @@ import Turnos from './pages/Turnos'
 import TurnosCad from './pages/TurnosCad'
 import OeeTurno from './pages/OeeTurno'
 import OeeLinhaVelocidade from './pages/OeeLinhaVelocidade'
+import OeeParada from './pages/OeeParada'
+import OeeParadaCad from './pages/OeeParadaCad'
 import Placeholder from './pages/Placeholder'
 import Login from './pages/Login'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -56,6 +58,11 @@ function App() {
 
         {/* Página de Cadastro de Velocidade Nominal por Linha e Produto */}
         <Route path="/oee-linha-velocidade" element={<ProtectedRoute><OeeLinhaVelocidade /></ProtectedRoute>} />
+
+        {/* Páginas de Cadastro de Paradas OEE */}
+        <Route path="/oee-parada" element={<ProtectedRoute><OeeParada /></ProtectedRoute>} />
+        <Route path="/oee-parada-cad" element={<ProtectedRoute><OeeParadaCad /></ProtectedRoute>} />
+        <Route path="/oee-parada-cad/:id" element={<ProtectedRoute><OeeParadaCad /></ProtectedRoute>} />
 
         {/* Página de Perfil do Colaborador */}
         <Route path="/colaborador/:id" element={<ProtectedRoute><ColaboradorPerfil /></ProtectedRoute>} />

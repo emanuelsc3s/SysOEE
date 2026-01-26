@@ -171,7 +171,7 @@ export default function Home() {
     {
       title: 'Paradas',
       icon: <AlertCircle size={40} />,
-      path: '/paradas',
+      path: '/oee-parada',
       description: 'Análise de paradas e Books de Paradas'
     },
     {

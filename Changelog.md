@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+- Corrigida validação de autenticação nas páginas `OeeParada` e `OeeParadaCad` para usar UUID do Supabase Auth.
+- Removido fallback inválido `'1'` para userId - operações de escrita agora exigem usuário autenticado.
+- Adicionada validação de UUID no hook `useOeeParada` antes de operações de INSERT/UPDATE/DELETE.
+- Atualizada documentação de tipos em `types/oee-parada.ts` com estrutura completa da tabela `tboee_parada`.
+- Criado script de migration `11-tboee-parada.sql` documentando estrutura da tabela e políticas RLS.
+- Documentadas as políticas RLS da tabela `tboee_parada`: SELECT/INSERT/UPDATE para usuários autenticados.
+- Ajustado o card "Paradas" na Home para redirecionar para `/oee-parada`.
 - Adicionado seletor de calendário ao lado dos campos de período do `Dashboard`.
 - Ajustado o formato dos campos de período do `Dashboard` para entrada em dd/mm/aaaa no frontend.
 - Corrigidos avisos de lint no `ApontamentoOEE` e `Dashboard` (variáveis não utilizadas e tipagem do retorno RPC).
