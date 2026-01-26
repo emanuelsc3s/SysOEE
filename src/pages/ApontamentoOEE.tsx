@@ -286,6 +286,7 @@ export default function ApontamentoOEE() {
   const [quantidadePerdas, setQuantidadePerdas] = useState<string>('')
   const [salvandoQualidade, setSalvandoQualidade] = useState(false)
   const [qualidadeEmEdicao, setQualidadeEmEdicao] = useState<RegistroQualidade | null>(null)
+  const salvandoQualidadeRef = useRef(false) // Evita duplo clique no registro de perdas
 
   // ==================== Estado de Tempo de Parada ====================
   const [paradasGerais, setParadasGerais] = useState<ParadaGeral[]>([])
@@ -3407,35 +3408,40 @@ export default function ApontamentoOEE() {
       return
     }
 
-    const { valorNormalizado: perdaNormalizada, valorNumero: perdaValor } = normalizarPerdaPtBr(quantidadePerdas)
-    const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
-
-    if (!temPerdas) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Informe a quantidade de perdas',
-        variant: 'destructive'
-      })
+    if (salvandoQualidadeRef.current) {
       return
     }
 
-    const usuario = await obterUsuarioAutenticado()
-    if (!usuario) {
-      return
-    }
-
-    const oeeturnoperdaId = qualidadeEmEdicao.oeeturnoperdaId ?? Number(qualidadeEmEdicao.id)
-    if (!Number.isFinite(oeeturnoperdaId)) {
-      toast({
-        title: 'Erro ao editar',
-        description: 'Registro de perda sem vínculo com o banco de dados.',
-        variant: 'destructive'
-      })
-      return
-    }
+    salvandoQualidadeRef.current = true
+    setSalvandoQualidade(true)
 
     try {
-      setSalvandoQualidade(true)
+      const { valorNormalizado: perdaNormalizada, valorNumero: perdaValor } = normalizarPerdaPtBr(quantidadePerdas)
+      const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
+
+      if (!temPerdas) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Informe a quantidade de perdas',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
+      const oeeturnoperdaId = qualidadeEmEdicao.oeeturnoperdaId ?? Number(qualidadeEmEdicao.id)
+      if (!Number.isFinite(oeeturnoperdaId)) {
+        toast({
+          title: 'Erro ao editar',
+          description: 'Registro de perda sem vínculo com o banco de dados.',
+          variant: 'destructive'
+        })
+        return
+      }
 
       const { error: erroAtualizacao } = await supabase
         .from('tboee_turno_perda')
@@ -3471,6 +3477,7 @@ export default function ApontamentoOEE() {
         variant: 'destructive'
       })
     } finally {
+      salvandoQualidadeRef.current = false
       setSalvandoQualidade(false)
     }
   }
@@ -3479,56 +3486,61 @@ export default function ApontamentoOEE() {
    * Adiciona registro de qualidade (perdas)
    */
   const handleAdicionarQualidade = async () => {
+    if (salvandoQualidadeRef.current) {
+      return
+    }
+
+    salvandoQualidadeRef.current = true
+    setSalvandoQualidade(true)
+
     // =================================================================
     // VALIDAÇÃO 1: Verificar se existe apontamento de produção ativo
     // =================================================================
-    if (!apontamentoProducaoId) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'É necessário ter um apontamento de produção ativo para registrar qualidade',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // VALIDAÇÃO 2: Verificar se a quantidade de perdas está preenchida
-    // =================================================================
-    const { valorNormalizado: perdaNormalizada, valorNumero: perdaValor } = normalizarPerdaPtBr(quantidadePerdas)
-    const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
-
-    if (!temPerdas) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Informe a quantidade de perdas',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // =================================================================
-    // VALIDAÇÃO 3: Verificar se existe turno OEE válido
-    // =================================================================
-    if (!oeeTurnoId) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Turno OEE não encontrado. Inicie o turno antes de registrar perdas.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    const usuario = await obterUsuarioAutenticado()
-    if (!usuario) {
-      return
-    }
-
-    // =================================================================
-    // SALVAMENTO: Salvar perdas no Supabase e no histórico local
-    // =================================================================
     try {
-      setSalvandoQualidade(true)
+      if (!apontamentoProducaoId) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'É necessário ter um apontamento de produção ativo para registrar qualidade',
+          variant: 'destructive'
+        })
+        return
+      }
 
+      // =================================================================
+      // VALIDAÇÃO 2: Verificar se a quantidade de perdas está preenchida
+      // =================================================================
+      const { valorNormalizado: perdaNormalizada, valorNumero: perdaValor } = normalizarPerdaPtBr(quantidadePerdas)
+      const temPerdas = Number.isFinite(perdaValor) && perdaValor > 0
+
+      if (!temPerdas) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Informe a quantidade de perdas',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      // =================================================================
+      // VALIDAÇÃO 3: Verificar se existe turno OEE válido
+      // =================================================================
+      if (!oeeTurnoId) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Turno OEE não encontrado. Inicie o turno antes de registrar perdas.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
+      // =================================================================
+      // SALVAMENTO: Salvar perdas no Supabase e no histórico local
+      // =================================================================
       const { data: perdaCriada, error: erroPerda } = await supabase
         .from('tboee_turno_perda')
         .insert({
@@ -3568,7 +3580,6 @@ export default function ApontamentoOEE() {
         title: '✅ Qualidade Registrada',
         description: `Registrado: ${perdaValor.toLocaleString('pt-BR')} unidades de perdas. OEE atualizado.`
       })
-
     } catch (error) {
       console.error('❌ Erro ao salvar apontamento de qualidade:', error)
       toast({
@@ -3577,6 +3588,7 @@ export default function ApontamentoOEE() {
         variant: 'destructive'
       })
     } finally {
+      salvandoQualidadeRef.current = false
       setSalvandoQualidade(false)
     }
   }
