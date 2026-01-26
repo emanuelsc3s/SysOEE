@@ -2011,7 +2011,6 @@ export default function ApontamentoOEE() {
 
   /**
    * Exclui um registro de produção do histórico
-   * Remove do localStorage e recalcula o OEE
    */
   const handleExcluirProducao = async () => {
     if (!registroParaExcluir) return
