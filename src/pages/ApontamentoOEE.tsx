@@ -20,10 +20,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import { Turno, converterParaSetor } from '@/types/operacao'
 import {
-  salvarApontamentoPerdas,
-  buscarTodosApontamentosPerdas,
-} from '@/services/localStorage/apontamento-oee.storage'
-import {
   salvarParada,
   ParadaLocalStorage,
   atualizarParada,
@@ -353,10 +349,15 @@ export default function ApontamentoOEE() {
   const [showConfirmExclusaoQualidade, setShowConfirmExclusaoQualidade] = useState(false)
   const [qualidadeParaExcluir, setQualidadeParaExcluir] = useState<string | null>(null)
   const historicoQualidadeAtivo = historicoQualidade.filter((registro) => registro.deletado !== 'S')
+  const totalQuantidadeQualidade = historicoQualidadeAtivo.reduce((total, registro) => {
+    if (!Number.isFinite(registro.quantidade)) {
+      return total
+    }
+    return total + registro.quantidade
+  }, 0)
 
   // ==================== Constantes para chaves do localStorage ====================
   const STORAGE_KEY_PARADAS = 'oee_downtime_records'
-  const STORAGE_KEY_QUALIDADE = 'oee_quality_records'
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
 
   const carregarHistoricoParadas = useCallback((oeeTurnoIdFiltro?: number | null): RegistroParada[] => {
@@ -405,70 +406,55 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Carrega histórico de qualidade do localStorage
+   * Carrega histórico de qualidade do Supabase (tboee_turno_perda)
+   * Filtra por oeeTurnoId, deletado = 'N' e ordena por data decrescente
    */
-  const carregarHistoricoQualidade = useCallback((oeeTurnoIdFiltro?: number | null): RegistroQualidade[] => {
-    try {
-      // Limpar dados legados de retrabalho no localStorage
-      localStorage.removeItem('sysoee_apontamentos_retrabalho')
-
-      const dados = localStorage.getItem(STORAGE_KEY_QUALIDADE)
-      if (dados) {
-        const registros = JSON.parse(dados)
-        if (Array.isArray(registros)) {
-          const registrosSemRetrabalho = registros.filter((registro) => registro?.tipo === 'PERDAS')
-          const registrosAtivos = registrosSemRetrabalho.filter((registro) => registro?.deletado !== 'S')
-
-          if (registrosSemRetrabalho.length !== registros.length) {
-            localStorage.setItem(STORAGE_KEY_QUALIDADE, JSON.stringify(registrosSemRetrabalho))
-          }
-
-          if (!oeeTurnoIdFiltro) {
-            return []
-          }
-
-          return registrosAtivos.filter(
-            (registro) => registro?.oeeTurnoId === oeeTurnoIdFiltro
-          )
-        }
-      }
-      return []
-    } catch (error) {
-      console.error('Erro ao carregar histórico de qualidade do localStorage:', error)
+  const carregarHistoricoQualidadeSupabase = useCallback(async (oeeTurnoIdFiltro?: number | null): Promise<RegistroQualidade[]> => {
+    if (!oeeTurnoIdFiltro) {
       return []
     }
-  }, [])
 
-  /**
-   * Salva histórico de qualidade no localStorage
-   */
-  const salvarQualidadeNoLocalStorage = (registros: RegistroQualidade[]) => {
     try {
-      const dadosExistentes = localStorage.getItem(STORAGE_KEY_QUALIDADE)
-      const registrosExistentes = dadosExistentes ? JSON.parse(dadosExistentes) as RegistroQualidade[] : []
+      const { data, error } = await supabase
+        .from('tboee_turno_perda')
+        .select('oeeturnoperda_id, oeeturno_id, perda, created_at, deletado')
+        .eq('oeeturno_id', oeeTurnoIdFiltro)
+        .eq('deletado', 'N')
+        .order('created_at', { ascending: false })
 
-      if (!oeeTurnoId) {
-        const mapaRegistros = new Map(registrosExistentes.map((registro) => [registro.id, registro]))
-        registros.forEach((registro) => mapaRegistros.set(registro.id, registro))
-        localStorage.setItem(STORAGE_KEY_QUALIDADE, JSON.stringify(Array.from(mapaRegistros.values())))
-        return
+      if (error) {
+        console.error('Erro ao carregar histórico de qualidade do Supabase:', error)
+        return []
       }
 
-      const registrosOutrosTurnos = registrosExistentes.filter(
-        (registro) => registro?.oeeTurnoId !== oeeTurnoId
-      )
-      const registrosAtualizados = [...registrosOutrosTurnos, ...registros]
+      if (!data || data.length === 0) {
+        return []
+      }
 
-      localStorage.setItem(STORAGE_KEY_QUALIDADE, JSON.stringify(registrosAtualizados))
+      // Converter registros do Supabase para o formato RegistroQualidade
+      const registrosConvertidos: RegistroQualidade[] = data.map((registro) => ({
+        id: String(registro.oeeturnoperda_id),
+        oeeturnoperdaId: registro.oeeturnoperda_id,
+        oeeTurnoId: registro.oeeturno_id,
+        data: registro.created_at ? format(new Date(registro.created_at), 'dd/MM/yyyy') : '',
+        turno: turno, // Usar turno atual do contexto
+        linhaId: linhaId || '',
+        linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
+        apontamentoProducaoId: '',
+        skuCodigo: skuCodigo,
+        tipo: 'PERDAS' as const,
+        quantidade: registro.perda ? Number(registro.perda) : 0,
+        motivo: '',
+        dataHoraRegistro: registro.created_at ? format(new Date(registro.created_at), 'dd/MM/yyyy HH:mm:ss') : '',
+        deletado: registro.deletado as 'S' | 'N' | null
+      }))
+
+      return registrosConvertidos
     } catch (error) {
-      console.error('Erro ao salvar qualidade no localStorage:', error)
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível salvar os dados de qualidade',
-        variant: 'destructive'
-      })
+      console.error('Erro ao carregar histórico de qualidade do Supabase:', error)
+      return []
     }
-  }
+  }, [turno, linhaId, linhaSelecionada?.nome, skuCodigo])
 
   const normalizarHora = (hora: string): string => {
     if (!hora) return ''
@@ -2260,20 +2246,9 @@ export default function ApontamentoOEE() {
         throw erroExclusao
       }
 
-      const novoHistorico: RegistroQualidade[] = historicoQualidade.map((registro) =>
-        registro.id === qualidadeParaExcluir
-          ? { ...registro, deletado: 'S' }
-          : registro
-      )
+      // Recarregar histórico de qualidade do Supabase
+      const novoHistorico = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
       setHistoricoQualidade(novoHistorico)
-      salvarQualidadeNoLocalStorage(novoHistorico)
-
-      // Remover do serviço de apontamentos (localStorage de perdas)
-      if (qualidadeExcluida.tipo === 'PERDAS') {
-        const perdas = buscarTodosApontamentosPerdas()
-        const perdasAtualizadas = perdas.filter(p => p.id !== qualidadeParaExcluir)
-        localStorage.setItem('sysoee_apontamentos_perdas', JSON.stringify(perdasAtualizadas))
-      }
 
       console.log('🗑️ Qualidade excluída:', {
         id: qualidadeParaExcluir,
@@ -2555,11 +2530,15 @@ export default function ApontamentoOEE() {
     const historicoParadas = carregarHistoricoParadas(oeeTurnoId)
     setHistoricoParadas(historicoParadas)
 
-    const historicoQualidade = carregarHistoricoQualidade(oeeTurnoId)
-    setHistoricoQualidade(historicoQualidade)
+    // Carregar histórico de qualidade do Supabase (assíncrono)
+    const carregarQualidade = async () => {
+      const qualidade = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
+      setHistoricoQualidade(qualidade)
+    }
+    carregarQualidade()
 
     carregarConfiguracoes()
-  }, [carregarHistoricoParadas, carregarHistoricoQualidade, carregarConfiguracoes, oeeTurnoId])
+  }, [carregarHistoricoParadas, carregarHistoricoQualidadeSupabase, carregarConfiguracoes, oeeTurnoId])
 
   useEffect(() => {
     if (!oeeTurnoId) {
@@ -3028,7 +3007,7 @@ export default function ApontamentoOEE() {
     }
 
     const historicoParadasSalvo = carregarHistoricoParadas(turnoOeeId)
-    const qualidadeDoTurno = carregarHistoricoQualidade(turnoOeeId)
+    const qualidadeDoTurno = await carregarHistoricoQualidadeSupabase(turnoOeeId)
 
     const producoesTurno = turnoOeeId
       ? await carregarProducoesSupabase(turnoOeeId)
@@ -3363,17 +3342,9 @@ export default function ApontamentoOEE() {
         })
       })
 
-      const historicoQualidadeAtualizado = historicoQualidade.map((registro) => ({
-        ...registro,
-        data: dataFormatada,
-        turno,
-        linhaId,
-        linhaNome: linhaAtualizada?.nome || registro.linhaNome,
-        skuCodigo
-      }))
-
+      // Recarregar histórico de qualidade do Supabase (dados já estão no banco)
+      const historicoQualidadeAtualizado = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
       setHistoricoQualidade(historicoQualidadeAtualizado)
-      salvarQualidadeNoLocalStorage(historicoQualidadeAtualizado)
 
       const producoesAtualizadas = await carregarProducoesSupabase(oeeTurnoId)
       setHorasRestantes(calcularHorasRestantes(producoesAtualizadas))
@@ -3477,22 +3448,9 @@ export default function ApontamentoOEE() {
         throw erroAtualizacao
       }
 
-      const historicoAtualizado = historicoQualidade.map((registro) =>
-        registro.id === qualidadeEmEdicao.id
-          ? { ...registro, quantidade: perdaValor }
-          : registro
-      )
-
+      // Recarregar histórico de qualidade do Supabase
+      const historicoAtualizado = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
       setHistoricoQualidade(historicoAtualizado)
-      salvarQualidadeNoLocalStorage(historicoAtualizado)
-
-      const perdas = buscarTodosApontamentosPerdas()
-      const perdasAtualizadas = perdas.map((perda) =>
-        perda.id === qualidadeEmEdicao.id
-          ? { ...perda, unidadesRejeitadas: perdaValor, updated_at: new Date().toISOString() }
-          : perda
-      )
-      localStorage.setItem('sysoee_apontamentos_perdas', JSON.stringify(perdasAtualizadas))
 
       recalcularOeeComHistorico(historicoProducao, historicoAtualizado)
 
@@ -3586,38 +3544,11 @@ export default function ApontamentoOEE() {
         throw new Error('ID da perda não retornado pelo banco.')
       }
 
-      const apontamentoPerdas = salvarApontamentoPerdas(
-        apontamentoProducaoId,
-        perdaValor,
-        '', // motivo removido - campo não mais obrigatório
-        null, // observacao
-        1, // TODO: buscar do contexto de autenticação
-        'Operador' // TODO: buscar do contexto de autenticação
-      )
-
-      const registroPerdas: RegistroQualidade = {
-        id: apontamentoPerdas.id,
-        oeeturnoperdaId: perdaCriada.oeeturnoperda_id,
-        oeeTurnoId: oeeTurnoId ?? null,
-        data: format(data!, 'dd/MM/yyyy'),
-        turno,
-        linhaId: linhaId!,
-        linhaNome: linhaSelecionada?.nome || 'Linha não identificada',
-        apontamentoProducaoId,
-        skuCodigo,
-        tipo: 'PERDAS',
-        quantidade: perdaValor,
-        motivo: '', // motivo removido - campo não mais obrigatório
-        dataHoraRegistro: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
-        deletado: 'N'
-      }
-
       // =================================================================
-      // ATUALIZAR HISTÓRICO E LOCALSTORAGE
+      // RECARREGAR HISTÓRICO DO SUPABASE
       // =================================================================
-      const novoHistorico = [registroPerdas, ...historicoQualidade]
+      const novoHistorico = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
       setHistoricoQualidade(novoHistorico)
-      salvarQualidadeNoLocalStorage(novoHistorico)
 
       recalcularOeeComHistorico(historicoProducao, novoHistorico)
 
@@ -4612,48 +4543,58 @@ export default function ApontamentoOEE() {
                           </td>
                         </tr>
                       ) : (
-                        historicoQualidadeAtivo.map((registro) => (
-                          <tr
-                            key={registro.id}
-                            className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
-                          >
-                            <td className="px-1 py-2 whitespace-nowrap">
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => iniciarEdicaoQualidade(registro)}
-                                  className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
-                                  title="Editar registro"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => confirmarExclusaoQualidade(registro.id)}
-                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  title="Excluir registro"
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
+                        <>
+                          {historicoQualidadeAtivo.map((registro) => (
+                            <tr
+                              key={registro.id}
+                              className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
+                            >
+                              <td className="px-1 py-2 whitespace-nowrap">
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => iniciarEdicaoQualidade(registro)}
+                                    className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
+                                    title="Editar registro"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => confirmarExclusaoQualidade(registro.id)}
+                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    title="Excluir registro"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                              <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
+                              <td className="px-1 py-2 whitespace-nowrap">
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  registro.tipo === 'PERDAS'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {registro.tipo}
+                                </span>
+                              </td>
+                              <td className="px-1 py-2 text-right whitespace-nowrap">
+                                {formatarQuantidade(registro.quantidade)}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="bg-muted/40 border-t border-border-light dark:border-border-dark">
+                            <td className="px-1 py-2 text-right font-semibold" colSpan={3}>
+                              Total
                             </td>
-                            <td className="px-1 py-2 whitespace-nowrap">{registro.dataHoraRegistro}</td>
-                            <td className="px-1 py-2 whitespace-nowrap">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                registro.tipo === 'PERDAS'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {registro.tipo}
-                              </span>
-                            </td>
-                            <td className="px-1 py-2 text-right whitespace-nowrap">
-                              {formatarQuantidade(registro.quantidade)}
+                            <td className="px-1 py-2 text-right font-semibold whitespace-nowrap">
+                              {formatarQuantidade(totalQuantidadeQualidade)}
                             </td>
                           </tr>
-                        ))
+                        </>
                       )}
                     </tbody>
                   </table>
