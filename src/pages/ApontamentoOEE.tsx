@@ -262,6 +262,7 @@ export default function ApontamentoOEE() {
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
   const [intervaloApontamento, setIntervaloApontamento] = useState<number>(1) // Padrão: 1 hora
   const [modalExplicacaoOEEAberto, setModalExplicacaoOEEAberto] = useState(false)
+  const [modalAjudaViradaParadaAberto, setModalAjudaViradaParadaAberto] = useState(false)
 
   // ==================== Estado do Modal de Lotes ====================
   const [modalLotesAberto, setModalLotesAberto] = useState(false)
@@ -3355,12 +3356,7 @@ export default function ApontamentoOEE() {
         return
       }
 
-      const dataFormatada = data ? format(data, 'dd/MM/yyyy') : ''
       const dataISO = data ? format(data, 'yyyy-MM-dd') : ''
-      const linhaAtualizada = linhaProducaoSelecionada ? {
-        nome: linhaProducaoSelecionada.linhaproducao,
-        setor: converterParaSetor(linhaProducaoSelecionada.departamento)
-      } : null
 
       const produtoAtualId = produtoId ?? (await garantirProdutoPorSku()).produtoId
 
@@ -4775,10 +4771,11 @@ export default function ApontamentoOEE() {
                     </div>
 
                     {/* Hora Final */}
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
-                        Hora Final
-                      </label>
+                  <div className="flex flex-col">
+                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
+                      Hora Final
+                    </label>
+                    <div className="flex items-center gap-2">
                       <input
                         className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         id="hora-final-parada"
@@ -4790,7 +4787,17 @@ export default function ApontamentoOEE() {
                         autoComplete="off"
                         maxLength={5}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setModalAjudaViradaParadaAberto(true)}
+                        className="inline-flex items-center justify-center h-6 w-6 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        title="Entenda a virada de meia-noite"
+                        aria-label="Ajuda sobre virada de meia-noite"
+                      >
+                        <Info className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                      </button>
                     </div>
+                  </div>
                   </div>
 
                   {/* Exibir duração calculada automaticamente */}
@@ -5306,6 +5313,47 @@ export default function ApontamentoOEE() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Ajuda: Virada de Meia-noite nas Paradas */}
+      <Dialog open={modalAjudaViradaParadaAberto} onOpenChange={setModalAjudaViradaParadaAberto}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Info className="w-5 h-5 text-blue-500" />
+              Virada de Meia-noite
+            </DialogTitle>
+            <DialogDescription>
+              Como o sistema interpreta horários de parada que atravessam o dia.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-sm text-muted-foreground">
+            <p>
+              Se a hora final for menor que a hora inicial, a parada é interpretada
+              como continuando no dia seguinte e o sistema soma 24 horas para
+              calcular a duração.
+            </p>
+            <p>
+              Exemplo: hora inicial 23:10 e hora final 00:20 resultam em 1h10
+              (70 minutos).
+            </p>
+            <p>
+              Se a hora final for igual à hora inicial, o registro é bloqueado.
+            </p>
+            <p>
+              As colunas <span className="font-medium">hora_inicio</span> e{' '}
+              <span className="font-medium">hora_fim</span> guardam apenas horários;
+              a data exibida no histórico vem da data do turno no cabeçalho (campo Data).
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" onClick={() => setModalAjudaViradaParadaAberto(false)}>
+              Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Controle de Lotes */}
       <Dialog
         open={modalLotesAberto}
@@ -5730,3 +5778,4 @@ export default function ApontamentoOEE() {
     </>
   )
 }
+

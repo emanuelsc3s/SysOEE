@@ -11,6 +11,7 @@
  */
 
 import { ChevronDown, User, LogOut } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -48,17 +49,28 @@ export function AppHeader({
   onLogout,
   onProfileClick,
 }: AppHeaderProps) {
+  const navigate = useNavigate()
   // Calcula as iniciais do usuário se não foram fornecidas
   const initials = userInitials || userName.substring(0, 2).toUpperCase()
+  const handleLogoClick = () => {
+    navigate("/")
+  }
 	  return (
 	    <header className="bg-white border-b h-16 flex items-center justify-between px-6 sticky top-0 z-40">
 	      {/* Seção esquerda - Título */}
 	      <div className="flex items-center gap-4 min-w-0">
-        <img
-          src="/logo-farmace.png"
-          alt="Logo Farmace"
-          className="h-full w-[132px] flex-shrink-0"
-        />
+        <button
+          type="button"
+          onClick={handleLogoClick}
+          className="h-full flex items-center bg-transparent border-0 p-0"
+          aria-label="Ir para a página inicial"
+        >
+          <img
+            src="/logo-farmace.png"
+            alt="Logo Farmace"
+            className="h-full w-[132px] flex-shrink-0 object-contain"
+          />
+        </button>
 
         <div className="flex flex-col gap-0 min-w-0 leading-[18px]">
           <h1 className="text-lg sm:text-xl font-semibold text-primary leading-tight tracking-tight truncate">

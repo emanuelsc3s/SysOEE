@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado seletor de calendário ao lado dos campos de período do `Dashboard`.
+- Ajustado o formato dos campos de período do `Dashboard` para entrada em dd/mm/aaaa no frontend.
+- Corrigidos avisos de lint no `ApontamentoOEE` e `Dashboard` (variáveis não utilizadas e tipagem do retorno RPC).
+- Ordenada a listagem de cards do `Dashboard` pelo maior OEE, com desempate pelo nome da linha.
+- Normalizada a conversão dos percentuais do OEE no `Dashboard` para tratar valores com vírgula e garantir exibição correta.
+- Atualizado o design dos cards de OEE no `Dashboard` para usar o mesmo padrão visual do `ApontamentoOEE`: velocímetro SVG inline com cores dinâmicas por percentual, barras de componentes (Disponibilidade, Performance, Qualidade) com gradiente de cores e indicador visual do gap até a meta de 65%.
+- Implementado o Dashboard de OEE com filtros dinâmicos e cards por linha usando RPC do Supabase.
 - Ajustado o cálculo da "Qtd. Produzida" no controle de lotes para usar valor absoluto e evitar negativos no `ApontamentoOEE`.
 - Aumentada a largura do modal de controle de lotes em 40% no `ApontamentoOEE`.
 - Adicionada a coluna "Total Produção" no controle de lotes do `ApontamentoOEE`, calculada por quantidade produzida menos perdas.
