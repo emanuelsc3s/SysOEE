@@ -558,10 +558,11 @@ export default function UsuariosCad() {
                     <div className="text-sm text-blue-800">
                       <p className="font-medium">Requisitos de senha:</p>
                       <ul className="list-disc list-inside mt-1">
-                        <li>Mínimo de 8 caracteres</li>
+                        <li>Mínimo de 6 caracteres</li>
                         <li>Pelo menos uma letra maiúscula</li>
                         <li>Pelo menos uma letra minúscula</li>
                         <li>Pelo menos um número</li>
+                        <li>Pelo menos um caractere especial</li>
                       </ul>
                     </div>
                   </div>
