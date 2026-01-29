@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Marcado o campo "Perfil" com indicador visual obrigatório no cadastro de usuários.
+- Tornado obrigatório o campo "Perfil" no cadastro de usuários.
+- Ajustado o select de perfil em `UsuariosCad` para exibir apenas o texto do perfil quando selecionado.
 - Reordenada a coluna "Perfil" para ficar antes de "Login" na tabela de usuários.
 - Corrigida validação de autenticação nas páginas `OeeParada` e `OeeParadaCad` para usar UUID do Supabase Auth.
 - Removido fallback inválido `'1'` para userId - operações de escrita agora exigem usuário autenticado.
@@ -22,7 +25,8 @@
 - Ajustada a validação e o tratamento dos campos "Qtd/Ciclo Inicial" e "Qtd/Ciclo Final" no `ApontamentoOEE` para aceitar valor zero.
 - Adicionada a sublinha com a linha de produção na lista do `OeeTurno`, baseada no `linhaproducao_id`.
 - Corrigida a consulta de turnos OEE ao carregar nomes de linha sem join direto, evitando erro 400 no Supabase.
-- Incluída a persistência do `linhaproducao_id` ao criar turnos OEE no `ApontamentoOEE`.
+- Ajustada a criação de turnos OEE para persistir `linhaproducao_id` e `linhaproducao` em `tboee_turno`, com fallback de leitura via produção quando dados antigos não tiverem a linha.
+- Ajustada a criação de turnos OEE para gravar `created_at` com data e hora local do frontend.
 - Atualizado o cálculo do OEE para filtrar produção, paradas e perdas pelo `oeeturno_id`, evitando mistura entre turnos.
 - Ajustado o campo de data dos lotes no `ApontamentoOEE` para entrada e exibição em formato brasileiro (dd/mm/aaaa) com validação.
 - Tratado erro de sessão expirada ao validar usuário no `ApontamentoOEE`, com limpeza de sessão e aviso para novo login.

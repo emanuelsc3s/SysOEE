@@ -2830,9 +2830,37 @@ export default function ApontamentoOEE() {
 
         let linhaIdExtraidoNumero: number | null = null
 
-        // 5. Observação pode conter informações da linha de produção
-        // Formato esperado: "Turno iniciado via sistema OEE - Linha: 15 - SPEP 2 - LINHA E - ENVASE"
-        if (turnoData.observacao) {
+        // 5. Linha de produção (preferir campos diretos do turno)
+        const linhaIdDireta = typeof turnoData.linhaProducaoId === 'number' ? turnoData.linhaProducaoId : null
+        const linhaNomeDireto = turnoData.linhaProducaoNome?.trim() || ''
+
+        if (linhaIdDireta || linhaNomeDireto) {
+          if (linhaIdDireta) {
+            setLinhaId(linhaIdDireta.toString())
+            linhaIdExtraidoNumero = linhaIdDireta
+          }
+
+          const linhaNomeExibicao = linhaIdDireta && linhaNomeDireto
+            ? `${linhaIdDireta} - ${linhaNomeDireto}`
+            : (linhaNomeDireto || (linhaIdDireta ? linhaIdDireta.toString() : ''))
+
+          if (linhaNomeExibicao) {
+            setLinhaNome(linhaNomeExibicao)
+          }
+
+          if (linhaIdDireta) {
+            setLinhaProducaoSelecionada({
+              linhaproducao_id: linhaIdDireta,
+              linhaproducao: linhaNomeDireto || linhaNomeExibicao,
+              departamento_id: null, // Não disponível no turno
+              departamento: null, // Será extraído do nome se necessário
+              tipo: null, // Não disponível no turno
+              ativo: 'S' // Assumimos ativo ao carregar de turno existente
+            })
+          }
+        } else if (turnoData.observacao) {
+          // Fallback: Observação pode conter informações da linha de produção
+          // Formato esperado: "Turno iniciado via sistema OEE - Linha: 15 - SPEP 2 - LINHA E - ENVASE"
           const matchLinha = turnoData.observacao.match(/Linha:\s*(\d+)\s*-\s*(.+)/i)
           if (matchLinha) {
             const linhaIdExtraido = matchLinha[1]
@@ -3047,7 +3075,7 @@ export default function ApontamentoOEE() {
   }, [skuCodigo])
 
   /**
-   * Verifica se já existe um turno aberto na tboee_turno para a linha/data/SKU
+   * Verifica se já existe um turno aberto na tboee_turno para linha/data/turno/SKU
    * Se existir, retorna os dados existentes
    * Se não existir, cria um novo registro
    *
@@ -3059,12 +3087,18 @@ export default function ApontamentoOEE() {
       const descricaoSKU = extrairDescricaoSku(skuCodigo)
 
       const dataFormatada = data ? format(data, 'yyyy-MM-dd') : null
+      const linhaProducaoIdBruta = linhaProducaoSelecionada?.linhaproducao_id ?? (linhaId ? Number(linhaId) : null)
+      const linhaProducaoId = Number.isFinite(linhaProducaoIdBruta) ? linhaProducaoIdBruta : null
+      const linhaNomeNormalizado = linhaNome ? linhaNome.replace(/^\s*\d+\s*-\s*/, '').trim() : ''
+      const linhaProducaoNome = linhaProducaoSelecionada?.linhaproducao?.trim() || linhaNomeNormalizado || null
 
-      if (!dataFormatada || !turnoId || !codigoSKU) {
+      if (!dataFormatada || !turnoId || !codigoSKU || !linhaProducaoId || !linhaProducaoNome) {
         console.error('❌ Dados obrigatórios faltando para criar turno OEE:', {
           data: dataFormatada,
           turnoId,
-          codigoSKU
+          codigoSKU,
+          linhaproducao_id: linhaProducaoId,
+          linhaproducao: linhaProducaoNome
         })
         return null
       }
@@ -3080,7 +3114,8 @@ export default function ApontamentoOEE() {
       console.log('🔍 Verificando turno existente:', {
         data: dataFormatada,
         turno_id: parseInt(turnoId),
-        produto_id: produtoIdAtual
+        produto_id: produtoIdAtual,
+        linhaproducao_id: linhaProducaoId
       })
 
       const { data: turnoExistente, error: buscarError } = await supabase
@@ -3089,6 +3124,7 @@ export default function ApontamentoOEE() {
         .eq('data', dataFormatada)
         .eq('turno_id', parseInt(turnoId))
         .eq('produto_id', produtoIdAtual)
+        .eq('linhaproducao_id', linhaProducaoId)
         .eq('status', 'Aberto')
         .eq('deletado', 'N')
         .limit(1)
@@ -3114,13 +3150,14 @@ export default function ApontamentoOEE() {
         produto: `${codigoSKU} - ${produtoDescricaoAtual || descricaoSKU}`,
         turno_id: parseInt(turnoId),
         turno: turnoNome || turnoCodigo,
-        linhaproducao_id: linhaProducaoSelecionada?.linhaproducao_id ?? null,
+        linhaproducao_id: linhaProducaoId,
+        linhaproducao: linhaProducaoNome,
         turno_hi: turnoHoraInicialNormalizada || null,
         turno_hf: turnoHoraFinalNormalizada || null,
-        observacao: `Turno iniciado via sistema OEE - Linha: ${linhaNome || linhaId}`,
+        observacao: `Turno iniciado via sistema OEE - Linha: ${linhaProducaoId} - ${linhaProducaoNome}`,
+        created_at: gerarTimestampLocal(),
         status: 'Aberto', // Status inicial do turno
         deletado: 'N', // Flag de exclusão lógica
-        // created_at é preenchido automaticamente pelo banco
         // created_by: TODO - adicionar quando autenticação estiver implementada
       }
 

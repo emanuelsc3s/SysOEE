@@ -145,6 +145,7 @@ export interface OeeTurnoDB {
   oeeturno_id: number
   data: string | null
   linhaproducao_id: number | null
+  linhaproducao: string | null
   produto_id: number
   produto: string
   turno_id: number
@@ -160,9 +161,6 @@ export interface OeeTurnoDB {
   updated_by: number | null
   deleted_at: string | null
   deleted_by: number | null
-  tblinhaproducao?: {
-    linhaproducao: string | null
-  }
 }
 
 /**

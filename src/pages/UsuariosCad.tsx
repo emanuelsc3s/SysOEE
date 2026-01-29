@@ -89,6 +89,7 @@ export default function UsuariosCad() {
   // Validação de senha em tempo real
   const passwordValidation = isStrongPassword(formData.senha ?? '')
   const passwordsMatchResult = passwordsMatch(formData.senha ?? '', formData.confirmarSenha ?? '')
+  const perfilSelecionado = PERFIL_OPTIONS.find((perfil) => perfil.value === formData.perfilId)
 
   const loadData = useCallback(async () => {
     try {
@@ -183,6 +184,15 @@ export default function UsuariosCad() {
           variant: 'destructive',
           title: 'Validação',
           description: 'O nome do usuário é obrigatório',
+        })
+        return
+      }
+
+      if (!formData.perfilId) {
+        toast({
+          variant: 'destructive',
+          title: 'Validação',
+          description: 'O perfil é obrigatório',
         })
         return
       }
@@ -685,16 +695,21 @@ export default function UsuariosCad() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Perfil */}
                   <div className="space-y-2">
-                    <Label htmlFor="perfil">Perfil</Label>
+                    <Label htmlFor="perfil">
+                      Perfil <span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={formData.perfilId?.toString() || ''}
                       onValueChange={(value) => setFormData({
                         ...formData,
                         perfilId: value ? parseInt(value) : undefined
                       })}
+                      required
                     >
                       <SelectTrigger id="perfil">
-                        <SelectValue placeholder="Selecione um perfil" />
+                        <SelectValue placeholder="Selecione um perfil">
+                          {perfilSelecionado?.label}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {PERFIL_OPTIONS.map((perfil) => (
