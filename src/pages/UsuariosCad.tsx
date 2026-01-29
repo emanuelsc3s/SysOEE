@@ -60,10 +60,11 @@ export default function UsuariosCad() {
     createUsuario,
     updateUsuario,
     deleteUsuario,
-    checkLoginExists
+    checkLoginExists,
+    checkUsuarioIdExists
   } = useUsuarios()
 
-  const isEdicao = id && id !== 'novo'
+  const isEdicao = Boolean(id && id !== 'novo')
 
   // Estado do formulário
   const [formData, setFormData] = useState<UsuarioCreateData>(USUARIO_CREATE_INITIAL_VALUES)
@@ -75,6 +76,12 @@ export default function UsuariosCad() {
 
   // Validação assíncrona de login
   const [loginValidation, setLoginValidation] = useState<{ checking: boolean; exists: boolean; error?: string }>({
+    checking: false,
+    exists: false
+  })
+
+  // Validação assíncrona de usuário ID (Código SICFAR)
+  const [usuarioIdValidation, setUsuarioIdValidation] = useState<{ checking: boolean; exists: boolean; error?: string }>({
     checking: false,
     exists: false
   })
@@ -121,7 +128,7 @@ export default function UsuariosCad() {
     let ativo = true
     const timeoutId = setTimeout(async () => {
       setLoginValidation({ checking: true, exists: false, error: undefined })
-      const resultado = await checkLoginExists(loginParaValidar, formData.id)
+      const resultado = await checkLoginExists(loginParaValidar, isEdicao ? formData.id : undefined)
       if (!ativo) return
       setLoginValidation({ checking: false, exists: resultado.exists, error: resultado.error })
     }, 500)
@@ -130,7 +137,34 @@ export default function UsuariosCad() {
       ativo = false
       clearTimeout(timeoutId)
     }
-  }, [formData.login, formData.id, checkLoginExists])
+  }, [formData.login, formData.id, checkLoginExists, isEdicao])
+
+  // Validação assíncrona de usuário ID (Código SICFAR)
+  useEffect(() => {
+    if (isEdicao) {
+      setUsuarioIdValidation({ checking: false, exists: false, error: undefined })
+      return
+    }
+
+    const usuarioIdParaValidar = (formData.id ?? '').trim()
+    if (!usuarioIdParaValidar) {
+      setUsuarioIdValidation({ checking: false, exists: false, error: undefined })
+      return
+    }
+
+    let ativo = true
+    const timeoutId = setTimeout(async () => {
+      setUsuarioIdValidation({ checking: true, exists: false, error: undefined })
+      const resultado = await checkUsuarioIdExists(parseInt(usuarioIdParaValidar, 10))
+      if (!ativo) return
+      setUsuarioIdValidation({ checking: false, exists: resultado.exists, error: resultado.error })
+    }, 500)
+
+    return () => {
+      ativo = false
+      clearTimeout(timeoutId)
+    }
+  }, [formData.id, checkUsuarioIdExists, isEdicao])
 
   const handleSave = async () => {
     try {
@@ -219,6 +253,36 @@ export default function UsuariosCad() {
           description: 'Este login já está em uso',
         })
         return
+      }
+
+      const usuarioIdInformado = (formData.id ?? '').trim()
+      if (usuarioIdInformado) {
+        if (usuarioIdValidation.checking) {
+          toast({
+            variant: 'destructive',
+            title: 'Validação',
+            description: 'Aguarde a verificação do Usuário ID',
+          })
+          return
+        }
+
+        if (usuarioIdValidation.error) {
+          toast({
+            variant: 'destructive',
+            title: 'Validação',
+            description: 'Não foi possível validar o Usuário ID. Verifique a conexão e tente novamente.',
+          })
+          return
+        }
+
+        if (usuarioIdValidation.exists) {
+          toast({
+            variant: 'destructive',
+            title: 'Validação',
+            description: 'Este Usuário ID já está em uso',
+          })
+          return
+        }
       }
 
       const dadosNormalizados = {
@@ -331,10 +395,49 @@ export default function UsuariosCad() {
                 </div>
               </div>
               <div className="px-4 sm:px-6 py-4 flex flex-col">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  {/* Usuário ID (Código SICFAR) */}
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="usuarioId">Código SICFAR</Label>
+                    <Input
+                      id="usuarioId"
+                      value={formData.id ?? ''}
+                      onChange={(e) => {
+                        const valor = e.target.value.replace(/\D/g, '')
+                        setFormData({ ...formData, id: valor })
+                      }}
+                      placeholder="Ex: 1001"
+                      inputMode="numeric"
+                      maxLength={10}
+                      disabled={isEdicao}
+                      readOnly={isEdicao}
+                    />
+                    {!isEdicao && usuarioIdValidation.checking && (
+                      <p className="text-sm text-gray-500">Verificando disponibilidade...</p>
+                    )}
+                    {!isEdicao && usuarioIdValidation.exists && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        Este Usuário ID já está em uso
+                      </p>
+                    )}
+                    {!isEdicao && usuarioIdValidation.error && (
+                      <p className="text-sm text-amber-600 flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        Não foi possível validar o Usuário ID
+                      </p>
+                    )}
+                    {!isEdicao && formData.id && !usuarioIdValidation.checking && !usuarioIdValidation.exists && !usuarioIdValidation.error && (
+                      <p className="text-sm text-green-600 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Usuário ID disponível
+                      </p>
+                    )}
+                  </div>
+
                   {/* Matrícula do Funcionário */}
                   <div className="space-y-2 md:col-span-1">
-                    <Label htmlFor="matricula">Matrícula do Funcionário</Label>
+                    <Label htmlFor="matricula">Matrícula</Label>
                     <Input
                       id="matricula"
                       value={formData.matricula ?? ''}
@@ -399,7 +502,7 @@ export default function UsuariosCad() {
 
                   {/* Email (apenas visualização em edição) */}
                   {isEdicao && (
-                    <div className="space-y-2 md:col-span-5">
+                    <div className="space-y-2 md:col-span-6">
                       <Label htmlFor="email-readonly">Email</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />

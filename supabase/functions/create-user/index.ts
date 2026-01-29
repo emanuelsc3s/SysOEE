@@ -32,6 +32,7 @@ interface CreateUserRequest {
   usuario: string
   perfil_id?: number
   funcionario_id?: number
+  usuario_id?: number
   created_at?: string
 }
 
@@ -116,7 +117,7 @@ serve(async (req) => {
 
     // Obter dados da requisição
     const body: CreateUserRequest = await req.json()
-    const { email, senha, login, usuario, perfil_id, funcionario_id, created_at } = body
+    const { email, senha, login, usuario, perfil_id, funcionario_id, usuario_id, created_at } = body
 
     // Validar campos obrigatórios
     if (!email || !senha || !login || !usuario) {
@@ -175,6 +176,41 @@ serve(async (req) => {
       )
     }
 
+    const usuarioIdInformado = typeof usuario_id === 'number'
+      ? usuario_id
+      : (typeof usuario_id === 'string' && usuario_id.trim() ? Number(usuario_id) : undefined)
+
+    if (usuarioIdInformado !== undefined && (!Number.isInteger(usuarioIdInformado) || usuarioIdInformado <= 0)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Usuário ID deve ser um número inteiro positivo' } as CreateUserResponse),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (usuarioIdInformado !== undefined) {
+      const { data: existingUsuarioId, error: existingUsuarioIdError } = await supabaseAdmin
+        .from('tbusuario')
+        .select('usuario_id')
+        .eq('usuario_id', usuarioIdInformado)
+        .eq('deletado', 'N')
+        .maybeSingle()
+
+      if (existingUsuarioIdError) {
+        console.error('Erro ao verificar usuário ID:', existingUsuarioIdError)
+        return new Response(
+          JSON.stringify({ success: false, error: 'Erro ao verificar Usuário ID' } as CreateUserResponse),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (existingUsuarioId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Este Usuário ID já está em uso' } as CreateUserResponse),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     // Criar usuário no auth.users usando Admin API
     const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -204,18 +240,24 @@ serve(async (req) => {
       ? created_at
       : new Date().toISOString()
 
+    const tbusuarioInsert: Record<string, string | number | null> = {
+      user_id: newUserId,
+      login,
+      usuario,
+      perfil_id: perfil_id || null,
+      funcionario_id: funcionario_id || null,
+      deletado: 'N',
+      created_at: createdAt,
+      created_by: callerUser.id,
+    }
+
+    if (usuarioIdInformado !== undefined) {
+      tbusuarioInsert.usuario_id = usuarioIdInformado
+    }
+
     const { data: tbusuarioData, error: tbusuarioError } = await supabaseAdmin
       .from('tbusuario')
-      .insert({
-        user_id: newUserId,
-        login,
-        usuario,
-        perfil_id: perfil_id || null,
-        funcionario_id: funcionario_id || null,
-        deletado: 'N',
-        created_at: createdAt,
-        created_by: callerUser.id,
-      })
+      .insert(tbusuarioInsert)
       .select('usuario_id')
       .single()
 

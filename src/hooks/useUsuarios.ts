@@ -133,7 +133,7 @@ export function useUsuarios() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [mapDbToForm])
 
   /**
    * Busca o email do usuário no auth.users via função RPC (SECURITY DEFINER)
@@ -264,6 +264,10 @@ export function useUsuarios() {
       }
 
       const createdAt = (formData.createdAt || '').trim() || gerarTimestampLocal()
+      const usuarioIdInformado = (formData.id || '').trim()
+      const usuarioId = usuarioIdInformado && /^\d+$/.test(usuarioIdInformado)
+        ? parseInt(usuarioIdInformado, 10)
+        : undefined
 
       // Chamar Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -280,6 +284,7 @@ export function useUsuarios() {
           usuario: formData.usuario,
           perfil_id: formData.perfilId,
           funcionario_id: formData.funcionarioId,
+          usuario_id: usuarioId,
           created_at: createdAt
         })
       })
@@ -424,6 +429,32 @@ export function useUsuarios() {
   }, [])
 
   /**
+   * Verifica se um usuário ID (usuario_id) já existe no sistema
+   */
+  const checkUsuarioIdExists = useCallback(async (usuarioId: number, excludeId?: string): Promise<{ exists: boolean; error?: string }> => {
+    try {
+      let query = supabase
+        .from('tbusuario')
+        .select('usuario_id')
+        .eq('usuario_id', usuarioId)
+        .eq('deletado', 'N')
+
+      if (excludeId) {
+        query = query.neq('usuario_id', parseInt(excludeId))
+      }
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      return { exists: (data?.length || 0) > 0 }
+    } catch (error) {
+      console.error('Erro ao verificar usuário ID:', error)
+      return { exists: false, error: handleSupabaseError(error) }
+    }
+  }, [])
+
+  /**
    * Verifica se um email já existe no sistema
    */
   const checkEmailExists = useCallback(async (email: string, excludeId?: string): Promise<{ exists: boolean; error?: string }> => {
@@ -458,6 +489,7 @@ export function useUsuarios() {
     updateUsuario,
     deleteUsuario,
     checkLoginExists,
+    checkUsuarioIdExists,
     checkEmailExists
   }
 }

@@ -1,9 +1,0 @@
-# Diretórios de documentação (contém código Deno/Edge Functions, não React)
-docs/
-
-# Build output
-dist/
-build/
-
-# Dependências
-node_modules/

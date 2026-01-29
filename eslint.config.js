@@ -9,7 +9,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 
 export default [
   // Ignorar artefatos de build e dependências
-  { ignores: ["dist/**", "build/**", "coverage/**", "node_modules/**"] },
+  { ignores: ["dist/**", "build/**", "coverage/**", "node_modules/**", "docs/**"] },
   // Globais p/ navegador e Node (aplicado a todos os arquivos)
   {
     languageOptions: {
