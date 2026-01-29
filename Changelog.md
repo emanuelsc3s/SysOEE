@@ -23,6 +23,8 @@
 - Aumentada a largura do modal de controle de lotes em 40% no `ApontamentoOEE`.
 - Adicionada a coluna "Total Produção" no controle de lotes do `ApontamentoOEE`, calculada por quantidade produzida menos perdas.
 - Ajustada a validação e o tratamento dos campos "Qtd/Ciclo Inicial" e "Qtd/Ciclo Final" no `ApontamentoOEE` para aceitar valor zero.
+- Trocadas as posições das colunas "Data" e "Turno" na tabela do `OeeTurno`.
+- Reordenada a coluna "Status" para ficar logo após "Ações" na tabela do `OeeTurno`.
 - Adicionada a sublinha com a linha de produção na lista do `OeeTurno`, baseada no `linhaproducao_id`.
 - Corrigida a consulta de turnos OEE ao carregar nomes de linha sem join direto, evitando erro 400 no Supabase.
 - Ajustada a criação de turnos OEE para persistir `linhaproducao_id` e `linhaproducao` em `tboee_turno`, com fallback de leitura via produção quando dados antigos não tiverem a linha.

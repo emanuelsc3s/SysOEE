@@ -582,11 +582,14 @@ export default function OeeTurno() {
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Ações
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
-                          Data
+                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                          Status
                         </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
                           Turno
+                        </th>
+                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                          Data
                         </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[25ch]">
                           Produto
@@ -596,9 +599,6 @@ export default function OeeTurno() {
                         </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
                           Fim
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
-                          Status
                         </th>
                       </tr>
                     </thead>
@@ -664,6 +664,14 @@ export default function OeeTurno() {
                                 </Button>
                               </div>
                             </td>
+                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
+                              <Badge variant={getBadgeStatus(turno.status)}>
+                                {turno.status || 'N/A'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {turno.turno}
+                            </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-1">
@@ -674,9 +682,6 @@ export default function OeeTurno() {
                                   Lançamento: {turno.id}
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {turno.turno}
                             </td>
                             <td className="px-4 md:px-6 py-4 text-sm text-gray-600 max-w-[300px]">
                               <div className="flex flex-col gap-1">
@@ -697,11 +702,6 @@ export default function OeeTurno() {
                                 <Clock className="h-3 w-3 text-gray-400" />
                                 {formatarHorario(turno.horaFim)}
                               </div>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getBadgeStatus(turno.status)}>
-                                {turno.status || 'N/A'}
-                              </Badge>
                             </td>
                           </tr>
                         ))
