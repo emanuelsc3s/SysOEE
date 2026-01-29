@@ -3,7 +3,7 @@
  * Operações CRUD com a tabela tbusuario do Supabase
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { supabase, handleSupabaseError } from '@/lib/supabase'
 import {
   UsuarioFormData,
@@ -30,6 +30,7 @@ export interface FetchUsuariosFilters {
 export function useUsuarios() {
   const [loading, setLoading] = useState(false)
   const [usuarios, setUsuarios] = useState<UsuarioFormData[]>([])
+  const edgeFunctionDisponivelRef = useRef(true)
 
   /**
    * Mapeia dados do banco para o formato do formulário
@@ -38,7 +39,7 @@ export function useUsuarios() {
     return {
       id: dbUsuario.usuario_id.toString(),
       userId: dbUsuario.user_id || undefined,
-      login: dbUsuario.login,
+      login: dbUsuario.login || '',
       email: dbUsuario.email || '',
       usuario: dbUsuario.usuario || '',
       perfilId: dbUsuario.perfil_id || undefined,
@@ -63,7 +64,6 @@ export function useUsuarios() {
   const mapFormToDb = useCallback((formData: UsuarioFormData): Partial<UsuarioDB> => {
     const dbData: Partial<UsuarioDB> = {
       login: formData.login,
-      email: formData.email || null,
       usuario: formData.usuario || null,
       perfil_id: formData.perfilId || null,
       funcionario_id: formData.funcionarioId || null,
@@ -72,6 +72,86 @@ export function useUsuarios() {
 
     return dbData
   }, [])
+
+  /**
+   * Busca o email do usuário no auth.users via função RPC (SECURITY DEFINER)
+   * A função retorna apenas o email, sem expor outros dados sensíveis
+   */
+  const fetchEmailFromAuthByLogin = useCallback(async (login: string): Promise<string | null> => {
+    if (!login?.trim()) return null
+
+    try {
+      const { data, error } = await supabase.rpc('get_email_by_username', {
+        username: login.trim()
+      })
+
+      if (error) {
+        console.error('Erro ao buscar email no auth.users:', error)
+        return null
+      }
+
+      if (typeof data === 'string' && data.trim()) {
+        return data
+      }
+
+      return null
+    } catch (error) {
+      console.error('Erro ao buscar email no auth.users:', error)
+      return null
+    }
+  }, [])
+
+  /**
+   * Busca o email do usuário no auth.users via Edge Function
+   * Preferencialmente usa o user_id (mais estável); fallback para login/RPC
+   */
+  const fetchEmailFromAuth = useCallback(async (userId?: string, login?: string): Promise<string | null> => {
+    try {
+      if (!edgeFunctionDisponivelRef.current) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      if (!supabaseUrl) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if (!token) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/get-user-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          login
+        })
+      })
+
+      if (!response.ok) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const result = await response.json() as { success?: boolean; email?: string | null }
+      if (result?.success && result.email) {
+        return result.email
+      }
+
+      return login ? await fetchEmailFromAuthByLogin(login) : null
+    } catch (error) {
+      if (error instanceof TypeError) {
+        edgeFunctionDisponivelRef.current = false
+      }
+      console.error('Erro ao buscar email no auth.users via Edge Function:', error)
+      return login ? await fetchEmailFromAuthByLogin(login) : null
+    }
+  }, [fetchEmailFromAuthByLogin])
 
   /**
    * Busca lista de usuários com filtros opcionais
@@ -115,11 +195,25 @@ export function useUsuarios() {
       const usuariosMapeados = (data || []).map(mapDbToForm)
       console.log('useUsuarios: Usuários mapeados:', usuariosMapeados)
 
-      setUsuarios(usuariosMapeados)
+      // Enriquecer emails consultando o auth.users (Edge Function/RPC) como no cadastro
+      const usuariosComEmail = await Promise.all(
+        usuariosMapeados.map(async (usuario) => {
+          const emailAuth = await fetchEmailFromAuth(usuario.userId, usuario.login)
+          if (!emailAuth || emailAuth === usuario.email) {
+            return usuario
+          }
+          return {
+            ...usuario,
+            email: emailAuth
+          }
+        })
+      )
+
+      setUsuarios(usuariosComEmail)
 
       return {
-        data: usuariosMapeados,
-        count: count || usuariosMapeados.length
+        data: usuariosComEmail,
+        count: count || usuariosComEmail.length
       }
     } catch (error) {
       console.error('useUsuarios: Erro ao buscar usuários:', error)
@@ -133,80 +227,7 @@ export function useUsuarios() {
     } finally {
       setLoading(false)
     }
-  }, [mapDbToForm])
-
-  /**
-   * Busca o email do usuário no auth.users via função RPC (SECURITY DEFINER)
-   * A função retorna apenas o email, sem expor outros dados sensíveis
-   */
-  const fetchEmailFromAuthByLogin = useCallback(async (login: string): Promise<string | null> => {
-    if (!login?.trim()) return null
-
-    try {
-      const { data, error } = await supabase.rpc('get_email_by_username', {
-        username: login.trim()
-      })
-
-      if (error) {
-        console.error('Erro ao buscar email no auth.users:', error)
-        return null
-      }
-
-      if (typeof data === 'string' && data.trim()) {
-        return data
-      }
-
-      return null
-    } catch (error) {
-      console.error('Erro ao buscar email no auth.users:', error)
-      return null
-    }
-  }, [])
-
-  /**
-   * Busca o email do usuário no auth.users via Edge Function
-   * Preferencialmente usa o user_id (mais estável); fallback para login/RPC
-   */
-  const fetchEmailFromAuth = useCallback(async (userId?: string, login?: string): Promise<string | null> => {
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      if (!supabaseUrl) {
-        return login ? await fetchEmailFromAuthByLogin(login) : null
-      }
-
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData?.session?.access_token
-      if (!token) {
-        return login ? await fetchEmailFromAuthByLogin(login) : null
-      }
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/get-user-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          login
-        })
-      })
-
-      if (!response.ok) {
-        return login ? await fetchEmailFromAuthByLogin(login) : null
-      }
-
-      const result = await response.json() as { success?: boolean; email?: string | null }
-      if (result?.success && result.email) {
-        return result.email
-      }
-
-      return login ? await fetchEmailFromAuthByLogin(login) : null
-    } catch (error) {
-      console.error('Erro ao buscar email no auth.users via Edge Function:', error)
-      return login ? await fetchEmailFromAuthByLogin(login) : null
-    }
-  }, [fetchEmailFromAuthByLogin])
+  }, [mapDbToForm, fetchEmailFromAuth])
 
   /**
    * Busca um usuário específico por ID

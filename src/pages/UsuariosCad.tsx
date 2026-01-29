@@ -285,12 +285,18 @@ export default function UsuariosCad() {
         }
       }
 
-      const dadosNormalizados = {
+      const dadosNormalizadosBase = {
         ...formData,
         login: formData.login.trim(),
-        usuario: formData.usuario.trim(),
-        email: formData.email.trim().toLowerCase()
+        usuario: formData.usuario.trim()
       }
+
+      const dadosNormalizados = isEdicao
+        ? dadosNormalizadosBase
+        : {
+          ...dadosNormalizadosBase,
+          email: (formData.email ?? '').trim().toLowerCase()
+        }
 
       // Salvar
       if (isEdicao) {
