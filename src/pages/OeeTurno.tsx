@@ -567,10 +567,15 @@ export default function OeeTurno() {
                             <p className="text-base font-semibold text-gray-900">{formatarData(turno.data)}</p>
                             <p className="text-sm text-gray-700 mt-1">{turno.turno}</p>
                           </div>
-                          <Badge variant={getBadgeStatus(turno.status)} className="flex items-center">
-                            <Target className="h-3 w-3 mr-1" />
-                            {turno.status || 'N/A'}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant={getBadgeStatus(turno.status)} className="flex items-center">
+                              <Target className="h-3 w-3 mr-1" />
+                              {turno.status || 'N/A'}
+                            </Badge>
+                            <span className="text-[10px] text-gray-500">
+                              Por: {turno.createdByLogin || 'N/A'}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-700">
@@ -730,9 +735,14 @@ export default function OeeTurno() {
                               </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getBadgeStatus(turno.status)}>
-                                {turno.status || 'N/A'}
-                              </Badge>
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant={getBadgeStatus(turno.status)}>
+                                  {turno.status || 'N/A'}
+                                </Badge>
+                                <span className="text-[10px] text-gray-500">
+                                  Por: {turno.createdByLogin || 'N/A'}
+                                </span>
+                              </div>
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {turno.turno}

@@ -282,6 +282,7 @@ export default function ApontamentoOEE() {
   const [salvandoQualidade, setSalvandoQualidade] = useState(false)
   const [qualidadeEmEdicao, setQualidadeEmEdicao] = useState<RegistroQualidade | null>(null)
   const salvandoQualidadeRef = useRef(false) // Evita duplo clique no registro de perdas
+  const usuarioInternoIdRef = useRef<number | null>(null) // Cache do ID interno (tbusuario)
 
   // ==================== Estado de Tempo de Parada ====================
   const [paradasGerais, setParadasGerais] = useState<ParadaGeral[]>([])
@@ -829,6 +830,39 @@ export default function ApontamentoOEE() {
 
     return data.user
   }, [toast])
+
+  const obterUsuarioInternoId = useCallback(async (): Promise<number | null> => {
+    if (usuarioInternoIdRef.current) {
+      return usuarioInternoIdRef.current
+    }
+
+    const authUser = await obterUsuarioAutenticado()
+    if (!authUser) {
+      return null
+    }
+
+    const { data, error } = await supabase
+      .from('tbusuario')
+      .select('usuario_id')
+      .eq('user_id', authUser.id)
+      .eq('deletado', 'N')
+      .maybeSingle()
+
+    if (error || !data?.usuario_id) {
+      if (error) {
+        console.error('❌ Erro ao buscar usuário interno:', error)
+      }
+      toast({
+        title: 'Usuário interno não encontrado',
+        description: 'Não foi possível identificar o usuário na tabela tbusuario.',
+        variant: 'destructive'
+      })
+      return null
+    }
+
+    usuarioInternoIdRef.current = data.usuario_id
+    return data.usuario_id
+  }, [obterUsuarioAutenticado, toast])
 
   const garantirProdutoPorSku = useCallback(async () => {
     const codigoSKU = extrairCodigoSku(skuCodigo)
@@ -3152,6 +3186,11 @@ export default function ApontamentoOEE() {
       // Não existe, criar novo registro com status 'Aberto'
       console.log('📝 Criando novo registro de turno OEE...')
 
+      const usuarioInternoId = await obterUsuarioInternoId()
+      if (!usuarioInternoId) {
+        return null
+      }
+
       const novoTurno = {
         data: dataFormatada,
         produto_id: produtoIdAtual,
@@ -3164,9 +3203,9 @@ export default function ApontamentoOEE() {
         turno_hf: turnoHoraFinalNormalizada || null,
         observacao: `Turno iniciado via sistema OEE - Linha: ${linhaProducaoId} - ${linhaProducaoNome}`,
         created_at: gerarTimestampLocal(),
+        created_by: usuarioInternoId,
         status: 'Aberto', // Status inicial do turno
         deletado: 'N', // Flag de exclusão lógica
-        // created_by: TODO - adicionar quando autenticação estiver implementada
       }
 
       console.log('📤 Dados para inserção:', novoTurno)

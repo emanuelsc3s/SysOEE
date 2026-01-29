@@ -161,6 +161,10 @@ export interface OeeTurnoDB {
   updated_by: number | null
   deleted_at: string | null
   deleted_by: number | null
+  criador?: {
+    usuario_id: number | null
+    login: string | null
+  } | null
 }
 
 /**
@@ -195,6 +199,8 @@ export interface OeeTurnoFormData {
   createdAt: string
   /** Usuário que criou */
   createdBy: number | null
+  /** Login do usuário que criou */
+  createdByLogin: string | null
 }
 
 /**

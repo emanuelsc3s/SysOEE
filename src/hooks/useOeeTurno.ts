@@ -35,7 +35,8 @@ function mapDbToForm(
     observacao: db.observacao,
     status: db.status,
     createdAt: db.created_at,
-    createdBy: db.created_by
+    createdBy: db.created_by,
+    createdByLogin: db.criador?.login ?? null
   }
 }
 
@@ -69,7 +70,13 @@ export function useOeeTurno() {
       // Construir query base
       let query = supabase
         .from('tboee_turno')
-        .select('*', { count: 'exact' })
+        .select(`
+          *,
+          criador:tbusuario!tboee_turno_created_by_fkey(
+            usuario_id,
+            login
+          )
+        `, { count: 'exact' })
         .eq('deletado', 'N')
         .order('data', { ascending: false })
         .order('oeeturno_id', { ascending: false })
@@ -213,7 +220,13 @@ export function useOeeTurno() {
 
       const { data, error } = await supabase
         .from('tboee_turno')
-        .select('*')
+        .select(`
+          *,
+          criador:tbusuario!tboee_turno_created_by_fkey(
+            usuario_id,
+            login
+          )
+        `)
         .eq('oeeturno_id', parseInt(id))
         .eq('deletado', 'N')
         .single()
