@@ -90,6 +90,7 @@ export default function UsuariosCad() {
 
   const loadData = useCallback(async () => {
     try {
+      // O email é buscado via RPC get_email_by_username no Supabase dentro de fetchUsuario (fallback)
       const data = await fetchUsuario(id!)
       setFormData({
         ...data,

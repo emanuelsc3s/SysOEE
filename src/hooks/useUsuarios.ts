@@ -135,6 +135,79 @@ export function useUsuarios() {
   }, [])
 
   /**
+   * Busca o email do usuário no auth.users via função RPC (SECURITY DEFINER)
+   * A função retorna apenas o email, sem expor outros dados sensíveis
+   */
+  const fetchEmailFromAuthByLogin = useCallback(async (login: string): Promise<string | null> => {
+    if (!login?.trim()) return null
+
+    try {
+      const { data, error } = await supabase.rpc('get_email_by_username', {
+        username: login.trim()
+      })
+
+      if (error) {
+        console.error('Erro ao buscar email no auth.users:', error)
+        return null
+      }
+
+      if (typeof data === 'string' && data.trim()) {
+        return data
+      }
+
+      return null
+    } catch (error) {
+      console.error('Erro ao buscar email no auth.users:', error)
+      return null
+    }
+  }, [])
+
+  /**
+   * Busca o email do usuário no auth.users via Edge Function
+   * Preferencialmente usa o user_id (mais estável); fallback para login/RPC
+   */
+  const fetchEmailFromAuth = useCallback(async (userId?: string, login?: string): Promise<string | null> => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      if (!supabaseUrl) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      if (!token) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/get-user-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          login
+        })
+      })
+
+      if (!response.ok) {
+        return login ? await fetchEmailFromAuthByLogin(login) : null
+      }
+
+      const result = await response.json() as { success?: boolean; email?: string | null }
+      if (result?.success && result.email) {
+        return result.email
+      }
+
+      return login ? await fetchEmailFromAuthByLogin(login) : null
+    } catch (error) {
+      console.error('Erro ao buscar email no auth.users via Edge Function:', error)
+      return login ? await fetchEmailFromAuthByLogin(login) : null
+    }
+  }, [fetchEmailFromAuthByLogin])
+
+  /**
    * Busca um usuário específico por ID
    */
   const fetchUsuario = useCallback(async (id: string): Promise<UsuarioFormData> => {
@@ -153,7 +226,13 @@ export function useUsuarios() {
         throw new Error('Usuário não encontrado')
       }
 
-      return mapDbToForm(data)
+      const usuarioMapeado = mapDbToForm(data)
+      const emailAuth = await fetchEmailFromAuth(usuarioMapeado.userId, usuarioMapeado.login)
+
+      return {
+        ...usuarioMapeado,
+        email: emailAuth ?? usuarioMapeado.email
+      }
     } catch (error) {
       const errorMessage = handleSupabaseError(error)
       toast({
@@ -165,7 +244,7 @@ export function useUsuarios() {
     } finally {
       setLoading(false)
     }
-  }, [mapDbToForm])
+  }, [mapDbToForm, fetchEmailFromAuth])
 
   /**
    * Cria um novo usuário via Edge Function
