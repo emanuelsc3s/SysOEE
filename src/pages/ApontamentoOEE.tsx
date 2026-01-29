@@ -1344,6 +1344,15 @@ export default function ApontamentoOEE() {
     )
   }
 
+  const quantidadeProduzidaInvalida = (quantidade: string): boolean => {
+    if (quantidade.trim() === '') {
+      return true
+    }
+
+    const valor = Number(quantidade)
+    return !Number.isFinite(valor) || valor < 0
+  }
+
   /**
    * Habilita o modo de edição para uma linha específica
    */
@@ -1407,7 +1416,7 @@ export default function ApontamentoOEE() {
       return
     }
 
-    if (!linhaApontamento.quantidadeProduzida || Number(linhaApontamento.quantidadeProduzida) <= 0) {
+    if (quantidadeProduzidaInvalida(linhaApontamento.quantidadeProduzida)) {
       toast({
         title: 'Campo obrigatório',
         description: 'Informe a Quantidade Produzida',
@@ -4585,8 +4594,7 @@ export default function ApontamentoOEE() {
                                       disabled={
                                         statusTurno !== 'INICIADO' ||
                                         !linha.apontamentoId ||
-                                        !linha.quantidadeProduzida ||
-                                        Number(linha.quantidadeProduzida) <= 0
+                                        quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                                       }
                                     >
                                       <Pencil className="h-4 w-4 mr-1" />
@@ -4601,8 +4609,7 @@ export default function ApontamentoOEE() {
                                     title="Salvar linha"
                                     disabled={
                                       statusTurno !== 'INICIADO' ||
-                                      !linha.quantidadeProduzida ||
-                                      Number(linha.quantidadeProduzida) <= 0 ||
+                                      quantidadeProduzidaInvalida(linha.quantidadeProduzida) ||
                                       Boolean(linha.apontamentoId && !linha.editavel)
                                     }
                                   >
@@ -4618,8 +4625,7 @@ export default function ApontamentoOEE() {
                                     disabled={
                                       statusTurno !== 'INICIADO' ||
                                       !linha.apontamentoId ||
-                                      !linha.quantidadeProduzida ||
-                                      Number(linha.quantidadeProduzida) <= 0
+                                      quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                                     }
                                   >
                                     <Trash className="h-4 w-4 mr-1" />
@@ -4633,8 +4639,7 @@ export default function ApontamentoOEE() {
                                     title="Anotações"
                                     disabled={
                                       !linha.apontamentoId ||
-                                      !linha.quantidadeProduzida ||
-                                      Number(linha.quantidadeProduzida) <= 0
+                                      quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                                     }
                                   >
                                     <StickyNote className="h-4 w-4 mr-1" />

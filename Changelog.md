@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Permitido registrar quantidade produzida zero no apontamento de produção do `ApontamentoOEE`.
 - Restringida a exclusão de turnos OEE a perfis Administrador/Supervisor com validação dinâmica na `tbusuario` e alerta de permissão na UI.
 - Ajustada a auditoria de exclusão em `tboee_turno` e tabelas relacionadas para registrar `deleted_at` local e `deleted_by` do usuário autenticado.
 - Marcado o campo "Perfil" com indicador visual obrigatório no cadastro de usuários.
