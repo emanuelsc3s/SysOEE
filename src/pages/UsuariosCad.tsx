@@ -35,6 +35,7 @@ import {
   passwordsMatch
 } from '@/types/usuario'
 import { toast } from '@/hooks/use-toast'
+import { gerarTimestampLocal } from '@/utils/datahora.utils'
 import {
   ArrowLeft,
   Save,
@@ -231,7 +232,10 @@ export default function UsuariosCad() {
       if (isEdicao) {
         await updateUsuario(dadosNormalizados)
       } else {
-        await createUsuario(dadosNormalizados)
+        await createUsuario({
+          ...dadosNormalizados,
+          createdAt: (dadosNormalizados.createdAt || '').trim() || gerarTimestampLocal()
+        })
       }
 
       navigate('/usuarios', { state: { shouldRefresh: true } })

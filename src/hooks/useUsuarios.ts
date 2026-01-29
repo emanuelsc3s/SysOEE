@@ -12,6 +12,7 @@ import {
   CreateUserResponse
 } from '@/types/usuario'
 import { toast } from '@/hooks/use-toast'
+import { gerarTimestampLocal } from '@/utils/datahora.utils'
 
 /**
  * Filtros para busca de usuários
@@ -262,6 +263,8 @@ export function useUsuarios() {
         throw new Error('Usuário não autenticado')
       }
 
+      const createdAt = (formData.createdAt || '').trim() || gerarTimestampLocal()
+
       // Chamar Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
@@ -276,7 +279,8 @@ export function useUsuarios() {
           login: formData.login,
           usuario: formData.usuario,
           perfil_id: formData.perfilId,
-          funcionario_id: formData.funcionarioId
+          funcionario_id: formData.funcionarioId,
+          created_at: createdAt
         })
       })
 

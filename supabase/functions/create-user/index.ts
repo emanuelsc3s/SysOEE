@@ -32,6 +32,7 @@ interface CreateUserRequest {
   usuario: string
   perfil_id?: number
   funcionario_id?: number
+  created_at?: string
 }
 
 interface CreateUserResponse {
@@ -115,7 +116,7 @@ serve(async (req) => {
 
     // Obter dados da requisição
     const body: CreateUserRequest = await req.json()
-    const { email, senha, login, usuario, perfil_id, funcionario_id } = body
+    const { email, senha, login, usuario, perfil_id, funcionario_id, created_at } = body
 
     // Validar campos obrigatórios
     if (!email || !senha || !login || !usuario) {
@@ -199,6 +200,10 @@ serve(async (req) => {
     const newUserId = authData.user.id
 
     // Criar registro em tbusuario
+    const createdAt = typeof created_at === 'string' && created_at.trim()
+      ? created_at
+      : new Date().toISOString()
+
     const { data: tbusuarioData, error: tbusuarioError } = await supabaseAdmin
       .from('tbusuario')
       .insert({
@@ -208,7 +213,7 @@ serve(async (req) => {
         perfil_id: perfil_id || null,
         funcionario_id: funcionario_id || null,
         deletado: 'N',
-        created_at: new Date().toISOString(),
+        created_at: createdAt,
         created_by: callerUser.id,
       })
       .select('usuario_id')
