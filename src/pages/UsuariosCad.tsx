@@ -319,6 +319,106 @@ export default function UsuariosCad() {
 
           {/* Formulário */}
           <div className="flex flex-col gap-4">
+            {/* Dados do Usuário */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden mb-6">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-800 leading-tight flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Dados do Usuário
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      Informações de identificação do usuário
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 sm:px-6 py-4 flex flex-col">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {/* Matrícula do Funcionário */}
+                  <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="matricula">Matrícula do Funcionário</Label>
+                    <Input
+                      id="matricula"
+                      value={formData.matricula ?? ''}
+                      onChange={(e) => setFormData({ ...formData, matricula: e.target.value })}
+                      placeholder="Ex: 12345"
+                      maxLength={20}
+                    />
+                  </div>
+
+                  {/* Login */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="login">
+                      Login <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        id="login"
+                        value={formData.login ?? ''}
+                        onChange={(e) => setFormData({ ...formData, login: e.target.value })}
+                        placeholder="Ex: joao.silva"
+                        className="pl-10"
+                        maxLength={50}
+                      />
+                    </div>
+                    {loginValidation.checking && (
+                      <p className="text-sm text-gray-500">Verificando disponibilidade...</p>
+                    )}
+                    {loginValidation.exists && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        Este login já está em uso
+                      </p>
+                    )}
+                    {formData.login && formData.login.length >= 3 && !loginValidation.checking && !loginValidation.exists && (
+                      <p className="text-sm text-green-600 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Login disponível
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Nome do Usuário */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="usuario">
+                      Nome Completo <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="usuario"
+                      value={formData.usuario ?? ''}
+                      onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
+                      placeholder="Ex: João da Silva"
+                      maxLength={100}
+                    />
+                  </div>
+
+                  {/* Email (apenas visualização em edição) */}
+                  {isEdicao && (
+                    <div className="space-y-2 md:col-span-5">
+                      <Label htmlFor="email-readonly">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          id="email-readonly"
+                          type="email"
+                          value={formData.email ?? ''}
+                          readOnly
+                          disabled
+                          className="pl-10 bg-gray-100"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        O email não pode ser alterado após a criação do usuário.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Credenciais de Acesso - apenas em modo criação */}
             {!isEdicao && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden mb-6">
@@ -469,94 +569,6 @@ export default function UsuariosCad() {
               </div>
             )}
 
-            {/* Dados do Usuário */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden mb-6">
-              <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-800 leading-tight flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Dados do Usuário
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      Informações de identificação do usuário
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="px-4 sm:px-6 py-4 flex flex-col">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Login */}
-                  <div className="space-y-2">
-                    <Label htmlFor="login">
-                      Login <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        id="login"
-                        value={formData.login ?? ''}
-                        onChange={(e) => setFormData({ ...formData, login: e.target.value })}
-                        placeholder="Ex: joao.silva"
-                        className="pl-10"
-                        maxLength={50}
-                      />
-                    </div>
-                    {loginValidation.checking && (
-                      <p className="text-sm text-gray-500">Verificando disponibilidade...</p>
-                    )}
-                    {loginValidation.exists && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <XCircle className="h-3 w-3" />
-                        Este login já está em uso
-                      </p>
-                    )}
-                    {formData.login && formData.login.length >= 3 && !loginValidation.checking && !loginValidation.exists && (
-                      <p className="text-sm text-green-600 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Login disponível
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Nome do Usuário */}
-                  <div className="space-y-2">
-                    <Label htmlFor="usuario">
-                      Nome Completo <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="usuario"
-                      value={formData.usuario ?? ''}
-                      onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
-                      placeholder="Ex: João da Silva"
-                      maxLength={100}
-                    />
-                  </div>
-
-                  {/* Email (apenas visualização em edição) */}
-                  {isEdicao && (
-                    <div className="space-y-2">
-                      <Label htmlFor="email-readonly">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                          id="email-readonly"
-                          type="email"
-                          value={formData.email ?? ''}
-                          readOnly
-                          disabled
-                          className="pl-10 bg-gray-100"
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        O email não pode ser alterado após a criação do usuário.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Perfil e Vinculação */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden mb-6">
               <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
@@ -598,21 +610,6 @@ export default function UsuariosCad() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  {/* Matrícula/Funcionário (opcional, placeholder para futura implementação) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="matricula">Matrícula do Funcionário</Label>
-                    <Input
-                      id="matricula"
-                      value={formData.matricula ?? ''}
-                      onChange={(e) => setFormData({ ...formData, matricula: e.target.value })}
-                      placeholder="Ex: 12345"
-                      maxLength={20}
-                    />
-                    <p className="text-xs text-gray-500">
-                      Opcional: Vincule a um funcionário cadastrado.
-                    </p>
                   </div>
                 </div>
 
