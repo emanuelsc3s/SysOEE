@@ -15,6 +15,8 @@ import OeeTurno from './pages/OeeTurno'
 import OeeLinhaVelocidade from './pages/OeeLinhaVelocidade'
 import OeeParada from './pages/OeeParada'
 import OeeParadaCad from './pages/OeeParadaCad'
+import Usuarios from './pages/Usuarios'
+import UsuariosCad from './pages/UsuariosCad'
 import Placeholder from './pages/Placeholder'
 import Login from './pages/Login'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -107,17 +109,9 @@ function App() {
         {/* Páginas de Turnos - Gerenciamento de Turnos */}
         <Route path="/turno" element={<ProtectedRoute><Turnos /></ProtectedRoute>} />
         <Route path="/turno/:id" element={<ProtectedRoute><TurnosCad /></ProtectedRoute>} />
-        <Route
-          path="/usuarios"
-          element={
-            <ProtectedRoute>
-              <Placeholder
-                title="Usuários"
-                description="Gerenciamento de usuários, permissões e roles (Operador, Supervisor, Gestor, Admin)."
-              />
-            </ProtectedRoute>
-          }
-        />
+        {/* Páginas de Usuários - Gerenciamento de Usuários */}
+        <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+        <Route path="/usuario/:id" element={<ProtectedRoute><UsuariosCad /></ProtectedRoute>} />
         {/* Página de Armazéns - Gestão de Armazéns de Estoque */}
         <Route path="/armazens" element={<ProtectedRoute><ArmazemSaldo /></ProtectedRoute>} />
         <Route
