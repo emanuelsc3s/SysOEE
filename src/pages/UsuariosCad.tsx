@@ -31,7 +31,6 @@ import {
   UsuarioCreateData,
   USUARIO_CREATE_INITIAL_VALUES,
   PERFIL_OPTIONS,
-  isValidEmail,
   isStrongPassword,
   passwordsMatch
 } from '@/types/usuario'
@@ -60,8 +59,7 @@ export default function UsuariosCad() {
     createUsuario,
     updateUsuario,
     deleteUsuario,
-    checkLoginExists,
-    checkEmailExists
+    checkLoginExists
   } = useUsuarios()
 
   const isEdicao = id && id !== 'novo'
@@ -74,12 +72,8 @@ export default function UsuariosCad() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Estados de validação assíncrona
-  const [loginValidation, setLoginValidation] = useState<{ checking: boolean; exists: boolean }>({
-    checking: false,
-    exists: false
-  })
-  const [emailValidation, setEmailValidation] = useState<{ checking: boolean; exists: boolean }>({
+  // Validação assíncrona de login
+  const [loginValidation, setLoginValidation] = useState<{ checking: boolean; exists: boolean; error?: string }>({
     checking: false,
     exists: false
   })
@@ -117,35 +111,25 @@ export default function UsuariosCad() {
 
   // Validação assíncrona de login
   useEffect(() => {
-    if (!formData.login || formData.login.length < 3) {
-      setLoginValidation({ checking: false, exists: false })
+    const loginParaValidar = formData.login.trim()
+    if (!loginParaValidar || loginParaValidar.length < 3) {
+      setLoginValidation({ checking: false, exists: false, error: undefined })
       return
     }
 
+    let ativo = true
     const timeoutId = setTimeout(async () => {
-      setLoginValidation({ checking: true, exists: false })
-      const exists = await checkLoginExists(formData.login, formData.id)
-      setLoginValidation({ checking: false, exists })
+      setLoginValidation({ checking: true, exists: false, error: undefined })
+      const resultado = await checkLoginExists(loginParaValidar, formData.id)
+      if (!ativo) return
+      setLoginValidation({ checking: false, exists: resultado.exists, error: resultado.error })
     }, 500)
 
-    return () => clearTimeout(timeoutId)
+    return () => {
+      ativo = false
+      clearTimeout(timeoutId)
+    }
   }, [formData.login, formData.id, checkLoginExists])
-
-  // Validação assíncrona de email (apenas em criação)
-  useEffect(() => {
-    if (!formData.email || !isValidEmail(formData.email) || isEdicao) {
-      setEmailValidation({ checking: false, exists: false })
-      return
-    }
-
-    const timeoutId = setTimeout(async () => {
-      setEmailValidation({ checking: true, exists: false })
-      const exists = await checkEmailExists(formData.email, formData.id)
-      setEmailValidation({ checking: false, exists })
-    }, 500)
-
-    return () => clearTimeout(timeoutId)
-  }, [formData.email, formData.id, isEdicao, checkEmailExists])
 
   const handleSave = async () => {
     try {
@@ -179,15 +163,6 @@ export default function UsuariosCad() {
           return
         }
 
-        if (!isValidEmail(formData.email)) {
-          toast({
-            variant: 'destructive',
-            title: 'Validação',
-            description: 'O email informado não é válido',
-          })
-          return
-        }
-
         if (!formData.senha) {
           toast({
             variant: 'destructive',
@@ -215,17 +190,27 @@ export default function UsuariosCad() {
           return
         }
 
-        if (emailValidation.exists) {
-          toast({
-            variant: 'destructive',
-            title: 'Validação',
-            description: 'Este email já está em uso',
-          })
-          return
-        }
       }
 
       // Validação de login duplicado
+      if (loginValidation.checking) {
+        toast({
+          variant: 'destructive',
+          title: 'Validação',
+          description: 'Aguarde a verificação do login',
+        })
+        return
+      }
+
+      if (loginValidation.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Validação',
+          description: 'Não foi possível validar o login. Verifique a conexão e tente novamente.',
+        })
+        return
+      }
+
       if (loginValidation.exists) {
         toast({
           variant: 'destructive',
@@ -235,11 +220,18 @@ export default function UsuariosCad() {
         return
       }
 
+      const dadosNormalizados = {
+        ...formData,
+        login: formData.login.trim(),
+        usuario: formData.usuario.trim(),
+        email: formData.email.trim().toLowerCase()
+      }
+
       // Salvar
       if (isEdicao) {
-        await updateUsuario(formData)
+        await updateUsuario(dadosNormalizados)
       } else {
-        await createUsuario(formData)
+        await createUsuario(dadosNormalizados)
       }
 
       navigate('/usuarios', { state: { shouldRefresh: true } })
@@ -373,7 +365,13 @@ export default function UsuariosCad() {
                         Este login já está em uso
                       </p>
                     )}
-                    {formData.login && formData.login.length >= 3 && !loginValidation.checking && !loginValidation.exists && (
+                    {loginValidation.error && (
+                      <p className="text-sm text-amber-600 flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        Não foi possível validar o login
+                      </p>
+                    )}
+                    {formData.login && formData.login.length >= 3 && !loginValidation.checking && !loginValidation.exists && !loginValidation.error && (
                       <p className="text-sm text-green-600 flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" />
                         Login disponível
@@ -453,21 +451,6 @@ export default function UsuariosCad() {
                           className="pl-10"
                         />
                       </div>
-                      {formData.email && !isValidEmail(formData.email) && (
-                        <p className="text-sm text-red-500 flex items-center gap-1">
-                          <XCircle className="h-3 w-3" />
-                          Email inválido
-                        </p>
-                      )}
-                      {emailValidation.checking && (
-                        <p className="text-sm text-gray-500">Verificando disponibilidade...</p>
-                      )}
-                      {emailValidation.exists && (
-                        <p className="text-sm text-red-500 flex items-center gap-1">
-                          <XCircle className="h-3 w-3" />
-                          Este email já está em uso
-                        </p>
-                      )}
                     </div>
 
                     {/* Senha */}

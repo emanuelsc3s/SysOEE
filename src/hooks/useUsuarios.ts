@@ -396,7 +396,7 @@ export function useUsuarios() {
   /**
    * Verifica se um login já existe no sistema
    */
-  const checkLoginExists = useCallback(async (login: string, excludeId?: string): Promise<boolean> => {
+  const checkLoginExists = useCallback(async (login: string, excludeId?: string): Promise<{ exists: boolean; error?: string }> => {
     try {
       let query = supabase
         .from('tbusuario')
@@ -412,17 +412,17 @@ export function useUsuarios() {
 
       if (error) throw error
 
-      return (data?.length || 0) > 0
+      return { exists: (data?.length || 0) > 0 }
     } catch (error) {
       console.error('Erro ao verificar login:', error)
-      return false
+      return { exists: false, error: handleSupabaseError(error) }
     }
   }, [])
 
   /**
    * Verifica se um email já existe no sistema
    */
-  const checkEmailExists = useCallback(async (email: string, excludeId?: string): Promise<boolean> => {
+  const checkEmailExists = useCallback(async (email: string, excludeId?: string): Promise<{ exists: boolean; error?: string }> => {
     try {
       let query = supabase
         .from('tbusuario')
@@ -438,10 +438,10 @@ export function useUsuarios() {
 
       if (error) throw error
 
-      return (data?.length || 0) > 0
+      return { exists: (data?.length || 0) > 0 }
     } catch (error) {
       console.error('Erro ao verificar email:', error)
-      return false
+      return { exists: false, error: handleSupabaseError(error) }
     }
   }, [])
 

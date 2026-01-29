@@ -7,7 +7,7 @@
  *
  * Requisitos:
  * - Apenas usuários autenticados com perfil Administrador podem criar novos usuários
- * - Email deve ser único
+ * - Email deve ser único (validado apenas no auth.users)
  * - Login deve ser único
  * - Senha deve atender aos requisitos de segurança
  * 
@@ -125,15 +125,6 @@ serve(async (req) => {
       )
     }
 
-    // Validar formato de email
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
-    if (!emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Formato de email inválido' } as CreateUserResponse),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Validar força da senha
     if (senha.length < 8) {
       return new Response(
@@ -183,29 +174,6 @@ serve(async (req) => {
       )
     }
 
-    // Verificar se o email já existe em tbusuario
-    const { data: existingEmail, error: existingEmailError } = await supabaseAdmin
-      .from('tbusuario')
-      .select('usuario_id')
-      .eq('email', email)
-      .eq('deletado', 'N')
-      .maybeSingle()
-
-    if (existingEmailError) {
-      console.error('Erro ao verificar email:', existingEmailError)
-      return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao verificar email' } as CreateUserResponse),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (existingEmail) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Este email já está em uso' } as CreateUserResponse),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Criar usuário no auth.users usando Admin API
     const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -236,7 +204,6 @@ serve(async (req) => {
       .insert({
         user_id: newUserId,
         login,
-        email,
         usuario,
         perfil_id: perfil_id || null,
         funcionario_id: funcionario_id || null,
