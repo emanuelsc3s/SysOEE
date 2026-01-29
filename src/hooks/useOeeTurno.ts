@@ -276,7 +276,11 @@ export function useOeeTurno() {
   /**
    * Exclui logicamente um turno OEE (soft delete)
    */
-  const deleteOeeTurno = async (id: string, deletedBy: string): Promise<boolean> => {
+  const deleteOeeTurno = async (
+    id: string,
+    deletedByUuid: string,
+    deletedByUsuarioId: number
+  ): Promise<boolean> => {
     try {
       setLoading(true)
       const turnoId = parseInt(id)
@@ -288,10 +292,18 @@ export function useOeeTurno() {
         })
         return false
       }
-      if (!deletedBy) {
+      if (!deletedByUuid) {
         toast({
           title: 'Erro ao excluir turno OEE',
           description: 'Usuário autenticado não identificado.',
+          variant: 'destructive'
+        })
+        return false
+      }
+      if (!Number.isFinite(deletedByUsuarioId)) {
+        toast({
+          title: 'Erro ao excluir turno OEE',
+          description: 'Usuário interno não identificado.',
           variant: 'destructive'
         })
         return false
@@ -300,7 +312,7 @@ export function useOeeTurno() {
       const payloadExclusao = {
         deletado: 'S' as const,
         deleted_at: gerarTimestampLocal(),
-        deleted_by: deletedBy
+        deleted_by: deletedByUsuarioId
       }
 
       const { error } = await supabase
@@ -310,18 +322,24 @@ export function useOeeTurno() {
 
       if (error) throw error
 
+      const payloadExclusaoRelacionado = {
+        deletado: 'S' as const,
+        deleted_at: payloadExclusao.deleted_at,
+        deleted_by: deletedByUuid
+      }
+
       const resultadosRelacionados = await Promise.all([
         supabase
           .from('tboee_turno_producao')
-          .update(payloadExclusao)
+          .update(payloadExclusaoRelacionado)
           .eq('oeeturno_id', turnoId),
         supabase
           .from('tboee_turno_parada')
-          .update(payloadExclusao)
+          .update(payloadExclusaoRelacionado)
           .eq('oeeturno_id', turnoId),
         supabase
           .from('tboee_turno_perda')
-          .update(payloadExclusao)
+          .update(payloadExclusaoRelacionado)
           .eq('oeeturno_id', turnoId)
       ])
 

@@ -76,6 +76,7 @@ export default function OeeTurno() {
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false)
   const [turnoToDelete, setTurnoToDelete] = useState<OeeTurnoFormData | null>(null)
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
+  const [usuarioIdAutenticado, setUsuarioIdAutenticado] = useState<number | null>(null)
 
   // Hook para operações com Supabase
   const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
@@ -242,7 +243,7 @@ export default function OeeTurno() {
     try {
       const { data, error } = await supabase
         .from('tbusuario')
-        .select('perfil')
+        .select('usuario_id, perfil')
         .eq('user_id', authUser.id)
         .eq('deletado', 'N')
         .maybeSingle()
@@ -254,8 +255,17 @@ export default function OeeTurno() {
         return false
       }
 
+      if (!Number.isFinite(data.usuario_id)) {
+        console.error('Usuário interno não identificado para exclusão.')
+        return false
+      }
+
       const perfilNormalizado = data.perfil.trim().toLowerCase()
-      return perfilNormalizado === 'administrador' || perfilNormalizado === 'supervisor'
+      const permitido = perfilNormalizado === 'administrador' || perfilNormalizado === 'supervisor'
+      if (permitido) {
+        setUsuarioIdAutenticado(data.usuario_id)
+      }
+      return permitido
     } catch (error) {
       console.error('Erro inesperado ao validar perfil:', error)
       return false
@@ -284,7 +294,17 @@ export default function OeeTurno() {
           return
         }
 
-        const sucesso = await deleteOeeTurno(turnoToDelete.id, authUser.id)
+        if (!Number.isFinite(usuarioIdAutenticado ?? NaN)) {
+          setIsDeleteDialogOpen(false)
+          setIsPermissionDialogOpen(true)
+          return
+        }
+
+        const sucesso = await deleteOeeTurno(
+          turnoToDelete.id,
+          authUser.id,
+          usuarioIdAutenticado as number
+        )
         if (sucesso) {
           setIsDeleteDialogOpen(false)
           setTurnoToDelete(null)
