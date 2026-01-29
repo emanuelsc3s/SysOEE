@@ -21,6 +21,7 @@ import { obterTodasOPs } from '@/data/ordem-producao-totvs'
 import { Turno, converterParaSetor } from '@/types/operacao'
 import { CalculoOEE } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
+import { gerarTimestampLocal } from '@/utils/datahora.utils'
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -515,10 +516,6 @@ export default function ApontamentoOEE() {
   const normalizarHora = (hora: string): string => {
     if (!hora) return ''
     return hora.length === 5 ? `${hora}:00` : hora
-  }
-
-  const gerarTimestampLocal = (): string => {
-    return format(new Date(), "yyyy-MM-dd'T'HH:mm:ss")
   }
 
   /**
@@ -1602,13 +1599,14 @@ export default function ApontamentoOEE() {
         return
       }
 
+      const timestampExclusao = gerarTimestampLocal()
       const { error } = await supabase
         .from('tboee_turno_producao')
         .update({
           deletado: 'S',
-          deleted_at: new Date().toISOString(),
+          deleted_at: timestampExclusao,
           deleted_by: usuario.id,
-          updated_at: new Date().toISOString(),
+          updated_at: timestampExclusao,
           updated_by: usuario.id
         })
         .eq('oeeturnoproducao_id', parseInt(linhaApontamento.apontamentoId))
@@ -2204,13 +2202,14 @@ export default function ApontamentoOEE() {
         return
       }
 
+      const timestampExclusao = gerarTimestampLocal()
       const { error } = await supabase
         .from('tboee_turno_producao')
         .update({
           deletado: 'S',
-          deleted_at: new Date().toISOString(),
+          deleted_at: timestampExclusao,
           deleted_by: usuario.id,
-          updated_at: new Date().toISOString(),
+          updated_at: timestampExclusao,
           updated_by: usuario.id
         })
         .eq('oeeturnoproducao_id', parseInt(registroParaExcluir))
@@ -6058,4 +6057,3 @@ export default function ApontamentoOEE() {
     </>
   )
 }
-

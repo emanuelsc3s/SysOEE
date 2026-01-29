@@ -11,6 +11,7 @@ import {
   FetchOeeTurnoFilters
 } from '@/types/apontamento-oee'
 import { toast } from '@/hooks/use-toast'
+import { gerarTimestampLocal } from '@/utils/datahora.utils'
 
 /**
  * Mapeia dados do banco para o formato do formulário/UI
@@ -275,19 +276,59 @@ export function useOeeTurno() {
   /**
    * Exclui logicamente um turno OEE (soft delete)
    */
-  const deleteOeeTurno = async (id: string): Promise<boolean> => {
+  const deleteOeeTurno = async (id: string, deletedBy: string): Promise<boolean> => {
     try {
       setLoading(true)
+      const turnoId = parseInt(id)
+      if (!Number.isFinite(turnoId)) {
+        toast({
+          title: 'Erro ao excluir turno OEE',
+          description: 'ID do turno inválido.',
+          variant: 'destructive'
+        })
+        return false
+      }
+      if (!deletedBy) {
+        toast({
+          title: 'Erro ao excluir turno OEE',
+          description: 'Usuário autenticado não identificado.',
+          variant: 'destructive'
+        })
+        return false
+      }
+
+      const payloadExclusao = {
+        deletado: 'S' as const,
+        deleted_at: gerarTimestampLocal(),
+        deleted_by: deletedBy
+      }
 
       const { error } = await supabase
         .from('tboee_turno')
-        .update({
-          deletado: 'S',
-          deleted_at: new Date().toISOString()
-        })
-        .eq('oeeturno_id', parseInt(id))
+        .update(payloadExclusao)
+        .eq('oeeturno_id', turnoId)
 
       if (error) throw error
+
+      const resultadosRelacionados = await Promise.all([
+        supabase
+          .from('tboee_turno_producao')
+          .update(payloadExclusao)
+          .eq('oeeturno_id', turnoId),
+        supabase
+          .from('tboee_turno_parada')
+          .update(payloadExclusao)
+          .eq('oeeturno_id', turnoId),
+        supabase
+          .from('tboee_turno_perda')
+          .update(payloadExclusao)
+          .eq('oeeturno_id', turnoId)
+      ])
+
+      const erroRelacionado = resultadosRelacionados.find((resultado) => resultado.error)?.error
+      if (erroRelacionado) {
+        throw erroRelacionado
+      }
 
       toast({
         title: 'Turno OEE excluído',

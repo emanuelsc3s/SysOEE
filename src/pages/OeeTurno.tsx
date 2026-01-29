@@ -33,6 +33,7 @@ import {
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
 import {
   Search,
@@ -56,6 +57,7 @@ import { ptBR } from 'date-fns/locale'
 // Constantes estáveis no escopo do módulo para evitar warnings de dependências
 const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
+const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
 
 export default function OeeTurno() {
   const navigate = useNavigate()
@@ -71,6 +73,7 @@ export default function OeeTurno() {
 
   // Estados de UI
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false)
   const [turnoToDelete, setTurnoToDelete] = useState<OeeTurnoFormData | null>(null)
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
 
@@ -231,7 +234,43 @@ export default function OeeTurno() {
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`)
   }
 
-  const handleExcluirClick = (turno: OeeTurnoFormData) => {
+  const validarPermissaoExclusao = async (): Promise<boolean> => {
+    if (!authUser?.id) {
+      return false
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tbusuario')
+        .select('perfil')
+        .eq('user_id', authUser.id)
+        .eq('deletado', 'N')
+        .maybeSingle()
+
+      if (error || !data?.perfil) {
+        if (error) {
+          console.error('Erro ao validar perfil para exclusão:', error)
+        }
+        return false
+      }
+
+      const perfilNormalizado = data.perfil.trim().toLowerCase()
+      return perfilNormalizado === 'administrador' || perfilNormalizado === 'supervisor'
+    } catch (error) {
+      console.error('Erro inesperado ao validar perfil:', error)
+      return false
+    }
+  }
+
+  const handleExcluirClick = async (turno: OeeTurnoFormData) => {
+    const permitido = await validarPermissaoExclusao()
+    if (!permitido) {
+      setTurnoToDelete(null)
+      setIsDeleteDialogOpen(false)
+      setIsPermissionDialogOpen(true)
+      return
+    }
+
     setTurnoToDelete(turno)
     setIsDeleteDialogOpen(true)
   }
@@ -239,7 +278,13 @@ export default function OeeTurno() {
   const handleExcluirConfirm = async () => {
     if (turnoToDelete?.id) {
       try {
-        const sucesso = await deleteOeeTurno(turnoToDelete.id)
+        if (!authUser?.id) {
+          setIsDeleteDialogOpen(false)
+          setIsPermissionDialogOpen(true)
+          return
+        }
+
+        const sucesso = await deleteOeeTurno(turnoToDelete.id, authUser.id)
         if (sucesso) {
           setIsDeleteDialogOpen(false)
           setTurnoToDelete(null)
@@ -558,7 +603,7 @@ export default function OeeTurno() {
                             className="flex-1 min-w-[120px] text-destructive border-destructive/60 hover:border-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleExcluirClick(turno)
+                              void handleExcluirClick(turno)
                             }}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
@@ -654,10 +699,10 @@ export default function OeeTurno() {
                                   size="icon"
                                   className="h-8 w-8 text-destructive"
                                   title="Excluir"
-                                  onClick={async (e) => {
+                                  onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    handleExcluirClick(turno)
+                                    void handleExcluirClick(turno)
                                   }}
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -755,6 +800,21 @@ export default function OeeTurno() {
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={isPermissionDialogOpen} onOpenChange={setIsPermissionDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Permissão necessária</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {MENSAGEM_PERMISSAO_EXCLUSAO}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setIsPermissionDialogOpen(false)}>
+                  Entendi
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
