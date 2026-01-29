@@ -580,6 +580,9 @@ export default function Usuarios() {
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Ações
                         </th>
+                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
+                          Perfil
+                        </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
                           Login
                         </th>
@@ -588,9 +591,6 @@ export default function Usuarios() {
                         </th>
                         <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[20ch]">
                           Email
-                        </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
-                          Perfil
                         </th>
                       </tr>
                     </thead>
@@ -666,6 +666,12 @@ export default function Usuarios() {
                                 </Button>
                               </div>
                             </td>
+                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
+                              <Badge variant={getPerfilBadgeVariant(usuario.perfilId)}>
+                                <Shield className="h-3 w-3 mr-1" />
+                                {getPerfilLabel(usuario.perfilId)}
+                              </Badge>
+                            </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-gray-400" />
@@ -680,12 +686,6 @@ export default function Usuarios() {
                                 <Mail className="h-3 w-3 text-gray-400" />
                                 {usuario.email || '-'}
                               </div>
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
-                              <Badge variant={getPerfilBadgeVariant(usuario.perfilId)}>
-                                <Shield className="h-3 w-3 mr-1" />
-                                {getPerfilLabel(usuario.perfilId)}
-                              </Badge>
                             </td>
                           </tr>
                         ))

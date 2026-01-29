@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Reordenada a coluna "Perfil" para ficar antes de "Login" na tabela de usuários.
 - Corrigida validação de autenticação nas páginas `OeeParada` e `OeeParadaCad` para usar UUID do Supabase Auth.
 - Removido fallback inválido `'1'` para userId - operações de escrita agora exigem usuário autenticado.
 - Adicionada validação de UUID no hook `useOeeParada` antes de operações de INSERT/UPDATE/DELETE.
