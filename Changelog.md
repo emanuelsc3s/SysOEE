@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado botão de visualizar/ocultar senha no campo de senha da página de `Login` (mobile e desktop).
+- Aplicada máscara visual HH:MM nos campos de hora durante a digitação no `ApontamentoOEE`.
+- Reduzida a largura dos campos de Hora Inicial e Hora Final no `ApontamentoOEE`.
+- Reposicionado o botão de registrar parada para a linha do tipo de parada no `ApontamentoOEE`.
+- Reorganizada a linha do tipo de parada para posicionar Hora Inicial/Final ao lado do botão no `ApontamentoOEE`.
 - Permitido registrar quantidade produzida zero no apontamento de produção do `ApontamentoOEE`.
 - Restringida a exclusão de turnos OEE a perfis Administrador/Supervisor com validação dinâmica na `tbusuario` e alerta de permissão na UI.
 - Ajustada a auditoria de exclusão em `tboee_turno` e tabelas relacionadas para registrar `deleted_at` local e `deleted_by` do usuário autenticado.

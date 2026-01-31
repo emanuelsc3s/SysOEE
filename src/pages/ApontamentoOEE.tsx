@@ -520,19 +520,20 @@ export default function ApontamentoOEE() {
   }
 
   /**
-   * Limpa a hora digitada mantendo apenas números e ":".
-   * Aceita entrada livre (ex.: "0730" ou "07:30") para formatação posterior.
+   * Limpa a hora digitada mantendo apenas números e aplica máscara HH:MM.
+   * Insere o ":" após 2 dígitos para visualização imediata.
    */
   const limparHoraDigitada = (valor: string): string => {
-    const permitido = valor.replace(/[^\d:]/g, '')
-    if (!permitido.includes(':')) {
-      return permitido.slice(0, 4)
+    const numeros = valor.replace(/\D/g, '').slice(0, 4)
+    if (!numeros) return ''
+
+    if (numeros.length <= 2) {
+      return numeros.length === 2 ? `${numeros}:` : numeros
     }
 
-    const [horas, minutos] = permitido.split(':')
-    const horasLimitadas = (horas || '').slice(0, 2)
-    const minutosLimitados = (minutos || '').slice(0, 2)
-    return `${horasLimitadas}:${minutosLimitados}`
+    const horas = numeros.slice(0, 2)
+    const minutos = numeros.slice(2, 4)
+    return `${horas}:${minutos}`
   }
 
   /**
@@ -4914,29 +4915,89 @@ export default function ApontamentoOEE() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* 1. Componente de Busca de Tipo de Parada */}
-                  <div className="w-full sm:w-[304px]">
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="codigo-parada">
-                      Tipo de Parada
-                    </label>
-                    <div className="flex gap-2">
+                  {/* 1, 2 e 3. Tipo de Parada + Hora Inicial/Final na mesma linha */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="w-full sm:w-[304px]">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="codigo-parada">
+                        Tipo de Parada
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          className="flex flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          id="codigo-parada"
+                          type="text"
+                          value={codigoParadaBusca}
+                          onChange={(e) => setCodigoParadaBusca(e.target.value)}
+                          placeholder="Digite o código da parada ou clique na lupa para buscar"
+                          readOnly
+                          onClick={abrirModalBuscaParadas}
+                        />
+                        <button
+                          type="button"
+                          onClick={abrirModalBuscaParadas}
+                          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
+                          title="Buscar tipo de parada"
+                        >
+                          <Search className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Hora Inicial */}
+                    <div className="flex flex-col">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-inicial-parada">
+                        Hora Inicial
+                      </label>
                       <input
-                        className="flex flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        id="codigo-parada"
+                        className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        id="hora-inicial-parada"
                         type="text"
-                        value={codigoParadaBusca}
-                        onChange={(e) => setCodigoParadaBusca(e.target.value)}
-                        placeholder="Digite o código da parada ou clique na lupa para buscar"
-                        readOnly
-                        onClick={abrirModalBuscaParadas}
+                        value={horaInicialParada}
+                        onChange={(e) => setHoraInicialParada(limparHoraDigitada(e.target.value))}
+                        onBlur={(e) => setHoraInicialParada(normalizarHoraDigitada(e.target.value, true))}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={5}
                       />
+                    </div>
+
+                    {/* Hora Final */}
+                    <div className="flex flex-col">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
+                        Hora Final
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          id="hora-final-parada"
+                          type="text"
+                          value={horaFinalParada}
+                          onChange={(e) => setHoraFinalParada(limparHoraDigitada(e.target.value))}
+                          onBlur={(e) => setHoraFinalParada(normalizarHoraDigitada(e.target.value, true))}
+                          inputMode="numeric"
+                          autoComplete="off"
+                          maxLength={5}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setModalAjudaViradaParadaAberto(true)}
+                          className="inline-flex items-center justify-center h-6 w-6 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          title="Entenda a virada de meia-noite"
+                          aria-label="Ajuda sobre virada de meia-noite"
+                        >
+                          <Info className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col justify-end sm:flex-1">
                       <button
+                        className="w-full bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
                         type="button"
-                        onClick={abrirModalBuscaParadas}
-                        className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
-                        title="Buscar tipo de parada"
+                        onClick={handleRegistrarParada}
                       >
-                        <Search className="h-4 w-4" />
+                        <Timer className="h-5 w-5" />
+                        Registrar Parada
                       </button>
                     </div>
                   </div>
@@ -4953,56 +5014,6 @@ export default function ApontamentoOEE() {
                       </div>
                     </div>
                   )}
-
-                  {/* 2 e 3. Componentes de Hora Inicial e Hora Final (lado a lado) */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    {/* Hora Inicial */}
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-inicial-parada">
-                        Hora Inicial
-                      </label>
-                      <input
-                        className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        id="hora-inicial-parada"
-                        type="text"
-                        value={horaInicialParada}
-                        onChange={(e) => setHoraInicialParada(limparHoraDigitada(e.target.value))}
-                        onBlur={(e) => setHoraInicialParada(normalizarHoraDigitada(e.target.value, true))}
-                        inputMode="numeric"
-                        autoComplete="off"
-                        maxLength={5}
-                      />
-                    </div>
-
-                    {/* Hora Final */}
-                  <div className="flex flex-col">
-                    <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
-                      Hora Final
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        className="w-36 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        id="hora-final-parada"
-                        type="text"
-                        value={horaFinalParada}
-                        onChange={(e) => setHoraFinalParada(limparHoraDigitada(e.target.value))}
-                        onBlur={(e) => setHoraFinalParada(normalizarHoraDigitada(e.target.value, true))}
-                        inputMode="numeric"
-                        autoComplete="off"
-                        maxLength={5}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setModalAjudaViradaParadaAberto(true)}
-                        className="inline-flex items-center justify-center h-6 w-6 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        title="Entenda a virada de meia-noite"
-                        aria-label="Ajuda sobre virada de meia-noite"
-                      >
-                        <Info className="w-6 h-6 text-blue-500 dark:text-blue-400" />
-                      </button>
-                    </div>
-                  </div>
-                  </div>
 
                   {/* Exibir duração calculada automaticamente */}
                   {horaInicialParadaNormalizada && horaFinalParadaNormalizada && (
@@ -5044,14 +5055,6 @@ export default function ApontamentoOEE() {
                     />
                   </div>
 
-                  <button
-                    className="w-full mt-2 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
-                    type="button"
-                    onClick={handleRegistrarParada}
-                  >
-                    <Timer className="h-5 w-5" />
-                    Registrar Tempo de Parada
-                  </button>
                 </div>
               )}
 
