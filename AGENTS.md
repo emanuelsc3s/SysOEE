@@ -1,6 +1,6 @@
 ---
 description: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 # AGENTS.md
@@ -30,8 +30,6 @@ Este é o repositório do **Sistema OEE (Overall Equipment Effectiveness) para S
 docs/
 ├── EspecificacaoUsuario/     # Especificações originais completas do usuário
 │   ├── md/                   # Versões em markdown (usar estas)
-│   ├── doc/                  # Versões Word originais (referência)
-│   └── pptx/                 # Apresentações (referência)
 │
 ├── project/                  # Resumos estruturados das especificações
 │   ├── README.md            # Índice navegável de todos os documentos
@@ -64,8 +62,7 @@ docs/
 ### Componentes Principais
 
 #### 1. Fontes de Dados
-- **CLPs**: Bottelpack, Pró Maquia, Bausch Strobbel (dados de produção em tempo real)
-- **Apontamentos Manuais**: Paradas, retrabalhos, via Diários de Bordo e interface SicFar
+- **Apontamentos Manuais**: Produção, Paradas, retrabalhos, via Diários de Bordo e interface SicFar
 - **TOTVS (ERP)**: Dados de produtos, lotes, perdas de qualidade
 
 #### 2. Estrutura de Dados
