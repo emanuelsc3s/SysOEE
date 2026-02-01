@@ -78,6 +78,10 @@ export default function OeeTurno() {
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
   const [usuarioIdAutenticado, setUsuarioIdAutenticado] = useState<number | null>(null)
 
+  // Estados para modal de turno fechado
+  const [isStatusFechadoDialogOpen, setIsStatusFechadoDialogOpen] = useState(false)
+  const [turnoParaVisualizar, setTurnoParaVisualizar] = useState<OeeTurnoFormData | null>(null)
+
   // Hook para operações com Supabase
   const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
 
@@ -232,7 +236,23 @@ export default function OeeTurno() {
   }
 
   const handleEditar = (turno: OeeTurnoFormData) => {
+    // Se o turno está fechado, exibir modal de alerta
+    if (turno.status === 'Fechado') {
+      setTurnoParaVisualizar(turno)
+      setIsStatusFechadoDialogOpen(true)
+      return
+    }
+    // Se está aberto, permitir edição normalmente
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`)
+  }
+
+  const handleConfirmarVisualizacaoFechado = () => {
+    if (turnoParaVisualizar) {
+      // Redireciona para consulta (SEM edit=true)
+      navigate(`/apontamento-oee?oeeturno_id=${turnoParaVisualizar.id}`)
+    }
+    setIsStatusFechadoDialogOpen(false)
+    setTurnoParaVisualizar(null)
   }
 
   const validarPermissaoExclusao = async (): Promise<boolean> => {
@@ -845,6 +865,33 @@ export default function OeeTurno() {
               <AlertDialogFooter>
                 <AlertDialogAction onClick={() => setIsPermissionDialogOpen(false)}>
                   Entendi
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Dialog de alerta para turno fechado */}
+          <AlertDialog open={isStatusFechadoDialogOpen} onOpenChange={setIsStatusFechadoDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Turno Encerrado</AlertDialogTitle>
+                <AlertDialogDescription>
+                  O turno <strong>{turnoParaVisualizar?.turno}</strong> do dia{' '}
+                  <strong>{turnoParaVisualizar?.data ? formatarData(turnoParaVisualizar.data) : ''}</strong>{' '}
+                  está com status <strong>Fechado</strong> e não pode ser editado.
+                  <br /><br />
+                  Você será redirecionado para a tela de consulta.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => {
+                  setIsStatusFechadoDialogOpen(false)
+                  setTurnoParaVisualizar(null)
+                }}>
+                  Cancelar
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmarVisualizacaoFechado}>
+                  Consultar
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
