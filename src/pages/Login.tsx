@@ -263,6 +263,8 @@ export default function Login() {
   })
 
   const navigate = useNavigate()
+  const anoAtual = new Date().getFullYear()
+  const textoCopyright = `© ${anoAtual} FARMACE. Todos os direitos reservados.`
 
   /**
    * Verificar se o usuário já está autenticado ao carregar a página
@@ -574,7 +576,7 @@ export default function Login() {
             {/* Copyright */}
             <div className="mt-auto pt-4">
               <p className="text-xs text-center text-brand-text-secondary/60">
-                © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
+                {textoCopyright}
               </p>
             </div>
           </div>
@@ -684,7 +686,7 @@ export default function Login() {
           {/* Copyright */}
           <div className="mt-4 md:mt-6 text-center shrink-0">
             <p className="text-sm text-brand-text-secondary">
-              © {new Date().getFullYear()} FARMACE. Todos os direitos reservados.
+              {textoCopyright}
             </p>
           </div>
         </div>

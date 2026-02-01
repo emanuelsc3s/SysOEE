@@ -70,6 +70,7 @@ import { ModalBuscaTurno, type TurnoSelecionado } from "@/components/modal/Modal
 import { ModalBuscaSKU, type ProdutoSKU, type SKUSelecionado } from "@/components/modal/ModalBuscaSKU"
 import { ModalBuscaLinhaProducao, type LinhaProducaoSelecionada } from "@/components/modal/modalBuscaLinhaProducao"
 import { TipoParada } from '@/types/parada'
+import { ModalTurnoBloqueado } from '@/pages/oee/apontamento-oee/ModalTurnoBloqueado'
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -258,6 +259,10 @@ export default function ApontamentoOEE() {
   const [statusTurno, setStatusTurno] = useState<StatusTurno>('NAO_INICIADO')
   const [showConfirmEncerramento, setShowConfirmEncerramento] = useState(false)
   const [oeeTurnoId, setOeeTurnoId] = useState<number | null>(null) // ID do registro na tboee_turno
+  const [statusTurnoBD, setStatusTurnoBD] = useState<string | null>(null) // Status do turno no banco de dados (Aberto, Fechado, Cancelado)
+
+  // ==================== Estado de Modal de Turno Bloqueado (Perdas) ====================
+  const [showAlertaTurnoBloqueado, setShowAlertaTurnoBloqueado] = useState(false)
 
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
@@ -329,6 +334,10 @@ export default function ApontamentoOEE() {
   // - Turno já iniciado/encerrado e não está editando o cabeçalho
   // - Ou quando está em modo de visualização (carregado via oeeTurnoId sem modo de edição)
   const cabecalhoBloqueado = (statusTurno !== 'NAO_INICIADO' && !editandoCabecalho) || modoVisualizacao
+
+  // Verifica se o turno está bloqueado para edição (status Fechado ou Cancelado no banco de dados)
+  // Princípio ALCOA+: Não permitir registros em turnos fechados/cancelados garante integridade temporal dos dados
+  const turnoBloqueadoParaEdicao = statusTurnoBD === 'Fechado' || statusTurnoBD === 'Cancelado'
 
   // ==================== Estado de Histórico de Produção ====================
   const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
@@ -2949,7 +2958,10 @@ export default function ApontamentoOEE() {
           )
         )
 
-        // 7. Definir modo de visualização ou edição
+        // 7. Armazenar status do turno do banco de dados
+        setStatusTurnoBD(turnoData.status || null)
+
+        // 8. Definir modo de visualização ou edição
         if (!editMode) {
           setModoVisualizacao(true)
           // Se o turno já está fechado ou cancelado, definir status
@@ -4770,14 +4782,27 @@ export default function ApontamentoOEE() {
                           placeholder="ex: 1.234,56"
                           value={quantidadePerdas}
                           onChange={(e) => setQuantidadePerdas(formatarPerdaPtBr(e.target.value))}
+                          disabled={turnoBloqueadoParaEdicao}
                         />
                       </div>
 
                       <button
-                        className="h-9 bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+                        className="h-9 bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                         type="button"
-                        onClick={qualidadeEmEdicao ? handleSalvarEdicaoQualidade : handleAdicionarQualidade}
-                        disabled={statusTurno !== 'INICIADO' || salvandoQualidade}
+                        onClick={() => {
+                          // Verificar se o turno está bloqueado (Fechado ou Cancelado)
+                          if (turnoBloqueadoParaEdicao) {
+                            setShowAlertaTurnoBloqueado(true)
+                            return
+                          }
+                          // Prosseguir com a ação normal
+                          if (qualidadeEmEdicao) {
+                            handleSalvarEdicaoQualidade()
+                          } else {
+                            handleAdicionarQualidade()
+                          }
+                        }}
+                        disabled={statusTurno !== 'INICIADO' || salvandoQualidade || turnoBloqueadoParaEdicao}
                       >
                         {salvandoQualidade ? (
                           <Timer className="h-5 w-5 animate-spin" />
@@ -4905,9 +4930,16 @@ export default function ApontamentoOEE() {
                     A produção está operando normalmente
                   </p>
                   <Button
-                    onClick={handleNovaParada}
+                    onClick={() => {
+                      if (turnoBloqueadoParaEdicao) {
+                        setShowAlertaTurnoBloqueado(true)
+                        return
+                      }
+                      handleNovaParada()
+                    }}
                     className="mt-6"
                     variant="outline"
+                    disabled={turnoBloqueadoParaEdicao}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Registrar Nova Parada
@@ -4930,13 +4962,15 @@ export default function ApontamentoOEE() {
                           onChange={(e) => setCodigoParadaBusca(e.target.value)}
                           placeholder="Digite o código da parada ou clique na lupa para buscar"
                           readOnly
-                          onClick={abrirModalBuscaParadas}
+                          onClick={turnoBloqueadoParaEdicao ? undefined : abrirModalBuscaParadas}
+                          disabled={turnoBloqueadoParaEdicao}
                         />
                         <button
                           type="button"
-                          onClick={abrirModalBuscaParadas}
+                          onClick={turnoBloqueadoParaEdicao ? undefined : abrirModalBuscaParadas}
                           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
                           title="Buscar tipo de parada"
+                          disabled={turnoBloqueadoParaEdicao}
                         >
                           <Search className="h-4 w-4" />
                         </button>
@@ -4958,6 +4992,7 @@ export default function ApontamentoOEE() {
                         inputMode="numeric"
                         autoComplete="off"
                         maxLength={5}
+                        disabled={turnoBloqueadoParaEdicao}
                       />
                     </div>
 
@@ -4977,6 +5012,7 @@ export default function ApontamentoOEE() {
                           inputMode="numeric"
                           autoComplete="off"
                           maxLength={5}
+                          disabled={turnoBloqueadoParaEdicao}
                         />
                         <button
                           type="button"
@@ -4992,9 +5028,16 @@ export default function ApontamentoOEE() {
 
                     <div className="flex flex-col justify-end sm:flex-1">
                       <button
-                        className="w-full bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+                        className="w-full bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                         type="button"
-                        onClick={handleRegistrarParada}
+                        onClick={() => {
+                          if (turnoBloqueadoParaEdicao) {
+                            setShowAlertaTurnoBloqueado(true)
+                            return
+                          }
+                          handleRegistrarParada()
+                        }}
+                        disabled={turnoBloqueadoParaEdicao}
                       >
                         <Timer className="h-5 w-5" />
                         Registrar Parada
@@ -5052,6 +5095,7 @@ export default function ApontamentoOEE() {
                       value={observacoesParada}
                       onChange={(e) => setObservacoesParada(e.target.value)}
                       placeholder="Digite observações adicionais sobre a parada..."
+                      disabled={turnoBloqueadoParaEdicao}
                     />
                   </div>
 
@@ -5975,6 +6019,13 @@ export default function ApontamentoOEE() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Alerta - Turno Bloqueado para Edição (Fechado ou Cancelado) */}
+      <ModalTurnoBloqueado
+        open={showAlertaTurnoBloqueado}
+        onOpenChange={setShowAlertaTurnoBloqueado}
+        statusTurno={statusTurnoBD}
+      />
 
       {/* Modal de Busca de Linha de Produção */}
       <ModalBuscaLinhaProducao

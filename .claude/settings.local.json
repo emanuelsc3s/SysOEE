@@ -17,7 +17,9 @@
       "Bash(powershell -Command:*)",
       "Bash(npx tsc:*)",
       "Bash(dir:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(ls -la \"C:\\\\Dev\\\\SysOEE\\\\src\\\\pages\\\\oee\"\" 2>&1 || echo \"Pasta não existe \")",
+      "Bash(ls -la \"C:\\\\Dev\\\\SysOEE\\\\src\\\\pages\\\\oee\\\\apontamento-oee\"\" 2>/dev/null || ls -la \"C:/Dev/SysOEE/src/pages/oee/apontamento-oee\" 2>/dev/null || echo \"Diretório não existe \")"
     ],
     "deny": [],
     "ask": []

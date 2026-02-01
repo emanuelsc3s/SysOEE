@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Centralizado o texto de copyright do `Login` em uma constante reutilizada nos layouts mobile e desktop.
 - Adicionado botão de visualizar/ocultar senha no campo de senha da página de `Login` (mobile e desktop).
 - Aplicada máscara visual HH:MM nos campos de hora durante a digitação no `ApontamentoOEE`.
 - Reduzida a largura dos campos de Hora Inicial e Hora Final no `ApontamentoOEE`.
