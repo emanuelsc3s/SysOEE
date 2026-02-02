@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { usePermissions, useHasPermission, Rotina, SYSOEE_APP_ID } from '@/hooks/usePermissions';
+import { usePermissions, Rotina } from '@/hooks/usePermissions';
 import { Loader2 } from 'lucide-react';
 
 interface PermissionGuardProps {

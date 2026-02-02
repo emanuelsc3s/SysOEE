@@ -9,13 +9,18 @@
  * A segurança real é garantida pelo RLS no banco de dados.
  */
 
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 
-// ID da aplicação SysOEE (configurar conforme ambiente)
-export const SYSOEE_APP_ID = 1;
+// ID da aplicação SysOEE (configurar via .env)
+const sysOeeAppIdRaw = import.meta.env.VITE_APP_ID;
+const sysOeeAppIdParsed = Number(sysOeeAppIdRaw);
+export const SYSOEE_APP_ID =
+  Number.isFinite(sysOeeAppIdParsed) && sysOeeAppIdParsed > 0
+    ? sysOeeAppIdParsed
+    : 1;
 
 // Tipos de rotinas disponíveis no sistema
 export type Rotina =
@@ -46,6 +51,8 @@ export type Rotina =
   | 'EDITAR_APONTAMENTO'
   | 'EXCLUIR_APONTAMENTO'
   | 'ASSINAR_APONTAMENTO'
+  // Rotina específica OEE (apontamento de turno)
+  | 'OEE_TURNO_A'
   // Paradas
   | 'VISUALIZAR_MOTIVO_PARADA'
   | 'CRIAR_MOTIVO_PARADA'
@@ -157,7 +164,7 @@ export function usePermissions(options?: UsePermissionsOptions): UsePermissionsR
     gcTime: 10 * 60 * 1000,
   });
 
-  const userApps = userAppsData || [];
+  const userApps = useMemo(() => userAppsData ?? [], [userAppsData]);
 
   // Buscar perfil do usuário na app atual
   const currentAppInfo = useMemo(() => {

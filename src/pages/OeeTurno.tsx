@@ -33,6 +33,7 @@ import {
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
+import { SYSOEE_APP_ID, type Rotina } from '@/hooks/usePermissions'
 import { supabase } from '@/lib/supabase'
 import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
 import {
@@ -58,6 +59,7 @@ import { ptBR } from 'date-fns/locale'
 const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
+const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 
 export default function OeeTurno() {
   const navigate = useNavigate()
@@ -235,12 +237,57 @@ export default function OeeTurno() {
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}`)
   }
 
-  const handleEditar = (turno: OeeTurnoFormData) => {
+  const validarPermissaoEdicaoTurnoFechado = async (): Promise<boolean> => {
+    if (!authUser?.id) {
+      return false
+    }
+
+    const parametrosBase = {
+      p_user_id: authUser.id,
+      p_rotina: ROTINA_PERMISSAO_OEE_TURNO
+    }
+
+    const tentativaComApp = await supabase.rpc('check_user_permission', {
+      ...parametrosBase,
+      p_app_id: SYSOEE_APP_ID
+    })
+
+    if (!tentativaComApp.error) {
+      return tentativaComApp.data === true
+    }
+
+    const mensagemErro = `${tentativaComApp.error.message ?? ''}`.toLowerCase()
+    const deveTentarSemApp =
+      tentativaComApp.error.code === 'PGRST202' ||
+      tentativaComApp.error.code === '42883' ||
+      mensagemErro.includes('function check_user_permission') ||
+      mensagemErro.includes('does not exist')
+
+    if (!deveTentarSemApp) {
+      console.error('Erro ao validar permissão no backend:', tentativaComApp.error)
+      return false
+    }
+
+    const tentativaSemApp = await supabase.rpc('check_user_permission', parametrosBase)
+
+    if (tentativaSemApp.error) {
+      console.error('Erro ao validar permissão no backend:', tentativaSemApp.error)
+      return false
+    }
+
+    return tentativaSemApp.data === true
+  }
+
+  const handleEditar = async (turno: OeeTurnoFormData) => {
     // Se o turno está fechado, exibir modal de alerta
     if (turno.status === 'Fechado') {
-      setTurnoParaVisualizar(turno)
-      setIsStatusFechadoDialogOpen(true)
-      return
+      const permitido = await validarPermissaoEdicaoTurnoFechado()
+
+      if (!permitido) {
+        setTurnoParaVisualizar(turno)
+        setIsStatusFechadoDialogOpen(true)
+        return
+      }
     }
     // Se está aberto, permitir edição normalmente
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`)
@@ -636,7 +683,7 @@ export default function OeeTurno() {
                             className="flex-1 min-w-[120px]"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleEditar(turno)
+                              void handleEditar(turno)
                             }}
                           >
                             <Pencil className="h-4 w-4 mr-1" />
@@ -734,7 +781,7 @@ export default function OeeTurno() {
                                   onClick={(e) => {
                                     e.preventDefault()
                                     e.stopPropagation()
-                                    handleEditar(turno)
+                                    void handleEditar(turno)
                                   }}
                                 >
                                   <Pencil className="h-4 w-4" />

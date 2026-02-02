@@ -14,6 +14,7 @@ import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
+import { SYSOEE_APP_ID, type Rotina } from '@/hooks/usePermissions'
 // Nota: buscarLinhaPorId foi removido pois espera IDs slug (ex: "spep-envase-e"),
 // mas o sistema agora usa IDs numéricos do banco de dados
 // Os dados da linha agora vêm de linhaProducaoSelecionada
@@ -197,6 +198,7 @@ const estadoInicialLote: DadosLote = {
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
+const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
@@ -263,6 +265,9 @@ export default function ApontamentoOEE() {
 
   // ==================== Estado de Modal de Turno Bloqueado (Perdas) ====================
   const [showAlertaTurnoBloqueado, setShowAlertaTurnoBloqueado] = useState(false)
+  const [showAlertaPermissaoNegada, setShowAlertaPermissaoNegada] = useState(false)
+  const [mensagemPermissaoNegada, setMensagemPermissaoNegada] = useState('')
+  const [temPermissaoEditarTurnoFechado, setTemPermissaoEditarTurnoFechado] = useState(false)
 
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
@@ -337,7 +342,9 @@ export default function ApontamentoOEE() {
 
   // Verifica se o turno está bloqueado para edição (status Fechado ou Cancelado no banco de dados)
   // Princípio ALCOA+: Não permitir registros em turnos fechados/cancelados garante integridade temporal dos dados
-  const turnoBloqueadoParaEdicao = statusTurnoBD === 'Fechado' || statusTurnoBD === 'Cancelado'
+  const podeEditarTurnoFechado = statusTurnoBD === 'Fechado' && temPermissaoEditarTurnoFechado
+  const turnoBloqueadoParaEdicao = (statusTurnoBD === 'Fechado' && !temPermissaoEditarTurnoFechado) || statusTurnoBD === 'Cancelado'
+  const turnoPermiteEdicao = statusTurno === 'INICIADO' || podeEditarTurnoFechado
 
   // ==================== Estado de Histórico de Produção ====================
   const [historicoProducao, setHistoricoProducao] = useState<RegistroProducao[]>([])
@@ -756,6 +763,113 @@ export default function ApontamentoOEE() {
     }
     return fallback
   }, [])
+
+  const abrirModalPermissaoNegada = useCallback((mensagem: string) => {
+    setMensagemPermissaoNegada(mensagem)
+    setShowAlertaPermissaoNegada(true)
+  }, [])
+
+  const checarPermissaoBackend = useCallback(async (rotina: Rotina): Promise<boolean> => {
+    if (!user?.id) {
+      return false
+    }
+
+    const parametrosBase = {
+      p_user_id: user.id,
+      p_rotina: rotina
+    }
+
+    const tentativaComApp = await supabase.rpc('check_user_permission', {
+      ...parametrosBase,
+      p_app_id: SYSOEE_APP_ID
+    })
+
+    if (!tentativaComApp.error) {
+      return tentativaComApp.data === true
+    }
+
+    const mensagemErro = `${tentativaComApp.error.message ?? ''}`.toLowerCase()
+    const deveTentarSemApp =
+      tentativaComApp.error.code === 'PGRST202' ||
+      tentativaComApp.error.code === '42883' ||
+      mensagemErro.includes('function check_user_permission') ||
+      mensagemErro.includes('does not exist')
+
+    if (!deveTentarSemApp) {
+      throw tentativaComApp.error
+    }
+
+    const tentativaSemApp = await supabase.rpc('check_user_permission', parametrosBase)
+
+    if (tentativaSemApp.error) {
+      throw tentativaSemApp.error
+    }
+
+    return tentativaSemApp.data === true
+  }, [user?.id])
+
+  const validarPermissaoEdicao = useCallback(async (rotina: Rotina, mensagemNegada: string): Promise<boolean> => {
+    if (!user?.id) {
+      abrirModalPermissaoNegada(mensagemNegada)
+      return false
+    }
+
+    try {
+      const permitido = await checarPermissaoBackend(rotina)
+
+      if (!permitido) {
+        abrirModalPermissaoNegada(mensagemNegada)
+      }
+
+      return permitido
+    } catch (error) {
+      console.error('❌ Erro ao validar permissão no backend:', error)
+      toast({
+        title: 'Erro ao validar permissão',
+        description: obterMensagemErro(error, 'Não foi possível validar sua permissão. Tente novamente.'),
+        variant: 'destructive'
+      })
+      return false
+    }
+  }, [user?.id, checarPermissaoBackend, abrirModalPermissaoNegada, toast, obterMensagemErro])
+
+  useEffect(() => {
+    let ativo = true
+
+    const validarPermissaoTurnoFechado = async () => {
+      if (!user?.id) {
+        if (ativo) {
+          setTemPermissaoEditarTurnoFechado(false)
+        }
+        return
+      }
+
+      if (statusTurnoBD !== 'Fechado') {
+        if (ativo) {
+          setTemPermissaoEditarTurnoFechado(false)
+        }
+        return
+      }
+
+      try {
+        const permitido = await checarPermissaoBackend(ROTINA_PERMISSAO_OEE_TURNO)
+        if (ativo) {
+          setTemPermissaoEditarTurnoFechado(permitido)
+        }
+      } catch (error) {
+        console.error('❌ Erro ao validar permissão para turno fechado:', error)
+        if (ativo) {
+          setTemPermissaoEditarTurnoFechado(false)
+        }
+      }
+    }
+
+    validarPermissaoTurnoFechado()
+
+    return () => {
+      ativo = false
+    }
+  }, [user?.id, statusTurnoBD, checarPermissaoBackend])
 
   const extrairCodigoSku = (sku: string): string => {
     return sku.includes(' - ') ? sku.split(' - ')[0].trim() : sku.trim()
@@ -1217,7 +1331,16 @@ export default function ApontamentoOEE() {
   /**
    * Abre o formulário para editar um lote existente
    */
-  const handleEditarLote = (lote: LoteProducao) => {
+  const handleEditarLote = async (lote: LoteProducao) => {
+    const permitido = await validarPermissaoEdicao(
+      ROTINA_PERMISSAO_OEE_TURNO,
+      'Você não tem permissão para editar este lote de produção.'
+    )
+
+    if (!permitido) {
+      return
+    }
+
     setDataLoteDigitada(formatarDataIsoParaBr(lote.data))
     setDadosLote({
       numeroLote: lote.numeroLote,
@@ -1400,7 +1523,16 @@ export default function ApontamentoOEE() {
   /**
    * Habilita o modo de edição para uma linha específica
    */
-  const handleEditarLinha = (linhaId: string) => {
+  const handleEditarLinha = async (linhaId: string) => {
+    const permitido = await validarPermissaoEdicao(
+      ROTINA_PERMISSAO_OEE_TURNO,
+      'Você não tem permissão para editar este apontamento de produção.'
+    )
+
+    if (!permitido) {
+      return
+    }
+
     setLinhasApontamento(linhas =>
       linhas.map(linha =>
         linha.id === linhaId
@@ -2200,7 +2332,7 @@ export default function ApontamentoOEE() {
     }
 
     const statusNormalizado = status?.trim().toLowerCase()
-    if (statusNormalizado && statusTurnoBloqueado.has(statusNormalizado)) {
+    if (statusNormalizado && statusTurnoBloqueado.has(statusNormalizado) && !temPermissaoEditarTurnoFechado) {
       setRegistroParaExcluir(registroId)
       setExclusaoBloqueada(true)
       setMensagemExclusaoBloqueada(mensagemTurnoEncerrado)
@@ -2244,11 +2376,11 @@ export default function ApontamentoOEE() {
       }
 
     const statusNormalizado = status?.trim().toLowerCase()
-      if (statusNormalizado && statusTurnoBloqueado.has(statusNormalizado)) {
-        setExclusaoBloqueada(true)
-        setMensagemExclusaoBloqueada(mensagemTurnoEncerrado)
-        return
-      }
+    if (statusNormalizado && statusTurnoBloqueado.has(statusNormalizado) && !temPermissaoEditarTurnoFechado) {
+      setExclusaoBloqueada(true)
+      setMensagemExclusaoBloqueada(mensagemTurnoEncerrado)
+      return
+    }
 
       const usuario = await obterUsuarioAutenticado()
       if (!usuario) {
@@ -2961,15 +3093,16 @@ export default function ApontamentoOEE() {
         // 7. Armazenar status do turno do banco de dados
         setStatusTurnoBD(turnoData.status || null)
 
-        // 8. Definir modo de visualização ou edição
+        // 8. Definir status do turno com base no banco de dados
+        if (turnoData.status === 'Fechado') {
+          setStatusTurno('ENCERRADO')
+        } else if (turnoData.status === 'Aberto') {
+          setStatusTurno('INICIADO')
+        }
+
+        // 9. Definir modo de visualização ou edição
         if (!editMode) {
           setModoVisualizacao(true)
-          // Se o turno já está fechado ou cancelado, definir status
-          if (turnoData.status === 'Fechado') {
-            setStatusTurno('ENCERRADO')
-          } else if (turnoData.status === 'Aberto') {
-            setStatusTurno('INICIADO')
-          }
         }
 
         const dataTurnoFormatada = formatarDataRegistro(turnoData.data)
@@ -3658,7 +3791,16 @@ export default function ApontamentoOEE() {
 
   // ==================== Handlers ====================
 
-  const iniciarEdicaoQualidade = (registro: RegistroQualidade) => {
+  const iniciarEdicaoQualidade = async (registro: RegistroQualidade) => {
+    const permitido = await validarPermissaoEdicao(
+      ROTINA_PERMISSAO_OEE_TURNO,
+      'Você não tem permissão para editar este registro de qualidade.'
+    )
+
+    if (!permitido) {
+      return
+    }
+
     setQualidadeEmEdicao(registro)
     setQuantidadePerdas(registro.quantidade.toLocaleString('pt-BR', { maximumFractionDigits: 4 }))
   }
@@ -4631,7 +4773,7 @@ export default function ApontamentoOEE() {
                                   value={linha.quantidadeProduzida}
                                   onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
                                   className={`w-48 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                  disabled={statusTurno !== 'INICIADO' || linha.editavel === false}
+                                  disabled={!turnoPermiteEdicao || linha.editavel === false}
                                 />
                               </td>
                               <td className="px-4 py-3">
@@ -4640,11 +4782,11 @@ export default function ApontamentoOEE() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleEditarLinha(linha.id)}
+                                      onClick={() => void handleEditarLinha(linha.id)}
                                       className="h-8 px-3 text-primary hover:text-primary/90 hover:bg-primary/10"
                                       title="Alterar linha"
                                       disabled={
-                                        statusTurno !== 'INICIADO' ||
+                                        !turnoPermiteEdicao ||
                                         !linha.apontamentoId ||
                                         quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                                       }
@@ -4660,7 +4802,7 @@ export default function ApontamentoOEE() {
                                     className="h-8 px-3 text-green-600 hover:text-green-700 hover:bg-green-50"
                                     title="Salvar linha"
                                     disabled={
-                                      statusTurno !== 'INICIADO' ||
+                                      !turnoPermiteEdicao ||
                                       quantidadeProduzidaInvalida(linha.quantidadeProduzida) ||
                                       Boolean(linha.apontamentoId && !linha.editavel)
                                     }
@@ -4675,7 +4817,7 @@ export default function ApontamentoOEE() {
                                     className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
                                     title="Excluir linha"
                                     disabled={
-                                      statusTurno !== 'INICIADO' ||
+                                      !turnoPermiteEdicao ||
                                       !linha.apontamentoId ||
                                       quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                                     }
@@ -4802,7 +4944,7 @@ export default function ApontamentoOEE() {
                             handleAdicionarQualidade()
                           }
                         }}
-                        disabled={statusTurno !== 'INICIADO' || salvandoQualidade || turnoBloqueadoParaEdicao}
+                        disabled={!turnoPermiteEdicao || salvandoQualidade || turnoBloqueadoParaEdicao}
                       >
                         {salvandoQualidade ? (
                           <Timer className="h-5 w-5 animate-spin" />
@@ -4865,7 +5007,7 @@ export default function ApontamentoOEE() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => iniciarEdicaoQualidade(registro)}
+                                    onClick={() => void iniciarEdicaoQualidade(registro)}
                                     className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
                                     title="Editar registro"
                                   >
@@ -5622,15 +5764,17 @@ export default function ApontamentoOEE() {
               Controle de Lotes
             </DialogTitle>
             <DialogDescription>
-              {statusTurno === 'ENCERRADO' 
+              {statusTurno === 'ENCERRADO' && !podeEditarTurnoFechado
                 ? 'Visualize os lotes de produção do turno encerrado. O turno está encerrado, portanto não é possível adicionar ou editar lotes.'
-                : 'Visualize e gerencie os lotes de produção do turno atual. Utilize o botão abaixo para adicionar novos lotes.'}
+                : statusTurno === 'ENCERRADO'
+                  ? 'Turno encerrado com permissão para ajustes. Você pode adicionar ou editar lotes.'
+                  : 'Visualize e gerencie os lotes de produção do turno atual. Utilize o botão abaixo para adicionar novos lotes.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-hidden flex flex-col gap-4 py-4">
             {/* Botão para adicionar novo lote */}
-            {statusTurno !== 'ENCERRADO' && (
+            {(statusTurno !== 'ENCERRADO' || podeEditarTurnoFechado) && (
               <div className="flex justify-end">
                 <Button
                   onClick={handleNovoLote}
@@ -5644,7 +5788,7 @@ export default function ApontamentoOEE() {
             )}
 
             {/* Formulário inline para adicionar/editar lote */}
-            {formularioLoteAberto && statusTurno !== 'ENCERRADO' && (
+            {formularioLoteAberto && (statusTurno !== 'ENCERRADO' || podeEditarTurnoFechado) && (
               <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">
@@ -5886,12 +6030,12 @@ export default function ApontamentoOEE() {
                           {((lote.quantidadeProduzida ?? 0) - (lote.quantidadePerdas ?? 0)).toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell>
-                          {statusTurno !== 'ENCERRADO' ? (
+                          {(statusTurno !== 'ENCERRADO' || podeEditarTurnoFechado) ? (
                             <div className="flex items-center justify-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEditarLote(lote)}
+                                onClick={() => void handleEditarLote(lote)}
                                 className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-700"
                                 title="Editar lote"
                               >
@@ -6025,6 +6169,15 @@ export default function ApontamentoOEE() {
         open={showAlertaTurnoBloqueado}
         onOpenChange={setShowAlertaTurnoBloqueado}
         statusTurno={statusTurnoBD}
+      />
+
+      {/* Modal de Alerta - Permissão Negada para Edição */}
+      <ModalTurnoBloqueado
+        open={showAlertaPermissaoNegada}
+        onOpenChange={setShowAlertaPermissaoNegada}
+        statusTurno={null}
+        titulo="Permissão necessária"
+        descricao={mensagemPermissaoNegada}
       />
 
       {/* Modal de Busca de Linha de Produção */}
