@@ -19,7 +19,9 @@
       "Bash(dir:*)",
       "Bash(npm run lint)",
       "Bash(ls -la \"C:\\\\Dev\\\\SysOEE\\\\src\\\\pages\\\\oee\"\" 2>&1 || echo \"Pasta não existe \")",
-      "Bash(ls -la \"C:\\\\Dev\\\\SysOEE\\\\src\\\\pages\\\\oee\\\\apontamento-oee\"\" 2>/dev/null || ls -la \"C:/Dev/SysOEE/src/pages/oee/apontamento-oee\" 2>/dev/null || echo \"Diretório não existe \")"
+      "Bash(ls -la \"C:\\\\Dev\\\\SysOEE\\\\src\\\\pages\\\\oee\\\\apontamento-oee\"\" 2>/dev/null || ls -la \"C:/Dev/SysOEE/src/pages/oee/apontamento-oee\" 2>/dev/null || echo \"Diretório não existe \")",
+      "Bash(gh issue create:*)",
+      "Bash(if not exist \"C:\\\\Dev\\\\SysOEE\\\\database\\\\rbac\" mkdir \"C:\\\\Dev\\\\SysOEE\\\\database\\\\rbac\")"
     ],
     "deny": [],
     "ask": []

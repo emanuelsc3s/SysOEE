@@ -1,6 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+- Corrigidos tipos no `Dashboard` para evitar erros de build do TypeScript.
+- Removida função de parsing de hora não utilizada no `Dashboard` para corrigir lint.
+- Corrigida importação do `CardDescription` no `Dashboard` após ajuste do card de OEE.
+- Removida a linha de texto "OEE total" dos cards do `Dashboard`.
+- Adicionado botão "Fechar" no filtro de linha do `Dashboard` para manter o menu aberto durante seleções múltiplas.
+- Adicionada busca textual no filtro de linha de produção do `Dashboard`.
+- Permitida seleção múltipla de linhas de produção no filtro do `Dashboard`, aplicando filtro por conjunto nas linhas.
+- Removida função local não utilizada do `Dashboard` para atender lint.
+- Ajustada a data inicial do período do `Dashboard` para iniciar no dia 01 de três meses antes da data atual do servidor.
+- Mantido o filtro de turno do `Dashboard` com padrão "Todos" na primeira carga da página.
 - Centralizado o texto de copyright do `Login` em uma constante reutilizada nos layouts mobile e desktop.
 - Adicionado botão de visualizar/ocultar senha no campo de senha da página de `Login` (mobile e desktop).
 - Aplicada máscara visual HH:MM nos campos de hora durante a digitação no `ApontamentoOEE`.

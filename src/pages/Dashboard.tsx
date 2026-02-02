@@ -1,10 +1,10 @@
 /**
  * Página Dashboard - Visualização de OEE e cards por linha
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar as CalendarIcon, Filter, Loader2 } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronDown, Filter, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -23,6 +23,13 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 
 type TurnoOption = {
   turno_id: number
@@ -59,6 +66,20 @@ type OeeLinhaRpc = {
   performance: number | string | null
   qualidade: number | string | null
   oee: number | string | null
+}
+
+type ServerDateRpc = {
+  data?: string | null
+  data_hora?: string | null
+  timestamp_utc?: string | null
+}
+
+type FiltrosDashboard = {
+  linhaIds: string[]
+  produtoId: string
+  turnoId: string
+  dataInicio: string
+  dataFim: string
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
@@ -104,13 +125,29 @@ const parseNumero = (valor: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const parseHoraParaMinutos = (hora?: string | null): number | null => {
-  if (!hora) return null
-  const [h, m] = hora.split(':').map(Number)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+const parseDataServidor = (valor?: string | null): Date | null => {
+  if (!valor) {
     return null
   }
-  return h * 60 + m
+
+  const matchIso = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (matchIso) {
+    const ano = Number(matchIso[1])
+    const mes = Number(matchIso[2])
+    const dia = Number(matchIso[3])
+    const data = new Date(ano, mes - 1, dia)
+    if (
+      data.getFullYear() !== ano ||
+      data.getMonth() !== mes - 1 ||
+      data.getDate() !== dia
+    ) {
+      return null
+    }
+    return data
+  }
+
+  const data = new Date(valor)
+  return Number.isNaN(data.getTime()) ? null : data
 }
 
 const formatarDataDigitada = (valor: string): string => {
@@ -197,30 +234,11 @@ const parseDataParaDate = (valor: string): Date | undefined => {
   return data
 }
 
-const obterTurnoAtualId = (turnos: TurnoOption[]): number | null => {
-  const agora = new Date()
-  const minutosAgora = agora.getHours() * 60 + agora.getMinutes()
-
-  for (const turno of turnos) {
-    const inicio = parseHoraParaMinutos(turno.hora_inicio)
-    const fim = parseHoraParaMinutos(turno.hora_fim)
-    if (inicio === null || fim === null) {
-      continue
-    }
-
-    if (inicio <= fim) {
-      if (minutosAgora >= inicio && minutosAgora < fim) {
-        return turno.turno_id
-      }
-    } else {
-      if (minutosAgora >= inicio || minutosAgora < fim) {
-        return turno.turno_id
-      }
-    }
-  }
-
-  return null
-}
+const normalizarTexto = (texto: string): string =>
+  texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 /**
  * Retorna uma cor em gradiente baseada no percentual do indicador.
@@ -286,19 +304,20 @@ export default function Dashboard() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
 
-  const hoje = useMemo(() => format(new Date(), 'dd/MM/yyyy'), [])
-
   const [linhas, setLinhas] = useState<LinhaOption[]>([])
   const [produtos, setProdutos] = useState<ProdutoOption[]>([])
   const [turnos, setTurnos] = useState<TurnoOption[]>([])
   const [listasCarregadas, setListasCarregadas] = useState(false)
+  const [periodoInicializado, setPeriodoInicializado] = useState(false)
+  const periodoInicializadoRef = useRef(false)
+  const campoBuscaLinhaRef = useRef<HTMLInputElement | null>(null)
 
-  const [filtros, setFiltros] = useState({
-    linhaId: 'todas',
+  const [filtros, setFiltros] = useState<FiltrosDashboard>({
+    linhaIds: [],
     produtoId: 'todos',
     turnoId: 'todos',
-    dataInicio: hoje,
-    dataFim: hoje
+    dataInicio: '',
+    dataFim: ''
   })
 
   const [carregandoListas, setCarregandoListas] = useState(true)
@@ -307,6 +326,8 @@ export default function Dashboard() {
   const [dadosOee, setDadosOee] = useState<OeeLinhaRow[]>([])
   const [calendarioInicioAberto, setCalendarioInicioAberto] = useState(false)
   const [calendarioFimAberto, setCalendarioFimAberto] = useState(false)
+  const [menuLinhaAberto, setMenuLinhaAberto] = useState(false)
+  const [buscaLinha, setBuscaLinha] = useState('')
 
   const carregarLinhas = useCallback(async () => {
     const { data, error } = await supabase
@@ -350,18 +371,47 @@ export default function Dashboard() {
 
     const turnosCarregados = (data || []) as TurnoOption[]
     setTurnos(turnosCarregados)
+  }, [])
 
-    const turnoAtualId = obterTurnoAtualId(turnosCarregados)
-    if (turnoAtualId) {
+  const carregarPeriodoInicial = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('fn_get_server_date')
+      if (error) {
+        throw error
+      }
+
+      const resposta = data as ServerDateRpc | null
+      const dataServidor = parseDataServidor(resposta?.data ?? null) || new Date()
+      const dataInicio = format(new Date(dataServidor.getFullYear(), dataServidor.getMonth() - 3, 1), 'dd/MM/yyyy')
+      const dataFim = format(dataServidor, 'dd/MM/yyyy')
+
       setFiltros((prev) => {
-        if (prev.turnoId !== 'todos') {
+        if (prev.dataInicio || prev.dataFim) {
           return prev
         }
         return {
           ...prev,
-          turnoId: String(turnoAtualId)
+          dataInicio,
+          dataFim
         }
       })
+    } catch (error) {
+      console.error('❌ Erro ao obter data do servidor:', error)
+      const dataLocal = new Date()
+      const dataInicio = format(new Date(dataLocal.getFullYear(), dataLocal.getMonth() - 3, 1), 'dd/MM/yyyy')
+      const dataFim = format(dataLocal, 'dd/MM/yyyy')
+      setFiltros((prev) => {
+        if (prev.dataInicio || prev.dataFim) {
+          return prev
+        }
+        return {
+          ...prev,
+          dataInicio,
+          dataFim
+        }
+      })
+    } finally {
+      setPeriodoInicializado(true)
     }
   }, [])
 
@@ -386,8 +436,64 @@ export default function Dashboard() {
     carregarListas()
   }, [carregarLinhas, carregarProdutos, carregarTurnos, toast])
 
+  useEffect(() => {
+    if (periodoInicializadoRef.current) {
+      return
+    }
+    periodoInicializadoRef.current = true
+    carregarPeriodoInicial()
+  }, [carregarPeriodoInicial])
+
+  useEffect(() => {
+    if (menuLinhaAberto) {
+      campoBuscaLinhaRef.current?.focus()
+    }
+  }, [menuLinhaAberto])
+
+  useEffect(() => {
+    if (!menuLinhaAberto && buscaLinha) {
+      setBuscaLinha('')
+    }
+  }, [buscaLinha, menuLinhaAberto])
+
+  const linhaIdsSelecionadas = useMemo(
+    () =>
+      filtros.linhaIds
+        .map((linhaId) => Number(linhaId))
+        .filter((linhaId) => Number.isFinite(linhaId)),
+    [filtros.linhaIds]
+  )
+
+  const linhasFiltradas = useMemo(() => {
+    const termo = normalizarTexto(buscaLinha.trim())
+    if (!termo) {
+      return linhas
+    }
+
+    return linhas.filter((linha) => {
+      const textoLinha = normalizarTexto(`${linha.linhaproducao ?? ''} ${linha.linhaproducao_id}`)
+      return textoLinha.includes(termo)
+    })
+  }, [buscaLinha, linhas])
+
+  const resumoLinhasSelecionadas = useMemo(() => {
+    if (filtros.linhaIds.length === 0) {
+      return 'Todas as linhas'
+    }
+
+    if (filtros.linhaIds.length === 1) {
+      const linhaIdSelecionada = filtros.linhaIds[0]
+      const linhaSelecionada = linhas.find(
+        (linha) => String(linha.linhaproducao_id) === linhaIdSelecionada
+      )
+      return linhaSelecionada?.linhaproducao || `Linha ${linhaIdSelecionada}`
+    }
+
+    return `${filtros.linhaIds.length} linhas selecionadas`
+  }, [filtros.linhaIds, linhas])
+
   const parametrosRpc = useMemo(() => {
-    const linhaId = filtros.linhaId === 'todas' ? null : Number(filtros.linhaId)
+    const linhaIdUnica = linhaIdsSelecionadas.length === 1 ? linhaIdsSelecionadas[0] : null
     const produtoId = filtros.produtoId === 'todos' ? null : Number(filtros.produtoId)
     const turnoId = filtros.turnoId === 'todos' ? null : Number(filtros.turnoId)
     const dataInicioIso = converterDataParaIso(filtros.dataInicio)
@@ -398,10 +504,10 @@ export default function Dashboard() {
       p_data_fim: dataFimIso,
       p_turno_id: Number.isFinite(turnoId) ? turnoId : null,
       p_produto_id: Number.isFinite(produtoId) ? produtoId : null,
-      p_linhaproducao_id: Number.isFinite(linhaId) ? linhaId : null,
+      p_linhaproducao_id: Number.isFinite(linhaIdUnica) ? linhaIdUnica : null,
       p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO
     }
-  }, [filtros])
+  }, [filtros, linhaIdsSelecionadas])
 
   const dataInicioSelecionada = useMemo(() => parseDataParaDate(filtros.dataInicio), [filtros.dataInicio])
   const dataFimSelecionada = useMemo(() => parseDataParaDate(filtros.dataFim), [filtros.dataFim])
@@ -427,7 +533,7 @@ export default function Dashboard() {
         throw error
       }
 
-      const dadosMapeados = (data || [])
+      const dadosMapeados: OeeLinhaRow[] = (data || [])
         .map((linha: OeeLinhaRpc) => ({
           linhaproducao_id: Number(linha.linhaproducao_id),
           linhaproducao: linha.linhaproducao,
@@ -443,7 +549,12 @@ export default function Dashboard() {
           return (a.linhaproducao || '').localeCompare(b.linhaproducao || '', 'pt-BR', { sensitivity: 'base' })
         })
 
-      setDadosOee(dadosMapeados)
+      const dadosFiltrados =
+        linhaIdsSelecionadas.length > 0
+          ? dadosMapeados.filter((linha) => linhaIdsSelecionadas.includes(linha.linhaproducao_id))
+          : dadosMapeados
+
+      setDadosOee(dadosFiltrados)
     } catch (error) {
       console.error('❌ Erro ao buscar OEE no dashboard:', error)
       setErroDados('Não foi possível carregar o OEE para os filtros selecionados.')
@@ -451,17 +562,33 @@ export default function Dashboard() {
     } finally {
       setCarregandoDados(false)
     }
-  }, [parametrosRpc])
+  }, [linhaIdsSelecionadas, parametrosRpc])
 
   useEffect(() => {
-    if (!listasCarregadas) {
+    if (!listasCarregadas || !periodoInicializado) {
       return
     }
     carregarDadosOee()
-  }, [carregarDadosOee, listasCarregadas])
+  }, [carregarDadosOee, listasCarregadas, periodoInicializado])
 
-  const atualizarFiltro = (campo: keyof typeof filtros, valor: string) => {
+  const atualizarFiltro = <T extends keyof FiltrosDashboard>(campo: T, valor: FiltrosDashboard[T]) => {
     setFiltros((prev) => ({ ...prev, [campo]: valor }))
+  }
+
+  const alternarLinhaSelecionada = (linhaId: string) => {
+    setFiltros((prev) => {
+      if (prev.linhaIds.includes(linhaId)) {
+        return {
+          ...prev,
+          linhaIds: prev.linhaIds.filter((id) => id !== linhaId)
+        }
+      }
+
+      return {
+        ...prev,
+        linhaIds: [...prev.linhaIds, linhaId]
+      }
+    })
   }
 
   return (
@@ -495,19 +622,81 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="filtro-linha">Linha de Produção</Label>
-                  <Select value={filtros.linhaId} onValueChange={(value) => atualizarFiltro('linhaId', value)}>
-                    <SelectTrigger id="filtro-linha">
-                      <SelectValue placeholder="Todas as linhas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas</SelectItem>
-                      {linhas.map((linha) => (
-                        <SelectItem key={linha.linhaproducao_id} value={String(linha.linhaproducao_id)}>
-                          {linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <DropdownMenu open={menuLinhaAberto} onOpenChange={setMenuLinhaAberto}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        id="filtro-linha"
+                        variant="outline"
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className="truncate">{resumoLinhasSelecionadas}</span>
+                        <ChevronDown className="h-4 w-4 opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-[var(--radix-dropdown-menu-trigger-width)]"
+                    >
+                      <div className="p-2">
+                        <Input
+                          ref={campoBuscaLinhaRef}
+                          placeholder="Buscar linha"
+                          value={buscaLinha}
+                          onChange={(event) => setBuscaLinha(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Escape') {
+                              event.stopPropagation()
+                            }
+                          }}
+                        />
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuCheckboxItem
+                        checked={filtros.linhaIds.length === 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            atualizarFiltro('linhaIds', [])
+                          }
+                        }}
+                        onSelect={(event) => event.preventDefault()}
+                      >
+                        Todas as linhas
+                      </DropdownMenuCheckboxItem>
+                      <DropdownMenuSeparator />
+                      <div className="max-h-64 overflow-y-auto">
+                        {linhasFiltradas.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            Nenhuma linha encontrada.
+                          </div>
+                        ) : (
+                          linhasFiltradas.map((linha) => {
+                            const linhaId = String(linha.linhaproducao_id)
+                            return (
+                              <DropdownMenuCheckboxItem
+                                key={linha.linhaproducao_id}
+                                checked={filtros.linhaIds.includes(linhaId)}
+                                onCheckedChange={() => alternarLinhaSelecionada(linhaId)}
+                                onSelect={(event) => event.preventDefault()}
+                              >
+                                {linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}
+                              </DropdownMenuCheckboxItem>
+                            )
+                          })
+                        )}
+                      </div>
+                      <DropdownMenuSeparator />
+                      <div className="p-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="w-full"
+                          onClick={() => setMenuLinhaAberto(false)}
+                        >
+                          Fechar
+                        </Button>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="space-y-2">
@@ -650,9 +839,6 @@ export default function Dashboard() {
               <Card key={linha.linhaproducao_id}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">{linha.linhaproducao || 'Linha sem nome'}</CardTitle>
-                  <CardDescription>
-                    OEE total: {formatarPercentual(linha.oee)}%
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-6">
                   {/* Velocímetro SVG inline com cores dinâmicas */}
