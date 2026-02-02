@@ -218,6 +218,7 @@ export default function ApontamentoOEE() {
   // ==================== Estado do Cabeçalho ====================
   const [data, setData] = useState<Date | undefined>(new Date())
   const [openDatePicker, setOpenDatePicker] = useState(false)
+  const [dataMaximaServidor, setDataMaximaServidor] = useState<Date>(new Date()) // Data máxima permitida (do servidor)
   const [turno, setTurno] = useState<Turno>('1º Turno')
   const [turnoId, setTurnoId] = useState<string>('') // ID do turno selecionado
   const [turnoCodigo, setTurnoCodigo] = useState<string>('') // Código do turno
@@ -268,6 +269,7 @@ export default function ApontamentoOEE() {
   const [showAlertaPermissaoNegada, setShowAlertaPermissaoNegada] = useState(false)
   const [mensagemPermissaoNegada, setMensagemPermissaoNegada] = useState('')
   const [temPermissaoEditarTurnoFechado, setTemPermissaoEditarTurnoFechado] = useState(false)
+  const [showAlertaDataFutura, setShowAlertaDataFutura] = useState(false)
 
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
@@ -870,6 +872,23 @@ export default function ApontamentoOEE() {
       ativo = false
     }
   }, [user?.id, statusTurnoBD, checarPermissaoBackend])
+
+  // Buscar data do servidor para validação (evita manipulação de data local)
+  useEffect(() => {
+    const buscarDataServidor = async () => {
+      try {
+        const { data, error } = await supabase.rpc('fn_get_server_date')
+        if (!error && data?.data) {
+          // Converter string ISO para Date com horário final do dia
+          setDataMaximaServidor(new Date(data.data + 'T23:59:59'))
+        }
+      } catch (err) {
+        console.error('Erro ao buscar data do servidor:', err)
+        // Fallback para data local se falhar
+      }
+    }
+    buscarDataServidor()
+  }, [])
 
   const extrairCodigoSku = (sku: string): string => {
     return sku.includes(' - ') ? sku.split(' - ')[0].trim() : sku.trim()
@@ -4313,11 +4332,16 @@ export default function ApontamentoOEE() {
                         selected={data}
                         captionLayout="dropdown"
                         onSelect={(date) => {
+                          // Validar se a data selecionada é futura
+                          if (date && date > dataMaximaServidor) {
+                            setShowAlertaDataFutura(true)
+                            return
+                          }
                           setData(date)
                           setOpenDatePicker(false)
                         }}
                         locale={ptBR}
-                        disabled={cabecalhoBloqueado}
+                        disabled={cabecalhoBloqueado ? true : { after: dataMaximaServidor }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -6178,6 +6202,22 @@ export default function ApontamentoOEE() {
         statusTurno={null}
         titulo="Permissão necessária"
         descricao={mensagemPermissaoNegada}
+      />
+
+      {/* Modal de Alerta - Data Futura Não Permitida */}
+      <ModalTurnoBloqueado
+        open={showAlertaDataFutura}
+        onOpenChange={setShowAlertaDataFutura}
+        statusTurno={null}
+        titulo="Data não permitida"
+        descricao={
+          <>
+            Não é possível selecionar uma <strong>data futura</strong> para apontamento.
+            <br /><br />
+            Os registros de produção, paradas e perdas devem ser feitos para datas passadas ou para a data atual,
+            garantindo a integridade temporal dos dados conforme os princípios ALCOA+.
+          </>
+        }
       />
 
       {/* Modal de Busca de Linha de Produção */}
