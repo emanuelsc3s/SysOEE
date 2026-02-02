@@ -20,6 +20,8 @@
 -- Retorno:
 --   BOOLEAN: TRUE se tem permissão, FALSE caso contrário
 
+-- **SCRIPT EXISTENTE NO BANCO POR COMPLETO**
+
 CREATE OR REPLACE FUNCTION check_user_permission(
   p_user_id UUID,
   p_rotina TEXT
