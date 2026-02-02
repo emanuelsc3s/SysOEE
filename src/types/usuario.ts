@@ -29,6 +29,9 @@ export interface UsuarioFormData {
   /** Nome do perfil (para exibição) */
   perfil?: string
 
+  /** ID da aplicação (FK para tbapp) */
+  appId?: number
+
   /** ID do funcionário (FK para tbfuncionario) */
   funcionarioId?: number
 
@@ -128,6 +131,7 @@ export const USUARIO_INITIAL_VALUES: UsuarioFormData = {
   usuario: '',
   perfilId: undefined,
   perfil: '',
+  appId: undefined,
   funcionarioId: undefined,
   matricula: '',
   deletado: 'N'

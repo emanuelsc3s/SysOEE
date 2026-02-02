@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado dropdown de Aplicação no cadastro de usuários (criação e edição) com opções carregadas via `get_user_apps` e fallback para `tbapp`.
+- Ajustada a dependência do `useCallback` no carregamento de aplicações para eliminar aviso de lint no `UsuariosCad`.
 - Corrigidos tipos no `Dashboard` para evitar erros de build do TypeScript.
 - Removida função de parsing de hora não utilizada no `Dashboard` para corrigir lint.
 - Corrigida importação do `CardDescription` no `Dashboard` após ajuste do card de OEE.
