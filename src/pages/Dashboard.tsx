@@ -667,7 +667,7 @@ export default function Dashboard() {
         onLogout={signOut}
       />
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-[1920px] mx-auto px-4 py-6 space-y-6">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -946,8 +946,8 @@ export default function Dashboard() {
         )}
 
         {carregandoDados ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
               <Card key={`skeleton-${index}`}>
                 <CardHeader>
                   <Skeleton className="h-6 w-32" />
@@ -968,11 +968,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {dadosOee.map((linha) => (
               <Card key={linha.linhaproducao_id}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{linha.linhaproducao || 'Linha sem nome'}</CardTitle>
+                  <CardTitle className="text-lg break-words">{linha.linhaproducao || 'Linha sem nome'}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-6">
                   {/* Velocímetro SVG inline com cores dinâmicas */}
