@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a RPC `fn_calcular_oee_dashboard` para alinhar tempo disponível fixo, velocidade nominal por turno e adicionar filtro opcional por `oeeturno_id`.
+- Corrigido o `COMMENT ON FUNCTION` com assinatura completa e removida a versão antiga da RPC para evitar ambiguidade no Supabase.
+- Implementada a chamada à RPC `fn_calcular_oee_dashboard` no `ApontamentoOEE`, com modal detalhado e feedback de carregamento no velocímetro.
 - Alterado o rótulo do botão de atualização automática para "Auto" no `Dashboard`.
 - Adicionado botão para recolher/expandir os filtros do `Dashboard` ao lado do toggle de tema.
 - Reservado espaço para duas linhas nos títulos dos cards de linha do `Dashboard`.
@@ -25,6 +28,8 @@
 - Reduzida a largura dos campos de Hora Inicial e Hora Final no `ApontamentoOEE`.
 - Reposicionado o botão de registrar parada para a linha do tipo de parada no `ApontamentoOEE`.
 - Reorganizada a linha do tipo de parada para posicionar Hora Inicial/Final ao lado do botão no `ApontamentoOEE`.
+- Movido o ícone informativo do velocímetro para a linha do título "OEE Real" no `ApontamentoOEE`.
+- Adicionado ícone informativo abaixo do valor do OEE para indicar o clique de detalhamento no `ApontamentoOEE`.
 - Permitido registrar quantidade produzida zero no apontamento de produção do `ApontamentoOEE`.
 - Restringida a exclusão de turnos OEE a perfis Administrador/Supervisor com validação dinâmica na `tbusuario` e alerta de permissão na UI.
 - Ajustada a auditoria de exclusão em `tboee_turno` e tabelas relacionadas para registrar `deleted_at` local e `deleted_by` do usuário autenticado.

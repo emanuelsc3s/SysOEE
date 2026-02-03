@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -140,6 +140,39 @@ interface RegistroQualidade {
   motivo: string
   dataHoraRegistro: string
   deletado?: 'S' | 'N' | null
+}
+
+// Estrutura esperada da RPC fn_calcular_oee_dashboard
+interface ComponentesOeeRpc {
+  unidades_produzidas?: number | string | null
+  unidades_perdas?: number | string | null
+  unidades_boas?: number | string | null
+  tempo_operacional_liquido?: number | string | null
+  tempo_valioso?: number | string | null
+  tempo_disponivel_horas?: number | string | null
+  tempo_estrategico_horas?: number | string | null
+  tempo_paradas_grandes_horas?: number | string | null
+  tempo_operacao_horas?: number | string | null
+  disponibilidade?: number | string | null
+  performance?: number | string | null
+  qualidade?: number | string | null
+  oee?: number | string | null
+}
+
+interface ComponentesOeeDetalhe {
+  unidadesProduzidas: number
+  unidadesPerdas: number
+  unidadesBoas: number
+  tempoOperacionalLiquido: number
+  tempoValioso: number
+  tempoDisponivelHoras: number
+  tempoEstrategicoHoras: number
+  tempoParadasGrandesHoras: number
+  tempoOperacaoHoras: number
+  disponibilidade: number
+  performance: number
+  qualidade: number
+  oee: number
 }
 
 // Tipo para dados de lote com ID único
@@ -275,6 +308,9 @@ export default function ApontamentoOEE() {
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
   const [intervaloApontamento, setIntervaloApontamento] = useState<number>(1) // Padrão: 1 hora
   const [modalExplicacaoOEEAberto, setModalExplicacaoOEEAberto] = useState(false)
+  const [componentesOee, setComponentesOee] = useState<ComponentesOeeDetalhe | null>(null)
+  const [carregandoComponentesOee, setCarregandoComponentesOee] = useState(false)
+  const [erroComponentesOee, setErroComponentesOee] = useState<string | null>(null)
   const [modalAjudaViradaParadaAberto, setModalAjudaViradaParadaAberto] = useState(false)
 
   // ==================== Estado do Modal de Lotes ====================
@@ -1956,6 +1992,24 @@ export default function ApontamentoOEE() {
     return quantidade.toLocaleString('pt-BR')
   }
 
+  const normalizarNumeroRpc = (valor: number | string | null | undefined): number => {
+    if (typeof valor === 'number') {
+      return Number.isFinite(valor) ? valor : 0
+    }
+    if (typeof valor === 'string') {
+      const numero = Number(valor.replace(',', '.'))
+      return Number.isFinite(numero) ? numero : 0
+    }
+    return 0
+  }
+
+  const formatarNumeroDecimal = (valor: number, casas = 2): string => {
+    return valor.toLocaleString('pt-BR', {
+      minimumFractionDigits: casas,
+      maximumFractionDigits: casas
+    })
+  }
+
   const normalizarPerdaPtBr = (valor: string) => {
     if (!valor) {
       return {
@@ -2204,6 +2258,152 @@ export default function ApontamentoOEE() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })
+  }
+
+  const mapearComponentesOee = (registro: ComponentesOeeRpc | null): ComponentesOeeDetalhe | null => {
+    if (!registro) {
+      return null
+    }
+
+    const unidadesProduzidas = normalizarNumeroRpc(registro.unidades_produzidas)
+    const unidadesPerdas = normalizarNumeroRpc(registro.unidades_perdas)
+    const unidadesBoas = (registro.unidades_boas === null || registro.unidades_boas === undefined)
+      ? Math.max(unidadesProduzidas - unidadesPerdas, 0)
+      : normalizarNumeroRpc(registro.unidades_boas)
+
+    const tempoDisponivelHoras = normalizarNumeroRpc(registro.tempo_disponivel_horas)
+    const tempoEstrategicoHoras = normalizarNumeroRpc(registro.tempo_estrategico_horas)
+    const tempoParadasGrandesHoras = normalizarNumeroRpc(registro.tempo_paradas_grandes_horas)
+
+    const tempoOperacaoHoras = (registro.tempo_operacao_horas === null || registro.tempo_operacao_horas === undefined)
+      ? Math.max(tempoDisponivelHoras - tempoEstrategicoHoras - tempoParadasGrandesHoras, 0)
+      : normalizarNumeroRpc(registro.tempo_operacao_horas)
+
+    const tempoOperacionalLiquido = normalizarNumeroRpc(registro.tempo_operacional_liquido)
+    const tempoValioso = (registro.tempo_valioso === null || registro.tempo_valioso === undefined)
+      ? (unidadesProduzidas > 0 ? (unidadesBoas / unidadesProduzidas) * tempoOperacionalLiquido : 0)
+      : normalizarNumeroRpc(registro.tempo_valioso)
+
+    const disponibilidade = (registro.disponibilidade === null || registro.disponibilidade === undefined)
+      ? ((tempoDisponivelHoras - tempoEstrategicoHoras) > 0
+        ? (tempoOperacaoHoras / (tempoDisponivelHoras - tempoEstrategicoHoras)) * 100
+        : 0)
+      : normalizarNumeroRpc(registro.disponibilidade)
+
+    const performance = (registro.performance === null || registro.performance === undefined)
+      ? (tempoOperacaoHoras > 0 ? Math.min((tempoOperacionalLiquido / tempoOperacaoHoras) * 100, 100) : 0)
+      : normalizarNumeroRpc(registro.performance)
+
+    const qualidade = (registro.qualidade === null || registro.qualidade === undefined)
+      ? (unidadesProduzidas > 0 ? (unidadesBoas / unidadesProduzidas) * 100 : 100)
+      : normalizarNumeroRpc(registro.qualidade)
+
+    const oee = (registro.oee === null || registro.oee === undefined)
+      ? (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
+      : normalizarNumeroRpc(registro.oee)
+
+    return {
+      unidadesProduzidas,
+      unidadesPerdas,
+      unidadesBoas,
+      tempoOperacionalLiquido,
+      tempoValioso,
+      tempoDisponivelHoras,
+      tempoEstrategicoHoras,
+      tempoParadasGrandesHoras,
+      tempoOperacaoHoras,
+      disponibilidade,
+      performance,
+      qualidade,
+      oee
+    }
+  }
+
+  const detalhesComponentesOee = componentesOee ? (() => {
+    const tempoDisponivelAjustado = Math.max(componentesOee.tempoDisponivelHoras - componentesOee.tempoEstrategicoHoras, 0)
+    const tempoOperacaoCalculado = Math.max(tempoDisponivelAjustado - componentesOee.tempoParadasGrandesHoras, 0)
+    const disponibilidadeCalculada = tempoDisponivelAjustado > 0
+      ? (tempoOperacaoCalculado / tempoDisponivelAjustado) * 100
+      : 0
+    const performanceCalculada = tempoOperacaoCalculado > 0
+      ? Math.min((componentesOee.tempoOperacionalLiquido / tempoOperacaoCalculado) * 100, 100)
+      : 0
+    const qualidadeCalculada = componentesOee.unidadesProduzidas > 0
+      ? (componentesOee.unidadesBoas / componentesOee.unidadesProduzidas) * 100
+      : 100
+    const oeeCalculado = (disponibilidadeCalculada / 100) * (performanceCalculada / 100) * (qualidadeCalculada / 100) * 100
+
+    return {
+      tempoDisponivelAjustado,
+      tempoOperacaoCalculado,
+      disponibilidadeCalculada,
+      performanceCalculada,
+      qualidadeCalculada,
+      oeeCalculado
+    }
+  })() : null
+
+  const abrirDetalhamentoOee = async () => {
+    if (carregandoComponentesOee) {
+      return
+    }
+
+    if (!oeeTurnoId) {
+      toast({
+        title: 'Turno OEE não encontrado',
+        description: 'Inicie ou selecione um turno OEE válido para visualizar os componentes.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    try {
+      setCarregandoComponentesOee(true)
+      setErroComponentesOee(null)
+      setComponentesOee(null)
+
+      const { data, error } = await supabase.rpc('fn_calcular_oee_dashboard', {
+        p_data_inicio: null,
+        p_data_fim: null,
+        p_turno_id: null,
+        p_produto_id: null,
+        p_linhaproducao_id: null,
+        p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+        p_oeeturno_id: oeeTurnoId
+      })
+
+      if (error) {
+        throw error
+      }
+
+      const registro = Array.isArray(data) ? data[0] : data
+      const detalhes = mapearComponentesOee((registro || null) as ComponentesOeeRpc | null)
+
+      if (!detalhes) {
+        setErroComponentesOee('Nenhum dado encontrado para o turno selecionado.')
+      } else {
+        setComponentesOee(detalhes)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao calcular componentes do OEE:', error)
+      const mensagemErro = error && typeof error === 'object' && 'message' in error
+        ? String((error as { message?: string }).message)
+        : ''
+      const mensagemAmigavel = mensagemErro.includes('schema cache') && mensagemErro.includes('fn_calcular_oee_dashboard')
+        ? 'A função fn_calcular_oee_dashboard não foi localizada no schema público. Verifique se ela foi criada no Supabase e se o parâmetro correto é p_oeeturno_id.'
+        : obterMensagemErro(error, 'Não foi possível calcular os componentes do OEE.')
+      setErroComponentesOee(mensagemAmigavel)
+    } finally {
+      setCarregandoComponentesOee(false)
+      setModalExplicacaoOEEAberto(true)
+    }
+  }
+
+  const handleModalExplicacaoOeeChange = (aberto: boolean) => {
+    setModalExplicacaoOEEAberto(aberto)
+    if (!aberto) {
+      setErroComponentesOee(null)
+    }
   }
 
   /**
@@ -5359,16 +5559,39 @@ export default function ApontamentoOEE() {
           {/* Aside do OEE Real - Velocímetro e Barras */}
           <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
             <div className="w-full">
-              <h2 className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark mb-6 text-center">
-                OEE Real
-              </h2>
+              <div className="relative mb-6 flex items-center justify-center">
+                <h2 className="w-full text-xl font-bold text-text-primary-light dark:text-text-primary-dark text-center">
+                  OEE Real
+                </h2>
+                {/* Ícone de informação alinhado à direita do título */}
+                <div className="absolute right-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-6 h-6 text-blue-500 dark:text-blue-400"
+                  >
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <path d="M12 17h.01"></path>
+                  </svg>
+                </div>
+              </div>
 
               <div className="flex flex-col items-center gap-8 mb-8">
                 {/* Velocímetro SVG */}
                 <div
-                  className="relative flex-shrink-0 cursor-pointer group"
-                  onClick={() => setModalExplicacaoOEEAberto(true)}
-                  title="Clique para ver explicação do velocímetro de OEE"
+                  className={`relative flex-shrink-0 group ${carregandoComponentesOee ? 'cursor-wait' : 'cursor-pointer'}`}
+                  onClick={carregandoComponentesOee ? undefined : abrirDetalhamentoOee}
+                  title="Clique para ver o detalhamento do cálculo do OEE"
+                  aria-busy={carregandoComponentesOee}
+                  role="button"
                 >
                   <svg className="w-64 h-64 transform -rotate-90" viewBox="0 0 120 120">
                     {/* Círculo de fundo */}
@@ -5410,30 +5633,34 @@ export default function ApontamentoOEE() {
                       />
                     )}
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="font-bold text-text-primary-light dark:text-text-primary-dark" style={{ fontSize: '37.8px' }}>
                       {formatarPercentual(oeeCalculado.oee)}%
                     </span>
-                  </div>
-                  {/* Ícone de informação - sempre visível para tablets */}
-                  <div className="absolute top-2 right-2">
+                    {/* Ícone para indicar clique e detalhes */}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
+                      width="20"
+                      height="20"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="w-6 h-6 text-blue-500 dark:text-blue-400"
+                      className="mt-2 h-5 w-5 text-blue-500/80 dark:text-blue-400/80"
                     >
                       <circle cx="12" cy="12" r="10"></circle>
                       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                       <path d="M12 17h.01"></path>
                     </svg>
                   </div>
+                  {carregandoComponentesOee && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70 dark:bg-black/40">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+                      <span className="sr-only">Carregando detalhes do OEE</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Barras de Componentes com cores dinâmicas */}
@@ -5565,168 +5792,218 @@ export default function ApontamentoOEE() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Explicação do Velocímetro de OEE */}
-      <Dialog open={modalExplicacaoOEEAberto} onOpenChange={setModalExplicacaoOEEAberto}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* Modal de Detalhamento do OEE */}
+      <Dialog open={modalExplicacaoOEEAberto} onOpenChange={handleModalExplicacaoOeeChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl">
               <Info className="w-6 h-6 text-blue-500" />
-              Entendendo o Velocímetro de OEE
+              Detalhamento do cálculo do OEE
             </DialogTitle>
             <DialogDescription>
-              Explicação dos elementos visuais do indicador de Overall Equipment Effectiveness
+              Dados calculados pela RPC <strong>fn_calcular_oee_dashboard</strong> para o turno{' '}
+              <strong>{oeeTurnoId ?? '-'}</strong>.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {/* Seção: OEE Atual */}
-            <div className="space-y-2">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: getColorByPercentage(oeeCalculado.oee) }}
-                />
-                Círculo de Progresso (OEE Atual)
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                O círculo colorido representa o <strong>OEE atual calculado</strong> ({formatarPercentual(oeeCalculado.oee)}%).
-                A cor muda dinamicamente conforme o desempenho da linha de produção, facilitando a identificação
-                rápida do status operacional.
-              </p>
+          {carregandoComponentesOee && (
+            <div className="py-10 flex items-center justify-center gap-3 text-sm text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+              Carregando detalhes do OEE...
             </div>
+          )}
 
-            {/* Seção: Meta de OEE */}
-            <div className="space-y-2">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-yellow-500" />
-                Meta de OEE (65%)
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                A meta estabelecida para esta linha de produção é de <strong>65%</strong>. Este é o objetivo
-                mínimo de eficiência que deve ser alcançado para garantir a produtividade esperada.
-              </p>
+          {!carregandoComponentesOee && erroComponentesOee && (
+            <div className="mt-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4 text-sm text-red-700 dark:text-red-300 flex gap-3">
+              <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Não foi possível carregar os detalhes.</p>
+                <p className="text-sm text-muted-foreground">{erroComponentesOee}</p>
+              </div>
             </div>
+          )}
 
-            {/* Seção: Gap até a Meta */}
-            {oeeCalculado.oee < 65 && (
-              <div className="space-y-2 bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-yellow-500 opacity-25" />
-                  Destaque do Gap (Diferença até a Meta)
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  O círculo amarelo translúcido que você vê representa a <strong>distância entre o OEE atual
-                  ({formatarPercentual(oeeCalculado.oee)}%) e a meta (65%)</strong>. Este destaque visual ajuda a
-                  identificar rapidamente o quanto falta para atingir o objetivo estabelecido.
-                </p>
-                <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
-                  Gap atual: {formatarPercentual(65 - oeeCalculado.oee)} pontos percentuais
-                </p>
+          {!carregandoComponentesOee && !erroComponentesOee && !componentesOee && (
+            <div className="py-6 text-sm text-muted-foreground">
+              Nenhum dado encontrado para o turno selecionado.
+            </div>
+          )}
+
+          {!carregandoComponentesOee && !erroComponentesOee && componentesOee && detalhesComponentesOee && (
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                  <p className="text-xs text-muted-foreground">OEE</p>
+                  <p
+                    className="text-2xl font-bold"
+                    style={{ color: getColorByPercentage(componentesOee.oee) }}
+                  >
+                    {formatarPercentual(componentesOee.oee)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                  <p className="text-xs text-muted-foreground">Disponibilidade</p>
+                  <p className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                    {formatarPercentual(componentesOee.disponibilidade)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                  <p className="text-xs text-muted-foreground">Performance</p>
+                  <p className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                    {formatarPercentual(componentesOee.performance)}%
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                  <p className="text-xs text-muted-foreground">Qualidade</p>
+                  <p className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
+                    {formatarPercentual(componentesOee.qualidade)}%
+                  </p>
+                </div>
               </div>
-            )}
 
-            {oeeCalculado.oee >= 65 && (
-              <div className="space-y-2 bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                  Meta Atingida!
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Parabéns! O OEE atual ({formatarPercentual(oeeCalculado.oee)}%) está <strong>acima da meta de 65%</strong>.
-                  O destaque do gap não é exibido quando a meta é atingida ou superada.
-                </p>
-              </div>
-            )}
-
-            {/* Seção: Escala de Cores */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-lg">Escala de Cores do Velocímetro</h3>
-              <p className="text-sm text-muted-foreground">
-                As cores do velocímetro indicam o nível de desempenho da linha:
-              </p>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
-                  <div className="w-8 h-8 rounded-full bg-red-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-sm">Vermelho (0-50%)</p>
-                    <p className="text-xs text-muted-foreground">Desempenho crítico - requer ação imediata</p>
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Base de produção e perdas</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Unidades produzidas</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarQuantidade(componentesOee.unidadesProduzidas)} un
+                    </p>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
-                  <div className="w-8 h-8 rounded-full bg-orange-500 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-sm">Laranja (50-65%)</p>
-                    <p className="text-xs text-muted-foreground">Desempenho abaixo da meta - necessita melhoria</p>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Unidades perdas</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarQuantidade(componentesOee.unidadesPerdas)} un
+                    </p>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
-                  <div className="w-8 h-8 rounded-full bg-yellow-500 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-sm">Amarelo (65-75%)</p>
-                    <p className="text-xs text-muted-foreground">Desempenho na meta - satisfatório</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded bg-gray-50 dark:bg-gray-800">
-                  <div className="w-8 h-8 rounded-full bg-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-sm">Verde (75-100%)</p>
-                    <p className="text-xs text-muted-foreground">Desempenho excelente - acima da meta</p>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Unidades boas</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarQuantidade(componentesOee.unidadesBoas)} un
+                    </p>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Seção: Componentes do OEE */}
-            <div className="space-y-3 border-t pt-4">
-              <h3 className="font-semibold text-lg">Componentes do OEE</h3>
-              <p className="text-sm text-muted-foreground">
-                O OEE é calculado multiplicando três componentes principais:
-              </p>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold min-w-[140px]">Disponibilidade:</span>
-                  <span className="text-muted-foreground">
-                    {formatarPercentual(oeeCalculado.disponibilidade)}% - Tempo que o equipamento esteve disponível para produção
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold min-w-[140px]">Performance:</span>
-                  <span className="text-muted-foreground">
-                    {formatarPercentual(oeeCalculado.performance)}% - Velocidade de produção comparada à velocidade nominal
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold min-w-[140px]">Qualidade:</span>
-                  <span className="text-muted-foreground">
-                    {formatarPercentual(oeeCalculado.qualidade)}% - Percentual de produtos sem defeitos
-                  </span>
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Tempos (horas)</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Tempo disponível</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(componentesOee.tempoDisponivelHoras)} h
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Tempo estratégico</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(componentesOee.tempoEstrategicoHoras)} h
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Tempo disponível ajustado</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} h
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Paradas grandes</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(componentesOee.tempoParadasGrandesHoras)} h
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Tempo de operação</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(componentesOee.tempoOperacaoHoras)} h
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Tempo operacional líquido</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(componentesOee.tempoOperacionalLiquido)} h
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-white p-3">
+                    <p className="text-xs text-muted-foreground">Tempo valioso</p>
+                    <p className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
+                      {formatarNumeroDecimal(componentesOee.tempoValioso)} h
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-800 mt-3">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  OEE = Disponibilidade × Performance × Qualidade
-                </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  {formatarPercentual(oeeCalculado.disponibilidade)}% × {formatarPercentual(oeeCalculado.performance)}% × {formatarPercentual(oeeCalculado.qualidade)}% = {formatarPercentual(oeeCalculado.oee)}%
-                </p>
+              <div className="space-y-3">
+                <h3 className="font-semibold text-lg">Fórmulas e cálculos</h3>
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-900/40 p-3">
+                    <p className="text-sm font-medium">Tempo disponível ajustado</p>
+                    <p className="text-xs text-muted-foreground">
+                      Tempo disponível ajustado = Tempo disponível − Tempo estratégico
+                    </p>
+                    <p className="text-xs mt-1 font-mono">
+                      = {formatarNumeroDecimal(componentesOee.tempoDisponivelHoras)} − {formatarNumeroDecimal(componentesOee.tempoEstrategicoHoras)} = {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} h
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-900/40 p-3">
+                    <p className="text-sm font-medium">Tempo de operação</p>
+                    <p className="text-xs text-muted-foreground">
+                      Tempo de operação = Tempo disponível ajustado − Paradas grandes
+                    </p>
+                    <p className="text-xs mt-1 font-mono">
+                      = {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} − {formatarNumeroDecimal(componentesOee.tempoParadasGrandesHoras)} = {formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)} h
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-900/40 p-3">
+                    <p className="text-sm font-medium">Disponibilidade</p>
+                    <p className="text-xs text-muted-foreground">
+                      Disponibilidade = (Tempo de operação / Tempo disponível ajustado) × 100
+                    </p>
+                    <p className="text-xs mt-1 font-mono">
+                      = ({formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)} / {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)}) × 100 = {formatarPercentual(componentesOee.disponibilidade)}%
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-900/40 p-3">
+                    <p className="text-sm font-medium">Performance</p>
+                    <p className="text-xs text-muted-foreground">
+                      Performance = (Tempo operacional líquido / Tempo de operação) × 100
+                    </p>
+                    <p className="text-xs mt-1 font-mono">
+                      = ({formatarNumeroDecimal(componentesOee.tempoOperacionalLiquido)} / {formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)}) × 100 = {formatarPercentual(componentesOee.performance)}%
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-900/40 p-3">
+                    <p className="text-sm font-medium">Qualidade</p>
+                    <p className="text-xs text-muted-foreground">
+                      Qualidade = (Unidades boas / Unidades produzidas) × 100
+                    </p>
+                    <p className="text-xs mt-1 font-mono">
+                      = ({formatarQuantidade(componentesOee.unidadesBoas)} / {formatarQuantidade(componentesOee.unidadesProduzidas)}) × 100 = {formatarPercentual(componentesOee.qualidade)}%
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-3">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      OEE = Disponibilidade × Performance × Qualidade
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1 font-mono">
+                      {formatarPercentual(componentesOee.disponibilidade)}% × {formatarPercentual(componentesOee.performance)}% × {formatarPercentual(componentesOee.qualidade)}% = {formatarPercentual(componentesOee.oee)}%
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex justify-end pt-4 border-t">
-            <Button
-              onClick={() => setModalExplicacaoOEEAberto(false)}
-              className="bg-brand-primary hover:bg-brand-primary/90"
-            >
-              Entendi
+          <DialogFooter>
+            <Button onClick={() => handleModalExplicacaoOeeChange(false)}>
+              Fechar
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -5,10 +5,12 @@
 -- HISTÓRICO DE CORREÇÕES:
 -- v1: Versão inicial
 -- v2: Corrige cálculo de turnos noturnos usando EXTRACT(EPOCH)
--- v3 (atual):
---   1. Velocidade em un/min: Dividir por 60 para converter para horas
---   2. Perdas/Paradas: Usar tboee_turno.linhaproducao_id diretamente
---   3. Filtro de linha aplicado diretamente no turno (turnos_filtrados)
+-- v3: Velocidade em un/min e ajustes de filtro por linha
+-- v4 (atual):
+--   1. Tempo disponível fixo por turno (12h por padrão), alinhado ao ApontamentoOEE
+--   2. Tempo operacional líquido = quantidade total / velocidade nominal do turno
+--   3. Filtro opcional por oeeturno_id
+--   4. Classificação de paradas e filtros de exclusão alinhados ao ApontamentoOEE
 --
 -- ESTRUTURA DE DADOS:
 -- - tboee_turno: Turno pertence a UMA linha (linhaproducao_id)
@@ -20,6 +22,7 @@
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS fn_calcular_oee_dashboard(DATE, DATE, INTEGER, INTEGER, INTEGER, NUMERIC);
+DROP FUNCTION IF EXISTS fn_calcular_oee_dashboard(DATE, DATE, INTEGER, INTEGER, INTEGER, NUMERIC, BIGINT);
 
 CREATE OR REPLACE FUNCTION fn_calcular_oee_dashboard(
   p_data_inicio DATE,
@@ -27,7 +30,8 @@ CREATE OR REPLACE FUNCTION fn_calcular_oee_dashboard(
   p_turno_id INTEGER DEFAULT NULL,
   p_produto_id INTEGER DEFAULT NULL,
   p_linhaproducao_id INTEGER DEFAULT NULL,
-  p_tempo_disponivel_padrao NUMERIC DEFAULT 12
+  p_tempo_disponivel_padrao NUMERIC DEFAULT 12,
+  p_oeeturno_id BIGINT DEFAULT NULL
 )
 RETURNS TABLE (
   linhaproducao_id INTEGER,
@@ -56,61 +60,63 @@ BEGIN
       t.produto_id,
       t.turno_id,
       t.linhaproducao_id,
-      t.data,
-      COALESCE(t.turno_hi, tb.hora_inicio) AS hora_inicio,
-      COALESCE(t.turno_hf, tb.hora_fim) AS hora_fim
+      t.data
     FROM tboee_turno t
-    LEFT JOIN tbturno tb ON tb.turno_id = t.turno_id
     WHERE t.deletado = 'N'
-      AND t.data BETWEEN p_data_inicio AND p_data_fim
+      AND (
+        (p_oeeturno_id IS NULL AND t.data BETWEEN p_data_inicio AND p_data_fim)
+        OR (p_oeeturno_id IS NOT NULL AND t.oeeturno_id = p_oeeturno_id)
+      )
       AND (p_turno_id IS NULL OR t.turno_id = p_turno_id)
       AND (p_produto_id IS NULL OR t.produto_id = p_produto_id)
       AND (p_linhaproducao_id IS NULL OR t.linhaproducao_id = p_linhaproducao_id)
   ),
 
-  tempo_turno AS (
-    -- Calcula duração do turno em horas (suporta turno noturno)
+  tempo_disponivel AS (
+    -- Soma tempo disponível por linha (tempo fixo por turno)
+    SELECT
+      tf.linhaproducao_id,
+      COUNT(*) * p_tempo_disponivel_padrao AS tempo_disponivel_horas
+    FROM turnos_filtrados tf
+    GROUP BY tf.linhaproducao_id
+  ),
+
+  producao_turno AS (
+    -- Calcula produção e velocidade nominal por turno
     SELECT
       tf.oeeturno_id,
       tf.linhaproducao_id,
-      CASE
-        WHEN tf.hora_inicio IS NULL OR tf.hora_fim IS NULL THEN NULL
-        -- Turno diurno: hora_fim > hora_inicio
-        WHEN EXTRACT(EPOCH FROM tf.hora_fim::time) > EXTRACT(EPOCH FROM tf.hora_inicio::time)
-          THEN (EXTRACT(EPOCH FROM tf.hora_fim::time) - EXTRACT(EPOCH FROM tf.hora_inicio::time)) / 3600.0
-        -- Turno noturno: hora_fim <= hora_inicio (cruza meia-noite)
-        ELSE
-          ((86400 - EXTRACT(EPOCH FROM tf.hora_inicio::time)) + EXTRACT(EPOCH FROM tf.hora_fim::time)) / 3600.0
-      END AS tempo_disponivel_horas
-    FROM turnos_filtrados tf
-  ),
-
-  tempo_disponivel AS (
-    -- Soma tempo disponível por linha
-    SELECT
-      tt.linhaproducao_id,
-      SUM(COALESCE(tt.tempo_disponivel_horas, p_tempo_disponivel_padrao)) AS tempo_disponivel_horas
-    FROM tempo_turno tt
-    GROUP BY tt.linhaproducao_id
-  ),
-
-  producao AS (
-    -- Calcula produção e tempo operacional líquido
-    -- IMPORTANTE: Velocidade está em un/min, então divide por 60 para horas
-    SELECT
-      tf.linhaproducao_id,
       SUM(COALESCE(p.quantidade, 0))::NUMERIC AS unidades_produzidas,
-      SUM(
-        CASE
-          WHEN p.velocidade IS NOT NULL AND p.velocidade > 0 AND p.quantidade IS NOT NULL
-            THEN (p.quantidade / p.velocidade) / 60.0  -- Converte minutos para horas
-          ELSE 0
-        END
-      )::NUMERIC AS tempo_operacional_liquido
+      (
+        SELECT p2.velocidade
+        FROM tboee_turno_producao p2
+        WHERE p2.oeeturno_id = tf.oeeturno_id
+          AND (p2.deletado IS NULL OR p2.deletado = 'N')
+          AND p2.velocidade IS NOT NULL
+          AND p2.velocidade > 0
+        ORDER BY p2.hora_inicio ASC NULLS LAST, p2.oeeturnoproducao_id ASC
+        LIMIT 1
+      )::NUMERIC AS velocidade_nominal
     FROM tboee_turno_producao p
     JOIN turnos_filtrados tf ON tf.oeeturno_id = p.oeeturno_id
     WHERE (p.deletado IS NULL OR p.deletado = 'N')
-    GROUP BY tf.linhaproducao_id
+    GROUP BY tf.oeeturno_id, tf.linhaproducao_id
+  ),
+
+  producao AS (
+    -- Consolida produção e tempo operacional líquido por linha
+    SELECT
+      pt.linhaproducao_id,
+      SUM(pt.unidades_produzidas)::NUMERIC AS unidades_produzidas,
+      SUM(
+        CASE
+          WHEN pt.velocidade_nominal IS NOT NULL AND pt.velocidade_nominal > 0
+            THEN pt.unidades_produzidas / pt.velocidade_nominal
+          ELSE 0
+        END
+      )::NUMERIC AS tempo_operacional_liquido
+    FROM producao_turno pt
+    GROUP BY pt.linhaproducao_id
   ),
 
   perdas AS (
@@ -120,7 +126,7 @@ BEGIN
       SUM(COALESCE(q.perda, 0))::NUMERIC AS unidades_perdas
     FROM tboee_turno_perda q
     JOIN turnos_filtrados tf ON tf.oeeturno_id = q.oeeturno_id
-    WHERE (q.deletado IS NULL OR q.deletado = 'N')
+    WHERE q.deletado = 'N'
     GROUP BY tf.linhaproducao_id
   ),
 
@@ -138,14 +144,15 @@ BEGIN
           ((86400 - EXTRACT(EPOCH FROM p.hora_inicio::time)) + EXTRACT(EPOCH FROM p.hora_fim::time)) / 60.0
       END AS duracao_minutos,
       LOWER(
+        COALESCE(p.oeeparada_id::text, '') || ' ' ||
         COALESCE(p.parada, '') || ' ' ||
-        COALESCE(p.natureza, '') || ' ' ||
+        COALESCE(p.natureza, '') || ' - ' ||
         COALESCE(p.classe, '') || ' ' ||
         COALESCE(p.observacao, '')
       ) AS texto
     FROM tboee_turno_parada p
     JOIN turnos_filtrados tf ON tf.oeeturno_id = p.oeeturno_id
-    WHERE (p.deletado IS NULL OR p.deletado = 'N')
+    WHERE p.deletado = 'N'
   ),
 
   paradas_classificadas AS (
@@ -296,7 +303,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-COMMENT ON FUNCTION fn_calcular_oee_dashboard IS 'Calcula OEE agregado por linha de produção para o Dashboard. v3: Corrige velocidade (un/min para horas) e associação de perdas/paradas via tboee_turno.linhaproducao_id.';
+COMMENT ON FUNCTION fn_calcular_oee_dashboard(DATE, DATE, INTEGER, INTEGER, INTEGER, NUMERIC, BIGINT) IS 'Calcula OEE agregado por linha de produção para o Dashboard. v4: Alinha tempo disponível fixo, velocidade nominal por turno, filtro opcional por oeeturno_id e paradas/perdas ao ApontamentoOEE.';
 
 -- ============================================================================
 -- TESTE DA FUNÇÃO
@@ -308,7 +315,8 @@ COMMENT ON FUNCTION fn_calcular_oee_dashboard IS 'Calcula OEE agregado por linha
 --   p_turno_id := NULL,
 --   p_produto_id := NULL,
 --   p_linhaproducao_id := 23,
---   p_tempo_disponivel_padrao := 12
+--   p_tempo_disponivel_padrao := 12,
+--   p_oeeturno_id := NULL
 -- );
 
 -- ============================================================================
