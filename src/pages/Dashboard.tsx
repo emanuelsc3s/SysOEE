@@ -604,6 +604,10 @@ export default function Dashboard() {
     setAtualizacaoAutomatica((prev) => !prev)
   }
 
+  const handleAtualizarIndicadores = useCallback(() => {
+    carregarDadosOee()
+  }, [carregarDadosOee])
+
   return (
     <div className="min-h-screen bg-muted">
       <AppHeader
@@ -655,23 +659,35 @@ export default function Dashboard() {
                       </>
                     )}
                   </Button>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={intervaloSegundos}
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={intervaloSegundos}
                       onChange={handleIntervaloChange}
                       className="w-14 h-9 text-center"
                       title="Intervalo de atualização em segundos (mínimo: 5, máximo: 300)"
                       disabled={atualizacaoAutomatica}
-                    />
-                    <span className="text-sm text-muted-foreground">seg</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleTheme}
+                      />
+                      <span className="text-sm text-muted-foreground">seg</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleAtualizarIndicadores}
+                      className="h-9 w-9"
+                      title="Atualizar indicadores"
+                      aria-label="Atualizar indicadores"
+                      disabled={carregandoDados}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${carregandoDados ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={toggleTheme}
                     className="h-9 w-9"
                     title={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
                   >
@@ -1057,15 +1073,11 @@ export default function Dashboard() {
               <span>Atualização automática ativa ({intervaloSegundos}s)</span>
             </div>
           )}
-          {carregandoDados ? (
+          {carregandoDados && (
             <div className="flex items-center gap-1.5">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Atualizando indicadores...</span>
             </div>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={carregarDadosOee}>
-              Atualizar indicadores
-            </Button>
           )}
         </div>
       </main>
