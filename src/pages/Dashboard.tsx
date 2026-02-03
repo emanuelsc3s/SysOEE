@@ -4,10 +4,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar as CalendarIcon, ChevronDown, Filter, Loader2 } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronDown, Filter, Loader2, RefreshCw, Pause, Play, Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
+import { useTheme } from '@/hooks/useTheme'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -303,6 +304,7 @@ const getColorByPercentage = (percentage: number): string => {
 export default function Dashboard() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
+  const { theme, toggleTheme } = useTheme()
 
   const [linhas, setLinhas] = useState<LinhaOption[]>([])
   const [produtos, setProdutos] = useState<ProdutoOption[]>([])
@@ -328,6 +330,13 @@ export default function Dashboard() {
   const [calendarioFimAberto, setCalendarioFimAberto] = useState(false)
   const [menuLinhaAberto, setMenuLinhaAberto] = useState(false)
   const [buscaLinha, setBuscaLinha] = useState('')
+
+  // Estados para atualização automática
+  const [atualizacaoAutomatica, setAtualizacaoAutomatica] = useState(false)
+  const [intervaloSegundos, setIntervaloSegundos] = useState(30)
+  const [contagemRegressiva, setContagemRegressiva] = useState(0)
+  const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const contagemRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const carregarLinhas = useCallback(async () => {
     const { data, error } = await supabase
@@ -571,6 +580,50 @@ export default function Dashboard() {
     carregarDadosOee()
   }, [carregarDadosOee, listasCarregadas, periodoInicializado])
 
+  // Efeito para atualização automática
+  useEffect(() => {
+    // Limpar intervalos anteriores
+    if (intervaloRef.current) {
+      clearInterval(intervaloRef.current)
+      intervaloRef.current = null
+    }
+    if (contagemRef.current) {
+      clearInterval(contagemRef.current)
+      contagemRef.current = null
+    }
+
+    if (!atualizacaoAutomatica || !listasCarregadas || !periodoInicializado) {
+      setContagemRegressiva(0)
+      return
+    }
+
+    // Iniciar contagem regressiva
+    setContagemRegressiva(intervaloSegundos)
+
+    // Intervalo para atualizar os dados
+    intervaloRef.current = setInterval(() => {
+      carregarDadosOee()
+      setContagemRegressiva(intervaloSegundos)
+    }, intervaloSegundos * 1000)
+
+    // Intervalo para decrementar a contagem regressiva a cada segundo
+    contagemRef.current = setInterval(() => {
+      setContagemRegressiva((prev) => (prev > 0 ? prev - 1 : intervaloSegundos))
+    }, 1000)
+
+    // Cleanup ao desmontar ou quando dependências mudarem
+    return () => {
+      if (intervaloRef.current) {
+        clearInterval(intervaloRef.current)
+        intervaloRef.current = null
+      }
+      if (contagemRef.current) {
+        clearInterval(contagemRef.current)
+        contagemRef.current = null
+      }
+    }
+  }, [atualizacaoAutomatica, intervaloSegundos, listasCarregadas, periodoInicializado, carregarDadosOee])
+
   const atualizarFiltro = <T extends keyof FiltrosDashboard>(campo: T, valor: FiltrosDashboard[T]) => {
     setFiltros((prev) => ({ ...prev, [campo]: valor }))
   }
@@ -591,6 +644,20 @@ export default function Dashboard() {
     })
   }
 
+  const handleIntervaloChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = event.target.value.replace(/\D/g, '')
+    if (!valor) {
+      setIntervaloSegundos(5)
+      return
+    }
+    const numero = Math.max(5, Math.min(300, Number(valor)))
+    setIntervaloSegundos(numero)
+  }
+
+  const alternarAtualizacaoAutomatica = () => {
+    setAtualizacaoAutomatica((prev) => !prev)
+  }
+
   return (
     <div className="min-h-screen bg-muted">
       <AppHeader
@@ -603,13 +670,80 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Filter className="h-5 w-5 text-primary" />
-              Filtros do Dashboard
-            </CardTitle>
-            <CardDescription>
-              Ajuste os filtros para recalcular automaticamente os cards de OEE.
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="space-y-1.5">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Filter className="h-5 w-5 text-primary" />
+                  Filtros do Dashboard
+                </CardTitle>
+                <CardDescription>
+                  Ajuste os filtros para recalcular automaticamente os cards de OEE.
+                </CardDescription>
+              </div>
+
+              {/* Controles de atualização automática */}
+              <div className="flex flex-col items-end gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground hidden sm:inline">Atualização:</span>
+                  <Button
+                    type="button"
+                    variant={atualizacaoAutomatica ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={alternarAtualizacaoAutomatica}
+                    className={`flex items-center gap-2 min-w-[100px] ${
+                      atualizacaoAutomatica
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : ''
+                    }`}
+                    title={atualizacaoAutomatica ? 'Clique para pausar a atualização automática' : 'Clique para ativar a atualização automática'}
+                  >
+                    {atualizacaoAutomatica ? (
+                      <>
+                        <Pause className="h-4 w-4" />
+                        Pausar
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4" />
+                        Ativar
+                      </>
+                    )}
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={intervaloSegundos}
+                      onChange={handleIntervaloChange}
+                      className="w-14 h-9 text-center"
+                      title="Intervalo de atualização em segundos (mínimo: 5, máximo: 300)"
+                      disabled={atualizacaoAutomatica}
+                    />
+                    <span className="text-sm text-muted-foreground">seg</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleTheme}
+                    className="h-9 w-9"
+                    title={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+                  >
+                    {theme === 'dark' ? (
+                      <Sun className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {atualizacaoAutomatica && (
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    <span>Próxima atualização em {contagemRegressiva}s</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {carregandoListas ? (
@@ -949,18 +1083,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-end gap-4 text-xs text-muted-foreground">
+          {atualizacaoAutomatica && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              <span>Atualização automática ativa ({intervaloSegundos}s)</span>
+            </div>
+          )}
           {carregandoDados ? (
-            <>
+            <div className="flex items-center gap-1.5">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Atualizando indicadores...
-            </>
+              <span>Atualizando indicadores...</span>
+            </div>
           ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={carregarDadosOee}>
-                Atualizar indicadores
-              </Button>
-            </>
+            <Button variant="ghost" size="sm" onClick={carregarDadosOee}>
+              Atualizar indicadores
+            </Button>
           )}
         </div>
       </main>

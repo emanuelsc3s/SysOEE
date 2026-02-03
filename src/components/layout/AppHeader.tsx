@@ -56,7 +56,7 @@ export function AppHeader({
     navigate("/")
   }
 	  return (
-	    <header className="bg-white border-b h-16 flex items-center justify-between px-6 sticky top-0 z-40">
+	    <header className="bg-white dark:bg-background border-b dark:border-border h-16 flex items-center justify-between px-6 sticky top-0 z-40">
 	      {/* Seção esquerda - Título */}
 	      <div className="flex items-center gap-4 min-w-0">
         <button
@@ -97,7 +97,7 @@ export function AppHeader({
                   {userPhotoUrl ? (
                     <AvatarImage src={userPhotoUrl} alt={userName} />
                   ) : null}
-                  <AvatarFallback className="bg-primary text-white">
+                  <AvatarFallback className="bg-primary text-primary-foreground dark:bg-primary dark:text-primary-foreground font-medium">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
