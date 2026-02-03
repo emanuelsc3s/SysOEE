@@ -57,8 +57,11 @@ import {
   EyeOff,
   CheckCircle2,
   XCircle,
-  ChevronDown
+  ChevronDown,
+  Search,
+  Building2
 } from 'lucide-react'
+import { ModalBuscaFuncionario, FuncionarioSelecionado } from '@/components/modal/ModalBuscaFuncionario'
 
 interface AppOption {
   app_id: number
@@ -120,9 +123,14 @@ export default function UsuariosCad() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const campoBuscaAplicacaoRef = useRef<HTMLInputElement | null>(null)
+  const selecaoAppsManualRef = useRef(false)
   const [menuAplicacaoAberto, setMenuAplicacaoAberto] = useState(false)
   const [buscaAplicacao, setBuscaAplicacao] = useState('')
   const [appIdsSelecionadas, setAppIdsSelecionadas] = useState<string[]>([])
+
+  // Estado do modal de busca de funcionário
+  const [modalFuncionarioAberto, setModalFuncionarioAberto] = useState(false)
+  const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<FuncionarioSelecionado | null>(null)
 
   // Validação assíncrona de login
   const [loginValidation, setLoginValidation] = useState<{ checking: boolean; exists: boolean; error?: string }>({
@@ -141,6 +149,7 @@ export default function UsuariosCad() {
   const passwordsMatchResult = passwordsMatch(formData.senha ?? '', formData.confirmarSenha ?? '')
   const perfilSelecionado = perfis.find((perfil) => perfil.perfil_id === formData.perfilId)
   const appSelecionada = apps.find((app) => app.app_id === formData.appId)
+  const temFuncionarioSelecionado = Boolean(funcionarioSelecionado || formData.funcionarioId)
   const appsFiltradas = useMemo(() => {
     const termo = normalizarTexto(buscaAplicacao.trim())
     if (!termo) {
@@ -176,14 +185,44 @@ export default function UsuariosCad() {
   }, [appIdsSelecionadas, apps, carregandoApps])
 
   const alternarAppSelecionada = useCallback((appId: string) => {
+    selecaoAppsManualRef.current = true
     setAppIdsSelecionadas((prev) => {
-      if (prev.includes(appId)) {
-        return prev.filter((id) => id !== appId)
-      }
-
-      return [...prev, appId]
+      const jaSelecionado = prev.includes(appId)
+      const proximo = jaSelecionado
+        ? prev.filter((id) => id !== appId)
+        : [...prev, appId]
+      return proximo
     })
-  }, [formData.perfilId])
+  }, [])
+
+  /**
+   * Callback chamado quando um funcionário é selecionado no modal
+   * Preenche automaticamente: funcionarioId, matricula e nome do usuário
+   */
+  const handleSelecionarFuncionario = useCallback((funcionario: FuncionarioSelecionado) => {
+    setFuncionarioSelecionado(funcionario)
+    setFormData((prev) => ({
+      ...prev,
+      funcionarioId: funcionario.funcionario_id,
+      matricula: funcionario.matricula,
+      usuario: funcionario.nome // Preenche o campo "Nome Completo" com o nome do funcionário
+    }))
+    setModalFuncionarioAberto(false)
+  }, [])
+
+  /**
+   * Limpa a seleção de funcionário
+   * Limpa também os campos de matrícula e nome que foram preenchidos automaticamente
+   */
+  const handleLimparFuncionario = useCallback(() => {
+    setFuncionarioSelecionado(null)
+    setFormData((prev) => ({
+      ...prev,
+      funcionarioId: undefined,
+      matricula: '',
+      usuario: '' // Limpa o campo "Nome Completo"
+    }))
+  }, [])
 
   const obterUserIdAutenticado = useCallback(async (): Promise<string | null> => {
     if (authUser?.id) {
@@ -227,6 +266,9 @@ export default function UsuariosCad() {
         .map((registro) => String(registro.app_id))
         .filter((id) => id)
 
+      if (selecaoAppsManualRef.current) {
+        return
+      }
       setAppIdsSelecionadas(idsSelecionados)
     } catch (error) {
       console.error('Erro ao carregar aplicações do usuário:', error)
@@ -236,7 +278,7 @@ export default function UsuariosCad() {
         description: 'Não foi possível carregar as aplicações vinculadas.',
       })
     }
-  }, [formData.perfilId])
+  }, [])
 
   const persistirAplicacoesUsuario = useCallback(async (usuarioId: number): Promise<boolean> => {
     try {
@@ -637,9 +679,35 @@ export default function UsuariosCad() {
         usuario: data.usuario ?? '',
         perfil: data.perfil ?? '',
         matricula: data.matricula ?? '',
+        ramal: data.ramal ?? '',
+        whatsapp: data.whatsapp ?? '',
         senha: '',
         confirmarSenha: ''
       })
+
+      // Carregar dados do funcionário se houver funcionario_id
+      if (data.funcionarioId) {
+        try {
+          const { data: funcionarioData, error: funcionarioError } = await supabase
+            .from('tbfuncionario')
+            .select('funcionario_id, matricula, nome, nome_social, email, cargo, lotacao')
+            .eq('funcionario_id', data.funcionarioId)
+            .single()
+
+          if (!funcionarioError && funcionarioData) {
+            setFuncionarioSelecionado({
+              funcionario_id: funcionarioData.funcionario_id,
+              matricula: funcionarioData.matricula || '',
+              nome: funcionarioData.nome_social || funcionarioData.nome || 'Sem nome',
+              email: funcionarioData.email,
+              cargo: funcionarioData.cargo,
+              lotacao: funcionarioData.lotacao
+            })
+          }
+        } catch (funcError) {
+          console.error('Erro ao carregar dados do funcionário:', funcError)
+        }
+      }
 
       const usuarioIdCarregado = parseInt(data.id ?? '', 10)
       if (Number.isFinite(usuarioIdCarregado)) {
@@ -689,12 +757,14 @@ export default function UsuariosCad() {
         .map((id) => Number(id))
         .filter((id) => Number.isFinite(id) && id > 0)
 
+      // Se nenhuma aplicação selecionada, limpa perfis e exibe mensagem
       if (appIdsSelecionados.length === 0) {
         setPerfis([])
         setErroPerfis('Selecione uma aplicação para carregar os perfis.')
         return
       }
 
+      // Busca perfis que pertencem a QUALQUER uma das aplicações selecionadas
       const { data, error } = await supabase
         .from('tbperfil')
         .select('perfil_id, perfil, observacao, app_id')
@@ -708,53 +778,21 @@ export default function UsuariosCad() {
 
       const perfisRaw = (data || []) as PerfilRaw[]
 
-      if (appIdsSelecionados.length <= 1) {
-        setPerfis(perfisRaw.map(({ app_id: _appId, ...perfil }) => perfil))
-        return
-      }
-
-      const appIdsSet = new Set(appIdsSelecionados)
-      const perfilIdAtual = formData.perfilId
-      const gruposPorNome = new Map<string, { appIds: Set<number>; candidatos: PerfilRaw[] }>()
-
+      // Remove duplicatas por perfil_id e formata resultado
+      const perfisUnicos = new Map<number, PerfilOption>()
       perfisRaw.forEach((perfil) => {
-        if (!perfil.perfil) {
-          return
-        }
-        if (!perfil.app_id || !appIdsSet.has(perfil.app_id)) {
-          return
-        }
-        const chave = perfil.perfil.trim().toLowerCase()
-        if (!chave) return
-
-        if (!gruposPorNome.has(chave)) {
-          gruposPorNome.set(chave, { appIds: new Set<number>(), candidatos: [] })
-        }
-
-        const grupo = gruposPorNome.get(chave)!
-        grupo.appIds.add(perfil.app_id)
-        grupo.candidatos.push(perfil)
-      })
-
-      const perfisCompatíveis: PerfilOption[] = []
-      gruposPorNome.forEach((grupo) => {
-        if (grupo.appIds.size !== appIdsSet.size) {
-          return
-        }
-
-        const candidatoAtual = perfilIdAtual
-          ? grupo.candidatos.find((perfil) => perfil.perfil_id === perfilIdAtual)
-          : undefined
-        const candidatoSelecionado = candidatoAtual ?? grupo.candidatos[0]
-
-        if (candidatoSelecionado) {
-          const { app_id: _appId, ...perfilLimpo } = candidatoSelecionado
-          perfisCompatíveis.push(perfilLimpo)
+        if (!perfisUnicos.has(perfil.perfil_id)) {
+          perfisUnicos.set(perfil.perfil_id, {
+            perfil_id: perfil.perfil_id,
+            perfil: perfil.perfil,
+            observacao: perfil.observacao
+          })
         }
       })
 
-      perfisCompatíveis.sort((a, b) => a.perfil.localeCompare(b.perfil))
-      setPerfis(perfisCompatíveis)
+      const perfisFiltrados = Array.from(perfisUnicos.values())
+      perfisFiltrados.sort((a, b) => a.perfil.localeCompare(b.perfil))
+      setPerfis(perfisFiltrados)
     } catch (error) {
       console.error('Erro ao carregar perfis:', error)
       setErroPerfis('Não foi possível carregar os perfis.')
@@ -766,7 +804,7 @@ export default function UsuariosCad() {
     } finally {
       setCarregandoPerfis(false)
     }
-  }, [formData.perfilId])
+  }, [])
 
   // Carregar dados ao montar (modo edição)
   useEffect(() => {
@@ -1150,6 +1188,8 @@ export default function UsuariosCad() {
               </div>
               <div className="px-4 sm:px-6 py-4 flex flex-col">
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  {/* PRIMEIRA LINHA: Código SICFAR, Funcionário, Matrícula, Nome Completo */}
+
                   {/* Usuário ID (Código SICFAR) */}
                   <div className="space-y-2 md:col-span-1">
                     <Label htmlFor="usuarioId">Código SICFAR</Label>
@@ -1189,8 +1229,47 @@ export default function UsuariosCad() {
                     )}
                   </div>
 
-                  {/* Matrícula do Funcionário */}
+                  {/* Funcionário - Campo com busca (exibe apenas o ID) */}
                   <div className="space-y-2 md:col-span-1">
+                    <Label htmlFor="funcionario">Funcionário</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          id="funcionario"
+                          value={funcionarioSelecionado
+                            ? String(funcionarioSelecionado.funcionario_id)
+                            : formData.funcionarioId ? String(formData.funcionarioId) : ''
+                          }
+                          placeholder="ID"
+                          className={`pl-10 w-full ${temFuncionarioSelecionado ? 'pr-8' : ''}`}
+                          readOnly
+                        />
+                        {temFuncionarioSelecionado && (
+                          <button
+                            type="button"
+                            onClick={handleLimparFuncionario}
+                            title="Limpar seleção"
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-600"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setModalFuncionarioAberto(true)}
+                        title="Buscar funcionário"
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Matrícula do Funcionário (preenchida automaticamente) */}
+                  <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="matricula">Matrícula</Label>
                     <Input
                       id="matricula"
@@ -1198,8 +1277,26 @@ export default function UsuariosCad() {
                       onChange={(e) => setFormData({ ...formData, matricula: e.target.value })}
                       placeholder="Ex: 12345"
                       maxLength={20}
+                      readOnly={!!funcionarioSelecionado}
+                      className={funcionarioSelecionado ? 'bg-muted' : ''}
                     />
                   </div>
+
+                  {/* Nome Completo */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="usuario">
+                      Nome Completo <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="usuario"
+                      value={formData.usuario ?? ''}
+                      onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
+                      placeholder="Ex: João da Silva"
+                      maxLength={100}
+                    />
+                  </div>
+
+                  {/* SEGUNDA LINHA: Login, Ramal, Whatsapp */}
 
                   {/* Login */}
                   <div className="space-y-2 md:col-span-2">
@@ -1240,24 +1337,35 @@ export default function UsuariosCad() {
                     )}
                   </div>
 
-                  {/* Nome do Usuário */}
+                  {/* Ramal */}
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="usuario">
-                      Nome Completo <span className="text-red-500">*</span>
-                    </Label>
+                    <Label htmlFor="ramal">Ramal</Label>
                     <Input
-                      id="usuario"
-                      value={formData.usuario ?? ''}
-                      onChange={(e) => setFormData({ ...formData, usuario: e.target.value })}
-                      placeholder="Ex: João da Silva"
-                      maxLength={100}
+                      id="ramal"
+                      value={formData.ramal ?? ''}
+                      onChange={(e) => setFormData({ ...formData, ramal: e.target.value })}
+                      placeholder="Ex: 1234"
+                      maxLength={20}
                     />
                   </div>
 
-                  {/* Email (apenas visualização em edição) */}
+                  {/* Whatsapp */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="whatsapp">Whatsapp</Label>
+                    <Input
+                      id="whatsapp"
+                      value={formData.whatsapp ?? ''}
+                      onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                      placeholder="Ex: (11) 99999-9999"
+                      maxLength={20}
+                    />
+                  </div>
+
+                  {/* TERCEIRA LINHA (apenas modo edição): Email e Aplicação */}
                   {isEdicao && (
                     <>
-                      <div className="space-y-2 md:col-span-4">
+                      {/* Email */}
+                      <div className="space-y-2 md:col-span-3">
                         <Label htmlFor="email-readonly">Email</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -1270,13 +1378,10 @@ export default function UsuariosCad() {
                             className="pl-10 bg-gray-100"
                           />
                         </div>
-                        <p className="text-xs text-gray-500">
-                          O email não pode ser alterado após a criação do usuário.
-                        </p>
                       </div>
 
                       {/* Aplicação */}
-                      <div className="space-y-2 md:col-span-2">
+                      <div className="space-y-2 md:col-span-3">
                         <Label htmlFor="aplicacao-edicao">Aplicação</Label>
                         <DropdownMenu open={menuAplicacaoAberto} onOpenChange={setMenuAplicacaoAberto}>
                           <DropdownMenuTrigger asChild>
@@ -1311,6 +1416,7 @@ export default function UsuariosCad() {
                             <DropdownMenuCheckboxItem
                               checked={apps.length > 0 && appIdsSelecionadas.length === apps.length}
                               onCheckedChange={(checked) => {
+                                selecaoAppsManualRef.current = true
                                 if (checked) {
                                   setAppIdsSelecionadas(apps.map((app) => String(app.app_id)))
                                 } else {
@@ -1657,6 +1763,13 @@ export default function UsuariosCad() {
           </AlertDialog>
         </div>
       </div>
+
+      {/* Modal de Busca de Funcionário */}
+      <ModalBuscaFuncionario
+        aberto={modalFuncionarioAberto}
+        onFechar={() => setModalFuncionarioAberto(false)}
+        onSelecionarFuncionario={handleSelecionarFuncionario}
+      />
     </>
   )
 }

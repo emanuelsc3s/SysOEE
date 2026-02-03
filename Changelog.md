@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o layout dos campos "Funcionário" e "Matrícula" no `UsuariosCad` com espaçamento e botões condicionais pela seleção.
+- Evitada a sobrescrita das aplicações selecionadas manualmente ao recarregar apps do usuário no `UsuariosCad`.
+- Removida a instrumentação de depuração do filtro de perfis após validação em `UsuariosCad`.
 - Adicionado dropdown de Aplicação no cadastro de usuários (criação e edição) com opções carregadas via `get_user_apps` e fallback para `tbapp`.
 - Ajustada a dependência do `useCallback` no carregamento de aplicações para eliminar aviso de lint no `UsuariosCad`.
 - Corrigidos tipos no `Dashboard` para evitar erros de build do TypeScript.

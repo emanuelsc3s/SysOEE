@@ -38,6 +38,12 @@ export interface UsuarioFormData {
   /** Matrícula do funcionário (para exibição) */
   matricula?: string
 
+  /** Ramal do usuário */
+  ramal?: string
+
+  /** Whatsapp do usuário */
+  whatsapp?: string
+
   /** Flag de exclusão lógica */
   deletado?: 'N' | 'S'
 
@@ -66,6 +72,8 @@ export interface UsuarioDB {
   perfil: string | null           // JOIN com tbperfil
   funcionario_id: number | null
   matricula: string | null        // JOIN com tbfuncionario
+  ramal: string | null
+  whatsapp: string | null
   deletado: string | null
   created_at: string | null
   created_by: number | null
@@ -134,6 +142,8 @@ export const USUARIO_INITIAL_VALUES: UsuarioFormData = {
   appId: undefined,
   funcionarioId: undefined,
   matricula: '',
+  ramal: '',
+  whatsapp: '',
   deletado: 'N'
 }
 

@@ -46,6 +46,8 @@ export function useUsuarios() {
       perfil: dbUsuario.perfil || '',
       funcionarioId: dbUsuario.funcionario_id || undefined,
       matricula: dbUsuario.matricula || '',
+      ramal: dbUsuario.ramal || '',
+      whatsapp: dbUsuario.whatsapp || '',
       deletado: (dbUsuario.deletado as 'N' | 'S') || 'N',
       createdAt: dbUsuario.created_at || undefined,
       createdBy: dbUsuario.created_by || undefined,
@@ -67,6 +69,8 @@ export function useUsuarios() {
       usuario: formData.usuario || null,
       perfil_id: formData.perfilId || null,
       funcionario_id: formData.funcionarioId || null,
+      ramal: formData.ramal || null,
+      whatsapp: formData.whatsapp || null,
       deletado: formData.deletado || 'N',
     }
 
