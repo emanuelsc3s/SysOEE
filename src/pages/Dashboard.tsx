@@ -635,18 +635,20 @@ export default function Dashboard() {
               <div className="flex flex-col items-end gap-1.5">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground hidden sm:inline">Atualização:</span>
-                  <Button
-                    type="button"
-                    variant={atualizacaoAutomatica ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={alternarAtualizacaoAutomatica}
-                    className={`flex items-center gap-2 min-w-[100px] ${
-                      atualizacaoAutomatica
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : ''
-                    }`}
-                    title={atualizacaoAutomatica ? 'Clique para pausar a atualização automática' : 'Clique para ativar a atualização automática'}
-                  >
+                    <Button
+                      type="button"
+                      variant={atualizacaoAutomatica ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={alternarAtualizacaoAutomatica}
+                      className={`flex items-center gap-2 min-w-[100px] ${
+                        atualizacaoAutomatica
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : theme === 'light'
+                            ? '!bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white'
+                            : ''
+                      }`}
+                      title={atualizacaoAutomatica ? 'Clique para pausar a atualização automática' : 'Clique para ativar a atualização automática'}
+                    >
                     {atualizacaoAutomatica ? (
                       <>
                         <Pause className="h-4 w-4" />
@@ -676,7 +678,7 @@ export default function Dashboard() {
                       variant="outline"
                       size="icon"
                       onClick={handleAtualizarIndicadores}
-                      className="h-9 w-9"
+                      className="h-9 w-9 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input"
                       title="Atualizar indicadores"
                       aria-label="Atualizar indicadores"
                       disabled={carregandoDados}
@@ -688,24 +690,24 @@ export default function Dashboard() {
                       variant="outline"
                       size="icon"
                       onClick={toggleTheme}
-                    className="h-9 w-9"
-                    title={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-                  >
+                      className="h-9 w-9 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input"
+                      title={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+                    >
                     {theme === 'dark' ? (
                       <Sun className="h-4 w-4" />
                     ) : (
                       <Moon className="h-4 w-4" />
                     )}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setFiltrosAbertos((prev) => !prev)}
-                    className="h-9 w-9"
-                    title={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
-                    aria-label={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
-                    aria-controls="filtros-dashboard-conteudo"
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setFiltrosAbertos((prev) => !prev)}
+                      className="h-9 w-9 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input"
+                      title={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
+                      aria-label={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
+                      aria-controls="filtros-dashboard-conteudo"
                     aria-expanded={filtrosAbertos}
                   >
                     <ChevronDown
