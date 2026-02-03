@@ -1518,27 +1518,85 @@ export default function UsuariosCad() {
                     {/* Aplicação */}
                     <div className="space-y-2">
                       <Label htmlFor="aplicacao">Aplicação</Label>
-                      <Select
-                        value={formData.appId?.toString() || ''}
-                        onValueChange={(value) => setFormData({
-                          ...formData,
-                          appId: value ? parseInt(value, 10) : undefined
-                        })}
-                        disabled={carregandoApps}
-                      >
-                        <SelectTrigger id="aplicacao">
-                          <SelectValue placeholder={carregandoApps ? 'Carregando aplicações...' : 'Selecione a aplicação'}>
-                            {appSelecionada?.app_nome}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {apps.map((app) => (
-                            <SelectItem key={app.app_id} value={app.app_id.toString()}>
-                              {app.app_nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <DropdownMenu open={menuAplicacaoAberto} onOpenChange={setMenuAplicacaoAberto}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            id="aplicacao"
+                            variant="outline"
+                            className="w-full justify-between font-normal bg-white hover:bg-white"
+                            disabled={carregandoApps}
+                          >
+                            <span className="truncate">{resumoAppsSelecionadas}</span>
+                            <ChevronDown className="h-4 w-4 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="start"
+                          className="w-[var(--radix-dropdown-menu-trigger-width)]"
+                        >
+                          <div className="p-2">
+                            <Input
+                              ref={campoBuscaAplicacaoRef}
+                              placeholder="Buscar aplicação"
+                              value={buscaAplicacao}
+                              onChange={(event) => setBuscaAplicacao(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key !== 'Escape') {
+                                  event.stopPropagation()
+                                }
+                              }}
+                            />
+                          </div>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={apps.length > 0 && appIdsSelecionadas.length === apps.length}
+                            onCheckedChange={(checked) => {
+                              selecaoAppsManualRef.current = true
+                              if (checked) {
+                                setAppIdsSelecionadas(apps.map((app) => String(app.app_id)))
+                              } else {
+                                setAppIdsSelecionadas([])
+                              }
+                            }}
+                            onSelect={(event) => event.preventDefault()}
+                          >
+                            Todas as aplicações
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuSeparator />
+                          <div className="max-h-64 overflow-y-auto">
+                            {appsFiltradas.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                Nenhuma aplicação encontrada.
+                              </div>
+                            ) : (
+                              appsFiltradas.map((app) => {
+                                const appId = String(app.app_id)
+                                return (
+                                  <DropdownMenuCheckboxItem
+                                    key={app.app_id}
+                                    checked={appIdsSelecionadas.includes(appId)}
+                                    onCheckedChange={() => alternarAppSelecionada(appId)}
+                                    onSelect={(event) => event.preventDefault()}
+                                  >
+                                    {app.app_nome}
+                                  </DropdownMenuCheckboxItem>
+                                )
+                              })
+                            )}
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="p-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="w-full"
+                              onClick={() => setMenuAplicacaoAberto(false)}
+                            >
+                              Fechar
+                            </Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       {erroApps && (
                         <p className="text-xs text-red-500">
                           {erroApps}
