@@ -148,7 +148,6 @@ export default function UsuariosCad() {
   const passwordValidation = isStrongPassword(formData.senha ?? '')
   const passwordsMatchResult = passwordsMatch(formData.senha ?? '', formData.confirmarSenha ?? '')
   const perfilSelecionado = perfis.find((perfil) => perfil.perfil_id === formData.perfilId)
-  const appSelecionada = apps.find((app) => app.app_id === formData.appId)
   const temFuncionarioSelecionado = Boolean(funcionarioSelecionado || formData.funcionarioId)
   const appsFiltradas = useMemo(() => {
     const termo = normalizarTexto(buscaAplicacao.trim())

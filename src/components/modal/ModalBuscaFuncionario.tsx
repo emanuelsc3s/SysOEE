@@ -4,7 +4,7 @@
  * Segue padrão de modais de busca do projeto (ModalBuscaLinhaProducao, ModalBuscaTurno)
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Search, X, Loader2, Users, RefreshCw } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { supabase, handleSupabaseError } from '@/lib/supabase'
 import { useDebounce } from '@/hooks/useDebounce'
 
