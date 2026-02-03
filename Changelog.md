@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Alterado o rótulo do botão de atualização automática para "Auto" no `Dashboard`.
 - Adicionado botão para recolher/expandir os filtros do `Dashboard` ao lado do toggle de tema.
 - Reservado espaço para duas linhas nos títulos dos cards de linha do `Dashboard`.
 - Ajustado o layout dos campos "Funcionário" e "Matrícula" no `UsuariosCad` com espaçamento e botões condicionais pela seleção.
