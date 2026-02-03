@@ -1,0 +1,1356 @@
+
+ ▐▛███▜▌   Claude Code v2.1.29
+▝▜█████▛▘  Opus 4.5 · Claude Pro
+  ▘▘ ▝▝    C:\Dev\SysOEE
+
+❯ analise na integra o arquivo C:\Dev\SysOEE\Identificação_da_função_RPC_do 
+  _Dashboard__2026-02-03T11-37-14.json e me ajude a resolve o erro de       
+  calculo                                                                   
+    do oee. apenas me retorno soluções, não implemente nada por enquanto    
+
+● Read 1 file (ctrl+o to expand)
+
+● O arquivo é grande. Vou ler em partes para analisá-lo completamente.
+
+● Read 1 file (ctrl+o to expand)
+
+● Vou continuar lendo para encontrar mais detalhes sobre o erro de cálculo.
+
+● Read 1 file (ctrl+o to expand)
+
+● Vou buscar a parte onde os problemas de cálculo são discutidos.
+
+● Read 1 file (ctrl+o to expand)
+
+● Vou continuar lendo para encontrar mais detalhes sobre os problemas
+  identificados.
+
+● Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Analisei completamente o arquivo. Aqui está o resumo dos problemas 
+  identificados e soluções para o erro de cálculo do OEE:
+
+  ---
+  Problemas Identificados
+
+  1. Bug Principal: Cálculo de Turno Noturno Incorreto
+
+  Sintoma:
+  - Turnos noturnos (ex: 18:00 → 06:00) retornam -12 horas em vez de +12 horas
+  - Isso zera Disponibilidade, Performance e OEE para linhas com turno noturno
+
+  Causa raiz na CTE tempo_turno:
+  -- INCORRETO (atual):
+  when hora_fim >= hora_inicio then ...
+
+  -- CORRETO:
+  when hora_fim > hora_inicio then ...
+
+  Mesmo bug na CTE paradas_raw:
+  -- INCORRETO (atual):
+  when p.hora_fim >= p.hora_inicio then ...
+
+  -- CORRETO:
+  when p.hora_fim > p.hora_inicio then ...
+
+  ---
+  2. Bug de Precedência de Operadores nas Cláusulas WHERE
+
+  Várias CTEs têm erro de precedência com OR:
+
+  -- INCORRETO (atual):
+  where p.deletado is null or p.deletado = 'N'
+    and (p_linhaproducao_id is null or p.linhaproducao_id = p_linhaproducao_id)
+
+  -- CORRETO (com parênteses):
+  where (p.deletado is null or p.deletado = 'N')
+    and (p_linhaproducao_id is null or p.linhaproducao_id = p_linhaproducao_id)
+
+  Afeta as CTEs: linhas_turno, producao, perdas, paradas_raw
+
+  ---
+  3. Ambiguidade de Nome de Coluna
+
+  Quando a RPC foi atualizada, ocorreu erro:
+  ERROR: 42702: column reference "linhaproducao_id" is ambiguous
+
+  Solução: Usar prefixo base. em todas as referências no SELECT final.
+
+  ---
+  Resumo das Correções Necessárias na RPC fn_calcular_oee_dashboard
+  Local: CTE tempo_turno
+  Problema: hora_fim >= hora_inicio
+  Correção: Mudar para hora_fim > hora_inicio
+  ────────────────────────────────────────
+  Local: CTE paradas_raw
+  Problema: p.hora_fim >= p.hora_inicio
+  Correção: Mudar para p.hora_fim > p.hora_inicio
+  ────────────────────────────────────────
+  Local: CTE linhas_turno
+  Problema: Falta parênteses no WHERE
+  Correção: Adicionar (p.deletado is null or p.deletado = 'N')
+  ────────────────────────────────────────
+  Local: CTE producao
+  Problema: Falta parênteses no WHERE
+  Correção: Adicionar (p.deletado is null or p.deletado = 'N')
+  ────────────────────────────────────────
+  Local: CTE perdas
+  Problema: Falta parênteses no WHERE
+  Correção: Adicionar (q.deletado is null or q.deletado = 'N')
+  ────────────────────────────────────────
+  Local: CTE paradas_raw
+  Problema: Falta parênteses no WHERE
+  Correção: Adicionar (p.deletado is null or p.deletado = 'N')
+  ────────────────────────────────────────
+  Local: SELECT final
+  Problema: Ambiguidade de colunas
+  Correção: Usar prefixo base. em todas as colunas
+  ---
+  Impacto dos Bugs
+
+  - Linhas com turno noturno: OEE = 0% (tempo disponível negativo)
+  - Dados de produção: Podem estar sendo excluídos incorretamente pelo bug de
+  precedência do OR
+  - Registros deletados: Podem estar sendo incluídos indevidamente
+
+  Quer que eu implemente as correções na RPC?
+
+✻ Cogitated for 2m 18s
+
+❯ sim, implemente as correções e salve a rpc em:                            
+  C:\Dev\SysOEE\database\rpc-function que executo ela manualmente no        
+  supabase pra corrigir. após corrigir a rpc preciso alterar algo na        
+  @src/pages/Dashboard.tsx                                                  
+  ⎿  Read src\pages\Dashboard.tsx (1109 lines)
+
+● Vou criar o arquivo SQL com a RPC corrigida e verificar se o Dashboard precisa
+   de alterações.
+
+● Bash(mkdir -p "C:\Dev\SysOEE\database\rpc-function")
+  ⎿  (No content)
+
+● Write(database\rpc-function\fn_calcular_oee_dashboard.sql)
+  ⎿  Wrote 1 lines to database\rpc-function\fn_calcular_oee_dashboard.sql
+       1 -- =============================================================
+         ===============
+       2 -- FUNÇÃO: fn_calcular_oee_dashboard
+       3 -- Calcula OEE agregado por linha de produção para o Dashboard
+       4 --
+       5 -- CORREÇÕES APLICADAS:
+       6 -- 1. Bug de turno noturno: hora_fim >= hora_inicio -> hora_fim 
+         > hora_inicio
+       7 -- 2. Bug de precedência OR: Adicionados parênteses nas cláusula
+         s WHERE
+       8 -- 3. Ambiguidade de colunas: Prefixo 'b.' no SELECT final
+       9 --
+      10 -- Data: 2026-02-03
+
+● Arquivo SQL criado com sucesso. Analisando o Dashboard.tsx:
+
+  Não é necessário alterar o Dashboard.tsx. O frontend apenas:
+
+  1. Chama a RPC na linha 539: supabase.rpc('fn_calcular_oee_dashboard', 
+  parametrosRpc)
+  2. Processa os dados com parseNumero() que já trata valores nulos
+  3. Exibe os resultados
+
+  A estrutura de retorno da RPC permanece idêntica (mesmas colunas e tipos),
+  então o Dashboard continuará funcionando normalmente após você executar a RPC
+  corrigida no Supabase.
+
+  ---
+  Resumo das Correções no SQL
+  Linha: 84-85
+  Problema: Turno noturno
+  Correção: hora_fim >= hora_inicio → hora_fim > hora_inicio
+  ────────────────────────────────────────
+  Linha: 68-69
+  Problema: Precedência OR
+  Correção: p.deletado is null or p.deletado = 'N' and... → (p.deletado IS NULL 
+    OR p.deletado = 'N') AND...
+  ────────────────────────────────────────
+  Linha: 107-108
+  Problema: Precedência OR
+  Correção: Mesma correção na CTE producao
+  ────────────────────────────────────────
+  Linha: 120
+  Problema: Precedência OR
+  Correção: Mesma correção na CTE perdas
+  ────────────────────────────────────────
+  Linha: 132-133
+  Problema: Parada noturna
+  Correção: p.hora_fim >= p.hora_inicio → p.hora_fim > p.hora_inicio
+  ────────────────────────────────────────
+  Linha: 138
+  Problema: Precedência OR
+  Correção: Mesma correção na CTE paradas_raw
+  ────────────────────────────────────────
+  Linha: SELECT
+  Problema: Ambiguidade
+  Correção: Prefixo b. em todas as colunas
+  ---
+  Para Executar
+
+  1. Abra o SQL Editor do Supabase
+  2. Cole o conteúdo do arquivo
+  C:\Dev\SysOEE\database\rpc-function\fn_calcular_oee_dashboard.sql
+  3. Execute o script
+  4. Teste com a query comentada no final do arquivo
+
+✻ Cogitated for 1m 17s
+
+❯ testei assim: -- ======================================================== 
+  ====================                                                      
+  -- TESTE DA FUNÇÃO (descomente para testar)                               
+  -- ====================================================================== 
+  ======                                                                    
+   SELECT *                                                                 
+   FROM fn_calcular_oee_dashboard(                                          
+     p_data_inicio := '2026-02-03'::date,                                   
+     p_data_fim := '2026-02-03'::date,                                      
+     p_turno_id := NULL,                                                    
+     p_produto_id := NULL,                                                  
+     p_linhaproducao_id := NULL,                                            
+     p_tempo_disponivel_padrao := 12                                        
+   );                                                                       
+                                                                            
+  tive o retorno:                                                           
+                                                                            
+  [                                                                         
+    {                                                                       
+      "linhaproducao_id": 31,                                               
+      "linhaproducao": "CPHD - LINHA A",                                    
+      "unidades_produzidas": "1280.0000",                                   
+      "unidades_perdas": "0",                                               
+      "unidades_boas": "1280.0000",                                         
+      "tempo_operacional_liquido": "2.2068965517241380",                    
+      "tempo_valioso": "2.21",                                              
+      "tempo_disponivel_horas": "12.00",                                    
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "0.00",                                
+      "tempo_operacao_horas": "12.00",                                      
+      "disponibilidade": "100.00",                                          
+      "performance": "18.39",                                               
+      "qualidade": "100.00",                                                
+      "oee": "18.39"                                                        
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 33,                                               
+      "linhaproducao": "CPHD - LINHA C",                                    
+      "unidades_produzidas": "0.0000",                                      
+      "unidades_perdas": "0",                                               
+      "unidades_boas": "0.0000",                                            
+      "tempo_operacional_liquido": "0.00000000000000000000",                
+      "tempo_valioso": "0.00",                                              
+      "tempo_disponivel_horas": "12.00",                                    
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "0.00",                                
+      "tempo_operacao_horas": "12.00",                                      
+      "disponibilidade": "100.00",                                          
+      "performance": "0.00",                                                
+      "qualidade": "100.00",                                                
+      "oee": "0.00"                                                         
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 35,                                               
+      "linhaproducao": "LIQUIDOS - LINHA B",                                
+      "unidades_produzidas": "2000.0000",                                   
+      "unidades_perdas": "0",                                               
+      "unidades_boas": "2000.0000",                                         
+      "tempo_operacional_liquido": "0.22222222222222222222",                
+      "tempo_valioso": "0.22",                                              
+      "tempo_disponivel_horas": "12.00",                                    
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "1.50",                                
+      "tempo_operacao_horas": "10.50",                                      
+      "disponibilidade": "87.50",                                           
+      "performance": "2.12",                                                
+      "qualidade": "100.00",                                                
+      "oee": "1.85"                                                         
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "unidades_produzidas": "24950.0000",                                  
+      "unidades_perdas": "134.0000",                                        
+      "unidades_boas": "24816.0000",                                        
+      "tempo_operacional_liquido": "5.29274501484938481119",                
+      "tempo_valioso": "5.26",                                              
+      "tempo_disponivel_horas": "-12.00",                                   
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "2.87",                                
+      "tempo_operacao_horas": "0.00",                                       
+      "disponibilidade": "0.00",                                            
+      "performance": "0.00",                                                
+      "qualidade": "99.46",                                                 
+      "oee": "0.00"                                                         
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 23,                                               
+      "linhaproducao": "SPEP 2 - LINHA D - EMBALAGEM - ESTEIRA 8",          
+      "unidades_produzidas": "172380.0000",                                 
+      "unidades_perdas": "0",                                               
+      "unidades_boas": "172380.0000",                                       
+      "tempo_operacional_liquido": "5745.99999999999999980000",             
+      "tempo_valioso": "5746.00",                                           
+      "tempo_disponivel_horas": "-12.00",                                   
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "0.00",                                
+      "tempo_operacao_horas": "0.00",                                       
+      "disponibilidade": "0.00",                                            
+      "performance": "0.00",                                                
+      "qualidade": "100.00",                                                
+      "oee": "0.00"                                                         
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 8,                                                
+      "linhaproducao": "SPEP 3 - LINHA H - ENVASE",                         
+      "unidades_produzidas": "87492.0000",                                  
+      "unidades_perdas": "96.0000",                                         
+      "unidades_boas": "87396.0000",                                        
+      "tempo_operacional_liquido": "10.93650000000000000000",               
+      "tempo_valioso": "10.92",                                             
+      "tempo_disponivel_horas": "0.00",                                     
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "3.65",                                
+      "tempo_operacao_horas": "0.00",                                       
+      "disponibilidade": "0.00",                                            
+      "performance": "0.00",                                                
+      "qualidade": "99.89",                                                 
+      "oee": "0.00"                                                         
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 10,                                               
+      "linhaproducao": "SPEP 3 - LINHA I - ENVASE",                         
+      "unidades_produzidas": "20011.3330",                                  
+      "unidades_perdas": "0",                                               
+      "unidades_boas": "20011.3330",                                        
+      "tempo_operacional_liquido": "1.00056665000000000000",                
+      "tempo_valioso": "1.00",                                              
+      "tempo_disponivel_horas": "12.00",                                    
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "0.40",                                
+      "tempo_operacao_horas": "11.60",                                      
+      "disponibilidade": "96.67",                                           
+      "performance": "8.63",                                                
+      "qualidade": "100.00",                                                
+      "oee": "8.34"                                                         
+    },                                                                      
+    {                                                                       
+      "linhaproducao_id": 43,                                               
+      "linhaproducao": "SPPV - VIDRO 1 - EMBALAGEM",                        
+      "unidades_produzidas": "1500.0000",                                   
+      "unidades_perdas": "100.0000",                                        
+      "unidades_boas": "1400.0000",                                         
+      "tempo_operacional_liquido": "0.13636363636363636364",                
+      "tempo_valioso": "0.13",                                              
+      "tempo_disponivel_horas": "12.00",                                    
+      "tempo_estrategico_horas": "0.00",                                    
+      "tempo_paradas_grandes_horas": "0.00",                                
+      "tempo_operacao_horas": "12.00",                                      
+      "disponibilidade": "100.00",                                          
+      "performance": "1.14",                                                
+      "qualidade": "93.33",                                                 
+      "oee": "1.06"                                                         
+    }                                                                       
+  ]                                                                         
+                                                                            
+  quero focar na linhaproducao_id =8, porque ela ficou zerada o OEE sendo   
+  que teve quantidade produzida conforme SQL:                               
+                                                                            
+  SELECT DISTINCT                                                           
+    t.data,                                                                 
+    p.linhaproducao_id,                                                     
+    l.linhaproducao,                                                        
+    COUNT(p.oeeturnoproducao_id) as total_producoes,                        
+    SUM(p.quantidade) as total_quantidade                                   
+  FROM tboee_turno_producao p                                               
+  JOIN tboee_turno t ON t.oeeturno_id = p.oeeturno_id                       
+  JOIN tblinhaproducao l on l.linhaproducao_id = p.linhaproducao_id --AND   
+  l.deletado = 'N'                                                          
+  WHERE (p.deletado IS NULL OR p.deletado = 'N')                            
+    AND (t.deletado IS NULL OR t.deletado = 'N')                            
+    AND CAST(p.created_at AS DATE) >= '2026-02-03'                          
+  GROUP BY                                                                  
+  t.data,                                                                   
+  p.linhaproducao_id,                                                       
+  l.linhaproducao                                                           
+  ORDER BY                                                                  
+  p.linhaproducao_id,                                                       
+  t.data DESC;                                                              
+                                                                            
+  [                                                                         
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 2,                                                
+      "linhaproducao": "SPPV - VIDRO 2",                                    
+      "total_producoes": 12,                                                
+      "total_quantidade": "122244.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 5,                                                
+      "linhaproducao": "SPPV - VIDRO 3",                                    
+      "total_producoes": 12,                                                
+      "total_quantidade": "154716.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 6,                                                
+      "linhaproducao": "SPPV - VIDRO 4",                                    
+      "total_producoes": 12,                                                
+      "total_quantidade": "46773.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-01",                                                 
+      "linhaproducao_id": 7,                                                
+      "linhaproducao": "SPEP 3 - LINHA H - EMBALAGEM",                      
+      "total_producoes": 1,                                                 
+      "total_quantidade": "124.0000"                                        
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 8,                                                
+      "linhaproducao": "SPEP 3 - LINHA H - ENVASE",                         
+      "total_producoes": 15,                                                
+      "total_quantidade": "87492.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 8,                                                
+      "linhaproducao": "SPEP 3 - LINHA H - ENVASE",                         
+      "total_producoes": 4,                                                 
+      "total_quantidade": "28320.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 10,                                               
+      "linhaproducao": "SPEP 3 - LINHA I - ENVASE",                         
+      "total_producoes": 2,                                                 
+      "total_quantidade": "20011.3330"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 10,                                               
+      "linhaproducao": "SPEP 3 - LINHA I - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "68460.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-11",                                                 
+      "linhaproducao_id": 10,                                               
+      "linhaproducao": "SPEP 3 - LINHA I - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "0.0000"                                          
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-09",                                                 
+      "linhaproducao_id": 10,                                               
+      "linhaproducao": "SPEP 3 - LINHA I - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "211370.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-23",                                                 
+      "linhaproducao_id": 13,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "197980.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-21",                                                 
+      "linhaproducao_id": 13,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "220540.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-19",                                                 
+      "linhaproducao_id": 13,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "151300.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-15",                                                 
+      "linhaproducao_id": 13,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "215220.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-13",                                                 
+      "linhaproducao_id": 13,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "202280.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-02",                                                 
+      "linhaproducao_id": 13,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "190788.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 14,                                               
+      "linhaproducao": "SPEP 2 - LINHA D - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "172380.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 15,                                               
+      "linhaproducao": "SPEP 2 - LINHA E - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "1470.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 17,                                               
+      "linhaproducao": "SPEP 2 - LINHA G - ENVASE",                         
+      "total_producoes": 12,                                                
+      "total_quantidade": "54660.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-25",                                                 
+      "linhaproducao_id": 18,                                               
+      "linhaproducao": "SPEP 1 - LINHA A - EMBALAGEM - ESTEIRA 2",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "41100.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-23",                                                 
+      "linhaproducao_id": 18,                                               
+      "linhaproducao": "SPEP 1 - LINHA A - EMBALAGEM - ESTEIRA 2",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "18300.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-19",                                                 
+      "linhaproducao_id": 18,                                               
+      "linhaproducao": "SPEP 1 - LINHA A - EMBALAGEM - ESTEIRA 2",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "43920.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-17",                                                 
+      "linhaproducao_id": 18,                                               
+      "linhaproducao": "SPEP 1 - LINHA A - EMBALAGEM - ESTEIRA 2",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "33480.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-11",                                                 
+      "linhaproducao_id": 18,                                               
+      "linhaproducao": "SPEP 1 - LINHA A - EMBALAGEM - ESTEIRA 2",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "31740.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-25",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "21200.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-23",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "28850.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-21",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "36050.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-19",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "17900.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-17",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "28500.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-15",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "32600.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-13",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "32750.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-11",                                                 
+      "linhaproducao_id": 20,                                               
+      "linhaproducao": "SPEP 1 - LINHA B - EMBALAGEM - ESTEIRA 4",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "31500.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 21,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 5",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "126800.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-31",                                                 
+      "linhaproducao_id": 21,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 5",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "57400.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-29",                                                 
+      "linhaproducao_id": 21,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 5",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "37399.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-27",                                                 
+      "linhaproducao_id": 21,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 5",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "94000.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 22,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 6",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "4740.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-31",                                                 
+      "linhaproducao_id": 22,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 6",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "22860.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-29",                                                 
+      "linhaproducao_id": 22,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 6",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "21240.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-01-27",                                                 
+      "linhaproducao_id": 22,                                               
+      "linhaproducao": "SPEP 1 - LINHA C - EMBALAGEM - ESTEIRA 6",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "8880.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 23,                                               
+      "linhaproducao": "SPEP 2 - LINHA D - EMBALAGEM - ESTEIRA 8",          
+      "total_producoes": 12,                                                
+      "total_quantidade": "172380.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 31,                                               
+      "linhaproducao": "CPHD - LINHA A",                                    
+      "total_producoes": 2,                                                 
+      "total_quantidade": "1280.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 31,                                               
+      "linhaproducao": "CPHD - LINHA A",                                    
+      "total_producoes": 12,                                                
+      "total_quantidade": "5120.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 33,                                               
+      "linhaproducao": "CPHD - LINHA C",                                    
+      "total_producoes": 2,                                                 
+      "total_quantidade": "0.0000"                                          
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 33,                                               
+      "linhaproducao": "CPHD - LINHA C",                                    
+      "total_producoes": 2,                                                 
+      "total_quantidade": "160.0000"                                        
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 34,                                               
+      "linhaproducao": "LIQUIDOS - LINHA A",                                
+      "total_producoes": 16,                                                
+      "total_quantidade": "87494.0000"                                      
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 35,                                               
+      "linhaproducao": "LIQUIDOS - LINHA B",                                
+      "total_producoes": 2,                                                 
+      "total_quantidade": "2000.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-03",                                                 
+      "linhaproducao_id": 43,                                               
+      "linhaproducao": "SPPV - VIDRO 1 - EMBALAGEM",                        
+      "total_producoes": 1,                                                 
+      "total_quantidade": "1500.0000"                                       
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 43,                                               
+      "linhaproducao": "SPPV - VIDRO 1 - EMBALAGEM",                        
+      "total_producoes": 12,                                                
+      "total_quantidade": "111700.0000"                                     
+    },                                                                      
+    {                                                                       
+      "data": "2026-02-02",                                                 
+      "linhaproducao_id": 47,                                               
+      "linhaproducao": "SPPV - VIDRO 5 - EMBALAGEM",                        
+      "total_producoes": 12,                                                
+      "total_quantidade": "95100.0000"                                      
+    }                                                                       
+  ]                                                                         
+
+● O problema está claro: tempo_disponivel_horas: 0.00 para a linha 8. Isso
+  significa que os turnos dessa linha têm hora_inicio = hora_fim (provavelmente
+  ambos NULL ou com o mesmo valor).
+
+  Vou criar uma query de diagnóstico para investigar os dados de turno da linha
+  8:
+
+● Write(database\rpc-function\debug_linha_8.sql)
+  ⎿  Wrote 1 lines to database\rpc-function\debug_linha_8.sql
+       1 -- =============================================================
+         ===============
+       2 -- DIAGNÓSTICO: Por que a linha 8 tem tempo_disponivel_horas = 0
+         ?
+       3 -- =============================================================
+         ===============
+       4 
+       5 -- 1. Verificar os turnos da linha 8 no período
+       6 SELECT
+       7   t.oeeturno_id,
+       8   t.data,
+       9   t.turno_id,
+      10   t.turno_hi AS turno_hora_inicio_oee,
+
+● Execute essa primeira query de diagnóstico no Supabase para entender o
+  problema:
+
+  -- Diagnóstico: Verificar os turnos da linha 8 no período 2026-02-03
+  SELECT
+    t.oeeturno_id,
+    t.data,
+    t.turno_id,
+    t.turno_hi,
+    t.turno_hf,
+    tb.hora_inicio AS turno_padrao_hi,
+    tb.hora_fim AS turno_padrao_hf,
+    COALESCE(t.turno_hi, tb.hora_inicio) AS hora_inicio_calc,
+    COALESCE(t.turno_hf, tb.hora_fim) AS hora_fim_calc
+  FROM tboee_turno t
+  LEFT JOIN tbturno tb ON tb.turno_id = t.turno_id
+  WHERE t.deletado = 'N'
+    AND t.data = '2026-02-03'
+    AND t.oeeturno_id IN (
+      SELECT DISTINCT p.oeeturno_id
+      FROM tboee_turno_producao p
+      WHERE p.linhaproducao_id = 8
+        AND (p.deletado IS NULL OR p.deletado = 'N')
+    );
+
+  ---
+  Análise preliminar do problema:
+
+  Para a linha 8, o tempo_disponivel_horas = 0.00. Isso pode acontecer por:
+
+  1. Os turnos dessa linha têm hora_inicio = hora_fim = NULL - O CASE retorna 
+  NULL, e não há linhas no SUM, então LEFT JOIN retorna NULL → COALESCE(NULL, 0)
+   = 0
+  2. Os turnos dessa linha têm t.data diferente de 2026-02-03 - Você filtrou por
+   created_at >= 2026-02-03 na produção, mas a RPC filtra por t.data BETWEEN
+  .... Se o t.data do turno for diferente, o turno não é incluído.
+  3. Os turnos dessa linha têm hora_inicio = hora_fim (mesmo valor) - Com a 
+  correção >, entraria no ELSE e daria 24h, não 0.
+
+  A query de diagnóstico vai revelar qual desses casos está ocorrendo. Por
+  favor, execute e me envie o resultado.
+
+✻ Worked for 1m 9s
+
+❯ segue resultados da query 1:                                              
+                                                                            
+  SELECT                                                                    
+    t.oeeturno_id,                                                          
+    t.data,                                                                 
+    t.turno_id,                                                             
+    t.turno_hi AS turno_hora_inicio_oee,                                    
+    t.turno_hf AS turno_hora_fim_oee,                                       
+    tb.hora_inicio AS turno_hora_inicio_padrao,                             
+    tb.hora_fim AS turno_hora_fim_padrao,                                   
+    COALESCE(t.turno_hi, tb.hora_inicio) AS hora_inicio_calculada,          
+    COALESCE(t.turno_hf, tb.hora_fim) AS hora_fim_calculada,                
+    -- Diagnóstico do cálculo                                               
+    CASE                                                                    
+      WHEN COALESCE(t.turno_hf, tb.hora_fim) IS NULL OR                     
+  COALESCE(t.turno_hi, tb.hora_inicio) IS NULL                              
+        THEN 'AMBOS NULL'                                                   
+      WHEN COALESCE(t.turno_hf, tb.hora_fim) = COALESCE(t.turno_hi,         
+  tb.hora_inicio)                                                           
+        THEN 'IGUAIS'                                                       
+      WHEN COALESCE(t.turno_hf, tb.hora_fim) > COALESCE(t.turno_hi,         
+  tb.hora_inicio)                                                           
+        THEN 'DIURNO'                                                       
+      ELSE 'NOTURNO'                                                        
+    END AS tipo_turno,                                                      
+    -- Cálculo do tempo                                                     
+    CASE                                                                    
+      WHEN COALESCE(t.turno_hi, tb.hora_inicio) IS NULL OR                  
+  COALESCE(t.turno_hf, tb.hora_fim) IS NULL                                 
+        THEN NULL                                                           
+      WHEN COALESCE(t.turno_hf, tb.hora_fim) > COALESCE(t.turno_hi,         
+  tb.hora_inicio)                                                           
+        THEN EXTRACT(EPOCH FROM (COALESCE(t.turno_hf, tb.hora_fim) -        
+  COALESCE(t.turno_hi, tb.hora_inicio))) / 3600.0                           
+      ELSE EXTRACT(EPOCH FROM (COALESCE(t.turno_hf, tb.hora_fim) + INTERVAL 
+   '24 hours' - COALESCE(t.turno_hi, tb.hora_inicio))) / 3600.0             
+    END AS tempo_calculado_horas                                            
+  FROM tboee_turno t                                                        
+  LEFT JOIN tbturno tb ON tb.turno_id = t.turno_id                          
+  WHERE t.deletado = 'N'                                                    
+    AND t.data = '2026-02-03'                                               
+    AND t.oeeturno_id IN (                                                  
+      SELECT DISTINCT p.oeeturno_id                                         
+      FROM tboee_turno_producao p                                           
+      WHERE p.linhaproducao_id = 8                                          
+        AND (p.deletado IS NULL OR p.deletado = 'N')                        
+    )                                                                       
+  ORDER BY t.data, t.oeeturno_id; [                                         
+    {                                                                       
+      "oeeturno_id": 654,                                                   
+      "data": "2026-02-03",                                                 
+      "turno_id": 5,                                                        
+      "turno_hora_inicio_oee": "18:00:00",                                  
+      "turno_hora_fim_oee": "06:00:00",                                     
+      "turno_hora_inicio_padrao": "18:00:00",                               
+      "turno_hora_fim_padrao": "06:00:00",                                  
+      "hora_inicio_calculada": "18:00:00",                                  
+      "hora_fim_calculada": "06:00:00",                                     
+      "tipo_turno": "NOTURNO",                                              
+      "tempo_calculado_horas": "-12.0000000000000000"                       
+    },                                                                      
+    {                                                                       
+      "oeeturno_id": 684,                                                   
+      "data": "2026-02-03",                                                 
+      "turno_id": 4,                                                        
+      "turno_hora_inicio_oee": "06:00:00",                                  
+      "turno_hora_fim_oee": "18:00:00",                                     
+      "turno_hora_inicio_padrao": "06:00:00",                               
+      "turno_hora_fim_padrao": "18:00:00",                                  
+      "hora_inicio_calculada": "06:00:00",                                  
+      "hora_fim_calculada": "18:00:00",                                     
+      "tipo_turno": "DIURNO",                                               
+      "tempo_calculado_horas": "12.0000000000000000"                        
+    }                                                                       
+  ]                                                                         
+                                                                            
+  resultado qeury 2:                                                        
+                                                                            
+  [                                                                         
+    {                                                                       
+      "oeeturnoproducao_id": 5669,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5585,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5586,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5587,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5588,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5719,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "5628.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5897,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "4680.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5584,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5601,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "3516.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5602,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "4344.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5857,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "7992.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5786,                                          
+      "oeeturno_id": 654,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "3120.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "18:00:00",                                               
+      "turno_hf": "06:00:00",                                               
+      "turno_padrao_hi": "18:00:00",                                        
+      "turno_padrao_hf": "06:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5917,                                          
+      "oeeturno_id": 684,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "0.0000",                                               
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "06:00:00",                                               
+      "turno_hf": "18:00:00",                                               
+      "turno_padrao_hi": "06:00:00",                                        
+      "turno_padrao_hf": "18:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5954,                                          
+      "oeeturno_id": 684,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "4440.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "06:00:00",                                               
+      "turno_hf": "18:00:00",                                               
+      "turno_padrao_hi": "06:00:00",                                        
+      "turno_padrao_hf": "18:00:00"                                         
+    },                                                                      
+    {                                                                       
+      "oeeturnoproducao_id": 5952,                                          
+      "oeeturno_id": 684,                                                   
+      "linhaproducao_id": 8,                                                
+      "quantidade": "5820.0000",                                            
+      "velocidade": "8000.00",                                              
+      "turno_data": "2026-02-03",                                           
+      "turno_hi": "06:00:00",                                               
+      "turno_hf": "18:00:00",                                               
+      "turno_padrao_hi": "06:00:00",                                        
+      "turno_padrao_hf": "18:00:00"                                         
+    }                                                                       
+  ]                                                                         
+                                                                            
+  resultado query 3:                                                        
+                                                                            
+  [                                                                         
+    {                                                                       
+      "turno_id": 4,                                                        
+      "codigo": "D2",                                                       
+      "turno": "D2 - Diurno",                                               
+      "hora_inicio": "06:00:00",                                            
+      "hora_fim": "18:00:00",                                               
+      "turno_oee_hi": "06:00:00",                                           
+      "turno_oee_hf": "18:00:00"                                            
+    },                                                                      
+    {                                                                       
+      "turno_id": 5,                                                        
+      "codigo": "N1",                                                       
+      "turno": "N1 - Noturno",                                              
+      "hora_inicio": "18:00:00",                                            
+      "hora_fim": "06:00:00",                                               
+      "turno_oee_hi": "18:00:00",                                           
+      "turno_oee_hf": "06:00:00"                                            
+    }                                                                       
+  ]                                                                         
+
+● O diagnóstico revela o problema real:
+
+  "tipo_turno": "NOTURNO",
+  "tempo_calculado_horas": "-12.0000000000000000"  ← AINDA NEGATIVO!
+
+  O bug está no tipo de dados time do PostgreSQL!
+
+  Quando você faz '06:00:00'::time + INTERVAL '24 hours', o tipo time é circular
+   (00:00 a 23:59), então ele volta para 06:00:00 em vez de 30:00:00.
+
+  Resultado:
+  - 06:00:00 + 24h = 06:00:00 (volta ao mesmo valor!)
+  - 06:00:00 - 18:00:00 = -12:00:00
+
+  Vou corrigir a RPC usando uma abordagem diferente:
+
+● Write(database\rpc-function\fn_calcular_oee_dashboard.sql)
+  ⎿  Added 32 lines, removed 10 lines
+       3  -- Calcula OEE agregado por linha de produção para o Dashboard
+       4  --
+       5  -- CORREÇÕES APLICADAS:
+       6 --- 1. Bug de turno noturno: hora_fim >= hora_inicio -> hora_fim
+         - > hora_inicio                                                 
+       6 +-- 1. Bug de turno noturno: Usa cálculo em segundos para evitar
+         + problema de                                                   
+       7 +--    tipo TIME circular do PostgreSQL                         
+       8  -- 2. Bug de precedência OR: Adicionados parênteses nas cláusul
+          as WHERE
+       9  -- 3. Ambiguidade de colunas: Prefixo 'b.' no SELECT final
+      10  --
+      10 --- Data: 2026-02-03                                            
+      11 +-- Data: 2026-02-03 (v2 - correção tipo TIME)                  
+      12  -- ============================================================
+          ================
+      13  
+      14  DROP FUNCTION IF EXISTS fn_calcular_oee_dashboard(DATE, DATE, I
+          NTEGER, INTEGER, INTEGER, NUMERIC);
+     ...
+      78        tl.linhaproducao_id,
+      79        CASE
+      80          WHEN tl.hora_inicio IS NULL OR tl.hora_fim IS NULL THEN
+           NULL
+      80 -        -- CORREÇÃO: >= para > para tratar corretamente turnos 
+         -noturnos                                                       
+      81 -        WHEN tl.hora_fim > tl.hora_inicio THEN EXTRACT(EPOCH FR
+         -OM (tl.hora_fim - tl.hora_inicio)) / 3600.0                    
+      82 -        ELSE EXTRACT(EPOCH FROM (tl.hora_fim + INTERVAL '24 hou
+         -rs' - tl.hora_inicio)) / 3600.0                                
+      81 +        -- CORREÇÃO v2: Cálculo em segundos para evitar problem
+         +a de tipo TIME circular                                        
+      82 +        -- Converte TIME para segundos desde meia-noite e calcu
+         +la corretamente                                                
+      83 +        WHEN EXTRACT(EPOCH FROM tl.hora_fim::time) > EXTRACT(EP
+         +OCH FROM tl.hora_inicio::time)                                 
+      84 +          -- Turno diurno: hora_fim > hora_inicio (ex: 06:00 ->
+         + 18:00)                                                        
+      85 +          THEN (EXTRACT(EPOCH FROM tl.hora_fim::time) - EXTRACT
+         +(EPOCH FROM tl.hora_inicio::time)) / 3600.0                    
+      86 +        ELSE                                                   
+      87 +          -- Turno noturno: hora_fim <= hora_inicio (ex: 18:00 
+         +-> 06:00)                                                      
+      88 +          -- Segundos até meia-noite + segundos após meia-noite
+      89 +          ((86400 - EXTRACT(EPOCH FROM tl.hora_inicio::time)) +
+         + EXTRACT(EPOCH FROM tl.hora_fim::time)) / 3600.0               
+      90        END AS tempo_disponivel_horas
+      91      FROM turnos_linha tl
+      92    ),
+     ...
+      131        lt.linhaproducao_id,
+      132        CASE
+      133          WHEN p.hora_inicio IS NULL OR p.hora_fim IS NULL THEN 
+           0
+      127 -        -- CORREÇÃO: >= para > para tratar corretamente parada
+          -s noturnas                                                    
+      128 -        WHEN p.hora_fim > p.hora_inicio THEN EXTRACT(EPOCH FRO
+          -M (p.hora_fim - p.hora_inicio)) / 60.0                        
+      129 -        ELSE EXTRACT(EPOCH FROM (p.hora_fim + INTERVAL '24 hou
+          -rs' - p.hora_inicio)) / 60.0                                  
+      134 +        -- CORREÇÃO v2: Cálculo em segundos para evitar proble
+          +ma de tipo TIME circular                                      
+      135 +        WHEN EXTRACT(EPOCH FROM p.hora_fim::time) > EXTRACT(EP
+          +OCH FROM p.hora_inicio::time)                                 
+      136 +          -- Parada diurna: hora_fim > hora_inicio            
+      137 +          THEN (EXTRACT(EPOCH FROM p.hora_fim::time) - EXTRACT
+          +(EPOCH FROM p.hora_inicio::time)) / 60.0                      
+      138 +        ELSE                                                  
+      139 +          -- Parada noturna: hora_fim <= hora_inicio          
+      140 +          ((86400 - EXTRACT(EPOCH FROM p.hora_inicio::time)) +
+          + EXTRACT(EPOCH FROM p.hora_fim::time)) / 60.0                 
+      141        END AS duracao_minutos,
+      142        LOWER(
+      143          COALESCE(p.parada, '') || ' ' ||
+     ...
+      281  END;
+      282  $$ LANGUAGE plpgsql STABLE;
+      283  
+      273 -COMMENT ON FUNCTION fn_calcular_oee_dashboard IS 'Calcula OEE 
+          -agregado por linha de produção para o Dashboard. Corrige cálcu
+          -lo de turnos noturnos e precedência de operadores.';          
+      284 +COMMENT ON FUNCTION fn_calcular_oee_dashboard IS 'Calcula OEE 
+          +agregado por linha de produção para o Dashboard. v2: Corrige c
+          +álculo de turnos noturnos usando EXTRACT(EPOCH) para evitar pr
+          +oblema de tipo TIME circular.';                               
+      285  
+      286  -- ===========================================================
+           =================
+      276 --- TESTE DA FUNÇÃO (descomente para testar)                   
+      287 +-- TESTE DA FUNÇÃO                                            
+      288  -- ===========================================================
+           =================
+      289  -- SELECT *
+      290  -- FROM fn_calcular_oee_dashboard(
+     ...
+      295  --   p_linhaproducao_id := NULL,
+      296  --   p_tempo_disponivel_padrao := 12
+      297  -- );
+      298 +                                                              
+      299 +-- ===========================================================
+          +=================                                             
+      300 +-- TESTE DO CÁLCULO DE TURNO NOTURNO (para validar)           
+      301 +-- ===========================================================
+          +=================                                             
+      302 +-- SELECT                                                     
+      303 +--   '18:00:00'::time AS hora_inicio,                         
+      304 +--   '06:00:00'::time AS hora_fim,                            
+      305 +--   EXTRACT(EPOCH FROM '18:00:00'::time) AS inicio_segundos, 
+          + -- 64800                                                     
+      306 +--   EXTRACT(EPOCH FROM '06:00:00'::time) AS fim_segundos,    
+          +  -- 21600                                                    
+      307 +--   -- Cálculo: (86400 - 64800) + 21600 = 21600 + 21600 = 432
+          +00 segundos = 12 horas                                        
+      308 +--   ((86400 - EXTRACT(EPOCH FROM '18:00:00'::time)) + EXTRACT
+          +(EPOCH FROM '06:00:00'::time)) / 3600.0 AS horas_calculadas;  
+
+● Arquivo atualizado com a correção v2.
+
+  Causa do Bug
+
+  O tipo TIME do PostgreSQL é circular (00:00:00 a 23:59:59). Quando você faz:
+  '06:00:00'::time + INTERVAL '24 hours'
+  O resultado é 06:00:00 (volta ao mesmo valor!), não 30:00:00.
+
+  Solução Aplicada
+
+  Usar EXTRACT(EPOCH FROM time) para converter para segundos desde meia-noite:
+
+  -- Turno noturno: 18:00 -> 06:00
+  -- hora_inicio = 18:00 = 64800 segundos
+  -- hora_fim = 06:00 = 21600 segundos
+  -- Cálculo: (86400 - 64800) + 21600 = 43200 segundos = 12 horas
+
+  Execute no Supabase
+
+  1. Copie todo o conteúdo de 
+  C:\Dev\SysOEE\database\rpc-function\fn_calcular_oee_dashboard.sql
+  2. Cole no SQL Editor do Supabase
+  3. Execute
+
+  Depois teste novamente:
+  SELECT *
+  FROM fn_calcular_oee_dashboard(
+    p_data_inicio := '2026-02-03'::date,
+    p_data_fim := '2026-02-03'::date
+  );
+
+  A linha 8 agora deve mostrar tempo_disponivel_horas = 24 (12h do turno noturno
+   + 12h do turno diurno) e OEE calculado corretamente.
+
+✻ Brewed for 1m 24s
+
+❯ tenho uma dúvida, essa tempo_calculado_horas porque ela ficou negativa e  
+  qual seria a melhor forma de obtermos ela?                                
+
+● Ótima pergunta! Vou explicar o problema e a solução:
+
+  Por que ficou negativo?
+
+  O tipo TIME no PostgreSQL representa apenas horas do dia (00:00:00 a
+  23:59:59), não intervalos de tempo. Ele é circular.
+
+  O que acontece com o turno noturno (18:00 → 06:00):
+
+  -- Sua query original:
+  EXTRACT(EPOCH FROM (hora_fim - hora_inicio)) / 3600.0
+
+  -- Com os valores:
+  EXTRACT(EPOCH FROM ('06:00:00'::time - '18:00:00'::time)) / 3600.0
+
+  -- O PostgreSQL faz:
+  -- 06:00 - 18:00 = -12:00 (resultado negativo porque 06 < 18)
+  -- EXTRACT(EPOCH FROM '-12:00:00') = -43200 segundos
+  -- -43200 / 3600 = -12 horas
+
+  Por que adicionar 24h não funciona:
+
+  -- Tentativa de correção:
+  hora_fim + INTERVAL '24 hours' - hora_inicio
+
+  -- Com os valores:
+  '06:00:00'::time + INTERVAL '24 hours' - '18:00:00'::time
+
+  -- O PostgreSQL faz:
+  -- '06:00:00'::time + '24 hours' = '06:00:00'::time (VOLTA AO MESMO VALOR!)
+  -- Porque TIME é circular, 24h = 0h
+  -- 06:00 - 18:00 = -12:00 (mesmo resultado negativo)
+
+  ---
+  A Melhor Forma: Usar EXTRACT(EPOCH)
+
+  Converter TIME para segundos desde meia-noite e fazer a aritmética
+  manualmente:
+
+  -- Turno diurno (06:00 → 18:00): hora_fim > hora_inicio
+  WHEN EXTRACT(EPOCH FROM hora_fim::time) > EXTRACT(EPOCH FROM 
+  hora_inicio::time)
+    THEN (EXTRACT(EPOCH FROM hora_fim::time) - EXTRACT(EPOCH FROM
+  hora_inicio::time)) / 3600.0
+    -- (64800 - 21600) / 3600 = 12 horas ✅
+
+  -- Turno noturno (18:00 → 06:00): hora_fim <= hora_inicio
+  ELSE
+    ((86400 - EXTRACT(EPOCH FROM hora_inicio::time)) + EXTRACT(EPOCH FROM
+  hora_fim::time)) / 3600.0
+    -- (86400 - 64800) + 21600 = 21600 + 21600 = 43200 / 3600 = 12 horas ✅
+
+  Explicação visual:
+
+  Turno Noturno: 18:00 → 06:00
+
+  |---------------------|---------------------|
+  0h                   12h                   24h (=0h)
+                        |                     |
+                      18:00 ─────────────> 06:00
+                        |     (passa pela    |
+                        |     meia-noite)    |
+
+  Cálculo:
+    - Segundos de 18:00 até 24:00 = 86400 - 64800 = 21600 (6h)
+    - Segundos de 00:00 até 06:00 = 21600 (6h)
+    - Total = 21600 + 21600 = 43200 segundos = 12 horas
+
+  ---
+  Teste para validar:
+
+  Execute isso no Supabase para confirmar:
+
+  SELECT
+    '18:00:00'::time AS hora_inicio,
+    '06:00:00'::time AS hora_fim,
+
+    -- Método errado (negativo)
+    EXTRACT(EPOCH FROM ('06:00:00'::time - '18:00:00'::time)) / 3600.0 AS
+  metodo_errado,
+    
+    -- Método correto (usando segundos)
+    EXTRACT(EPOCH FROM '18:00:00'::time) AS inicio_segundos,
+    EXTRACT(EPOCH FROM '06:00:00'::time) AS fim_segundos,
+    ((86400 - EXTRACT(EPOCH FROM '18:00:00'::time)) + EXTRACT(EPOCH FROM 
+  '06:00:00'::time)) / 3600.0 AS metodo_correto;
+
+  Resultado esperado:
+  hora_inicio: 18:00:00
+  hora_fim: 06:00:00
+  metodo_errado: -12
+  inicio_segundos: 64800
+  fim_segundos: 21600
+  metodo_correto: 12
+
+❯ /export 
+  ⎿  Failed to copy to clipboard. Make sure the clip command is available on you
+      system and try again.

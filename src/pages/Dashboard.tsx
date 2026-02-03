@@ -69,12 +69,6 @@ type OeeLinhaRpc = {
   oee: number | string | null
 }
 
-type ServerDateRpc = {
-  data?: string | null
-  data_hora?: string | null
-  timestamp_utc?: string | null
-}
-
 type FiltrosDashboard = {
   linhaIds: string[]
   produtoId: string
@@ -124,31 +118,6 @@ const parseNumero = (valor: unknown): number => {
 
   const parsed = Number(valor)
   return Number.isFinite(parsed) ? parsed : 0
-}
-
-const parseDataServidor = (valor?: string | null): Date | null => {
-  if (!valor) {
-    return null
-  }
-
-  const matchIso = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (matchIso) {
-    const ano = Number(matchIso[1])
-    const mes = Number(matchIso[2])
-    const dia = Number(matchIso[3])
-    const data = new Date(ano, mes - 1, dia)
-    if (
-      data.getFullYear() !== ano ||
-      data.getMonth() !== mes - 1 ||
-      data.getDate() !== dia
-    ) {
-      return null
-    }
-    return data
-  }
-
-  const data = new Date(valor)
-  return Number.isNaN(data.getTime()) ? null : data
 }
 
 const formatarDataDigitada = (valor: string): string => {
@@ -337,6 +306,7 @@ export default function Dashboard() {
   const [contagemRegressiva, setContagemRegressiva] = useState(0)
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const contagemRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(true)
 
   const carregarLinhas = useCallback(async () => {
     const { data, error } = await supabase
@@ -382,46 +352,22 @@ export default function Dashboard() {
     setTurnos(turnosCarregados)
   }, [])
 
-  const carregarPeriodoInicial = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.rpc('fn_get_server_date')
-      if (error) {
-        throw error
+  const carregarPeriodoInicial = useCallback(() => {
+    const dataLocal = new Date()
+    const dataFormatada = format(dataLocal, 'dd/MM/yyyy')
+
+    setFiltros((prev) => {
+      if (prev.dataInicio || prev.dataFim) {
+        return prev
       }
+      return {
+        ...prev,
+        dataInicio: dataFormatada,
+        dataFim: dataFormatada
+      }
+    })
 
-      const resposta = data as ServerDateRpc | null
-      const dataServidor = parseDataServidor(resposta?.data ?? null) || new Date()
-      const dataInicio = format(new Date(dataServidor.getFullYear(), dataServidor.getMonth() - 3, 1), 'dd/MM/yyyy')
-      const dataFim = format(dataServidor, 'dd/MM/yyyy')
-
-      setFiltros((prev) => {
-        if (prev.dataInicio || prev.dataFim) {
-          return prev
-        }
-        return {
-          ...prev,
-          dataInicio,
-          dataFim
-        }
-      })
-    } catch (error) {
-      console.error('❌ Erro ao obter data do servidor:', error)
-      const dataLocal = new Date()
-      const dataInicio = format(new Date(dataLocal.getFullYear(), dataLocal.getMonth() - 3, 1), 'dd/MM/yyyy')
-      const dataFim = format(dataLocal, 'dd/MM/yyyy')
-      setFiltros((prev) => {
-        if (prev.dataInicio || prev.dataFim) {
-          return prev
-        }
-        return {
-          ...prev,
-          dataInicio,
-          dataFim
-        }
-      })
-    } finally {
-      setPeriodoInicializado(true)
-    }
+    setPeriodoInicializado(true)
   }, [])
 
   useEffect(() => {
@@ -661,7 +607,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-muted">
       <AppHeader
-        title="SysOEE - Dashboard"
+        title="SICFAR OEE - Dashboard"
         userName={user?.usuario || 'Usuário'}
         userRole={user?.perfil || 'Operador'}
         onLogout={signOut}
@@ -735,6 +681,21 @@ export default function Dashboard() {
                       <Moon className="h-4 w-4" />
                     )}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setFiltrosAbertos((prev) => !prev)}
+                    className="h-9 w-9"
+                    title={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
+                    aria-label={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
+                    aria-controls="filtros-dashboard-conteudo"
+                    aria-expanded={filtrosAbertos}
+                  >
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`}
+                    />
+                  </Button>
                 </div>
                 {atualizacaoAutomatica && (
                   <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
@@ -745,7 +706,11 @@ export default function Dashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent
+            id="filtros-dashboard-conteudo"
+            className={`space-y-4 ${filtrosAbertos ? '' : 'hidden'}`}
+            aria-hidden={!filtrosAbertos}
+          >
             {carregandoListas ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full" />
@@ -972,7 +937,9 @@ export default function Dashboard() {
             {dadosOee.map((linha) => (
               <Card key={linha.linhaproducao_id}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg break-words">{linha.linhaproducao || 'Linha sem nome'}</CardTitle>
+                  <CardTitle className="min-h-[3.5rem] text-lg break-words">
+                    {linha.linhaproducao || 'Linha sem nome'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-6">
                   {/* Velocímetro SVG inline com cores dinâmicas */}

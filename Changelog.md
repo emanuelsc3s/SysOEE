@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado botão para recolher/expandir os filtros do `Dashboard` ao lado do toggle de tema.
+- Reservado espaço para duas linhas nos títulos dos cards de linha do `Dashboard`.
 - Ajustado o layout dos campos "Funcionário" e "Matrícula" no `UsuariosCad` com espaçamento e botões condicionais pela seleção.
 - Evitada a sobrescrita das aplicações selecionadas manualmente ao recarregar apps do usuário no `UsuariosCad`.
 - Removida a instrumentação de depuração do filtro de perfis após validação em `UsuariosCad`.
@@ -14,7 +16,7 @@
 - Adicionada busca textual no filtro de linha de produção do `Dashboard`.
 - Permitida seleção múltipla de linhas de produção no filtro do `Dashboard`, aplicando filtro por conjunto nas linhas.
 - Removida função local não utilizada do `Dashboard` para atender lint.
-- Ajustada a data inicial do período do `Dashboard` para iniciar no dia 01 de três meses antes da data atual do servidor.
+- Ajustado o período padrão do `Dashboard` para usar a data atual do frontend nos campos de início e fim.
 - Mantido o filtro de turno do `Dashboard` com padrão "Todos" na primeira carga da página.
 - Centralizado o texto de copyright do `Login` em uma constante reutilizada nos layouts mobile e desktop.
 - Adicionado botão de visualizar/ocultar senha no campo de senha da página de `Login` (mobile e desktop).

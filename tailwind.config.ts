@@ -80,7 +80,7 @@ export default {
   			},
   			// Cores customizadas do HTML de referência
   			'background-light': '#f1f4f8',
-  			'background-dark': '#14161e',
+  			'background-dark': '#1e1e1e',//'#14161e',
   			'surface-light': '#ffffff',
   			'surface-dark': '#1e1e1e',
   			'border-light': '#e0e0e0',
