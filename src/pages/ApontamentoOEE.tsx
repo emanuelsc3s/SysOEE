@@ -346,6 +346,8 @@ export default function ApontamentoOEE() {
   const [horaFinalParada, setHoraFinalParada] = useState<string>('')
   const [observacoesParada, setObservacoesParada] = useState<string>('')
   const [paradaSelecionada, setParadaSelecionada] = useState<ParadaGeral | null>(null)
+  const [salvandoParada, setSalvandoParada] = useState(false)
+  const salvandoParadaRef = useRef(false) // Evita duplo clique no registro de parada
   // Paradas em andamento ainda não são rastreadas no Supabase.
   const paradasAtivas: RegistroParada[] = []
   const [mostrarFormularioParada, setMostrarFormularioParada] = useState<boolean>(false)
@@ -4209,10 +4211,21 @@ export default function ApontamentoOEE() {
       // =================================================================
       // SALVAMENTO: Salvar perdas no Supabase e no histórico local
       // =================================================================
+      const dataTurnoIso = data ? format(data, 'yyyy-MM-dd') : ''
+      if (!dataTurnoIso) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Data do turno não encontrada. Verifique o cabeçalho antes de registrar perdas.',
+          variant: 'destructive'
+        })
+        return
+      }
+
       const { data: perdaCriada, error: erroPerda } = await supabase
         .from('tboee_turno_perda')
         .insert({
           oeeturno_id: oeeTurnoId,
+          data: dataTurnoIso,
           perda: perdaNormalizada,
           created_at: gerarTimestampLocal(),
           created_by: usuario.id
@@ -4262,71 +4275,88 @@ export default function ApontamentoOEE() {
   }
 
   const handleRegistrarParada = async () => {
-    // Validar campos obrigatórios
-    if (!paradaSelecionada) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, busque e selecione um tipo de parada',
-        variant: 'destructive'
-      })
+    if (salvandoParadaRef.current) {
       return
     }
 
-    if (!horaInicialParadaNormalizada) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe a hora inicial da parada em formato 24h',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (!horaFinalParadaNormalizada) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'Por favor, informe a hora final da parada em formato 24h',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // Validar se turno está iniciado
-    if (!oeeTurnoId) {
-      toast({
-        title: 'Turno não iniciado',
-        description: 'Inicie o turno antes de registrar paradas.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // Calcular duração em minutos
-    const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
-    const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
-    const minutosInicio = horaIni * 60 + minIni
-    let minutosFim = horaFin * 60 + minFin
-    if (minutosFim < minutosInicio) {
-      minutosFim += 24 * 60
-    }
-    const duracaoMinutos = minutosFim - minutosInicio
-
-    // Validar que hora final é diferente da hora inicial
-    if (duracaoMinutos <= 0) {
-      toast({
-        title: 'Erro de Validação',
-        description: 'A hora final deve ser diferente da hora inicial',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    // Obter usuário autenticado
-    const usuario = await obterUsuarioAutenticado()
-    if (!usuario) {
-      return
-    }
+    salvandoParadaRef.current = true
+    setSalvandoParada(true)
 
     try {
+      // Validar campos obrigatórios
+      if (!paradaSelecionada) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Por favor, busque e selecione um tipo de parada',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (!horaInicialParadaNormalizada) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Por favor, informe a hora inicial da parada em formato 24h',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (!horaFinalParadaNormalizada) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Por favor, informe a hora final da parada em formato 24h',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      // Validar se turno está iniciado
+      if (!oeeTurnoId) {
+        toast({
+          title: 'Turno não iniciado',
+          description: 'Inicie o turno antes de registrar paradas.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      // Calcular duração em minutos
+      const [horaIni, minIni] = horaInicialParadaNormalizada.split(':').map(Number)
+      const [horaFin, minFin] = horaFinalParadaNormalizada.split(':').map(Number)
+      const minutosInicio = horaIni * 60 + minIni
+      let minutosFim = horaFin * 60 + minFin
+      if (minutosFim < minutosInicio) {
+        minutosFim += 24 * 60
+      }
+      const duracaoMinutos = minutosFim - minutosInicio
+
+      // Validar que hora final é diferente da hora inicial
+      if (duracaoMinutos <= 0) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'A hora final deve ser diferente da hora inicial',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      // Obter usuário autenticado
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
+      const dataTurnoIso = data ? format(data, 'yyyy-MM-dd') : ''
+      if (!dataTurnoIso) {
+        toast({
+          title: 'Erro de Validação',
+          description: 'Data do turno não encontrada. Verifique o cabeçalho antes de registrar paradas.',
+          variant: 'destructive'
+        })
+        return
+      }
+
       // Buscar oeeparada_id pelo código (lookup na tabela tboee_parada)
       const oeeparadaId = await buscarOeeparadaIdPorCodigo(paradaSelecionada.codigo)
       if (!oeeparadaId) {
@@ -4347,6 +4377,7 @@ export default function ApontamentoOEE() {
         .from('tboee_turno_parada')
         .insert({
           oeeturno_id: oeeTurnoId,
+          data: dataTurnoIso,
           oeeparada_id: oeeparadaId,
           parada: paradaSelecionada.parada || paradaSelecionada.descricao || 'Parada',
           natureza: paradaSelecionada.natureza || null,
@@ -4391,7 +4422,6 @@ export default function ApontamentoOEE() {
         description: `Parada registrada: ${duracaoMinutos} minutos (${Math.floor(duracaoMinutos / 60)}h ${duracaoMinutos % 60}min)`,
         variant: 'default'
       })
-
     } catch (error) {
       console.error('Erro ao registrar parada no Supabase:', error)
       toast({
@@ -4399,6 +4429,9 @@ export default function ApontamentoOEE() {
         description: 'Não foi possível salvar a parada. Tente novamente.',
         variant: 'destructive'
       })
+    } finally {
+      salvandoParadaRef.current = false
+      setSalvandoParada(false)
     }
   }
 
@@ -4524,15 +4557,16 @@ export default function ApontamentoOEE() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <Button
-                  variant="destructive"
-                  className="flex items-center justify-center gap-2 min-h-10 px-4"
-                  onClick={handleExcluir}
-                  disabled={modoConsulta}
-                >
-                  <Trash className="h-4 w-4" />
-                  Excluir
-                </Button>
+                {!modoConsulta && (
+                  <Button
+                    variant="destructive"
+                    className="flex items-center justify-center gap-2 min-h-10 px-4"
+                    onClick={handleExcluir}
+                  >
+                    <Trash className="h-4 w-4" />
+                    Excluir
+                  </Button>
+                )}
 
                 <Button
                   className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
@@ -4738,17 +4772,19 @@ export default function ApontamentoOEE() {
 
               {/* Botão de Controle de Turno e edição de cabeçalho */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                {(statusTurno === 'INICIADO' || podeEditarTurnoFechado) && (
+                {(statusTurno === 'INICIADO' || podeEditarTurnoFechado) && (editandoCabecalho || !modoConsulta) && (
                   <div className="flex gap-2">
                     {!editandoCabecalho ? (
-                      <Button
-                        variant="outline"
-                        onClick={handleEditarCabecalho}
-                        className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Alterar Turno
-                      </Button>
+                      !modoConsulta && (
+                        <Button
+                          variant="outline"
+                          onClick={handleEditarCabecalho}
+                          className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Alterar Turno
+                        </Button>
+                      )
                     ) : (
                       <Button
                         variant="outline"
@@ -5074,7 +5110,7 @@ export default function ApontamentoOEE() {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex flex-wrap items-center justify-center gap-2">
-                                  {!linha.editavel && (
+                                  {!linha.editavel && !modoConsulta && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -5483,7 +5519,7 @@ export default function ApontamentoOEE() {
                           }
                           handleRegistrarParada()
                         }}
-                        disabled={turnoBloqueadoParaEdicao}
+                        disabled={turnoBloqueadoParaEdicao || salvandoParada}
                       >
                         <Timer className="h-5 w-5" />
                         Registrar Parada
