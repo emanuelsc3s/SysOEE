@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar as CalendarIcon, ChevronDown, Filter, Loader2, RefreshCw, Pause, Play, Sun, Moon } from 'lucide-react'
+import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, RefreshCw, Pause, Play, Sun, Moon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -17,6 +17,13 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -69,6 +76,38 @@ type OeeLinhaRpc = {
   oee: number | string | null
 }
 
+type ComponentesOeeRpc = {
+  unidades_produzidas?: number | string | null
+  unidades_perdas?: number | string | null
+  unidades_boas?: number | string | null
+  tempo_operacional_liquido?: number | string | null
+  tempo_valioso?: number | string | null
+  tempo_disponivel_horas?: number | string | null
+  tempo_estrategico_horas?: number | string | null
+  tempo_paradas_grandes_horas?: number | string | null
+  tempo_operacao_horas?: number | string | null
+  disponibilidade?: number | string | null
+  performance?: number | string | null
+  qualidade?: number | string | null
+  oee?: number | string | null
+}
+
+type ComponentesOeeDetalhe = {
+  unidadesProduzidas: number
+  unidadesPerdas: number
+  unidadesBoas: number
+  tempoOperacionalLiquido: number
+  tempoValioso: number
+  tempoDisponivelHoras: number
+  tempoEstrategicoHoras: number
+  tempoParadasGrandesHoras: number
+  tempoOperacaoHoras: number
+  disponibilidade: number
+  performance: number
+  qualidade: number
+  oee: number
+}
+
 type FiltrosDashboard = {
   linhaIds: string[]
   produtoId: string
@@ -83,6 +122,17 @@ const formatarPercentual = (valor: number): string => {
   return valor.toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
+  })
+}
+
+const formatarQuantidade = (quantidade: number): string => {
+  return quantidade.toLocaleString('pt-BR')
+}
+
+const formatarNumeroDecimal = (valor: number, casas = 2): string => {
+  return valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas
   })
 }
 
@@ -118,6 +168,75 @@ const parseNumero = (valor: unknown): number => {
 
   const parsed = Number(valor)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const mapearComponentesOee = (registro: ComponentesOeeRpc | null): ComponentesOeeDetalhe | null => {
+  if (!registro) {
+    return null
+  }
+
+  const unidadesProduzidas = parseNumero(registro.unidades_produzidas)
+  const unidadesPerdas = parseNumero(registro.unidades_perdas)
+  const unidadesBoas =
+    registro.unidades_boas === null || registro.unidades_boas === undefined
+      ? Math.max(unidadesProduzidas - unidadesPerdas, 0)
+      : parseNumero(registro.unidades_boas)
+
+  const tempoDisponivelHoras = parseNumero(registro.tempo_disponivel_horas)
+  const tempoEstrategicoHoras = parseNumero(registro.tempo_estrategico_horas)
+  const tempoParadasGrandesHoras = parseNumero(registro.tempo_paradas_grandes_horas)
+  const tempoOperacaoHoras =
+    registro.tempo_operacao_horas === null || registro.tempo_operacao_horas === undefined
+      ? Math.max(tempoDisponivelHoras - tempoEstrategicoHoras - tempoParadasGrandesHoras, 0)
+      : parseNumero(registro.tempo_operacao_horas)
+
+  const tempoOperacionalLiquido = parseNumero(registro.tempo_operacional_liquido)
+  const tempoValioso =
+    registro.tempo_valioso === null || registro.tempo_valioso === undefined
+      ? (unidadesProduzidas > 0 ? (unidadesBoas / unidadesProduzidas) * tempoOperacionalLiquido : 0)
+      : parseNumero(registro.tempo_valioso)
+
+  const disponibilidade =
+    registro.disponibilidade === null || registro.disponibilidade === undefined
+      ? (tempoDisponivelHoras - tempoEstrategicoHoras) > 0
+        ? (tempoOperacaoHoras / (tempoDisponivelHoras - tempoEstrategicoHoras)) * 100
+        : 0
+      : parseNumero(registro.disponibilidade)
+
+  const performance =
+    registro.performance === null || registro.performance === undefined
+      ? tempoOperacaoHoras > 0
+        ? Math.min((tempoOperacionalLiquido / tempoOperacaoHoras) * 100, 100)
+        : 0
+      : parseNumero(registro.performance)
+
+  const qualidade =
+    registro.qualidade === null || registro.qualidade === undefined
+      ? unidadesProduzidas > 0
+        ? (unidadesBoas / unidadesProduzidas) * 100
+        : 100
+      : parseNumero(registro.qualidade)
+
+  const oee =
+    registro.oee === null || registro.oee === undefined
+      ? (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
+      : parseNumero(registro.oee)
+
+  return {
+    unidadesProduzidas,
+    unidadesPerdas,
+    unidadesBoas,
+    tempoOperacionalLiquido,
+    tempoValioso,
+    tempoDisponivelHoras,
+    tempoEstrategicoHoras,
+    tempoParadasGrandesHoras,
+    tempoOperacaoHoras,
+    disponibilidade,
+    performance,
+    qualidade,
+    oee
+  }
 }
 
 const formatarDataDigitada = (valor: string): string => {
@@ -300,6 +419,12 @@ export default function Dashboard() {
   const [menuLinhaAberto, setMenuLinhaAberto] = useState(false)
   const [buscaLinha, setBuscaLinha] = useState('')
 
+  const [modalDetalhamentoAberto, setModalDetalhamentoAberto] = useState(false)
+  const [linhaDetalheSelecionada, setLinhaDetalheSelecionada] = useState<OeeLinhaRow | null>(null)
+  const [componentesOeeDetalhe, setComponentesOeeDetalhe] = useState<ComponentesOeeDetalhe | null>(null)
+  const [carregandoDetalhamento, setCarregandoDetalhamento] = useState(false)
+  const [erroDetalhamento, setErroDetalhamento] = useState<string | null>(null)
+
   // Estados para atualização automática
   const [atualizacaoAutomatica, setAtualizacaoAutomatica] = useState(false)
   const [intervaloSegundos, setIntervaloSegundos] = useState(30)
@@ -447,6 +572,24 @@ export default function Dashboard() {
     return `${filtros.linhaIds.length} linhas selecionadas`
   }, [filtros.linhaIds, linhas])
 
+  const turnoSelecionado = useMemo(() => {
+    if (filtros.turnoId === 'todos') {
+      return null
+    }
+    return (
+      turnos.find((turno) => String(turno.turno_id) === filtros.turnoId) || null
+    )
+  }, [filtros.turnoId, turnos])
+
+  const produtoSelecionado = useMemo(() => {
+    if (filtros.produtoId === 'todos') {
+      return null
+    }
+    return (
+      produtos.find((produto) => String(produto.produto_id) === filtros.produtoId) || null
+    )
+  }, [filtros.produtoId, produtos])
+
   const parametrosRpc = useMemo(() => {
     const linhaIdUnica = linhaIdsSelecionadas.length === 1 ? linhaIdsSelecionadas[0] : null
     const produtoId = filtros.produtoId === 'todos' ? null : Number(filtros.produtoId)
@@ -466,6 +609,51 @@ export default function Dashboard() {
 
   const dataInicioSelecionada = useMemo(() => parseDataParaDate(filtros.dataInicio), [filtros.dataInicio])
   const dataFimSelecionada = useMemo(() => parseDataParaDate(filtros.dataFim), [filtros.dataFim])
+
+  const detalhesComponentesOee = useMemo(() => {
+    if (!componentesOeeDetalhe) {
+      return null
+    }
+
+    const tempoDisponivelAjustado = Math.max(
+      componentesOeeDetalhe.tempoDisponivelHoras - componentesOeeDetalhe.tempoEstrategicoHoras,
+      0
+    )
+    const tempoOperacaoCalculado = Math.max(
+      tempoDisponivelAjustado - componentesOeeDetalhe.tempoParadasGrandesHoras,
+      0
+    )
+    const disponibilidadeCalculada = tempoDisponivelAjustado > 0
+      ? (tempoOperacaoCalculado / tempoDisponivelAjustado) * 100
+      : 0
+    const performanceCalculada = tempoOperacaoCalculado > 0
+      ? Math.min((componentesOeeDetalhe.tempoOperacionalLiquido / tempoOperacaoCalculado) * 100, 100)
+      : 0
+    const qualidadeCalculada = componentesOeeDetalhe.unidadesProduzidas > 0
+      ? (componentesOeeDetalhe.unidadesBoas / componentesOeeDetalhe.unidadesProduzidas) * 100
+      : 100
+    const oeeCalculado =
+      (disponibilidadeCalculada / 100) * (performanceCalculada / 100) * (qualidadeCalculada / 100) * 100
+
+    return {
+      tempoDisponivelAjustado,
+      tempoOperacaoCalculado,
+      disponibilidadeCalculada,
+      performanceCalculada,
+      qualidadeCalculada,
+      oeeCalculado
+    }
+  }, [componentesOeeDetalhe])
+
+  const periodoDescricao = useMemo(() => {
+    if (!filtros.dataInicio || !filtros.dataFim) {
+      return 'Período não definido'
+    }
+    if (filtros.dataInicio === filtros.dataFim) {
+      return filtros.dataInicio
+    }
+    return `${filtros.dataInicio} a ${filtros.dataFim}`
+  }, [filtros.dataFim, filtros.dataInicio])
 
   const carregarDadosOee = useCallback(async () => {
     if (!parametrosRpc.p_data_inicio || !parametrosRpc.p_data_fim) {
@@ -607,6 +795,90 @@ export default function Dashboard() {
   const handleAtualizarIndicadores = useCallback(() => {
     carregarDadosOee()
   }, [carregarDadosOee])
+
+  const abrirDetalhamentoLinha = useCallback(
+    async (linha: OeeLinhaRow) => {
+      if (carregandoDetalhamento) {
+        return
+      }
+
+      const dataInicioIso = converterDataParaIso(filtros.dataInicio)
+      const dataFimIso = converterDataParaIso(filtros.dataFim)
+
+      if (!dataInicioIso || !dataFimIso) {
+        toast({
+          title: 'Período inválido',
+          description: 'Informe uma data de início e fim válidas para consultar o detalhamento.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (dataInicioIso > dataFimIso) {
+        toast({
+          title: 'Período inválido',
+          description: 'A data inicial não pode ser maior que a data final.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const turnoId = filtros.turnoId === 'todos' ? null : Number(filtros.turnoId)
+      const produtoId = filtros.produtoId === 'todos' ? null : Number(filtros.produtoId)
+
+      setLinhaDetalheSelecionada(linha)
+      setModalDetalhamentoAberto(true)
+      setCarregandoDetalhamento(true)
+      setErroDetalhamento(null)
+      setComponentesOeeDetalhe(null)
+
+      try {
+        const { data, error } = await supabase.rpc('fn_calcular_oee_dashboard', {
+          p_data_inicio: dataInicioIso,
+          p_data_fim: dataFimIso,
+          p_turno_id: Number.isFinite(turnoId) ? turnoId : null,
+          p_produto_id: Number.isFinite(produtoId) ? produtoId : null,
+          p_linhaproducao_id: linha.linhaproducao_id,
+          p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+          p_oeeturno_id: null
+        })
+
+        if (error) {
+          throw error
+        }
+
+        const registro = Array.isArray(data) ? data[0] : data
+        const detalhes = mapearComponentesOee((registro || null) as ComponentesOeeRpc | null)
+
+        if (!detalhes) {
+          setErroDetalhamento('Nenhum dado encontrado para a linha selecionada.')
+        } else {
+          setComponentesOeeDetalhe(detalhes)
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar detalhamento do OEE:', error)
+        const mensagemErro = error && typeof error === 'object' && 'message' in error
+          ? String((error as { message?: string }).message)
+          : ''
+        const mensagemAmigavel = mensagemErro.includes('schema cache') && mensagemErro.includes('fn_calcular_oee_dashboard')
+          ? 'A função fn_calcular_oee_dashboard não foi localizada no schema público. Verifique se ela foi criada no Supabase e se o parâmetro correto é p_oeeturno_id.'
+          : 'Não foi possível carregar o detalhamento do OEE.'
+        setErroDetalhamento(mensagemAmigavel)
+      } finally {
+        setCarregandoDetalhamento(false)
+      }
+    },
+    [carregandoDetalhamento, filtros.dataFim, filtros.dataInicio, filtros.produtoId, filtros.turnoId, toast]
+  )
+
+  const handleModalDetalhamentoChange = (aberto: boolean) => {
+    setModalDetalhamentoAberto(aberto)
+    if (!aberto) {
+      setErroDetalhamento(null)
+      setComponentesOeeDetalhe(null)
+      setLinhaDetalheSelecionada(null)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-muted">
@@ -953,7 +1225,26 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {dadosOee.map((linha) => (
-              <Card key={linha.linhaproducao_id}>
+              <Card
+                key={linha.linhaproducao_id}
+                className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                onClick={carregandoDetalhamento ? undefined : () => void abrirDetalhamentoLinha(linha)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    if (!carregandoDetalhamento) {
+                      void abrirDetalhamentoLinha(linha)
+                    }
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-busy={
+                  carregandoDetalhamento &&
+                  linhaDetalheSelecionada?.linhaproducao_id === linha.linhaproducao_id
+                }
+                title="Clique para ver o detalhamento do cálculo do OEE"
+              >
                 <CardHeader className="pb-2">
                   <CardTitle className="min-h-[3.5rem] text-lg break-words">
                     {linha.linhaproducao || 'Linha sem nome'}
@@ -1003,9 +1294,27 @@ export default function Dashboard() {
                       )}
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="font-bold text-2xl text-foreground">
-                        {formatarPercentual(linha.oee)}%
-                      </span>
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-2xl text-foreground">
+                          {formatarPercentual(linha.oee)}%
+                        </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="mt-1 h-5 w-5 text-blue-500/80 dark:text-blue-400/80"
+                        >
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                          <path d="M12 17h.01"></path>
+                        </svg>
+                      </div>
                     </div>
                   </div>
 
@@ -1067,6 +1376,280 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+
+        <Dialog open={modalDetalhamentoAberto} onOpenChange={handleModalDetalhamentoChange}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-2xl">
+                <Info className="w-6 h-6 text-blue-500" />
+                Detalhamento do cálculo do OEE
+              </DialogTitle>
+              <DialogDescription className="space-y-1 text-sm text-muted-foreground">
+                <span className="block">
+                  Linha:{' '}
+                  <strong className="text-foreground">
+                    {linhaDetalheSelecionada?.linhaproducao || 'Não definida'}
+                  </strong>
+                </span>
+                <span className="block">
+                  Período: <strong className="text-foreground">{periodoDescricao}</strong>
+                </span>
+                <span className="block">
+                  Turno:{' '}
+                  <strong className="text-foreground">
+                    {turnoSelecionado ? `${turnoSelecionado.codigo} - ${turnoSelecionado.turno || 'Turno'}` : 'Todos'}
+                  </strong>
+                </span>
+                <span className="block">
+                  Produto:{' '}
+                  <strong className="text-foreground">
+                    {produtoSelecionado ? `${produtoSelecionado.referencia || 'SKU'} - ${produtoSelecionado.descricao || 'Sem descrição'}` : 'Todos'}
+                  </strong>
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+
+            {carregandoDetalhamento && (
+              <div className="py-10 flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+                Carregando detalhes do OEE...
+              </div>
+            )}
+
+            {!carregandoDetalhamento && erroDetalhamento && (
+              <div className="mt-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4 text-sm text-red-700 dark:text-red-300 flex gap-3">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Não foi possível carregar os detalhes.</p>
+                  <p className="text-sm text-muted-foreground">{erroDetalhamento}</p>
+                </div>
+              </div>
+            )}
+
+            {!carregandoDetalhamento && !erroDetalhamento && !componentesOeeDetalhe && (
+              <div className="py-6 text-sm text-muted-foreground">
+                Nenhum dado encontrado para a linha selecionada.
+              </div>
+            )}
+
+            {!carregandoDetalhamento && !erroDetalhamento && componentesOeeDetalhe && detalhesComponentesOee && (
+              <div className="space-y-6 py-4">
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <div className="relative flex-shrink-0">
+                    <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 120 120">
+                      <circle
+                        className="stroke-gray-200 dark:stroke-gray-700"
+                        cx="60"
+                        cy="60"
+                        fill="none"
+                        r="54"
+                        strokeWidth="12"
+                      />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        fill="none"
+                        r="54"
+                        strokeDasharray="339.292"
+                        strokeDashoffset={339.292 - (339.292 * componentesOeeDetalhe.oee) / 100}
+                        strokeLinecap="round"
+                        strokeWidth="12"
+                        stroke={getColorByPercentage(componentesOeeDetalhe.oee)}
+                        style={{ transition: 'stroke 0.3s ease-in-out' }}
+                      />
+                      {componentesOeeDetalhe.oee < 65 && (
+                        <circle
+                          cx="60"
+                          cy="60"
+                          fill="none"
+                          r="54"
+                          strokeDasharray="339.292"
+                          strokeDashoffset={339.292 - (339.292 * 65) / 100}
+                          strokeLinecap="round"
+                          strokeWidth="12"
+                          stroke="#EAB308"
+                          opacity="0.25"
+                          style={{ transition: 'opacity 0.3s ease-in-out' }}
+                        />
+                      )}
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="font-bold text-2xl text-foreground">
+                        {formatarPercentual(componentesOeeDetalhe.oee)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">OEE</p>
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: getColorByPercentage(componentesOeeDetalhe.oee) }}
+                      >
+                        {formatarPercentual(componentesOeeDetalhe.oee)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Disponibilidade</p>
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: getColorByPercentage(componentesOeeDetalhe.disponibilidade) }}
+                      >
+                        {formatarPercentual(componentesOeeDetalhe.disponibilidade)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Performance</p>
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: getColorByPercentage(componentesOeeDetalhe.performance) }}
+                      >
+                        {formatarPercentual(componentesOeeDetalhe.performance)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Qualidade</p>
+                      <p
+                        className="text-2xl font-bold"
+                        style={{ color: getColorByPercentage(componentesOeeDetalhe.qualidade) }}
+                      >
+                        {formatarPercentual(componentesOeeDetalhe.qualidade)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Base de produção e perdas</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Unidades produzidas</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarQuantidade(componentesOeeDetalhe.unidadesProduzidas)} un
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Unidades perdas</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarQuantidade(componentesOeeDetalhe.unidadesPerdas)} un
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Unidades boas</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarQuantidade(componentesOeeDetalhe.unidadesBoas)} un
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Tempos (horas)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Tempo disponível</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(componentesOeeDetalhe.tempoDisponivelHoras)} h
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Tempo estratégico</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(componentesOeeDetalhe.tempoEstrategicoHoras)} h
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Tempo disponível ajustado</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} h
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Paradas grandes</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(componentesOeeDetalhe.tempoParadasGrandesHoras)} h
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Tempo de operação</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(componentesOeeDetalhe.tempoOperacaoHoras)} h
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Tempo operacional líquido</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(componentesOeeDetalhe.tempoOperacionalLiquido)} h
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                      <p className="text-xs text-muted-foreground">Tempo valioso</p>
+                      <p className="text-lg font-semibold text-card-foreground">
+                        {formatarNumeroDecimal(componentesOeeDetalhe.tempoValioso)} h
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Fórmulas e cálculos</h3>
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                      <p className="text-sm font-medium text-foreground">Tempo disponível ajustado</p>
+                      <p className="text-xs text-muted-foreground">
+                        Tempo disponível ajustado = Tempo disponível − Tempo estratégico
+                      </p>
+                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                        = {formatarNumeroDecimal(componentesOeeDetalhe.tempoDisponivelHoras)} − {formatarNumeroDecimal(componentesOeeDetalhe.tempoEstrategicoHoras)} = {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} h
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                      <p className="text-sm font-medium text-foreground">Tempo de operação</p>
+                      <p className="text-xs text-muted-foreground">
+                        Tempo de operação = Tempo disponível ajustado − Paradas grandes
+                      </p>
+                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                        = {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} − {formatarNumeroDecimal(componentesOeeDetalhe.tempoParadasGrandesHoras)} = {formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)} h
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                      <p className="text-sm font-medium text-foreground">Disponibilidade</p>
+                      <p className="text-xs text-muted-foreground">
+                        Disponibilidade = (Tempo de operação ÷ Tempo disponível ajustado) × 100
+                      </p>
+                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                        = ({formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)} / {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)}) × 100 = {formatarPercentual(componentesOeeDetalhe.disponibilidade)}%
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                      <p className="text-sm font-medium text-foreground">Performance</p>
+                      <p className="text-xs text-muted-foreground">
+                        Performance = (Tempo operacional líquido ÷ Tempo de operação) × 100
+                      </p>
+                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                        = ({formatarNumeroDecimal(componentesOeeDetalhe.tempoOperacionalLiquido)} / {formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)}) × 100 = {formatarPercentual(componentesOeeDetalhe.performance)}%
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-muted/40 p-3">
+                      <p className="text-sm font-medium text-foreground">Qualidade</p>
+                      <p className="text-xs text-muted-foreground">
+                        Qualidade = (Unidades boas ÷ Unidades produzidas) × 100
+                      </p>
+                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                        = ({formatarQuantidade(componentesOeeDetalhe.unidadesBoas)} / {formatarQuantidade(componentesOeeDetalhe.unidadesProduzidas)}) × 100 = {formatarPercentual(componentesOeeDetalhe.qualidade)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="flex items-center justify-end gap-4 text-xs text-muted-foreground">
           {atualizacaoAutomatica && (
