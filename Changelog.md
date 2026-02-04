@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+- Removida a instrumentação de depuração no `ApontamentoOEE` após validação em runtime.
+- Ajustada a ordem de verificação de permissões no `ApontamentoOEE` para priorizar a RPC sem `p_app_id` quando disponível e evitar erros 404.
+- Corrigida a referência ao ID do turno ao carregar produções no `ApontamentoOEE`, evitando erro de `ReferenceError`.
+- Adicionado indicador visual de modo (Consulta/Edição) no `ApontamentoOEE` ao abrir turnos via `OeeTurno`.
 - Atualizada a descrição do modal de detalhamento do OEE no `ApontamentoOEE` para exibir linha, período, turno e produto do `oeeturno_id`.
 - Ajustada a RPC `fn_calcular_oee_dashboard` para alinhar tempo disponível fixo, velocidade nominal por turno e adicionar filtro opcional por `oeeturno_id`.
 - Corrigido o `COMMENT ON FUNCTION` com assinatura completa e removida a versão antiga da RPC para evitar ambiguidade no Supabase.

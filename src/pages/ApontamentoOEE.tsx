@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, Eye, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -24,6 +24,7 @@ import { CalculoOEE } from '@/types/apontamento-oee'
 import { useToast } from '@/hooks/use-toast'
 import { gerarTimestampLocal } from '@/utils/datahora.utils'
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -237,6 +238,10 @@ export default function ApontamentoOEE() {
   const { toast } = useToast()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const oeeTurnoIdParam = searchParams.get('oeeturno_id') || searchParams.get('oeeTurnoId')
+  const editModeParam = searchParams.get('edit') === 'true'
+  const oeeTurnoIdParamNumero = oeeTurnoIdParam ? Number(oeeTurnoIdParam) : NaN
+  const exibirModoOperacao = Number.isFinite(oeeTurnoIdParamNumero)
   const { fetchOeeTurno } = useOeeTurno()
   const { user, signOut } = useAuth()
 
@@ -817,6 +822,22 @@ export default function ApontamentoOEE() {
       p_rotina: rotina
     }
 
+    const tentativaSemAppInicial = await supabase.rpc('check_user_permission', parametrosBase)
+    if (!tentativaSemAppInicial.error) {
+      return tentativaSemAppInicial.data === true
+    }
+
+    const mensagemErroSemApp = `${tentativaSemAppInicial.error.message ?? ''}`.toLowerCase()
+    const deveTentarComApp =
+      tentativaSemAppInicial.error.code === 'PGRST202' ||
+      tentativaSemAppInicial.error.code === '42883' ||
+      mensagemErroSemApp.includes('function check_user_permission') ||
+      mensagemErroSemApp.includes('does not exist')
+
+    if (!deveTentarComApp) {
+      throw tentativaSemAppInicial.error
+    }
+
     const tentativaComApp = await supabase.rpc('check_user_permission', {
       ...parametrosBase,
       p_app_id: SYSOEE_APP_ID
@@ -826,24 +847,7 @@ export default function ApontamentoOEE() {
       return tentativaComApp.data === true
     }
 
-    const mensagemErro = `${tentativaComApp.error.message ?? ''}`.toLowerCase()
-    const deveTentarSemApp =
-      tentativaComApp.error.code === 'PGRST202' ||
-      tentativaComApp.error.code === '42883' ||
-      mensagemErro.includes('function check_user_permission') ||
-      mensagemErro.includes('does not exist')
-
-    if (!deveTentarSemApp) {
-      throw tentativaComApp.error
-    }
-
-    const tentativaSemApp = await supabase.rpc('check_user_permission', parametrosBase)
-
-    if (tentativaSemApp.error) {
-      throw tentativaSemApp.error
-    }
-
-    return tentativaSemApp.data === true
+    throw tentativaComApp.error
   }, [user?.id])
 
   const validarPermissaoEdicao = useCallback(async (rotina: Rotina, mensagemNegada: string): Promise<boolean> => {
@@ -3157,12 +3161,9 @@ export default function ApontamentoOEE() {
    * ocorra apenas uma vez por oeeTurnoId.
    */
   useEffect(() => {
-    const oeeTurnoIdParam = searchParams.get('oeeturno_id') || searchParams.get('oeeTurnoId')
-    const editMode = searchParams.get('edit') === 'true'
-    const oeeTurnoIdNumero = oeeTurnoIdParam ? Number(oeeTurnoIdParam) : NaN
-
+    const bloqueioCarregamento = !oeeTurnoIdParam || !Number.isFinite(oeeTurnoIdParamNumero) || turnoOeeCarregadoRef.current === oeeTurnoIdParam
     // Se não há ID ou já foi carregado, sair
-    if (!oeeTurnoIdParam || !Number.isFinite(oeeTurnoIdNumero) || turnoOeeCarregadoRef.current === oeeTurnoIdParam) {
+    if (bloqueioCarregamento) {
       return
     }
 
@@ -3289,9 +3290,9 @@ export default function ApontamentoOEE() {
         }
 
         // 6. Definir ID do turno OEE
-        setOeeTurnoId(oeeTurnoIdNumero)
+        setOeeTurnoId(oeeTurnoIdParamNumero)
 
-        const producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdNumero)
+        const producoesCarregadas = await carregarProducoesSupabase(oeeTurnoIdParamNumero)
 
         const horaInicioOverride = horaInicioTurnoFormatada
           ? normalizarHoraDigitada(horaInicioTurnoFormatada, true)
@@ -3320,7 +3321,7 @@ export default function ApontamentoOEE() {
         }
 
         // 9. Definir modo de visualização ou edição
-        if (!editMode) {
+        if (!editModeParam) {
           setModoVisualizacao(true)
         }
 
@@ -4407,9 +4408,24 @@ export default function ApontamentoOEE() {
             <div className="flex items-center justify-between gap-4">
               {/* Seção Esquerda - Título e Subtítulo */}
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold text-brand-primary truncate">
-                  Diário de Bordo{oeeTurnoId ? `: [${oeeTurnoId}]` : ''}
-                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="min-w-0 flex-1 text-2xl font-bold text-brand-primary truncate">
+                    Diário de Bordo{oeeTurnoId ? `: [${oeeTurnoId}]` : ''}
+                  </h1>
+                  {exibirModoOperacao && (
+                    <Badge
+                      variant={editModeParam ? 'warning' : 'info'}
+                      className="flex items-center gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wide"
+                    >
+                      {editModeParam ? (
+                        <Pencil className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                      {editModeParam ? 'Modo Edição' : 'Modo Consulta'}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-brand-text-secondary truncate">
                   Registro de produção, qualidade e paradas
                 </p>
