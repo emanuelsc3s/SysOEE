@@ -181,6 +181,8 @@ interface LoteProducao {
   id: string
   numeroLote: string
   data: string
+  fabricacao: string
+  validade: string
   horaInicial: string
   horaFinal: string
   quantidadePerdas: number
@@ -193,6 +195,8 @@ interface LoteProducao {
 interface DadosLote {
   numeroLote: string
   data: string
+  fabricacao: string
+  validade: string
   horaInicial: string
   horaFinal: string
   quantidadePerdas: number
@@ -220,10 +224,30 @@ interface ProducaoSupabase {
   updated_at: string | null
 }
 
+interface LoteSupabase {
+  oeeturnolote_id: number
+  lote: string | null
+  fabricacao: string | null
+  validade: string | null
+  hora_inicio: string | null
+  hora_fim: string | null
+  data: string | null
+  qtd_inicial: number | string | null
+  qtd_final: number | string | null
+  perda: number | string | null
+  qtd_produzida?: number | string | null
+  total_producao?: number | string | null
+  oeeturno_id: number | null
+  created_at?: string | null
+  deletado?: 'S' | 'N' | null
+}
+
 // Estado inicial do formulário de lote
 const estadoInicialLote: DadosLote = {
   numeroLote: '',
   data: '',
+  fabricacao: '',
+  validade: '',
   horaInicial: '',
   horaFinal: '',
   quantidadePerdas: 0,
@@ -323,6 +347,8 @@ export default function ApontamentoOEE() {
   const [lotesProducao, setLotesProducao] = useState<LoteProducao[]>([]) // Lista de lotes cadastrados
   const [dadosLote, setDadosLote] = useState<DadosLote>(estadoInicialLote)
   const [dataLoteDigitada, setDataLoteDigitada] = useState<string>('') // Data digitada no formato dd/mm/aaaa
+  const [dataFabricacaoDigitada, setDataFabricacaoDigitada] = useState<string>('') // Data de fabricação digitada
+  const [dataValidadeDigitada, setDataValidadeDigitada] = useState<string>('') // Data de validade digitada
   const [salvandoLote, setSalvandoLote] = useState(false)
   const [formularioLoteAberto, setFormularioLoteAberto] = useState(false) // Controla exibição do formulário inline
   const [loteEmEdicao, setLoteEmEdicao] = useState<string | null>(null) // ID do lote sendo editado
@@ -575,6 +601,98 @@ export default function ApontamentoOEE() {
       return []
     }
   }, [turno, linhaId, linhaSelecionada?.nome, skuCodigo])
+
+  /**
+   * Carrega lotes do Supabase (tboee_turno_lote)
+   * Filtra por oeeturno_id e registros não deletados
+   */
+  const carregarLotesSupabase = useCallback(async (oeeTurnoIdFiltro?: number | null): Promise<LoteProducao[]> => {
+    if (!oeeTurnoIdFiltro) {
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tboee_turno_lote')
+        .select(`
+          oeeturnolote_id,
+          lote,
+          fabricacao,
+          validade,
+          hora_inicio,
+          hora_fim,
+          data,
+          qtd_inicial,
+          qtd_final,
+          perda,
+          qtd_produzida,
+          total_producao,
+          oeeturno_id,
+          created_at,
+          deletado
+        `)
+        .eq('oeeturno_id', oeeTurnoIdFiltro)
+        .or('deletado.is.null,deletado.eq.N')
+        .order('hora_inicio', { ascending: true })
+
+      if (error) {
+        console.error('Erro ao carregar lotes do Supabase:', error)
+        return []
+      }
+
+      if (!data || data.length === 0) {
+        return []
+      }
+
+      const normalizarNumero = (valor: number | string | null | undefined): number => {
+        if (typeof valor === 'number') {
+          return Number.isFinite(valor) ? valor : 0
+        }
+        if (typeof valor === 'string') {
+          const numero = Number(valor.replace(',', '.'))
+          return Number.isFinite(numero) ? numero : 0
+        }
+        return 0
+      }
+
+      const registrosConvertidos: LoteProducao[] = (data as LoteSupabase[]).map((registro) => {
+        const quantidadeInicial = normalizarNumero(registro.qtd_inicial)
+        const quantidadeFinal = normalizarNumero(registro.qtd_final)
+        const quantidadePerdas = normalizarNumero(registro.perda)
+        const qtdProduzidaRaw = registro.qtd_produzida
+        const quantidadeProduzida = qtdProduzidaRaw === null || qtdProduzidaRaw === undefined
+          ? Math.abs(quantidadeFinal - quantidadeInicial)
+          : normalizarNumero(qtdProduzidaRaw)
+        const dataRegistro = registro.data || ''
+        const fabricacaoRegistro = registro.fabricacao || ''
+        const validadeRegistro = registro.validade || ''
+
+        return {
+          id: String(registro.oeeturnolote_id),
+          numeroLote: registro.lote || '',
+          data: dataRegistro || fabricacaoRegistro,
+          fabricacao: fabricacaoRegistro || dataRegistro,
+          validade: validadeRegistro || dataRegistro,
+          horaInicial: registro.hora_inicio ? registro.hora_inicio.substring(0, 5) : '',
+          horaFinal: registro.hora_fim ? registro.hora_fim.substring(0, 5) : '',
+          quantidadePerdas,
+          quantidadeProduzidaInicial: quantidadeInicial,
+          quantidadeProduzidaFinal: quantidadeFinal,
+          quantidadeProduzida
+        }
+      })
+
+      return registrosConvertidos
+    } catch (error) {
+      console.error('Erro ao carregar lotes:', error)
+      toast({
+        title: 'Erro ao carregar lotes',
+        description: 'Não foi possível carregar os lotes do turno no Supabase.',
+        variant: 'destructive'
+      })
+      return []
+    }
+  }, [toast])
 
   const normalizarHora = (hora: string): string => {
     if (!hora) return ''
@@ -1351,8 +1469,10 @@ export default function ApontamentoOEE() {
     return (
       dadosLote.numeroLote.trim() !== '' &&
       dadosLote.data !== '' &&
+      dadosLote.fabricacao !== '' &&
+      dadosLote.validade !== '' &&
       normalizarHoraDigitada(dadosLote.horaInicial, true) !== '' &&
-      (!dadosLote.horaFinal || normalizarHoraDigitada(dadosLote.horaFinal, true) !== '') &&
+      normalizarHoraDigitada(dadosLote.horaFinal, true) !== '' &&
       (dadosLote.quantidadeProduzidaInicial >= 0 && dadosLote.quantidadeProduzidaFinal >= 0)
     )
   }
@@ -1363,6 +1483,8 @@ export default function ApontamentoOEE() {
   const resetarFormularioLote = () => {
     setDadosLote(estadoInicialLote)
     setDataLoteDigitada('')
+    setDataFabricacaoDigitada('')
+    setDataValidadeDigitada('')
     setLoteEmEdicao(null)
     setFormularioLoteAberto(false)
   }
@@ -1404,9 +1526,13 @@ export default function ApontamentoOEE() {
     }
 
     setDataLoteDigitada(formatarDataIsoParaBr(lote.data))
+    setDataFabricacaoDigitada(formatarDataIsoParaBr(lote.fabricacao))
+    setDataValidadeDigitada(formatarDataIsoParaBr(lote.validade))
     setDadosLote({
       numeroLote: lote.numeroLote,
       data: lote.data,
+      fabricacao: lote.fabricacao,
+      validade: lote.validade,
       horaInicial: lote.horaInicial,
       horaFinal: lote.horaFinal,
       quantidadePerdas: lote.quantidadePerdas,
@@ -1420,13 +1546,57 @@ export default function ApontamentoOEE() {
   /**
    * Exclui um lote da lista
    */
-  const handleExcluirLote = (id: string) => {
+  const handleExcluirLote = async (id: string) => {
     const lote = lotesProducao.find(l => l.id === id)
-    setLotesProducao(prev => prev.filter(l => l.id !== id))
-    toast({
-      title: '🗑️ Lote Excluído',
-      description: `O lote ${lote?.numeroLote} foi removido.`
-    })
+    if (!lote) {
+      return
+    }
+
+    try {
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
+      const oeeturnoloteId = Number(id)
+      if (!Number.isFinite(oeeturnoloteId)) {
+        setLotesProducao(prev => prev.filter(l => l.id !== id))
+        toast({
+          title: '🗑️ Lote Excluído',
+          description: `O lote ${lote.numeroLote} foi removido.`
+        })
+        return
+      }
+
+      const timestampExclusao = gerarTimestampLocal()
+      const { error } = await supabase
+        .from('tboee_turno_lote')
+        .update({
+          deletado: 'S',
+          deleted_at: timestampExclusao,
+          deleted_by: usuario.id,
+          updated_at: timestampExclusao,
+          updated_by: usuario.id
+        })
+        .eq('oeeturnolote_id', oeeturnoloteId)
+
+      if (error) {
+        throw error
+      }
+
+      setLotesProducao(prev => prev.filter(l => l.id !== id))
+      toast({
+        title: '🗑️ Lote Excluído',
+        description: `O lote ${lote.numeroLote} foi removido.`
+      })
+    } catch (error) {
+      console.error('Erro ao excluir lote:', error)
+      toast({
+        title: 'Erro ao excluir',
+        description: obterMensagemErro(error, 'Não foi possível excluir o lote. Tente novamente.'),
+        variant: 'destructive'
+      })
+    }
   }
 
   /**
@@ -1437,7 +1607,7 @@ export default function ApontamentoOEE() {
     if (!validarCamposLote()) {
       toast({
         title: 'Campos obrigatórios',
-        description: 'Por favor, preencha todos os campos obrigatórios: Número do Lote, Data, Hora Inicial e Quantidade Produzida (Inicial ou Final).',
+        description: 'Por favor, preencha todos os campos obrigatórios: Nº Lote, Data, Fabricação, Validade, Hora Inicial, Hora Final e Quantidade Produzida.',
         variant: 'destructive'
       })
       return
@@ -1449,6 +1619,17 @@ export default function ApontamentoOEE() {
     const horaFinalNormalizada = dadosLote.horaFinal
       ? normalizarHoraDigitada(dadosLote.horaFinal, true)
       : ''
+
+    if (!horaInicialNormalizada || !horaFinalNormalizada) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Informe Hora Inicial e Hora Final no formato 24h para salvar o lote.',
+        variant: 'destructive'
+      })
+      setSalvandoLote(false)
+      return
+    }
+
     const dadosLoteNormalizados = {
       ...dadosLote,
       horaInicial: horaInicialNormalizada,
@@ -1461,12 +1642,106 @@ export default function ApontamentoOEE() {
       : 0
 
     try {
+      const turnoAtualId = oeeTurnoId || await verificarOuCriarTurnoOEE()
+
+      if (!turnoAtualId) {
+        toast({
+          title: 'Erro ao registrar turno',
+          description: 'Não foi possível obter o turno OEE para salvar o lote.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (!oeeTurnoId) {
+        setOeeTurnoId(turnoAtualId)
+      }
+
+      const usuario = await obterUsuarioAutenticado()
+      if (!usuario) {
+        return
+      }
+
+      const timestampAtual = gerarTimestampLocal()
+
+      // Datas de fabricação e validade informadas no formulário.
+      const payloadLote = {
+        lote: dadosLoteNormalizados.numeroLote.trim(),
+        fabricacao: dadosLoteNormalizados.fabricacao,
+        validade: dadosLoteNormalizados.validade,
+        hora_inicio: normalizarHora(horaInicialNormalizada),
+        hora_fim: normalizarHora(horaFinalNormalizada),
+        data: dadosLoteNormalizados.data,
+        qtd_inicial: Number(dadosLoteNormalizados.quantidadeProduzidaInicial) || 0,
+        qtd_final: Number(dadosLoteNormalizados.quantidadeProduzidaFinal) || 0,
+        perda: Number(dadosLoteNormalizados.quantidadePerdas) || 0,
+        oeeturno_id: turnoAtualId,
+        updated_at: timestampAtual,
+        updated_by: usuario.id
+      }
+
+      let registroSalvo: LoteSupabase | null = null
+
       if (loteEmEdicao) {
-        // Atualizar lote existente
+        const oeeturnoloteId = Number(loteEmEdicao)
+        if (!Number.isFinite(oeeturnoloteId)) {
+          throw new Error('ID do lote inválido para atualização.')
+        }
+
+        const { data: registroAtualizado, error } = await supabase
+          .from('tboee_turno_lote')
+          .update(payloadLote)
+          .eq('oeeturnolote_id', oeeturnoloteId)
+          .select('*')
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        registroSalvo = registroAtualizado as LoteSupabase
+      } else {
+        const { data: registroCriado, error } = await supabase
+          .from('tboee_turno_lote')
+          .insert({
+            ...payloadLote,
+            created_at: timestampAtual,
+            created_by: usuario.id,
+            deletado: 'N'
+          })
+          .select('*')
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        registroSalvo = registroCriado as LoteSupabase
+      }
+
+      if (!registroSalvo?.oeeturnolote_id) {
+        throw new Error('ID do lote não retornado pelo banco.')
+      }
+
+      const loteSalvo: LoteProducao = {
+        id: String(registroSalvo.oeeturnolote_id),
+        numeroLote: dadosLoteNormalizados.numeroLote,
+        data: dadosLoteNormalizados.data,
+        fabricacao: dadosLoteNormalizados.fabricacao,
+        validade: dadosLoteNormalizados.validade,
+        horaInicial: horaInicialNormalizada,
+        horaFinal: horaFinalNormalizada,
+        quantidadePerdas: Number(dadosLoteNormalizados.quantidadePerdas) || 0,
+        quantidadeProduzidaInicial: Number(dadosLoteNormalizados.quantidadeProduzidaInicial) || 0,
+        quantidadeProduzidaFinal: Number(dadosLoteNormalizados.quantidadeProduzidaFinal) || 0,
+        quantidadeProduzida: quantidadeProduzidaCalculada
+      }
+
+      if (loteEmEdicao) {
         setLotesProducao(prev =>
           prev.map(lote =>
-            lote.id === loteEmEdicao
-              ? { ...lote, ...dadosLoteNormalizados, quantidadeProduzida: quantidadeProduzidaCalculada }
+            lote.id === loteSalvo.id
+              ? loteSalvo
               : lote
           )
         )
@@ -1475,13 +1750,7 @@ export default function ApontamentoOEE() {
           description: `O lote ${dadosLoteNormalizados.numeroLote} foi atualizado com sucesso.`
         })
       } else {
-        // Criar novo lote com ID único
-        const novoLote: LoteProducao = {
-          id: `lote-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          ...dadosLoteNormalizados,
-          quantidadeProduzida: quantidadeProduzidaCalculada
-        }
-        setLotesProducao(prev => [...prev, novoLote])
+        setLotesProducao(prev => [...prev, loteSalvo])
         toast({
           title: '✅ Lote Adicionado',
           description: `O lote ${dadosLoteNormalizados.numeroLote} foi adicionado com sucesso.`
@@ -1494,7 +1763,7 @@ export default function ApontamentoOEE() {
       console.error('Erro ao salvar lote:', error)
       toast({
         title: 'Erro ao salvar',
-        description: 'Não foi possível salvar os dados do lote. Tente novamente.',
+        description: obterMensagemErro(error, 'Não foi possível salvar os dados do lote. Tente novamente.'),
         variant: 'destructive'
       })
     } finally {
@@ -3155,6 +3424,24 @@ export default function ApontamentoOEE() {
 
     carregarProducoesSupabase(oeeTurnoId)
   }, [carregarProducoesSupabase, oeeTurnoId])
+
+  useEffect(() => {
+    const carregarLotes = async () => {
+      if (!modalLotesAberto) {
+        return
+      }
+
+      if (!oeeTurnoId) {
+        setLotesProducao([])
+        return
+      }
+
+      const lotesCarregados = await carregarLotesSupabase(oeeTurnoId)
+      setLotesProducao(lotesCarregados)
+    }
+
+    carregarLotes()
+  }, [modalLotesAberto, oeeTurnoId, carregarLotesSupabase])
 
   // ==================== Carregar dados do turno OEE via parâmetros URL ====================
   /**
@@ -6269,7 +6556,7 @@ export default function ApontamentoOEE() {
                   {/* Data */}
                   <div className="grid gap-1">
                     <Label htmlFor="data-lote" className="text-xs flex items-center gap-1">
-                      Data <span className="text-red-500">*</span>
+                      Data Produção <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="data-lote"
@@ -6297,6 +6584,68 @@ export default function ApontamentoOEE() {
                     />
                   </div>
 
+                  {/* Fabricação */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="fabricacao-lote" className="text-xs flex items-center gap-1">
+                      Fabricação <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="fabricacao-lote"
+                      type="text"
+                      value={dataFabricacaoDigitada}
+                      onChange={(e) => {
+                        const valorFormatado = formatarDataDigitada(e.target.value)
+                        setDataFabricacaoDigitada(valorFormatado)
+                        const dataIso = converterDataBrParaIso(valorFormatado)
+                        setDadosLote(prev => ({ ...prev, fabricacao: dataIso }))
+                      }}
+                      onBlur={(e) => {
+                        const valorFormatado = formatarDataDigitada(e.target.value)
+                        const dataIso = converterDataBrParaIso(valorFormatado)
+                        if (dataIso) {
+                          setDataFabricacaoDigitada(formatarDataIsoParaBr(dataIso))
+                          setDadosLote(prev => ({ ...prev, fabricacao: dataIso }))
+                          return
+                        }
+                        setDataFabricacaoDigitada(valorFormatado)
+                        setDadosLote(prev => ({ ...prev, fabricacao: '' }))
+                      }}
+                      inputMode="numeric"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* Validade */}
+                  <div className="grid gap-1">
+                    <Label htmlFor="validade-lote" className="text-xs flex items-center gap-1">
+                      Validade <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="validade-lote"
+                      type="text"
+                      value={dataValidadeDigitada}
+                      onChange={(e) => {
+                        const valorFormatado = formatarDataDigitada(e.target.value)
+                        setDataValidadeDigitada(valorFormatado)
+                        const dataIso = converterDataBrParaIso(valorFormatado)
+                        setDadosLote(prev => ({ ...prev, validade: dataIso }))
+                      }}
+                      onBlur={(e) => {
+                        const valorFormatado = formatarDataDigitada(e.target.value)
+                        const dataIso = converterDataBrParaIso(valorFormatado)
+                        if (dataIso) {
+                          setDataValidadeDigitada(formatarDataIsoParaBr(dataIso))
+                          setDadosLote(prev => ({ ...prev, validade: dataIso }))
+                          return
+                        }
+                        setDataValidadeDigitada(valorFormatado)
+                        setDadosLote(prev => ({ ...prev, validade: '' }))
+                      }}
+                      inputMode="numeric"
+                      className="h-9"
+                    />
+                  </div>
+
                   {/* Hora Inicial */}
                   <div className="grid gap-1">
                     <Label htmlFor="hora-inicial-lote" className="text-xs flex items-center gap-1">
@@ -6315,10 +6664,10 @@ export default function ApontamentoOEE() {
                     />
                   </div>
 
-                  {/* Hora Final (opcional) */}
+                  {/* Hora Final */}
                   <div className="grid gap-1">
-                    <Label htmlFor="hora-final-lote" className="text-xs">
-                      Hora Final
+                    <Label htmlFor="hora-final-lote" className="text-xs flex items-center gap-1">
+                      Hora Final <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="hora-final-lote"
