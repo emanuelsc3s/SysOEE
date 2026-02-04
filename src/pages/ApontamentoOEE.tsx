@@ -5800,9 +5800,37 @@ export default function ApontamentoOEE() {
               <Info className="w-6 h-6 text-blue-500" />
               Detalhamento do cálculo do OEE
             </DialogTitle>
-            <DialogDescription>
-              Dados calculados pela RPC <strong>fn_calcular_oee_dashboard</strong> para o turno{' '}
-              <strong>{oeeTurnoId ?? '-'}</strong>.
+            <DialogDescription className="space-y-1 text-sm text-muted-foreground">
+              <span className="block">
+                Linha:{' '}
+                <strong className="text-foreground">
+                  {linhaNome || linhaProducaoSelecionada?.linhaproducao || linhaSelecionada?.nome || 'Não definida'}
+                </strong>
+              </span>
+              <span className="block">
+                Período:{' '}
+                <strong className="text-foreground">
+                  {data ? format(data, 'dd/MM/yyyy', { locale: ptBR }) : 'Não definido'}
+                </strong>
+              </span>
+              <span className="block">
+                Turno:{' '}
+                <strong className="text-foreground">
+                  {turnoCodigo
+                    ? `${turnoCodigo} - ${turnoNome || turno || 'Turno'}`
+                    : (turnoNome || turno || 'Não definido')}
+                </strong>
+              </span>
+              <span className="block">
+                Produto:{' '}
+                <strong className="text-foreground">
+                  {skuCodigo
+                    ? (skuCodigo.includes(' - ')
+                      ? skuCodigo
+                      : (produtoDescricao ? `${skuCodigo} - ${produtoDescricao}` : skuCodigo))
+                    : 'Não definido'}
+                </strong>
+              </span>
             </DialogDescription>
           </DialogHeader>
 

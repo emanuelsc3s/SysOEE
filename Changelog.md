@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Atualizada a descrição do modal de detalhamento do OEE no `ApontamentoOEE` para exibir linha, período, turno e produto do `oeeturno_id`.
 - Ajustada a RPC `fn_calcular_oee_dashboard` para alinhar tempo disponível fixo, velocidade nominal por turno e adicionar filtro opcional por `oeeturno_id`.
 - Corrigido o `COMMENT ON FUNCTION` com assinatura completa e removida a versão antiga da RPC para evitar ambiguidade no Supabase.
 - Implementada a chamada à RPC `fn_calcular_oee_dashboard` no `ApontamentoOEE`, com modal detalhado e feedback de carregamento no velocímetro.
