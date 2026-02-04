@@ -15,6 +15,7 @@ import OeeTurno from './pages/OeeTurno'
 import OeeLinhaVelocidade from './pages/OeeLinhaVelocidade'
 import OeeParada from './pages/OeeParada'
 import OeeParadaCad from './pages/OeeParadaCad'
+import DashboardOEE from './pages/dashboard/DashboardOEE'
 import Usuarios from './pages/Usuarios'
 import UsuariosCad from './pages/UsuariosCad'
 import Placeholder from './pages/Placeholder'
@@ -39,6 +40,9 @@ function App() {
 
         {/* Dashboard com gráficos OEE */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+        {/* Dashboard OEE Premium - Monitoramento em tempo real */}
+        <Route path="/dashboard-oee" element={<ProtectedRoute><DashboardOEE /></ProtectedRoute>} />
 
         {/* Página de Operação - Kanban de OPs */}
         <Route path="/operacao" element={<ProtectedRoute><Operacao /></ProtectedRoute>} />
