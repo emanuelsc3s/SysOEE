@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a gravação de `created_at` e `updated_at` em `tboee_turno_producao` no `ApontamentoOEE` para usar timestamp local e evitar data adiantada por GMT.
 - Removida a instrumentação de depuração no `ApontamentoOEE` após validação em runtime.
 - Ajustada a ordem de verificação de permissões no `ApontamentoOEE` para priorizar a RPC sem `p_app_id` quando disponível e evitar erros 404.
 - Corrigida a referência ao ID do turno ao carregar produções no `ApontamentoOEE`, evitando erro de `ReferenceError`.

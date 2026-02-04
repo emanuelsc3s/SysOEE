@@ -368,6 +368,7 @@ export default function ApontamentoOEE() {
   const [totalPerdasQualidade, setTotalPerdasQualidade] = useState<number>(0)
 
   // ==================== Dados Derivados ====================
+  const modoConsulta = exibirModoOperacao && !editModeParam
   // Usar linhaProducaoSelecionada para obter dados da linha (não buscarLinhaPorId que usa IDs slug)
   // Criamos um objeto compatível com o formato esperado em outros lugares do código
   const linhaSelecionada = linhaProducaoSelecionada ? {
@@ -1726,6 +1727,7 @@ export default function ApontamentoOEE() {
         return
       }
 
+      const timestampAtual = gerarTimestampLocal()
       const payload = {
         linhaproducao_id: linhaProducaoSelecionada.linhaproducao_id,
         linhaproducao: linhaProducaoSelecionada.linhaproducao,
@@ -1741,7 +1743,7 @@ export default function ApontamentoOEE() {
         turno_id: parseInt(turnoId),
         turno: turno,
         oeeturno_id: turnoAtualId,
-        updated_at: new Date().toISOString(),
+        updated_at: timestampAtual,
         updated_by: usuario.id
       }
 
@@ -1765,7 +1767,7 @@ export default function ApontamentoOEE() {
           .from('tboee_turno_producao')
           .insert({
             ...payload,
-            created_at: new Date().toISOString(),
+            created_at: timestampAtual,
             created_by: usuario.id,
             deletado: 'N'
           })
@@ -1949,11 +1951,12 @@ export default function ApontamentoOEE() {
         return
       }
 
+      const timestampAtual = gerarTimestampLocal()
       const { error } = await supabase
         .from('tboee_turno_producao')
         .update({
           anotacao: textoAnotacao.trim() || null,
-          updated_at: new Date().toISOString(),
+          updated_at: timestampAtual,
           updated_by: usuario.id
         })
         .eq('oeeturnoproducao_id', parseInt(linhaAnotacaoSelecionada.apontamentoId))
@@ -3909,19 +3912,49 @@ export default function ApontamentoOEE() {
       return
     }
 
+    if (!turnoPermiteEdicao) {
+      if (turnoBloqueadoParaEdicao) {
+        setShowAlertaTurnoBloqueado(true)
+        return
+      }
+
+      toast({
+        title: 'Edição não permitida',
+        description: 'Este turno não permite alterações no cabeçalho.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     try {
       const usuario = await obterUsuarioAutenticado()
       if (!usuario) {
         return
       }
 
+      const usuarioInternoId = await obterUsuarioInternoId()
+      if (!usuarioInternoId) {
+        return
+      }
+
       const dataISO = data ? format(data, 'yyyy-MM-dd') : ''
 
-      const produtoAtualId = produtoId ?? (await garantirProdutoPorSku()).produtoId
+      const {
+        produtoId: produtoGeradoId,
+        produtoDescricao: produtoGeradaDescricao
+      } = await garantirProdutoPorSku()
+      const produtoAtualId = produtoId ?? produtoGeradoId
 
       if (!produtoAtualId || !linhaProducaoSelecionada) {
         return
       }
+
+      const codigoSKU = extrairCodigoSku(skuCodigo)
+      const descricaoSKU = produtoDescricao || produtoGeradaDescricao || extrairDescricaoSku(skuCodigo)
+      const produtoFormatado = codigoSKU
+        ? `${codigoSKU}${descricaoSKU ? ` - ${descricaoSKU}` : ''}`
+        : skuCodigo
+      const turnoFormatado = turnoNome || turnoCodigo || turno
 
       const velocidadeNominal = await buscarVelocidadeNominal(
         linhaProducaoSelecionada.linhaproducao_id,
@@ -3937,24 +3970,26 @@ export default function ApontamentoOEE() {
         return
       }
 
-      const { error: atualizarErro } = await supabase
-        .from('tboee_turno_producao')
-        .update({
-          data: dataISO,
-          turno_id: parseInt(turnoId),
-          turno: turno,
-          linhaproducao_id: linhaProducaoSelecionada.linhaproducao_id,
-          linhaproducao: linhaProducaoSelecionada.linhaproducao,
-          departamento_id: linhaProducaoSelecionada.departamento_id,
-          departamento: linhaProducaoSelecionada.departamento,
-          produto_id: produtoAtualId,
-          produto: skuCodigo,
-          velocidade: velocidadeNominal,
-          updated_at: new Date().toISOString(),
-          updated_by: usuario.id
-        })
-        .eq('oeeturno_id', oeeTurnoId)
-        .eq('deletado', 'N')
+      const timestampAtual = gerarTimestampLocal()
+
+      const { error: atualizarErro } = await supabase.rpc('fn_atualizar_cabecalho_turno', {
+        p_oeeturno_id: oeeTurnoId,
+        p_data: dataISO,
+        p_turno_id: parseInt(turnoId),
+        p_turno: turnoFormatado,
+        p_turno_hi: turnoHoraInicialNormalizada || null,
+        p_turno_hf: turnoHoraFinalNormalizada || null,
+        p_linhaproducao_id: linhaProducaoSelecionada.linhaproducao_id,
+        p_linhaproducao: linhaProducaoSelecionada.linhaproducao,
+        p_departamento_id: linhaProducaoSelecionada.departamento_id ?? null,
+        p_departamento: linhaProducaoSelecionada.departamento ?? null,
+        p_produto_id: produtoAtualId,
+        p_produto: produtoFormatado,
+        p_velocidade: velocidadeNominal,
+        p_updated_at: timestampAtual,
+        p_updated_by_usuario: usuarioInternoId,
+        p_updated_by: usuario.id
+      })
 
       if (atualizarErro) {
         throw atualizarErro
@@ -3982,9 +4017,15 @@ export default function ApontamentoOEE() {
       })
     } catch (error) {
       console.error('Erro ao continuar turno com cabeçalho editado:', error)
+      const mensagemErro = error && typeof error === 'object' && 'message' in error
+        ? String((error as { message?: string }).message)
+        : ''
+      const mensagemAmigavel = mensagemErro.includes('schema cache') && mensagemErro.includes('fn_atualizar_cabecalho_turno')
+        ? 'A função fn_atualizar_cabecalho_turno não foi localizada no schema público. Verifique se a migration foi aplicada.'
+        : obterMensagemErro(error, 'Não foi possível atualizar o cabeçalho. Tente novamente.')
       toast({
         title: 'Erro ao salvar alterações',
-        description: obterMensagemErro(error, 'Não foi possível atualizar o cabeçalho. Tente novamente.'),
+        description: mensagemAmigavel,
         variant: 'destructive'
       })
     }
@@ -4487,6 +4528,7 @@ export default function ApontamentoOEE() {
                   variant="destructive"
                   className="flex items-center justify-center gap-2 min-h-10 px-4"
                   onClick={handleExcluir}
+                  disabled={modoConsulta}
                 >
                   <Trash className="h-4 w-4" />
                   Excluir
@@ -4572,8 +4614,12 @@ export default function ApontamentoOEE() {
                       value={turnoCodigo && turnoNome ? `${turnoCodigo} - ${turnoNome}` : ''}
                       readOnly
                       disabled={cabecalhoBloqueado}
+                      onClick={() => {
+                        if (cabecalhoBloqueado) return
+                        abrirModalBuscaTurno()
+                      }}
                       placeholder="Selecione um turno"
-                      className="flex-1 bg-muted/50 cursor-not-allowed"
+                      className={`flex-1 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
                     />
                     <Button
                       type="button"
@@ -4640,8 +4686,12 @@ export default function ApontamentoOEE() {
                       value={linhaNome}
                       readOnly
                       disabled={cabecalhoBloqueado}
+                      onClick={() => {
+                        if (cabecalhoBloqueado) return
+                        abrirModalBuscaLinha()
+                      }}
                       placeholder="Selecione uma linha de produção"
-                      className="flex-1 bg-muted/50 cursor-not-allowed"
+                      className={`flex-1 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
                     />
                     <Button
                       type="button"
@@ -4664,8 +4714,12 @@ export default function ApontamentoOEE() {
                       value={skuCodigo}
                       readOnly
                       disabled={cabecalhoBloqueado}
+                      onClick={() => {
+                        if (cabecalhoBloqueado) return
+                        abrirModalBuscaSKU()
+                      }}
                       placeholder="Selecione um produto SKU"
-                      className="flex-1 bg-muted/50 cursor-not-allowed"
+                      className={`flex-1 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
                     />
                     <Button
                       type="button"
@@ -4684,7 +4738,7 @@ export default function ApontamentoOEE() {
 
               {/* Botão de Controle de Turno e edição de cabeçalho */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                {statusTurno === 'INICIADO' && (
+                {(statusTurno === 'INICIADO' || podeEditarTurnoFechado) && (
                   <div className="flex gap-2">
                     {!editandoCabecalho ? (
                       <Button
@@ -4731,7 +4785,7 @@ export default function ApontamentoOEE() {
                   </Button>
                 )}
 
-                {statusTurno === 'INICIADO' && (
+                {(statusTurno === 'INICIADO' || (podeEditarTurnoFechado && editandoCabecalho)) && (
                   <Button
                     onClick={editandoCabecalho ? handleContinuarTurno : handleSolicitarEncerramento}
                     disabled={editandoCabecalho && !validarCamposCabecalho()}
@@ -4742,7 +4796,9 @@ export default function ApontamentoOEE() {
                     ) : (
                       <StopCircle className="mr-2 h-4 w-4" />
                     )}
-                    {editandoCabecalho ? 'Continuar Turno' : 'Encerrar Turno'}
+                    {editandoCabecalho
+                      ? (statusTurno === 'ENCERRADO' ? 'Salvar Alterações' : 'Continuar Turno')
+                      : 'Encerrar Turno'}
                   </Button>
                 )}
 
@@ -5026,6 +5082,7 @@ export default function ApontamentoOEE() {
                                       className="h-8 px-3 text-primary hover:text-primary/90 hover:bg-primary/10"
                                       title="Alterar linha"
                                       disabled={
+                                        modoConsulta ||
                                         !turnoPermiteEdicao ||
                                         !linha.apontamentoId ||
                                         quantidadeProduzidaInvalida(linha.quantidadeProduzida)
@@ -5057,6 +5114,7 @@ export default function ApontamentoOEE() {
                                     className="h-8 px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
                                     title="Excluir linha"
                                     disabled={
+                                      modoConsulta ||
                                       !turnoPermiteEdicao ||
                                       !linha.apontamentoId ||
                                       quantidadeProduzidaInvalida(linha.quantidadeProduzida)
@@ -5123,6 +5181,7 @@ export default function ApontamentoOEE() {
                                 onClick={() => confirmarExclusao(registro.id)}
                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 title="Excluir registro"
+                                disabled={modoConsulta}
                               >
                                 <Trash className="h-4 w-4" />
                               </Button>
@@ -5250,6 +5309,7 @@ export default function ApontamentoOEE() {
                                     onClick={() => void iniciarEdicaoQualidade(registro)}
                                     className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/10"
                                     title="Editar registro"
+                                    disabled={modoConsulta}
                                   >
                                     <Pencil className="h-4 w-4" />
                                   </Button>
@@ -5259,6 +5319,7 @@ export default function ApontamentoOEE() {
                                     onClick={() => confirmarExclusaoQualidade(registro.id)}
                                     className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     title="Excluir registro"
+                                    disabled={modoConsulta}
                                   >
                                     <Trash className="h-4 w-4" />
                                   </Button>
@@ -5313,6 +5374,9 @@ export default function ApontamentoOEE() {
                   </p>
                   <Button
                     onClick={() => {
+                      if (modoConsulta) {
+                        return
+                      }
                       if (turnoBloqueadoParaEdicao) {
                         setShowAlertaTurnoBloqueado(true)
                         return
@@ -5321,7 +5385,7 @@ export default function ApontamentoOEE() {
                     }}
                     className="mt-6"
                     variant="outline"
-                    disabled={turnoBloqueadoParaEdicao}
+                    disabled={turnoBloqueadoParaEdicao || modoConsulta}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Registrar Nova Parada
@@ -5519,6 +5583,7 @@ export default function ApontamentoOEE() {
                                 onClick={() => confirmarExclusaoParada(registro.id)}
                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                                 title="Excluir registro"
+                                disabled={modoConsulta}
                               >
                                 <Trash className="h-4 w-4" />
                               </Button>
