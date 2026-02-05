@@ -463,7 +463,7 @@ export default function OeeTurno() {
               <Button
                 variant="outline"
                 className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
-                onClick={() => navigate('/apontamento-oee')}
+                onClick={() => navigate('/apontamento-oee?modo=inclusao')}
               >
                 <Activity className="h-4 w-4" />
                 Novo Apontamento

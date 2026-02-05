@@ -77,6 +77,9 @@ import { ModalTurnoBloqueado } from '@/pages/oee/apontamento-oee/ModalTurnoBloqu
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
 
+// Tipo para os modos de operação
+type ModoOperacao = 'consulta' | 'edicao' | 'inclusao'
+
 // Tipo para status do turno
 type StatusTurno = 'NAO_INICIADO' | 'INICIADO' | 'ENCERRADO'
 
@@ -265,7 +268,7 @@ export default function ApontamentoOEE() {
   const oeeTurnoIdParam = searchParams.get('oeeturno_id') || searchParams.get('oeeTurnoId')
   const editModeParam = searchParams.get('edit') === 'true'
   const oeeTurnoIdParamNumero = oeeTurnoIdParam ? Number(oeeTurnoIdParam) : NaN
-  const exibirModoOperacao = Number.isFinite(oeeTurnoIdParamNumero)
+  const temOeeTurnoId = Number.isFinite(oeeTurnoIdParamNumero)
   const { fetchOeeTurno } = useOeeTurno()
   const { user, signOut } = useAuth()
 
@@ -396,7 +399,12 @@ export default function ApontamentoOEE() {
   const [totalPerdasQualidade, setTotalPerdasQualidade] = useState<number>(0)
 
   // ==================== Dados Derivados ====================
-  const modoConsulta = exibirModoOperacao && !editModeParam
+  const modoOperacao: ModoOperacao = temOeeTurnoId
+    ? (editModeParam ? 'edicao' : 'consulta')
+    : 'inclusao'
+  const modoConsulta = modoOperacao === 'consulta'
+  const modoEdicao = modoOperacao === 'edicao'
+  const modoInclusao = modoOperacao === 'inclusao'
   // Usar linhaProducaoSelecionada para obter dados da linha (não buscarLinhaPorId que usa IDs slug)
   // Criamos um objeto compatível com o formato esperado em outros lugares do código
   const linhaSelecionada = linhaProducaoSelecionada ? {
@@ -4773,19 +4781,19 @@ export default function ApontamentoOEE() {
                   <h1 className="min-w-0 flex-1 text-2xl font-bold text-brand-primary truncate">
                     Diário de Bordo{oeeTurnoId ? `: [${oeeTurnoId}]` : ''}
                   </h1>
-                  {exibirModoOperacao && (
-                    <Badge
-                      variant={editModeParam ? 'warning' : 'info'}
-                      className="flex items-center gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wide"
-                    >
-                      {editModeParam ? (
-                        <Pencil className="h-3.5 w-3.5" />
-                      ) : (
-                        <Eye className="h-3.5 w-3.5" />
-                      )}
-                      {editModeParam ? 'Modo Edição' : 'Modo Consulta'}
-                    </Badge>
-                  )}
+                  <Badge
+                    variant={modoEdicao ? 'warning' : (modoConsulta ? 'info' : (modoInclusao ? 'success' : 'default'))}
+                    className="flex items-center gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wide"
+                  >
+                    {modoEdicao ? (
+                      <Pencil className="h-3.5 w-3.5" />
+                    ) : modoConsulta ? (
+                      <Eye className="h-3.5 w-3.5" />
+                    ) : modoInclusao ? (
+                      <Plus className="h-3.5 w-3.5" />
+                    ) : null}
+                    {modoEdicao ? 'MODO EDIÇÃO' : (modoConsulta ? 'MODO CONSULTA' : (modoInclusao ? 'MODO INCLUSÃO' : 'MODO'))}
+                  </Badge>
                 </div>
                 <p className="text-brand-text-secondary truncate">
                   Registro de produção, qualidade e paradas
