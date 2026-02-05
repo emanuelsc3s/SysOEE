@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 import { useTheme } from '@/hooks/useTheme'
 import { AppHeader } from '@/components/layout/AppHeader'
+import { ParetoParadasChart, type ParetoParadaChartItem } from '@/components/charts/ParetoParadasChart'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -107,6 +108,14 @@ type ComponentesOeeDetalhe = {
   performance: number
   qualidade: number
   oee: number
+}
+
+type ParetoParadaRpc = {
+  parada?: string | null
+  quantidade?: number | string | null
+  tempo_parada_horas?: number | string | null
+  percentual?: number | string | null
+  percentual_acumulado?: number | string | null
 }
 
 type FiltrosDashboard = {
@@ -426,6 +435,10 @@ export default function Dashboard() {
   const [componentesOeeDetalhe, setComponentesOeeDetalhe] = useState<ComponentesOeeDetalhe | null>(null)
   const [carregandoDetalhamento, setCarregandoDetalhamento] = useState(false)
   const [erroDetalhamento, setErroDetalhamento] = useState<string | null>(null)
+  const [modalParetoAberto, setModalParetoAberto] = useState(false)
+  const [paretoParadas, setParetoParadas] = useState<ParetoParadaChartItem[]>([])
+  const [carregandoPareto, setCarregandoPareto] = useState(false)
+  const [erroPareto, setErroPareto] = useState<string | null>(null)
 
   // Estados para atualização automática
   const [atualizacaoAutomatica, setAtualizacaoAutomatica] = useState(false)
@@ -657,6 +670,8 @@ export default function Dashboard() {
     return `${filtros.dataInicio} a ${filtros.dataFim}`
   }, [filtros.dataFim, filtros.dataInicio])
 
+  const podeAbrirPareto = Boolean(linhaDetalheSelecionada && componentesOeeDetalhe && !carregandoPareto)
+
   const carregarDadosOee = useCallback(async () => {
     if (!parametrosRpc.p_data_inicio || !parametrosRpc.p_data_fim) {
       return
@@ -873,14 +888,113 @@ export default function Dashboard() {
     [carregandoDetalhamento, filtros.dataFim, filtros.dataInicio, filtros.produtoId, filtros.turnoId, toast]
   )
 
+  const abrirParetoParadas = useCallback(async () => {
+    if (carregandoPareto || !linhaDetalheSelecionada) {
+      return
+    }
+
+    const dataInicioIso = converterDataParaIso(filtros.dataInicio)
+    const dataFimIso = converterDataParaIso(filtros.dataFim)
+
+    if (!dataInicioIso || !dataFimIso) {
+      toast({
+        title: 'Período inválido',
+        description: 'Informe uma data de início e fim válidas para consultar o Pareto.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (dataInicioIso > dataFimIso) {
+      toast({
+        title: 'Período inválido',
+        description: 'A data inicial não pode ser maior que a data final.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const turnoId = filtros.turnoId === 'todos' ? null : Number(filtros.turnoId)
+    const produtoId = filtros.produtoId === 'todos' ? null : Number(filtros.produtoId)
+
+    setModalParetoAberto(true)
+    setCarregandoPareto(true)
+    setErroPareto(null)
+    setParetoParadas([])
+
+    try {
+      const { data, error } = await supabase.rpc('fn_calcular_pareto_paradas', {
+        p_data_inicio: dataInicioIso,
+        p_data_fim: dataFimIso,
+        p_turno_id: Number.isFinite(turnoId) ? turnoId : null,
+        p_produto_id: Number.isFinite(produtoId) ? produtoId : null,
+        p_linhaproducao_id: linhaDetalheSelecionada.linhaproducao_id,
+        p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+        p_oeeturno_id: null
+      })
+
+      if (error) {
+        throw error
+      }
+
+      const dadosMapeados: ParetoParadaChartItem[] = (data || []).map((item: ParetoParadaRpc) => {
+        const parada = (item.parada || '').trim()
+        return {
+          parada: parada || 'Parada não informada',
+          quantidade: Math.max(0, Math.round(parseNumero(item.quantidade))),
+          tempoParadaHoras: parseNumero(item.tempo_parada_horas),
+          percentual: parseNumero(item.percentual),
+          percentualAcumulado: parseNumero(item.percentual_acumulado)
+        }
+      })
+
+      if (dadosMapeados.length === 0) {
+        setErroPareto('Nenhuma parada grande encontrada para os filtros selecionados.')
+      } else {
+        setParetoParadas(dadosMapeados)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar Pareto de paradas:', error)
+      const mensagemErro = error && typeof error === 'object' && 'message' in error
+        ? String((error as { message?: string }).message)
+        : ''
+      const mensagemAmigavel = mensagemErro.includes('schema cache') && mensagemErro.includes('fn_calcular_pareto_paradas')
+        ? 'A função fn_calcular_pareto_paradas não foi localizada no schema público. Verifique se ela foi criada no Supabase.'
+        : 'Não foi possível carregar o Pareto de paradas.'
+      setErroPareto(mensagemAmigavel)
+    } finally {
+      setCarregandoPareto(false)
+    }
+  }, [carregandoPareto, filtros.dataFim, filtros.dataInicio, filtros.produtoId, filtros.turnoId, linhaDetalheSelecionada, toast])
+
   const handleModalDetalhamentoChange = (aberto: boolean) => {
     setModalDetalhamentoAberto(aberto)
     if (!aberto) {
       setErroDetalhamento(null)
       setComponentesOeeDetalhe(null)
       setLinhaDetalheSelecionada(null)
+      setModalParetoAberto(false)
+      setParetoParadas([])
+      setErroPareto(null)
+      setCarregandoPareto(false)
     }
   }
+
+  const handleModalParetoChange = (aberto: boolean) => {
+    setModalParetoAberto(aberto)
+    if (!aberto) {
+      setErroPareto(null)
+      setParetoParadas([])
+      setCarregandoPareto(false)
+    }
+  }
+
+  const handleAbrirParetoKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      abrirParetoParadas()
+    }
+  }, [abrirParetoParadas])
 
   return (
     <div className="min-h-screen bg-muted">
@@ -1582,7 +1696,19 @@ export default function Dashboard() {
                         {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} h
                       </p>
                     </div>
-                    <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                    <div
+                      className={`rounded-lg border border-border bg-card text-card-foreground p-3 transition ${
+                        podeAbrirPareto
+                          ? 'cursor-pointer hover:border-primary/60 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+                          : 'opacity-70'
+                      }`}
+                      role={podeAbrirPareto ? 'button' : undefined}
+                      tabIndex={podeAbrirPareto ? 0 : -1}
+                      aria-disabled={!podeAbrirPareto}
+                      title={podeAbrirPareto ? 'Clique para ver o Pareto de paradas grandes' : undefined}
+                      onClick={podeAbrirPareto ? abrirParetoParadas : undefined}
+                      onKeyDown={podeAbrirPareto ? handleAbrirParetoKeyDown : undefined}
+                    >
                       <p className="text-xs text-muted-foreground">Paradas grandes</p>
                       <p className="text-lg font-semibold text-card-foreground">
                         {formatarNumeroDecimal(componentesOeeDetalhe.tempoParadasGrandesHoras)} h
@@ -1665,6 +1791,83 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={modalParetoAberto} onOpenChange={handleModalParetoChange}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-2xl">
+                <Info className="w-6 h-6 text-blue-500" />
+                Pareto de paradas grandes
+              </DialogTitle>
+              <DialogDescription className="space-y-1 text-sm text-muted-foreground">
+                <span className="block">
+                  Linha:{' '}
+                  <strong className="text-foreground">
+                    {linhaDetalheSelecionada?.linhaproducao || 'Não definida'}
+                  </strong>
+                </span>
+                <span className="block">
+                  Período: <strong className="text-foreground">{periodoDescricao}</strong>
+                </span>
+                <span className="block">
+                  Turno:{' '}
+                  <strong className="text-foreground">
+                    {turnoSelecionado ? `${turnoSelecionado.codigo} - ${turnoSelecionado.turno || 'Turno'}` : 'Todos'}
+                  </strong>
+                </span>
+                <span className="block">
+                  Produto:{' '}
+                  <strong className="text-foreground">
+                    {produtoSelecionado ? `${produtoSelecionado.referencia || 'SKU'} - ${produtoSelecionado.descricao || 'Sem descrição'}` : 'Todos'}
+                  </strong>
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+
+            {carregandoPareto && (
+              <div className="py-10 flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+                Carregando Pareto de paradas...
+              </div>
+            )}
+
+            {!carregandoPareto && erroPareto && (
+              <div className="mt-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-4 text-sm text-red-700 dark:text-red-300 flex gap-3">
+                <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Não foi possível carregar o Pareto.</p>
+                  <p className="text-sm text-muted-foreground">{erroPareto}</p>
+                </div>
+              </div>
+            )}
+
+            {!carregandoPareto && !erroPareto && paretoParadas.length === 0 && (
+              <div className="py-6 text-sm text-muted-foreground">
+                Nenhuma parada grande encontrada para a linha e período selecionados.
+              </div>
+            )}
+
+            {!carregandoPareto && !erroPareto && paretoParadas.length > 0 && (
+              <div className="space-y-4 py-4">
+                <div className="rounded-lg border border-border bg-card text-card-foreground p-3">
+                  <p className="text-xs text-muted-foreground">Total de paradas grandes</p>
+                  <p className="text-lg font-semibold text-card-foreground">
+                    {componentesOeeDetalhe
+                      ? `${formatarNumeroDecimal(componentesOeeDetalhe.tempoParadasGrandesHoras)} h`
+                      : '-'}
+                  </p>
+                </div>
+                <ParetoParadasChart data={paretoParadas} />
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button type="button" variant="outline" onClick={() => handleModalParetoChange(false)}>
+                Fechar
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 

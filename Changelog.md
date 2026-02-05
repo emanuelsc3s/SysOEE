@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado modal de Pareto de paradas grandes no `Dashboard` com nova RPC e gráfico dedicado.
+- Corrigida ambiguidade de coluna na RPC `fn_calcular_pareto_paradas`.
+- Corrigida ambiguidade de `tempo_parada_horas` na RPC `fn_calcular_pareto_paradas`.
+- Adicionada exibição das horas acima das barras no Pareto de paradas.
+- Destacado o total de horas de paradas grandes no modal de Pareto.
 - Evitado o reset automático da paginação do `OeeTurno` quando busca e filtros não mudam.
 - Removida a instrumentação de depuração da paginação do `OeeTurno` após validação.
 - Mantido o texto do campo de busca do `OeeTurno` ao voltar do `ApontamentoOEE`.

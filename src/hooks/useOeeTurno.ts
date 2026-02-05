@@ -95,10 +95,23 @@ export function useOeeTurno() {
         query = query.eq('status', filters.status)
       }
 
-      // Busca por termo (produto ou turno)
+      // Busca por termo (produto, turno ou observação). Para ID, usa igualdade quando o termo é numérico,
+      // pois o PostgREST não aceita cast em filtros (evita erro 400).
       if (filters?.searchTerm) {
         const term = filters.searchTerm.trim()
-        query = query.or(`produto.ilike.%${term}%,turno.ilike.%${term}%,observacao.ilike.%${term}%`)
+        if (term) {
+          const partesBusca = [
+            `produto.ilike.%${term}%`,
+            `turno.ilike.%${term}%`,
+            `observacao.ilike.%${term}%`
+          ]
+
+          if (/^\d+$/.test(term)) {
+            partesBusca.unshift(`oeeturno_id.eq.${term}`)
+          }
+
+          query = query.or(partesBusca.join(','))
+        }
       }
 
       // Paginação
