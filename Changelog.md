@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Evitado o reset automático da paginação do `OeeTurno` quando busca e filtros não mudam.
+- Removida a instrumentação de depuração da paginação do `OeeTurno` após validação.
 - Mantido o texto do campo de busca do `OeeTurno` ao voltar do `ApontamentoOEE`.
 - Invalidação do cache de `OeeTurno` ao voltar do `ApontamentoOEE`, garantindo atualização da lista.
 - Removida a instrumentação de depuração do fluxo de edição/retorno em `ApontamentoOEE` e `OeeTurno`.

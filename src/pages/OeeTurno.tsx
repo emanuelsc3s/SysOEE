@@ -268,6 +268,8 @@ export default function OeeTurno() {
     produto: '',
     status: '' as OeeTurnoStatus | '',
   })
+  const prevFiltersRef = useRef(appliedFilters)
+  const prevSearchTermRef = useRef(searchTerm)
 
   // Contagem de filtros aplicados para badge
   const appliedCount = (() => {
@@ -388,6 +390,17 @@ export default function OeeTurno() {
 
   // Resetar página para 1 quando searchTerm ou filtros mudarem
   useEffect(() => {
+    const prevFilters = prevFiltersRef.current
+    const filtersChanged =
+      prevFilters.turno !== appliedFilters.turno ||
+      prevFilters.produto !== appliedFilters.produto ||
+      prevFilters.status !== appliedFilters.status
+    const searchChanged = prevSearchTermRef.current !== searchTerm
+    if (!filtersChanged && !searchChanged) {
+      return
+    }
+    prevFiltersRef.current = appliedFilters
+    prevSearchTermRef.current = searchTerm
     setCurrentPage(1)
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev)
