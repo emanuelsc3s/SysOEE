@@ -886,7 +886,7 @@ export default function OeeTurno() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Tem certeza que deseja excluir o turno <strong>{turnoToDelete?.turno}</strong> do dia <strong>{turnoToDelete?.data ? formatarData(turnoToDelete.data) : ''}</strong>?
+                  Tem certeza que deseja excluir o turno <strong>{turnoToDelete?.turno}</strong> (Lançamento: <strong>{turnoToDelete?.id ?? '-'}</strong>) do dia <strong>{turnoToDelete?.data ? formatarData(turnoToDelete.data) : ''}</strong>?
                   Esta ação não pode ser desfeita.
                 </AlertDialogDescription>
               </AlertDialogHeader>

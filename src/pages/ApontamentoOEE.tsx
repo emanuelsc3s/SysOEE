@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, Eye, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
@@ -260,16 +261,18 @@ const estadoInicialLote: DadosLote = {
 
 const TEMPO_DISPONIVEL_PADRAO = 12
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
+const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const oeeTurnoIdParam = searchParams.get('oeeturno_id') || searchParams.get('oeeTurnoId')
   const editModeParam = searchParams.get('edit') === 'true'
   const oeeTurnoIdParamNumero = oeeTurnoIdParam ? Number(oeeTurnoIdParam) : NaN
   const temOeeTurnoId = Number.isFinite(oeeTurnoIdParamNumero)
-  const { fetchOeeTurno } = useOeeTurno()
+  const { fetchOeeTurno, deleteOeeTurno } = useOeeTurno()
   const { user, signOut } = useAuth()
 
   // ==================== Refs para controle de carregamento ====================
@@ -326,6 +329,9 @@ export default function ApontamentoOEE() {
   // ==================== Estado de Controle de Turno ====================
   const [statusTurno, setStatusTurno] = useState<StatusTurno>('NAO_INICIADO')
   const [showConfirmEncerramento, setShowConfirmEncerramento] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false)
+  const [usuarioIdAutenticado, setUsuarioIdAutenticado] = useState<number | null>(null)
   const [oeeTurnoId, setOeeTurnoId] = useState<number | null>(null) // ID do registro na tboee_turno
   const [statusTurnoBD, setStatusTurnoBD] = useState<string | null>(null) // Status do turno no banco de dados (Aberto, Fechado, Cancelado)
 
@@ -1003,6 +1009,43 @@ export default function ApontamentoOEE() {
       return false
     }
   }, [user?.id, checarPermissaoBackend, abrirModalPermissaoNegada, toast, obterMensagemErro])
+
+  const validarPermissaoExclusao = useCallback(async (): Promise<boolean> => {
+    if (!user?.id) {
+      return false
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tbusuario')
+        .select('usuario_id, perfil')
+        .eq('user_id', user.id)
+        .eq('deletado', 'N')
+        .maybeSingle()
+
+      if (error || !data?.perfil) {
+        if (error) {
+          console.error('Erro ao validar perfil para exclusão:', error)
+        }
+        return false
+      }
+
+      if (!Number.isFinite(data.usuario_id)) {
+        console.error('Usuário interno não identificado para exclusão.')
+        return false
+      }
+
+      const perfilNormalizado = data.perfil.trim().toLowerCase()
+      const permitido = perfilNormalizado === 'administrador' || perfilNormalizado === 'supervisor'
+      if (permitido) {
+        setUsuarioIdAutenticado(data.usuario_id)
+      }
+      return permitido
+    } catch (error) {
+      console.error('Erro inesperado ao validar perfil:', error)
+      return false
+    }
+  }, [user?.id])
 
   useEffect(() => {
     let ativo = true
@@ -4751,13 +4794,48 @@ export default function ApontamentoOEE() {
     })
   }
 
-  const handleExcluir = () => {
-    // TODO: Adicionar diálogo de confirmação antes de excluir
-    toast({
-      title: 'Atenção',
-      description: 'Funcionalidade de exclusão será implementada',
-      variant: 'destructive'
-    })
+  const handleExcluir = async () => {
+    if (!modoEdicao || !oeeTurnoId) {
+      return
+    }
+
+    const permitido = await validarPermissaoExclusao()
+    if (!permitido) {
+      setIsDeleteDialogOpen(false)
+      setIsPermissionDialogOpen(true)
+      return
+    }
+
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleExcluirConfirm = async () => {
+    if (!oeeTurnoId) {
+      return
+    }
+
+    if (!user?.id) {
+      setIsDeleteDialogOpen(false)
+      setIsPermissionDialogOpen(true)
+      return
+    }
+
+    if (!Number.isFinite(usuarioIdAutenticado ?? NaN)) {
+      setIsDeleteDialogOpen(false)
+      setIsPermissionDialogOpen(true)
+      return
+    }
+
+    const sucesso = await deleteOeeTurno(
+      String(oeeTurnoId),
+      user.id,
+      usuarioIdAutenticado as number
+    )
+    if (sucesso) {
+      await queryClient.invalidateQueries({ queryKey: ['oee-turnos'] })
+      setIsDeleteDialogOpen(false)
+      navigate('/oee-turno')
+    }
   }
 
   return (
@@ -4852,7 +4930,7 @@ export default function ApontamentoOEE() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {!modoConsulta && (
+                {modoEdicao && temOeeTurnoId && (
                   <Button
                     variant="destructive"
                     className="flex items-center justify-center gap-2 min-h-10 px-4"
@@ -5157,6 +5235,44 @@ export default function ApontamentoOEE() {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction onClick={handleEncerrarTurno} className="bg-orange-600 hover:bg-orange-700">
                   Confirmar Encerramento
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Dialog de confirmação de exclusão do turno */}
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir o turno <strong>{turno || '-'}</strong> do dia{' '}
+                  <strong>{data ? format(data, 'dd/MM/yyyy', { locale: ptBR }) : 'Não definida'}</strong>? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleExcluirConfirm}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={isPermissionDialogOpen} onOpenChange={setIsPermissionDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Permissão necessária</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {MENSAGEM_PERMISSAO_EXCLUSAO}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setIsPermissionDialogOpen(false)}>
+                  Entendi
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

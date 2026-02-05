@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Incluída a exibição do número do lançamento (oeeturno_id) na confirmação de exclusão do `OeeTurno`.
+- Alinhado o botão Excluir do `ApontamentoOEE` ao fluxo do `OeeTurno`, com confirmação, validação de permissão e redirecionamento após exclusão.
+- Invalidação do cache de `OeeTurno` ao excluir turno no `ApontamentoOEE`, evitando necessidade de atualizar manualmente a lista.
 - Ajustada a gravação de `created_at` e `updated_at` em `tboee_turno_producao` no `ApontamentoOEE` para usar timestamp local e evitar data adiantada por GMT.
 - Removida a instrumentação de depuração no `ApontamentoOEE` após validação em runtime.
 - Ajustada a ordem de verificação de permissões no `ApontamentoOEE` para priorizar a RPC sem `p_app_id` quando disponível e evitar erros 404.
