@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o peso da fonte do valor de OEE na tabela do `OeeTurno` para 500.
 - Incluída a exibição do número do lançamento (oeeturno_id) na confirmação de exclusão do `OeeTurno`.
 - Alinhado o botão Excluir do `ApontamentoOEE` ao fluxo do `OeeTurno`, com confirmação, validação de permissão e redirecionamento após exclusão.
 - Invalidação do cache de `OeeTurno` ao excluir turno no `ApontamentoOEE`, evitando necessidade de atualizar manualmente a lista.

@@ -4,7 +4,7 @@
  * Implementa padrões avançados de UI: paginação, filtros, busca em tempo real
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -60,6 +60,144 @@ const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
+const TEMPO_DISPONIVEL_PADRAO = 12
+const TURNOS_VAZIOS: OeeTurnoFormData[] = []
+
+type OeeTurnoRpc = {
+  oee?: number | string | null
+}
+
+const clamp = (valor: number, min: number, max: number): number => {
+  return Math.min(Math.max(valor, min), max)
+}
+
+const hexParaRgb = (hex: string): { r: number; g: number; b: number } => {
+  const limpo = hex.replace('#', '')
+  const r = Number.parseInt(limpo.substring(0, 2), 16)
+  const g = Number.parseInt(limpo.substring(2, 4), 16)
+  const b = Number.parseInt(limpo.substring(4, 6), 16)
+  return { r, g, b }
+}
+
+const rgbParaHex = (r: number, g: number, b: number): string => {
+  const toHex = (valor: number) => valor.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+const interpolarCores = (corInicial: string, corFinal: string, fator: number): string => {
+  const inicio = hexParaRgb(corInicial)
+  const fim = hexParaRgb(corFinal)
+  const t = clamp(fator, 0, 1)
+  const r = Math.round(inicio.r + (fim.r - inicio.r) * t)
+  const g = Math.round(inicio.g + (fim.g - inicio.g) * t)
+  const b = Math.round(inicio.b + (fim.b - inicio.b) * t)
+  return rgbParaHex(r, g, b)
+}
+
+const calcularCorOee = (valor: number | null | undefined): string | null => {
+  if (valor === null || valor === undefined || !Number.isFinite(valor)) {
+    return null
+  }
+
+  const oee = clamp(valor, 0, 100)
+  if (oee <= 25) {
+    const fator = oee / 25
+    return interpolarCores('#DC2626', '#EF4444', fator)
+  }
+
+  if (oee <= 50) {
+    const fator = (oee - 25) / 25
+    return interpolarCores('#EF4444', '#F97316', fator)
+  }
+
+  if (oee <= 65) {
+    const fator = (oee - 50) / 15
+    return interpolarCores('#F97316', '#EAB308', fator)
+  }
+
+  const fator = (oee - 65) / 35
+  return interpolarCores('#2563EB', '#1E40AF', fator)
+}
+
+const normalizarNumeroRpc = (valor: number | string | null | undefined): number => {
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? valor : 0
+  }
+
+  if (valor === null || valor === undefined) {
+    return 0
+  }
+
+  if (typeof valor === 'string') {
+    const limpo = valor.trim().replace('%', '').replace(/\s+/g, '')
+    if (!limpo) {
+      return 0
+    }
+
+    if (limpo.includes(',') && limpo.includes('.')) {
+      const normalizado = limpo.replace(/\./g, '').replace(',', '.')
+      const parsed = Number.parseFloat(normalizado)
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+
+    if (limpo.includes(',')) {
+      const parsed = Number.parseFloat(limpo.replace(',', '.'))
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+
+    const parsed = Number.parseFloat(limpo)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const parsed = Number(valor)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const formatarPercentual = (valor: number | null | undefined): string => {
+  if (valor === null || valor === undefined || !Number.isFinite(valor)) {
+    return '-'
+  }
+
+  return `${valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}%`
+}
+
+const buscarOeePorTurno = async (oeeturnoId: number): Promise<number | null> => {
+  if (!Number.isFinite(oeeturnoId)) {
+    return null
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('fn_calcular_oee_dashboard', {
+      p_data_inicio: null,
+      p_data_fim: null,
+      p_turno_id: null,
+      p_produto_id: null,
+      p_linhaproducao_id: null,
+      p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+      p_oeeturno_id: oeeturnoId
+    })
+
+    if (error) {
+      throw error
+    }
+
+    const registro = Array.isArray(data) ? data[0] : data
+    const oeeBruto = (registro as OeeTurnoRpc | null | undefined)?.oee
+
+    if (oeeBruto === null || oeeBruto === undefined || oeeBruto === '') {
+      return null
+    }
+
+    const oee = normalizarNumeroRpc(oeeBruto)
+    return Number.isFinite(oee) ? oee : null
+  } catch (error) {
+    console.error('Erro ao buscar OEE do turno:', oeeturnoId, error)
+    return null
+  }
+}
 
 export default function OeeTurno() {
   const navigate = useNavigate()
@@ -83,6 +221,8 @@ export default function OeeTurno() {
   // Estados para modal de turno fechado
   const [isStatusFechadoDialogOpen, setIsStatusFechadoDialogOpen] = useState(false)
   const [turnoParaVisualizar, setTurnoParaVisualizar] = useState<OeeTurnoFormData | null>(null)
+  const [oeePorTurno, setOeePorTurno] = useState<Record<string, number | null>>({})
+  const [carregandoOeePorTurno, setCarregandoOeePorTurno] = useState<Record<string, boolean>>({})
 
   // Hook para operações com Supabase
   const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
@@ -175,9 +315,74 @@ export default function OeeTurno() {
   })
 
   // Dados paginados já vêm do Supabase
-  const turnosPaginados = turnosData?.data || []
+  const turnosPaginados = useMemo(
+    () => turnosData?.data ?? TURNOS_VAZIOS,
+    [turnosData?.data]
+  )
   const totalItems = turnosData?.count || 0
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  useEffect(() => {
+    if (turnosPaginados.length === 0) {
+      return
+    }
+
+    let ativo = true
+
+    const turnosValidos = turnosPaginados
+      .map((turno) => ({
+        id: turno.id,
+        idNumerico: Number(turno.id)
+      }))
+      .filter((turno) => Number.isFinite(turno.idNumerico))
+
+    if (turnosValidos.length === 0) {
+      return
+    }
+
+    const carregarOee = async () => {
+      setCarregandoOeePorTurno((prev) => {
+        const proximo = { ...prev }
+        turnosValidos.forEach((turno) => {
+          proximo[turno.id] = true
+        })
+        return proximo
+      })
+
+      const resultados = await Promise.all(
+        turnosValidos.map(async (turno) => ({
+          id: turno.id,
+          oee: await buscarOeePorTurno(turno.idNumerico)
+        }))
+      )
+
+      if (!ativo) {
+        return
+      }
+
+      setOeePorTurno((prev) => {
+        const proximo = { ...prev }
+        resultados.forEach((resultado) => {
+          proximo[resultado.id] = resultado.oee
+        })
+        return proximo
+      })
+
+      setCarregandoOeePorTurno((prev) => {
+        const proximo = { ...prev }
+        turnosValidos.forEach((turno) => {
+          proximo[turno.id] = false
+        })
+        return proximo
+      })
+    }
+
+    carregarOee()
+
+    return () => {
+      ativo = false
+    }
+  }, [turnosPaginados])
 
   // Resetar página para 1 quando searchTerm ou filtros mudarem
   useEffect(() => {
@@ -714,27 +919,30 @@ export default function OeeTurno() {
                   style={{ maxHeight: '60vh' }}
                 >
                   <table className="w-full table-auto">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr className="border-b border-gray-200">
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Ações
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
                           Status
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                          OEE
+                        </th>
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
                           Turno
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
                           Data
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[25ch]">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[25ch]">
                           Produto
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
                           Início
                         </th>
-                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[8ch]">
                           Fim
                         </th>
                       </tr>
@@ -742,7 +950,7 @@ export default function OeeTurno() {
                     <tbody className="divide-y divide-gray-200">
                       {turnosPaginados.length === 0 && !isLoading ? (
                         <tr>
-                          <td colSpan={7} className="px-4 md:px-6 py-8 text-center">
+                          <td colSpan={8} className="px-4 md:px-6 py-8 text-center">
                             <div className="text-gray-500">
                               {searchTerm || appliedCount > 0 ?
                                 'Nenhum turno encontrado com os filtros aplicados.' :
@@ -810,6 +1018,16 @@ export default function OeeTurno() {
                                   Por: {turno.createdByLogin || 'N/A'}
                                 </span>
                               </div>
+                            </td>
+                            <td
+                              className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center font-medium"
+                              style={{
+                                color: calcularCorOee(oeePorTurno[turno.id]) ?? undefined
+                              }}
+                            >
+                              {carregandoOeePorTurno[turno.id] || oeePorTurno[turno.id] === undefined
+                                ? '...'
+                                : formatarPercentual(oeePorTurno[turno.id])}
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {turno.turno}
