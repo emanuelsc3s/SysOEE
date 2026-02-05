@@ -2,9 +2,10 @@
  * Página Dashboard - Visualização de OEE e cards por linha
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, RefreshCw, Pause, Play, Sun, Moon } from 'lucide-react'
+import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -393,6 +394,7 @@ export default function Dashboard() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   const [linhas, setLinhas] = useState<LinhaOption[]>([])
   const [produtos, setProdutos] = useState<ProdutoOption[]>([])
@@ -912,7 +914,7 @@ export default function Dashboard() {
                       variant={atualizacaoAutomatica ? 'default' : 'outline'}
                       size="sm"
                       onClick={alternarAtualizacaoAutomatica}
-                      className={`flex items-center gap-2 min-w-[100px] ${
+                      className={`flex items-center gap-2 min-w-[100px] h-9 ${
                         atualizacaoAutomatica
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : theme === 'light'
@@ -971,6 +973,21 @@ export default function Dashboard() {
                       <Moon className="h-4 w-4" />
                     )}
                   </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/')}
+                      className={`flex items-center gap-2 min-w-[80px] h-9 ${
+                        theme === 'light'
+                          ? '!bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white'
+                          : ''
+                      }`}
+                      title="Voltar para a Home"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Voltar
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
