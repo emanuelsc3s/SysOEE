@@ -88,8 +88,6 @@ BEGIN
   UPDATE tboee_turno_perda
   SET
     data = p_data,
-    turno_id = p_turno_id,
-    linhaproducao_id = p_linhaproducao_id,
     updated_at = v_updated_at,
     updated_by = p_updated_by
   WHERE oeeturno_id = p_oeeturno_id
@@ -99,8 +97,6 @@ BEGIN
   UPDATE tboee_turno_parada
   SET
     data = p_data,
-    turno_id = p_turno_id,
-    linhaproducao_id = p_linhaproducao_id,
     updated_at = v_updated_at,
     updated_by = p_updated_by
   WHERE oeeturno_id = p_oeeturno_id

@@ -57,6 +57,7 @@ import { ptBR } from 'date-fns/locale'
 
 // Constantes estáveis no escopo do módulo para evitar warnings de dependências
 const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
+const SEARCH_TERM_STORAGE_KEY = 'sysoee_oee_turno_search_term'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
@@ -153,17 +154,6 @@ const normalizarNumeroRpc = (valor: number | string | null | undefined): number 
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const formatarPercentual = (valor: number | null | undefined): string => {
-  if (valor === null || valor === undefined || !Number.isFinite(valor)) {
-    return '-'
-  }
-
-  return `${valor.toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })}%`
-}
-
 const buscarOeePorTurno = async (oeeturnoId: number): Promise<number | null> => {
   if (!Number.isFinite(oeeturnoId)) {
     return null
@@ -202,7 +192,13 @@ const buscarOeePorTurno = async (oeeturnoId: number): Promise<number | null> => 
 export default function OeeTurno() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(() => {
+    try {
+      return sessionStorage.getItem(SEARCH_TERM_STORAGE_KEY) ?? ''
+    } catch {
+      return ''
+    }
+  })
   const [currentPage, setCurrentPage] = useState(() => {
     const p = Number(searchParams.get('page'))
     return Number.isFinite(p) && p > 0 ? p : 1
@@ -252,6 +248,12 @@ export default function OeeTurno() {
       }
     } catch { /* noop */ }
   }, [])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SEARCH_TERM_STORAGE_KEY, searchTerm)
+    } catch { /* noop */ }
+  }, [searchTerm])
 
   // Estado de filtros aplicados (usado para consulta)
   const [appliedFilters, setAppliedFilters] = useState({
@@ -924,14 +926,14 @@ export default function OeeTurno() {
                         <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Ações
                         </th>
+                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
+                          Turno
+                        </th>
                         <th className="bg-gray-50 px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
                           Status
                         </th>
                         <th className="bg-gray-50 px-4 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
                           OEE
-                        </th>
-                        <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[12ch]">
-                          Turno
                         </th>
                         <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[10ch]">
                           Data
@@ -963,8 +965,7 @@ export default function OeeTurno() {
                         turnosPaginados.map((turno: OeeTurnoFormData) => (
                           <tr
                             key={turno.id}
-                            className="hover:bg-gray-50 cursor-pointer"
-                            onClick={() => handleVisualizar(turno)}
+                            className="hover:bg-gray-50"
                           >
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                               <div className="flex justify-start gap-1">
@@ -1009,28 +1010,57 @@ export default function OeeTurno() {
                                 </Button>
                               </div>
                             </td>
+                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {turno.turno}
+                            </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
                               <div className="flex flex-col items-center gap-1">
                                 <Badge variant={getBadgeStatus(turno.status)}>
                                   {turno.status || 'N/A'}
                                 </Badge>
-                                <span className="text-[10px] text-gray-500">
+                                <span className="text-xs text-gray-500">
                                   Por: {turno.createdByLogin || 'N/A'}
                                 </span>
                               </div>
                             </td>
-                            <td
-                              className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-center font-medium"
-                              style={{
-                                color: calcularCorOee(oeePorTurno[turno.id]) ?? undefined
-                              }}
-                            >
-                              {carregandoOeePorTurno[turno.id] || oeePorTurno[turno.id] === undefined
-                                ? '...'
-                                : formatarPercentual(oeePorTurno[turno.id])}
-                            </td>
-                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {turno.turno}
+                            <td className="px-4 md:px-6 py-4 whitespace-nowrap text-center">
+                              {carregandoOeePorTurno[turno.id] || oeePorTurno[turno.id] === undefined ? (
+                                <span className="text-sm text-gray-600">...</span>
+                              ) : (
+                                <div className="relative inline-flex items-center justify-center w-10 h-10">
+                                  <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 120 120">
+                                    {/* Círculo de fundo (trilha) */}
+                                    <circle
+                                      className="stroke-gray-200 dark:stroke-gray-700"
+                                      cx="60"
+                                      cy="60"
+                                      fill="none"
+                                      r="54"
+                                      strokeWidth="12"
+                                    />
+                                    {/* Círculo de progresso */}
+                                    <circle
+                                      cx="60"
+                                      cy="60"
+                                      fill="none"
+                                      r="54"
+                                      strokeDasharray="339.292"
+                                      strokeDashoffset={339.292 - (339.292 * (oeePorTurno[turno.id] ?? 0)) / 100}
+                                      strokeLinecap="round"
+                                      strokeWidth="12"
+                                      stroke={calcularCorOee(oeePorTurno[turno.id]) ?? '#9CA3AF'}
+                                      style={{ transition: 'stroke-dashoffset 0.3s ease-in-out, stroke 0.3s ease-in-out' }}
+                                    />
+                                  </svg>
+                                  {/* Valor percentual centralizado */}
+                                  <span
+                                    className="absolute text-[9px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-[1px]"
+                                    style={{ color: calcularCorOee(oeePorTurno[turno.id]) ?? undefined }}
+                                  >
+                                    {Math.round(oeePorTurno[turno.id] ?? 0)}%
+                                  </span>
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
                               <div className="flex flex-col gap-1">

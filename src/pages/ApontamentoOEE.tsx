@@ -4778,8 +4778,14 @@ export default function ApontamentoOEE() {
   }
 
   // ==================== Handlers do Header CRUD ====================
-  const handleVoltar = () => {
-    navigate('/oee-turno')
+  const handleVoltar = async () => {
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['oee-turnos'] })
+    } catch (error) {
+      console.error('Erro ao invalidar cache do OeeTurno:', error)
+    } finally {
+      navigate('/oee-turno')
+    }
   }
 
   const handleAjuda = () => {

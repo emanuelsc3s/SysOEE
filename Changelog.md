@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+- Mantido o texto do campo de busca do `OeeTurno` ao voltar do `ApontamentoOEE`.
+- Invalidação do cache de `OeeTurno` ao voltar do `ApontamentoOEE`, garantindo atualização da lista.
+- Removida a instrumentação de depuração do fluxo de edição/retorno em `ApontamentoOEE` e `OeeTurno`.
+- Corrigida a RPC `fn_atualizar_cabecalho_turno` para não atualizar colunas inexistentes em `tboee_turno_parada`.
+- Corrigida a RPC `fn_atualizar_cabecalho_turno` para não atualizar colunas inexistentes em `tboee_turno_perda`.
+- Adicionada instrumentação de depuração para diagnosticar falhas na atualização do cabeçalho e na verificação de permissões no `ApontamentoOEE`.
 - Ajustado o peso da fonte do valor de OEE na tabela do `OeeTurno` para 500.
 - Incluída a exibição do número do lançamento (oeeturno_id) na confirmação de exclusão do `OeeTurno`.
 - Alinhado o botão Excluir do `ApontamentoOEE` ao fluxo do `OeeTurno`, com confirmação, validação de permissão e redirecionamento após exclusão.
