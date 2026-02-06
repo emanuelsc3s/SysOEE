@@ -44,11 +44,20 @@ function isEmail(value: string): boolean {
 function MobileBackground() {
   return (
     <div className="sm:hidden absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {/* Gradiente vertical sutil - do azul corporativo para branco */}
-      <div className="absolute inset-0 bg-gradient-to-b from-brand-primary via-brand-primary/95 to-brand-primary/90 h-[35%]" />
+      {/* Faixa superior azul e base clara para separar branding e formulário */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(180deg, #055bb8 0%, #0a6dc9 32%, #f1f5fb 32%, #f8fafd 100%)',
+        }}
+      />
 
-      {/* Linha divisória elegante */}
-      <div className="absolute top-[35%] left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      {/* Volumes de luz sutis para profundidade */}
+      <div className="absolute -top-20 -left-16 h-52 w-52 rounded-full bg-white/20 blur-3xl" />
+      <div className="absolute top-14 -right-12 h-44 w-44 rounded-full bg-cyan-100/25 blur-3xl" />
+
+      {/* Linha de transição discreta entre header e card */}
+      <div className="absolute top-[32%] left-5 right-5 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
     </div>
   )
 }
@@ -455,7 +464,7 @@ export default function Login() {
         className={cn(
           "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden",
           // Mobile: fundo com área azul corporativa no topo
-          "max-sm:bg-brand-bg-primary",
+          "max-sm:bg-transparent",
           // Tablet/Desktop: fundo padrão
           "sm:bg-brand-bg-primary sm:p-4 md:p-6 lg:p-8 sm:items-center sm:justify-between",
           // Padding para compensar o margin negativo e dar espaço ao conteúdo
@@ -469,45 +478,50 @@ export default function Login() {
         <MobileBackground />
 
         {/* ===== LAYOUT MOBILE (< 640px) ===== */}
-        <div className="sm:hidden relative z-10 flex flex-col h-full">
+        <div className="sm:hidden relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
 
-          {/* Header azul com logo e título */}
-          <div className="flex flex-col items-center pt-8 pb-6 px-6">
+          {/* Header azul com logo, título e selo de segurança */}
+          <div className="flex flex-col items-center px-2 text-center">
             <img
               src="/logo-farmace.png"
               alt="Farmace"
-              className="h-20 w-auto mb-4 drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)]"
+              className="h-14 w-auto drop-shadow-[0_4px_10px_rgba(0,0,0,0.18)]"
             />
-            <h1 className="text-2xl font-semibold text-white/90 tracking-wide text-shimmer drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:drop-shadow-[0_0_25px_rgba(255,255,255,0.5)] transition-all duration-500">
+            <h1 className="mt-3 text-[1.38rem] font-semibold tracking-[0.08em] text-white">
               SICFAR OEE
             </h1>
-            <p className="text-sm text-white/70 mt-1 text-shimmer drop-shadow-[0_0_10px_rgba(255,255,255,0.2)] hover:drop-shadow-[0_0_18px_rgba(255,255,255,0.4)] transition-all duration-500">
+            <p className="mt-1 text-xs font-medium tracking-wide text-white/80">
               Monitoramento de Eficiência Operacional
             </p>
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/12 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm">
+              <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+              Ambiente seguro Farmace
+            </div>
           </div>
 
-          {/* Card de login - área branca arredondada */}
-          <div className="flex-1 bg-white rounded-t-3xl px-6 pt-8 pb-4 flex flex-col">
+          {/* Card de login mobile com superfície elevada */}
+          <div className="mt-5 flex flex-1 flex-col rounded-[28px] border border-white/80 bg-white/95 px-5 pb-4 pt-6 shadow-[0_26px_58px_-28px_rgba(15,23,42,0.55)] backdrop-blur">
 
             {/* Título do formulário */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-brand-text-primary">
+            <div>
+              <h2 className="text-[1.35rem] font-semibold tracking-tight text-brand-text-primary">
                 Acesse sua conta
               </h2>
-              <p className="text-sm text-brand-text-secondary mt-1">
+              <p className="mt-1 text-sm leading-relaxed text-brand-text-secondary">
                 Digite suas credenciais para continuar
               </p>
+              <div className="mt-4 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
             </div>
 
             {/* Formulário */}
-            <form onSubmit={handleLogin} className="space-y-4 flex-1">
+            <form onSubmit={handleLogin} className="mt-5 flex-1 space-y-4">
               {/* Campo Usuário */}
               <div className="space-y-1.5">
                 <Label htmlFor="credential" className="text-brand-text-primary font-medium text-sm">
                   Usuário
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-brand-text-secondary" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="credential"
                     name="credential"
@@ -518,7 +532,7 @@ export default function Login() {
                     disabled={isLoading}
                     required
                     autoComplete="username"
-                    className="pl-10 h-12 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    className="h-12 rounded-xl border-input bg-white pl-10 text-[15px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                 </div>
               </div>
@@ -529,7 +543,7 @@ export default function Login() {
                   Senha
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-brand-text-secondary" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="password"
                     name="password"
@@ -539,12 +553,12 @@ export default function Login() {
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     disabled={isLoading}
                     required
-                    className="pl-10 pr-10 h-12 rounded-lg border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    className="h-12 rounded-xl border-input bg-white pl-10 pr-11 text-[15px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+                    className="absolute right-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
                     {showPassword ? (
@@ -560,7 +574,7 @@ export default function Login() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 text-base font-medium bg-brand-primary hover:bg-brand-primary/90 rounded-lg mt-2 transition-all"
+                className="mt-2 h-12 w-full rounded-xl bg-brand-primary text-base font-semibold shadow-[0_14px_28px_-14px_rgba(6,98,195,0.85)] transition-all duration-200 active:scale-[0.99] hover:bg-brand-primary/95"
               >
                 {isLoading ? (
                   <>
@@ -575,7 +589,10 @@ export default function Login() {
 
             {/* Copyright */}
             <div className="mt-auto pt-4">
-              <p className="text-xs text-center text-brand-text-secondary/60">
+              <p className="text-center text-xs text-brand-text-secondary/70">
+                Registro contemporâneo e seguro
+              </p>
+              <p className="mt-1 text-center text-[11px] text-brand-text-secondary/60">
                 {textoCopyright}
               </p>
             </div>
