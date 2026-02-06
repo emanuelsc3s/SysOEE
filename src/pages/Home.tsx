@@ -323,7 +323,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center justify-between text-sm tab-prod:text-[10px] text-muted-foreground">
             <p>© {new Date().getFullYear()} - <span className="text-primary">SICFAR</span> Módulo de <span className="text-primary">OEE</span>. Todos os direitos reservados a <span className="text-primary">FARMACE</span>.</p>
             <p className="mt-2 md:mt-0 tab-prod:mt-0">
-              Versão 1.1.6 | <span className="text-primary">MVP</span>
+              Versão 1.1.7| <span className="text-primary">MVP</span>
             </p>
           </div>
         </footer>
