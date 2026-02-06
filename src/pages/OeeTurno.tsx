@@ -456,6 +456,47 @@ export default function OeeTurno() {
   )
   const totalItems = turnosData?.count || 0
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const totalPagesValidas = Math.max(totalPages, 1)
+  const paginaAtualExibida = Math.min(currentPage, totalPagesValidas)
+  const inicioFaixaItens = totalItems === 0 ? 0 : (paginaAtualExibida - 1) * itemsPerPage + 1
+  const fimFaixaItens = totalItems === 0 ? 0 : Math.min(paginaAtualExibida * itemsPerPage, totalItems)
+
+  // Sincroniza a página atual quando o backend corrige paginação fora do intervalo.
+  useEffect(() => {
+    const paginaCorrigida = turnosData?.page
+    if (!paginaCorrigida || paginaCorrigida === currentPage) {
+      return
+    }
+
+    setCurrentPage(paginaCorrigida)
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (paginaCorrigida > 1) {
+        params.set('page', String(paginaCorrigida))
+      } else {
+        params.delete('page')
+      }
+      return params
+    }, { replace: true })
+  }, [turnosData?.page, currentPage, setSearchParams])
+
+  // Segurança adicional: mantém o estado da página dentro do total calculado.
+  useEffect(() => {
+    if (currentPage <= totalPagesValidas) {
+      return
+    }
+
+    setCurrentPage(totalPagesValidas)
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (totalPagesValidas > 1) {
+        params.set('page', String(totalPagesValidas))
+      } else {
+        params.delete('page')
+      }
+      return params
+    }, { replace: true })
+  }, [currentPage, totalPagesValidas, setSearchParams])
 
   useEffect(() => {
     if (turnosPaginados.length === 0) {
@@ -556,6 +597,20 @@ export default function OeeTurno() {
         params.delete('page')
       }
       setSearchParams(params, { replace: true })
+    } catch { /* noop */ }
+  }
+
+  const handleItemsPerPageChange = (size: number) => {
+    setItemsPerPage(size)
+    setCurrentPage(1)
+    // Atualiza query param para refletir primeira página
+    try {
+      const params = new URLSearchParams(searchParams)
+      params.delete('page')
+      setSearchParams(params, { replace: true })
+    } catch { /* noop */ }
+    try {
+      localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size))
     } catch { /* noop */ }
   }
 
@@ -809,10 +864,10 @@ export default function OeeTurno() {
               <h1 className="text-2xl font-bold text-[#1f2937]">Apontamentos OEE</h1>
               <p className="text-sm text-gray-500">Visualize e acompanhe os apontamentos de produção por turno</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
               <Button
                 variant="outline"
-                className="flex items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-10 px-4"
+                className="flex w-full items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
                 onClick={() => navigate('/')}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -820,7 +875,7 @@ export default function OeeTurno() {
               </Button>
               <Button
                 variant="outline"
-                className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
                 onClick={() => navigate('/apontamento-oee?modo=inclusao')}
               >
                 <Activity className="h-4 w-4" />
@@ -839,16 +894,21 @@ export default function OeeTurno() {
                     Total de {totalItems} apontamentos encontrados
                   </p>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap md:justify-end md:self-center">
-                  <DataPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                    itemsPerPage={itemsPerPage}
-                    totalItems={totalItems}
-                    showInfo={false}
-                    className="!border-0 !bg-transparent !px-0 !py-0 !justify-end"
-                  />
+                <div className="flex flex-col items-start gap-2 md:items-end md:self-center">
+                  <div className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 sm:hidden">
+                    Página {paginaAtualExibida} de {totalPagesValidas}
+                  </div>
+                  <div className="hidden sm:flex sm:items-center sm:gap-3 sm:flex-wrap md:justify-end">
+                    <DataPagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                      itemsPerPage={itemsPerPage}
+                      totalItems={totalItems}
+                      showInfo={false}
+                      className="!border-0 !bg-transparent !px-0 !py-0 !justify-end"
+                    />
+                  </div>
                   {isLoading && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -862,13 +922,13 @@ export default function OeeTurno() {
             {/* Conteúdo cresce para ocupar o espaço vertical */}
             <div className="px-4 sm:px-6 py-4 flex flex-col">
               {/* Barra de busca, período e ações responsiva */}
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
                 <div className="relative w-full md:flex-1 max-w-none">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     type="text"
                     placeholder="Pesquisar por linha, turno, SKU ou produto..."
-                    className="pl-10 py-2 w-full border border-gray-200 rounded-md text-sm"
+                    className="h-11 md:h-10 pl-10 w-full border border-gray-200 rounded-md text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -877,74 +937,80 @@ export default function OeeTurno() {
                 {/* Filtro de período por data */}
                 <div className="flex flex-col gap-1 md:shrink-0">
                   <Label className="text-xs font-medium text-gray-500">Período</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="dd/mm/aaaa"
-                        className="w-[120px] h-9 text-sm border border-gray-200 rounded-md"
-                        value={dataInicio}
-                        onChange={(e) => setDataInicio(formatarDataDigitada(e.target.value))}
-                      />
-                      <Popover open={calendarioInicioAberto} onOpenChange={setCalendarioInicioAberto}>
-                        <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label="Selecionar data inicial">
-                            <CalendarIcon className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={dataInicioSelecionada}
-                            captionLayout="dropdown"
-                            locale={ptBR}
-                            onSelect={(date) => {
-                              if (date) {
-                                setDataInicio(format(date, 'dd/MM/yyyy'))
-                              }
-                              setCalendarioInicioAberto(false)
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                  <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-2">
+                    <div className="space-y-1 sm:space-y-0">
+                      <Label className="text-[11px] text-gray-500 sm:hidden">Data inicial</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="dd/mm/aaaa"
+                          className="h-10 w-full min-w-0 text-sm border border-gray-200 rounded-md"
+                          value={dataInicio}
+                          onChange={(e) => setDataInicio(formatarDataDigitada(e.target.value))}
+                        />
+                        <Popover open={calendarioInicioAberto} onOpenChange={setCalendarioInicioAberto}>
+                          <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="Selecionar data inicial">
+                              <CalendarIcon className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={dataInicioSelecionada}
+                              captionLayout="dropdown"
+                              locale={ptBR}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setDataInicio(format(date, 'dd/MM/yyyy'))
+                                }
+                                setCalendarioInicioAberto(false)
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
-                    <span className="text-xs text-gray-400">até</span>
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="dd/mm/aaaa"
-                        className="w-[120px] h-9 text-sm border border-gray-200 rounded-md"
-                        value={dataFim}
-                        onChange={(e) => setDataFim(formatarDataDigitada(e.target.value))}
-                      />
-                      <Popover open={calendarioFimAberto} onOpenChange={setCalendarioFimAberto}>
-                        <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label="Selecionar data final">
-                            <CalendarIcon className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={dataFimSelecionada}
-                            captionLayout="dropdown"
-                            locale={ptBR}
-                            onSelect={(date) => {
-                              if (date) {
-                                setDataFim(format(date, 'dd/MM/yyyy'))
-                              }
-                              setCalendarioFimAberto(false)
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                    <span className="hidden text-xs text-gray-400 sm:inline">até</span>
+                    <div className="space-y-1 sm:space-y-0">
+                      <Label className="text-[11px] text-gray-500 sm:hidden">Data final</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="dd/mm/aaaa"
+                          className="h-10 w-full min-w-0 text-sm border border-gray-200 rounded-md"
+                          value={dataFim}
+                          onChange={(e) => setDataFim(formatarDataDigitada(e.target.value))}
+                        />
+                        <Popover open={calendarioFimAberto} onOpenChange={setCalendarioFimAberto}>
+                          <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="Selecionar data final">
+                              <CalendarIcon className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={dataFimSelecionada}
+                              captionLayout="dropdown"
+                              locale={ptBR}
+                              onSelect={(date) => {
+                                if (date) {
+                                  setDataFim(format(date, 'dd/MM/yyyy'))
+                                }
+                                setCalendarioFimAberto(false)
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 md:shrink-0">
+                <div className="flex flex-col gap-2 md:shrink-0 sm:flex-row">
                   <Dialog open={openFilterDialog} onOpenChange={(o) => {
                     setOpenFilterDialog(o)
                     if (o) setDraftFilters({ ...appliedFilters })
@@ -952,7 +1018,7 @@ export default function OeeTurno() {
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                        className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
                       >
                         <Filter className="h-4 w-4" />
                         Filtros
@@ -1018,7 +1084,7 @@ export default function OeeTurno() {
                     variant="outline"
                     onClick={() => refetch()}
                     disabled={isFetching}
-                    className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                    className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
                     title="Atualizar lista"
                   >
                     <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
@@ -1040,7 +1106,7 @@ export default function OeeTurno() {
                 )}
 
                 {/* Cards para mobile */}
-                <div className="sm:hidden space-y-3">
+                <div className="sm:hidden space-y-4">
                   {turnosPaginados.length === 0 && !isLoading ? (
                     <div className="rounded-lg border border-dashed border-gray-200 p-6 text-center text-gray-500 bg-gray-50">
                       <div>
@@ -1063,15 +1129,55 @@ export default function OeeTurno() {
                             handleVisualizar(turno)
                           }
                         }}
-                        className="w-full text-left rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/60 transition cursor-pointer"
+                        className="w-full text-left rounded-2xl border border-gray-200 bg-white p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/60 transition-all cursor-pointer active:scale-[0.995]"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-xs uppercase tracking-wide text-gray-500">Data/Turno</p>
                             <p className="text-base font-semibold text-gray-900">{formatarData(turno.data)}</p>
-                            <p className="text-sm text-gray-700 mt-1">{turno.turno}</p>
+                            <p className="mt-1 text-sm text-gray-700 truncate">{turno.turno}</p>
+                            <p className="mt-1 text-[11px] text-gray-500">Lançamento: {turno.id}</p>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">OEE</span>
+                              {carregandoOeePorTurno[turno.id] || oeePorTurno[turno.id] === undefined ? (
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-[10px] text-gray-500">
+                                  ...
+                                </div>
+                              ) : (
+                                <div className="relative inline-flex h-11 w-11 items-center justify-center">
+                                  <svg className="h-11 w-11 -rotate-90" viewBox="0 0 120 120">
+                                    <circle
+                                      className="stroke-gray-200"
+                                      cx="60"
+                                      cy="60"
+                                      fill="none"
+                                      r="54"
+                                      strokeWidth="12"
+                                    />
+                                    <circle
+                                      cx="60"
+                                      cy="60"
+                                      fill="none"
+                                      r="54"
+                                      strokeDasharray="339.292"
+                                      strokeDashoffset={339.292 - (339.292 * (oeePorTurno[turno.id] ?? 0)) / 100}
+                                      strokeLinecap="round"
+                                      strokeWidth="12"
+                                      stroke={calcularCorOee(oeePorTurno[turno.id]) ?? '#9CA3AF'}
+                                      style={{ transition: 'stroke-dashoffset 0.3s ease-in-out, stroke 0.3s ease-in-out' }}
+                                    />
+                                  </svg>
+                                  <span
+                                    className="absolute text-[10px] font-bold"
+                                    style={{ color: calcularCorOee(oeePorTurno[turno.id]) ?? undefined }}
+                                  >
+                                    {Math.round(oeePorTurno[turno.id] ?? 0)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                             <Badge variant={getBadgeStatus(turno.status)} className="flex items-center">
                               <Target className="h-3 w-3 mr-1" />
                               {turno.status || 'N/A'}
@@ -1085,10 +1191,12 @@ export default function OeeTurno() {
                         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-700">
                           <div className="flex items-start gap-2 col-span-2">
                             <Package className="h-4 w-4 text-gray-400 mt-0.5" />
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-xs text-gray-500">Produto</p>
-                              <p className="font-semibold text-gray-900">{turno.produto}</p>
-                            <p className="text-xs text-gray-500 mt-1">Linha: {formatarLinhaProducao(turno)}</p>
+                              <p className="font-semibold text-gray-900 line-clamp-2">{turno.produto}</p>
+                              <p className="text-xs text-gray-500 mt-1 truncate" title={formatarLinhaProducao(turno)}>
+                                Linha: {formatarLinhaProducao(turno)}
+                              </p>
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
@@ -1108,16 +1216,18 @@ export default function OeeTurno() {
                         </div>
 
                         {turno.observacao && (
-                          <div className="mt-3 text-xs text-gray-500 line-clamp-2">
+                          <div className="mt-3 rounded-md bg-gray-50 px-2.5 py-2 text-xs text-gray-500 line-clamp-2 border border-gray-100">
                             {turno.observacao}
                           </div>
                         )}
 
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <p className="mt-3 text-[11px] text-gray-500">Toque no card para consultar detalhes</p>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 min-w-[120px]"
+                            className="h-10"
                             onClick={(e) => {
                               e.stopPropagation()
                               void handleEditar(turno)
@@ -1129,7 +1239,7 @@ export default function OeeTurno() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 min-w-[120px] text-destructive border-destructive/60 hover:border-destructive hover:text-destructive"
+                            className="h-10 text-destructive border-destructive/60 hover:border-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation()
                               void handleExcluirClick(turno)
@@ -1333,29 +1443,63 @@ export default function OeeTurno() {
             </div>
 
             {/* Componente de Paginação reutilizável */}
-            <DataPagination
-              containerRef={paginationRef}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              itemsPerPage={itemsPerPage}
-              totalItems={totalItems}
-              showInfo={true}
-              pageSizeOptions={PAGE_SIZE_OPTIONS as unknown as number[]}
-              onItemsPerPageChange={(size) => {
-                setItemsPerPage(size)
-                setCurrentPage(1)
-                // Atualiza query param para refletir primeira página
-                try {
-                  const params = new URLSearchParams(searchParams)
-                  params.delete('page')
-                  setSearchParams(params, { replace: true })
-                } catch { /* noop */ }
-                try {
-                  localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size))
-                } catch { /* noop */ }
-              }}
-            />
+            <div className="sm:hidden border-t border-gray-200 bg-white px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-600">
+                  Mostrando {inicioFaixaItens} a {fimFaixaItens} de {totalItems}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="itens-por-pagina-mobile" className="text-xs text-gray-500">Por página</Label>
+                  <select
+                    id="itens-por-pagina-mobile"
+                    value={String(itemsPerPage)}
+                    className="h-9 rounded-md border border-gray-200 bg-white px-2.5 text-xs text-gray-700"
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => handlePageChange(paginaAtualExibida - 1)}
+                  disabled={paginaAtualExibida <= 1}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => handlePageChange(paginaAtualExibida + 1)}
+                  disabled={paginaAtualExibida >= totalPagesValidas}
+                >
+                  Próxima
+                </Button>
+              </div>
+              <p className="text-center text-xs text-gray-500">
+                Página {paginaAtualExibida} de {totalPagesValidas}
+              </p>
+            </div>
+
+            <div className="hidden sm:block">
+              <DataPagination
+                containerRef={paginationRef}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                itemsPerPage={itemsPerPage}
+                totalItems={totalItems}
+                showInfo={true}
+                pageSizeOptions={PAGE_SIZE_OPTIONS as unknown as number[]}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            </div>
           </div>
 
           {/* Dialog de confirmação de exclusão */}

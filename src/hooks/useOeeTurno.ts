@@ -46,6 +46,58 @@ function mapDbToForm(
 export interface FetchOeeTurnosResponse {
   data: OeeTurnoFormData[]
   count: number
+  page: number
+}
+
+type SupabaseErrorLike = {
+  code?: string
+  details?: string
+  hint?: string
+  message?: string
+  status?: number
+}
+
+const PAGINA_INICIAL = 1
+const ITENS_POR_PAGINA_PADRAO = 25
+
+/**
+ * Garante valor inteiro de página >= 1
+ */
+const normalizarPagina = (page: number): number => {
+  if (!Number.isFinite(page)) return PAGINA_INICIAL
+  return Math.max(PAGINA_INICIAL, Math.floor(page))
+}
+
+/**
+ * Garante valor inteiro de itens por página >= 1
+ */
+const normalizarItensPorPagina = (itemsPerPage: number): number => {
+  if (!Number.isFinite(itemsPerPage)) return ITENS_POR_PAGINA_PADRAO
+  return Math.max(1, Math.floor(itemsPerPage))
+}
+
+/**
+ * Detecta erro de paginação fora do intervalo (HTTP 416 / PGRST103)
+ */
+const isErroFaixaPaginacao = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const erro = error as SupabaseErrorLike
+  if (erro.status === 416 || erro.code === 'PGRST103') {
+    return true
+  }
+
+  const mensagem = `${erro.message ?? ''}`.toLowerCase()
+  const detalhes = `${erro.details ?? ''}`.toLowerCase()
+
+  return (
+    (mensagem.includes('range') && mensagem.includes('satisfiable')) ||
+    (detalhes.includes('range') && detalhes.includes('satisfiable')) ||
+    mensagem.includes('416') ||
+    detalhes.includes('416')
+  )
 }
 
 /**
@@ -63,70 +115,92 @@ export function useOeeTurno() {
     page = 1,
     itemsPerPage = 25
   ): Promise<FetchOeeTurnosResponse> => {
+    const paginaSolicitada = normalizarPagina(page)
+    const itensPorPagina = normalizarItensPorPagina(itemsPerPage)
+
     try {
       console.log('🔍 useOeeTurno: Iniciando busca. Filtros:', filters)
       setLoading(true)
 
-      // Construir query base
-      let query = supabase
-        .from('tboee_turno')
-        .select(`
-          *,
-          criador:tbusuario!tboee_turno_created_by_fkey(
-            usuario_id,
-            login
-          )
-        `, { count: 'exact' })
-        .eq('deletado', 'N')
-        .order('data', { ascending: false })
-        .order('oeeturno_id', { ascending: false })
+      const construirQueryBase = () => {
+        // Construir query base
+        let query = supabase
+          .from('tboee_turno')
+          .select(`
+            *,
+            criador:tbusuario!tboee_turno_created_by_fkey(
+              usuario_id,
+              login
+            )
+          `, { count: 'exact' })
+          .eq('deletado', 'N')
+          .order('data', { ascending: false })
+          .order('oeeturno_id', { ascending: false })
 
-      // Aplicar filtros se fornecidos
-      if (filters?.data) {
-        query = query.eq('data', filters.data)
-      }
-      if (filters?.dataInicio) {
-        query = query.gte('data', filters.dataInicio)
-      }
-      if (filters?.dataFim) {
-        query = query.lte('data', filters.dataFim)
-      }
-      if (filters?.turnoId) {
-        query = query.eq('turno_id', filters.turnoId)
-      }
-      if (filters?.produtoId) {
-        query = query.eq('produto_id', filters.produtoId)
-      }
-      if (filters?.status) {
-        query = query.eq('status', filters.status)
-      }
-
-      // Busca por termo (produto, turno ou observação). Para ID, usa igualdade quando o termo é numérico,
-      // pois o PostgREST não aceita cast em filtros (evita erro 400).
-      if (filters?.searchTerm) {
-        const term = filters.searchTerm.trim()
-        if (term) {
-          const partesBusca = [
-            `produto.ilike.%${term}%`,
-            `turno.ilike.%${term}%`,
-            `observacao.ilike.%${term}%`
-          ]
-
-          if (/^\d+$/.test(term)) {
-            partesBusca.unshift(`oeeturno_id.eq.${term}`)
-          }
-
-          query = query.or(partesBusca.join(','))
+        // Aplicar filtros se fornecidos
+        if (filters?.data) {
+          query = query.eq('data', filters.data)
         }
+        if (filters?.dataInicio) {
+          query = query.gte('data', filters.dataInicio)
+        }
+        if (filters?.dataFim) {
+          query = query.lte('data', filters.dataFim)
+        }
+        if (filters?.turnoId) {
+          query = query.eq('turno_id', filters.turnoId)
+        }
+        if (filters?.produtoId) {
+          query = query.eq('produto_id', filters.produtoId)
+        }
+        if (filters?.status) {
+          query = query.eq('status', filters.status)
+        }
+
+        // Busca por termo (produto, turno ou observação). Para ID, usa igualdade quando o termo é numérico,
+        // pois o PostgREST não aceita cast em filtros (evita erro 400).
+        if (filters?.searchTerm) {
+          const term = filters.searchTerm.trim()
+          if (term) {
+            const partesBusca = [
+              `produto.ilike.%${term}%`,
+              `turno.ilike.%${term}%`,
+              `observacao.ilike.%${term}%`
+            ]
+
+            if (/^\d+$/.test(term)) {
+              partesBusca.unshift(`oeeturno_id.eq.${term}`)
+            }
+
+            query = query.or(partesBusca.join(','))
+          }
+        }
+
+        return query
       }
 
-      // Paginação
-      const from = (page - 1) * itemsPerPage
-      const to = from + itemsPerPage - 1
-      query = query.range(from, to)
+      const executarBuscaPaginada = async (pagina: number) => {
+        const from = (pagina - 1) * itensPorPagina
+        const to = from + itensPorPagina - 1
+        return construirQueryBase().range(from, to)
+      }
+
+      let paginaEfetiva = paginaSolicitada
 
       console.log('🔍 useOeeTurno: Executando query no Supabase...')
-      const { data, error, count } = await query
+      let { data, error, count } = await executarBuscaPaginada(paginaEfetiva)
+
+      if (error && paginaSolicitada > PAGINA_INICIAL && isErroFaixaPaginacao(error)) {
+        console.warn(
+          '⚠️ useOeeTurno: Página fora do intervalo. Reexecutando na página 1.',
+          { paginaSolicitada, itensPorPagina, error }
+        )
+        paginaEfetiva = PAGINA_INICIAL
+        const retry = await executarBuscaPaginada(paginaEfetiva)
+        data = retry.data
+        error = retry.error
+        count = retry.count
+      }
 
       if (error) {
         console.error('❌ useOeeTurno: Erro na query:', error)
@@ -214,7 +288,8 @@ export function useOeeTurno() {
 
       return {
         data: turnosMapeados,
-        count: count || turnosMapeados.length
+        count: count || turnosMapeados.length,
+        page: paginaEfetiva
       }
     } catch (error) {
       console.error('❌ useOeeTurno: Erro ao buscar turnos OEE:', error)
@@ -224,7 +299,7 @@ export function useOeeTurno() {
         description: errorMessage,
         variant: 'destructive'
       })
-      return { data: [], count: 0 }
+      return { data: [], count: 0, page: PAGINA_INICIAL }
     } finally {
       setLoading(false)
     }
