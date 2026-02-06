@@ -33,6 +33,7 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AppHeader } from '@/components/layout/AppHeader'
+import { ModalResumoOeeTurno } from '@/components/supervisao/ModalResumoOeeTurno'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
 import { SYSOEE_APP_ID, type Rotina } from '@/hooks/usePermissions'
@@ -51,6 +52,7 @@ import {
   ArrowLeft,
   Package,
   Activity,
+  ClipboardList,
   Calendar as CalendarIcon
 } from 'lucide-react'
 import { DataPagination } from '@/components/ui/data-pagination'
@@ -321,6 +323,7 @@ export default function OeeTurno() {
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false)
   const [turnoToDelete, setTurnoToDelete] = useState<OeeTurnoFormData | null>(null)
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
+  const [isResumoDialogOpen, setIsResumoDialogOpen] = useState(false)
   const [usuarioIdAutenticado, setUsuarioIdAutenticado] = useState<number | null>(null)
 
   // Estados para modal de turno fechado
@@ -385,6 +388,20 @@ export default function OeeTurno() {
   // Datas selecionadas como objetos Date (para o componente Calendar)
   const dataInicioSelecionada = useMemo(() => parseDataParaDate(dataInicio), [dataInicio])
   const dataFimSelecionada = useMemo(() => parseDataParaDate(dataFim), [dataFim])
+  const dataInicioIso = converterDataBrParaIso(dataInicio)
+  const dataFimIso = converterDataBrParaIso(dataFim)
+  const oeeturnoIdFiltro = useMemo(() => {
+    const termo = searchTerm.trim()
+    return /^\d+$/.test(termo) ? Number(termo) : null
+  }, [searchTerm])
+  const parametrosResumo = useMemo(() => ({
+    p_data_inicio: dataInicioIso,
+    p_data_fim: dataFimIso,
+    p_turno_id: null,
+    p_produto_id: null,
+    p_linhaproducao_id: null,
+    p_oeeturno_id: oeeturnoIdFiltro
+  }), [dataInicioIso, dataFimIso, oeeturnoIdFiltro])
 
   // Contagem de filtros aplicados no modal "Filtros" (não inclui período inline)
   const appliedCountBadge = (() => {
@@ -864,7 +881,7 @@ export default function OeeTurno() {
               <h1 className="text-2xl font-bold text-[#1f2937]">Apontamentos OEE</h1>
               <p className="text-sm text-gray-500">Visualize e acompanhe os apontamentos de produção por turno</p>
             </div>
-            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+            <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center">
               <Button
                 variant="outline"
                 className="flex w-full items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
@@ -872,6 +889,14 @@ export default function OeeTurno() {
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
+              </Button>
+              <Button
+                variant="outline"
+                className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
+                onClick={() => setIsResumoDialogOpen(true)}
+              >
+                <ClipboardList className="h-4 w-4" />
+                Resumo
               </Button>
               <Button
                 variant="outline"
@@ -1501,6 +1526,14 @@ export default function OeeTurno() {
               />
             </div>
           </div>
+
+          <ModalResumoOeeTurno
+            open={isResumoDialogOpen}
+            onOpenChange={setIsResumoDialogOpen}
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            parametros={parametrosResumo}
+          />
 
           {/* Dialog de confirmação de exclusão */}
           <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

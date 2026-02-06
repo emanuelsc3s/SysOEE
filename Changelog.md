@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado modal de resumo consolidado do `OeeTurno` com KPIs e tabela baseada em RPC.
+- Criada a RPC `fn_resumo_oee_turno` para consolidar produção, perdas e paradas por período/linha/produto.
+- Ajustada a sublinha da coluna "Linha" no modal de resumo para exibir o lançamento (`oeeturno_id`).
+- Adicionada a coluna "Qtde. turnos" no modal de resumo do `OeeTurno`.
 - Adicionado modal de Pareto de paradas grandes no `Dashboard` com nova RPC e gráfico dedicado.
 - Corrigida ambiguidade de coluna na RPC `fn_calcular_pareto_paradas`.
 - Corrigida ambiguidade de `tempo_parada_horas` na RPC `fn_calcular_pareto_paradas`.
