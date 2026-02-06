@@ -59,6 +59,7 @@
 - Marcado o campo "Perfil" com indicador visual obrigatório no cadastro de usuários.
 - Tornado obrigatório o campo "Perfil" no cadastro de usuários.
 - Ajustado o select de perfil em `UsuariosCad` para exibir apenas o texto do perfil quando selecionado.
+- Persistido o campo `perfil` em `tbusuario` ao criar/atualizar usuários pelo dropdown de Perfil.
 - Reordenada a coluna "Perfil" para ficar antes de "Login" na tabela de usuários.
 - Corrigida validação de autenticação nas páginas `OeeParada` e `OeeParadaCad` para usar UUID do Supabase Auth.
 - Removido fallback inválido `'1'` para userId - operações de escrita agora exigem usuário autenticado.

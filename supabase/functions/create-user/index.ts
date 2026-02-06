@@ -30,6 +30,7 @@ interface CreateUserRequest {
   senha: string
   login: string
   usuario: string
+  perfil?: string
   perfil_id?: number
   funcionario_id?: number
   usuario_id?: number
@@ -117,7 +118,7 @@ serve(async (req) => {
 
     // Obter dados da requisição
     const body: CreateUserRequest = await req.json()
-    const { email, senha, login, usuario, perfil_id, funcionario_id, usuario_id, created_at } = body
+    const { email, senha, login, usuario, perfil, perfil_id, funcionario_id, usuario_id, created_at } = body
 
     // Validar campos obrigatórios
     if (!email || !senha || !login || !usuario) {
@@ -244,6 +245,7 @@ serve(async (req) => {
       user_id: newUserId,
       login,
       usuario,
+      perfil: perfil?.trim() || null,
       perfil_id: perfil_id || null,
       funcionario_id: funcionario_id || null,
       deletado: 'N',
