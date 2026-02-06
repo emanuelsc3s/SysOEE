@@ -260,7 +260,7 @@ export default function Home() {
                 <div className="relative flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary/80 md:hidden">
-                      {saudacao}
+                      Painel inicial
                     </p>
                     <h2 className="mt-1 text-xl md:text-3xl tab:text-4xl tab-prod:text-xl font-bold text-[hsl(211.8947_94.0594%_28%)]">
                       {saudacao}, bem-vindo!
@@ -383,4 +383,3 @@ export default function Home() {
     </div>
   )
 }
-
