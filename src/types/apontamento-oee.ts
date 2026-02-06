@@ -211,6 +211,10 @@ export interface FetchOeeTurnoFilters {
   searchTerm?: string
   /** Filtrar por data específica */
   data?: string
+  /** Filtrar por data inicial do período (formato yyyy-mm-dd) */
+  dataInicio?: string
+  /** Filtrar por data final do período (formato yyyy-mm-dd) */
+  dataFim?: string
   /** Filtrar por ID do turno */
   turnoId?: number
   /** Filtrar por ID do produto */

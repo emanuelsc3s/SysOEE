@@ -21,6 +21,7 @@ export interface DataPaginationProps {
   pageSizeOptions?: number[];
   onItemsPerPageChange?: (size: number) => void;
   containerRef?: React.Ref<HTMLDivElement>;
+  className?: string;
 }
 
 export function DataPagination({
@@ -34,6 +35,7 @@ export function DataPagination({
   pageSizeOptions,
   onItemsPerPageChange,
   containerRef,
+  className = '',
 }: DataPaginationProps) {
   // Calcular range de itens sendo exibidos
   const startItem = (currentPage - 1) * itemsPerPage + 1;
@@ -78,7 +80,7 @@ export function DataPagination({
   };
 
   return (
-    <div ref={containerRef} className={`flex flex-row items-center gap-3 px-4 py-3 border-t border-gray-200 bg-white ${showInfo ? 'justify-between' : 'justify-center'}`}>
+    <div ref={containerRef} className={`flex flex-row items-center gap-3 px-4 py-3 border-t border-gray-200 bg-white ${showInfo ? 'justify-between' : 'justify-center'} ${className}`}>
       {showInfo && (
         <div className="flex items-center gap-3 flex-wrap">
           <div className={infoClassName}>

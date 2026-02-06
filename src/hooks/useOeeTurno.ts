@@ -85,6 +85,12 @@ export function useOeeTurno() {
       if (filters?.data) {
         query = query.eq('data', filters.data)
       }
+      if (filters?.dataInicio) {
+        query = query.gte('data', filters.dataInicio)
+      }
+      if (filters?.dataFim) {
+        query = query.lte('data', filters.dataFim)
+      }
       if (filters?.turnoId) {
         query = query.eq('turno_id', filters.turnoId)
       }

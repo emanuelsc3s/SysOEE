@@ -30,6 +30,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
@@ -49,7 +51,7 @@ import {
   ArrowLeft,
   Package,
   Activity,
-  Calendar
+  Calendar as CalendarIcon
 } from 'lucide-react'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { format } from 'date-fns'
@@ -189,9 +191,110 @@ const buscarOeePorTurno = async (oeeturnoId: number): Promise<number | null> => 
   }
 }
 
+/**
+ * Formata texto digitado pelo usuário no campo de data para o padrão dd/mm/aaaa
+ */
+const formatarDataDigitada = (valor: string): string => {
+  const texto = valor.trim()
+  const matchIso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (matchIso) {
+    return `${matchIso[3]}/${matchIso[2]}/${matchIso[1]}`
+  }
+
+  const numeros = texto.replace(/\D/g, '').slice(0, 8)
+  if (!numeros) {
+    return ''
+  }
+
+  const partes: string[] = []
+  partes.push(numeros.slice(0, 2))
+  if (numeros.length > 2) {
+    partes.push(numeros.slice(2, 4))
+  }
+  if (numeros.length > 4) {
+    partes.push(numeros.slice(4, 8))
+  }
+  return partes.join('/')
+}
+
+/**
+ * Converte string de data (dd/mm/aaaa ou yyyy-mm-dd) para objeto Date
+ */
+const parseDataParaDate = (valor: string): Date | undefined => {
+  const texto = valor.trim()
+  if (!texto) {
+    return undefined
+  }
+
+  const matchBr = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  const matchIso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  const dia = matchBr ? Number(matchBr[1]) : matchIso ? Number(matchIso[3]) : NaN
+  const mes = matchBr ? Number(matchBr[2]) : matchIso ? Number(matchIso[2]) : NaN
+  const ano = matchBr ? Number(matchBr[3]) : matchIso ? Number(matchIso[1]) : NaN
+
+  if (!Number.isFinite(dia) || !Number.isFinite(mes) || !Number.isFinite(ano)) {
+    return undefined
+  }
+
+  const data = new Date(ano, mes - 1, dia)
+  if (
+    data.getFullYear() !== ano ||
+    data.getMonth() !== mes - 1 ||
+    data.getDate() !== dia
+  ) {
+    return undefined
+  }
+
+  return data
+}
+
+/**
+ * Converte data no formato dd/mm/aaaa para yyyy-mm-dd (ISO) para queries no Supabase
+ */
+const converterDataBrParaIso = (valor: string): string | undefined => {
+  const texto = valor.trim()
+  if (!texto) {
+    return undefined
+  }
+
+  const matchIso = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (matchIso) {
+    return texto
+  }
+
+  const matchBr = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!matchBr) {
+    return undefined
+  }
+
+  const dia = Number(matchBr[1])
+  const mes = Number(matchBr[2])
+  const ano = Number(matchBr[3])
+  const data = new Date(ano, mes - 1, dia)
+
+  if (
+    data.getFullYear() !== ano ||
+    data.getMonth() !== mes - 1 ||
+    data.getDate() !== dia
+  ) {
+    return undefined
+  }
+
+  return `${matchBr[3]}-${matchBr[2]}-${matchBr[1]}`
+}
+
+/**
+ * Retorna a data atual no formato dd/mm/aaaa usando o fuso local do navegador.
+ */
+const obterDataAtualFormatada = (): string => {
+  return format(new Date(), 'dd/MM/yyyy')
+}
+
 export default function OeeTurno() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const dataAtualInicialRef = useRef(obterDataAtualFormatada())
   const [searchTerm, setSearchTerm] = useState(() => {
     try {
       return sessionStorage.getItem(SEARCH_TERM_STORAGE_KEY) ?? ''
@@ -206,6 +309,12 @@ export default function OeeTurno() {
 
   // Controla quantidade de registros exibidos por página (persistido em localStorage)
   const [itemsPerPage, setItemsPerPage] = useState(25)
+
+  // Estados dos date pickers de período
+  const [dataInicio, setDataInicio] = useState(dataAtualInicialRef.current)
+  const [dataFim, setDataFim] = useState(dataAtualInicialRef.current)
+  const [calendarioInicioAberto, setCalendarioInicioAberto] = useState(false)
+  const [calendarioFimAberto, setCalendarioFimAberto] = useState(false)
 
   // Estados de UI
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -270,14 +379,32 @@ export default function OeeTurno() {
   })
   const prevFiltersRef = useRef(appliedFilters)
   const prevSearchTermRef = useRef(searchTerm)
+  const prevDataInicioRef = useRef(dataInicio)
+  const prevDataFimRef = useRef(dataFim)
 
-  // Contagem de filtros aplicados para badge
+  // Datas selecionadas como objetos Date (para o componente Calendar)
+  const dataInicioSelecionada = useMemo(() => parseDataParaDate(dataInicio), [dataInicio])
+  const dataFimSelecionada = useMemo(() => parseDataParaDate(dataFim), [dataFim])
+
+  // Contagem de filtros aplicados no modal "Filtros" (não inclui período inline)
+  const appliedCountBadge = (() => {
+    let count = 0
+    const f = appliedFilters
+    if (f.turno) count++
+    if (f.produto) count++
+    if (f.status) count++
+    return count
+  })()
+
+  // Contagem de filtros aplicados para estado da lista (inclui datas inline)
   const appliedCount = (() => {
     let count = 0
     const f = appliedFilters
     if (f.turno) count++
     if (f.produto) count++
     if (f.status) count++
+    if (dataInicio) count++
+    if (dataFim) count++
     return count
   })()
 
@@ -295,7 +422,9 @@ export default function OeeTurno() {
       searchTerm,
       appliedFilters.turno,
       appliedFilters.produto,
-      appliedFilters.status
+      appliedFilters.status,
+      dataInicio,
+      dataFim
     ],
     queryFn: async () => {
       // Construir filtro de busca combinando texto
@@ -308,7 +437,9 @@ export default function OeeTurno() {
       return await fetchOeeTurnos(
         {
           searchTerm: searchFilter || undefined,
-          status: appliedFilters.status || undefined
+          status: appliedFilters.status || undefined,
+          dataInicio: converterDataBrParaIso(dataInicio),
+          dataFim: converterDataBrParaIso(dataFim)
         },
         currentPage,
         itemsPerPage
@@ -388,7 +519,7 @@ export default function OeeTurno() {
     }
   }, [turnosPaginados])
 
-  // Resetar página para 1 quando searchTerm ou filtros mudarem
+  // Resetar página para 1 quando searchTerm, filtros ou datas mudarem
   useEffect(() => {
     const prevFilters = prevFiltersRef.current
     const filtersChanged =
@@ -396,18 +527,22 @@ export default function OeeTurno() {
       prevFilters.produto !== appliedFilters.produto ||
       prevFilters.status !== appliedFilters.status
     const searchChanged = prevSearchTermRef.current !== searchTerm
-    if (!filtersChanged && !searchChanged) {
+    const dataInicioChanged = prevDataInicioRef.current !== dataInicio
+    const dataFimChanged = prevDataFimRef.current !== dataFim
+    if (!filtersChanged && !searchChanged && !dataInicioChanged && !dataFimChanged) {
       return
     }
     prevFiltersRef.current = appliedFilters
     prevSearchTermRef.current = searchTerm
+    prevDataInicioRef.current = dataInicio
+    prevDataFimRef.current = dataFim
     setCurrentPage(1)
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev)
       newParams.set('page', '1')
       return newParams
     })
-  }, [searchTerm, appliedFilters, setSearchParams])
+  }, [searchTerm, appliedFilters, dataInicio, dataFim, setSearchParams])
 
   // Handler para mudança de página (sincroniza com query string)
   const handlePageChange = (page: number) => {
@@ -442,8 +577,11 @@ export default function OeeTurno() {
       produto: '',
       status: '' as OeeTurnoStatus | '',
     }
+    const dataAtual = obterDataAtualFormatada()
     setDraftFilters(cleared)
     setAppliedFilters(cleared)
+    setDataInicio(dataAtual)
+    setDataFim(dataAtual)
     setCurrentPage(1)
     try {
       const params = new URLSearchParams(searchParams)
@@ -701,7 +839,16 @@ export default function OeeTurno() {
                     Total de {totalItems} apontamentos encontrados
                   </p>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap md:justify-end md:self-center">
+                  <DataPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    itemsPerPage={itemsPerPage}
+                    totalItems={totalItems}
+                    showInfo={false}
+                    className="!border-0 !bg-transparent !px-0 !py-0 !justify-end"
+                  />
                   {isLoading && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -714,8 +861,8 @@ export default function OeeTurno() {
 
             {/* Conteúdo cresce para ocupar o espaço vertical */}
             <div className="px-4 sm:px-6 py-4 flex flex-col">
-              {/* Barra de busca e ações responsiva */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+              {/* Barra de busca, período e ações responsiva */}
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-6">
                 <div className="relative w-full md:flex-1 max-w-none">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
@@ -725,6 +872,76 @@ export default function OeeTurno() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
+                </div>
+
+                {/* Filtro de período por data */}
+                <div className="flex flex-col gap-1 md:shrink-0">
+                  <Label className="text-xs font-medium text-gray-500">Período</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="dd/mm/aaaa"
+                        className="w-[120px] h-9 text-sm border border-gray-200 rounded-md"
+                        value={dataInicio}
+                        onChange={(e) => setDataInicio(formatarDataDigitada(e.target.value))}
+                      />
+                      <Popover open={calendarioInicioAberto} onOpenChange={setCalendarioInicioAberto}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label="Selecionar data inicial">
+                            <CalendarIcon className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dataInicioSelecionada}
+                            captionLayout="dropdown"
+                            locale={ptBR}
+                            onSelect={(date) => {
+                              if (date) {
+                                setDataInicio(format(date, 'dd/MM/yyyy'))
+                              }
+                              setCalendarioInicioAberto(false)
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <span className="text-xs text-gray-400">até</span>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="dd/mm/aaaa"
+                        className="w-[120px] h-9 text-sm border border-gray-200 rounded-md"
+                        value={dataFim}
+                        onChange={(e) => setDataFim(formatarDataDigitada(e.target.value))}
+                      />
+                      <Popover open={calendarioFimAberto} onOpenChange={setCalendarioFimAberto}>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="icon" className="h-9 w-9 shrink-0" aria-label="Selecionar data final">
+                            <CalendarIcon className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={dataFimSelecionada}
+                            captionLayout="dropdown"
+                            locale={ptBR}
+                            onSelect={(date) => {
+                              if (date) {
+                                setDataFim(format(date, 'dd/MM/yyyy'))
+                              }
+                              setCalendarioFimAberto(false)
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 md:shrink-0">
@@ -739,8 +956,8 @@ export default function OeeTurno() {
                       >
                         <Filter className="h-4 w-4" />
                         Filtros
-                        {appliedCount > 0 && (
-                          <Badge variant="secondary" className="ml-1">{appliedCount}</Badge>
+                        {appliedCountBadge > 0 && (
+                          <Badge variant="secondary" className="ml-1">{appliedCountBadge}</Badge>
                         )}
                       </Button>
                     </DialogTrigger>
@@ -1078,7 +1295,7 @@ export default function OeeTurno() {
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3 text-gray-400" />
+                                  <CalendarIcon className="h-3 w-3 text-gray-400" />
                                   {formatarData(turno.data)}
                                 </div>
                                 <div className="text-xs text-gray-500 font-normal">
