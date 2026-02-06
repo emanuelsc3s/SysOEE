@@ -4857,17 +4857,17 @@ export default function ApontamentoOEE() {
       {/* Header CRUD */}
       <div className="bg-background-light dark:bg-background-dark">
         <div className="flex justify-center">
-          <div className="w-full max-w-[1600px] px-3.5 pr-4 pt-3.5 pb-0">
-            <div className="flex items-center justify-between gap-4">
+          <div className="w-full max-w-[1600px] px-3 pb-1 pt-3 sm:px-4 md:px-3.5 md:pb-0 md:pr-4 md:pt-3.5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
               {/* Seção Esquerda - Título e Subtítulo */}
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="min-w-0 flex-1 text-2xl font-bold text-brand-primary truncate">
+              <div className="min-w-0 w-full md:w-auto">
+                <div className="flex flex-wrap items-start gap-2 md:items-center">
+                  <h1 className="min-w-0 flex-1 truncate text-xl font-bold leading-tight text-brand-primary sm:text-2xl">
                     Diário de Bordo{oeeTurnoId ? `: [${oeeTurnoId}]` : ''}
                   </h1>
                   <Badge
                     variant={modoEdicao ? 'warning' : (modoConsulta ? 'info' : (modoInclusao ? 'success' : 'default'))}
-                    className="flex items-center gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wide"
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wide"
                   >
                     {modoEdicao ? (
                       <Pencil className="h-3.5 w-3.5" />
@@ -4879,16 +4879,16 @@ export default function ApontamentoOEE() {
                     {modoEdicao ? 'MODO EDIÇÃO' : (modoConsulta ? 'MODO CONSULTA' : (modoInclusao ? 'MODO INCLUSÃO' : 'MODO'))}
                   </Badge>
                 </div>
-                <p className="text-brand-text-secondary truncate">
+                <p className="mt-1 truncate text-sm text-brand-text-secondary md:text-base">
                   Registro de produção, qualidade e paradas
                 </p>
               </div>
 
               {/* Seção Direita - Botões de Ação */}
-              <div className="flex gap-2">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap md:w-auto md:flex-nowrap">
                 <Button
                   variant="outline"
-                  className="flex items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-10 px-4"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 md:min-h-10 px-4"
                   onClick={handleVoltar}
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -4899,11 +4899,11 @@ export default function ApontamentoOEE() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                    className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 md:min-h-10 px-4"
                     >
-                    <FileText className="h-4 w-4" />
+                      <FileText className="h-4 w-4" />
                       Complemento
-                    <ChevronDownIcon className="h-4 w-4" />
+                      <ChevronDownIcon className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
@@ -4939,7 +4939,7 @@ export default function ApontamentoOEE() {
                 {modoEdicao && temOeeTurnoId && (
                   <Button
                     variant="destructive"
-                    className="flex items-center justify-center gap-2 min-h-10 px-4"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 min-h-11 md:min-h-10 px-4"
                     onClick={handleExcluir}
                   >
                     <Trash className="h-4 w-4" />
@@ -4948,7 +4948,7 @@ export default function ApontamentoOEE() {
                 )}
 
                 <Button
-                  className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 md:min-h-10 px-4"
                   onClick={handleSalvar}
                 >
                   <Save className="h-4 w-4" />
@@ -4956,7 +4956,7 @@ export default function ApontamentoOEE() {
                 </Button>
 
                 <Button
-                  className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                  className="hidden w-full sm:flex sm:w-auto items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
                   onClick={handleAjuda}
                 >
                   <HelpCircle className="h-4 w-4" />
@@ -4971,17 +4971,17 @@ export default function ApontamentoOEE() {
       {/* Conteúdo da Página - Container Centralizado */}
       <div className="min-h-screen flex justify-center gap-0 text-text-primary-light dark:text-text-primary-dark transition-colors duration-300" style={{ backgroundColor: '#f1f4f8' }}>
         {/* Container com largura máxima centralizado */}
-        <div className="w-full max-w-[1600px] flex gap-0">
+        <div className="w-full max-w-[1600px] flex flex-col gap-0 md:flex-row">
           {/* Conteúdo Principal */}
-          <div className="flex-grow flex flex-col min-w-0">
+          <div className="order-2 flex min-w-0 flex-grow flex-col md:order-1">
             {/* Main Content */}
-            <main className="flex-grow p-4 pr-2 bg-background-light dark:bg-background-dark">
+            <main className="flex-grow p-3 pb-4 sm:p-4 md:pr-2 bg-background-light dark:bg-background-dark">
           {/* Dashboard OEE - Cabeçalho com Filtros */}
-          <div className="flex-grow bg-white dark:bg-white p-4 pr-2 shadow-sm border-b border-border-light dark:border-border-dark mb-6">
+          <div className="flex-grow bg-white dark:bg-white p-4 shadow-sm border border-border-light dark:border-border-dark rounded-2xl mb-5 md:mb-6 md:rounded-none md:border-x-0 md:border-t-0 md:border-b md:pr-2">
             <div className="flex flex-col gap-y-4">
               {/* Primeira linha: Data, Turno, Hora Inicial, Hora Final */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2">
-                <div className="md:col-span-2 flex flex-col gap-1.5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-12 md:gap-x-4 md:gap-y-2">
+                <div className="sm:col-span-1 md:col-span-2 flex flex-col gap-1.5">
                   <Label htmlFor="date" className="text-sm font-medium text-muted-foreground">
                     Data
                   </Label>
@@ -4990,7 +4990,7 @@ export default function ApontamentoOEE() {
                       <Button
                         variant="outline"
                         id="date"
-                        className="w-full justify-between font-normal"
+                        className="w-full justify-between font-normal min-h-11 md:min-h-10"
                         disabled={cabecalhoBloqueado}
                       >
                         {data ? data.toLocaleDateString('pt-BR') : "Selecione a data"}
@@ -5019,7 +5019,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 {/* Turno - Código e Nome com Botão de Busca */}
-                <div className="md:col-span-6">
+                <div className="sm:col-span-2 md:col-span-6">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Turno</span>
                   <div className="flex gap-2">
                     <Input
@@ -5032,7 +5032,7 @@ export default function ApontamentoOEE() {
                         abrirModalBuscaTurno()
                       }}
                       placeholder="Selecione um turno"
-                      className={`flex-1 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      className={`flex-1 min-h-11 md:min-h-10 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
                     />
                     <Button
                       type="button"
@@ -5041,7 +5041,7 @@ export default function ApontamentoOEE() {
                       onClick={abrirModalBuscaTurno}
                       disabled={cabecalhoBloqueado}
                       title="Buscar turno"
-                      className="flex-none"
+                      className="flex-none h-11 w-11 md:h-10 md:w-10"
                     >
                       <Search className="h-4 w-4" />
                     </Button>
@@ -5049,7 +5049,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 {/* Hora Inicial do Turno */}
-                <div className="md:col-span-2">
+                <div className="sm:col-span-1 md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Inicial</span>
                   <div className="relative">
                     <Input
@@ -5062,14 +5062,14 @@ export default function ApontamentoOEE() {
                       inputMode="numeric"
                       autoComplete="off"
                       maxLength={5}
-                      className="bg-background-light dark:bg-background-dark pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="bg-background-light dark:bg-background-dark min-h-11 md:min-h-10 pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Hora Final do Turno */}
-                <div className="md:col-span-2">
+                <div className="sm:col-span-1 md:col-span-2">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Hora Final</span>
                   <div className="relative">
                     <Input
@@ -5082,7 +5082,7 @@ export default function ApontamentoOEE() {
                       inputMode="numeric"
                       autoComplete="off"
                       maxLength={5}
-                      className="bg-background-light dark:bg-background-dark pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="bg-background-light dark:bg-background-dark min-h-11 md:min-h-10 pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
@@ -5090,8 +5090,8 @@ export default function ApontamentoOEE() {
               </div>
 
               {/* Segunda linha: Linha de Produção e Produto SKU */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-x-6 gap-y-2">
-                <div className="md:col-span-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-12 md:gap-x-6 md:gap-y-2">
+                <div className="sm:col-span-2 md:col-span-6">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Linha de Produção</span>
                   <div className="flex gap-2">
                     <Input
@@ -5104,7 +5104,7 @@ export default function ApontamentoOEE() {
                         abrirModalBuscaLinha()
                       }}
                       placeholder="Selecione uma linha de produção"
-                      className={`flex-1 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      className={`flex-1 min-h-11 md:min-h-10 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
                     />
                     <Button
                       type="button"
@@ -5113,13 +5113,13 @@ export default function ApontamentoOEE() {
                       onClick={abrirModalBuscaLinha}
                       disabled={cabecalhoBloqueado}
                       title="Buscar linha de produção"
-                      className="flex-none"
+                      className="flex-none h-11 w-11 md:h-10 md:w-10"
                     >
                       <Search className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                <div className="md:col-span-6">
+                <div className="sm:col-span-2 md:col-span-6">
                   <span className="block text-sm font-medium text-muted-foreground mb-1.5">Produto SKU</span>
                   <div className="flex gap-2">
                     <Input
@@ -5132,7 +5132,7 @@ export default function ApontamentoOEE() {
                         abrirModalBuscaSKU()
                       }}
                       placeholder="Selecione um produto SKU"
-                      className={`flex-1 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      className={`flex-1 min-h-11 md:min-h-10 ${cabecalhoBloqueado ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
                     />
                     <Button
                       type="button"
@@ -5141,7 +5141,7 @@ export default function ApontamentoOEE() {
                       onClick={abrirModalBuscaSKU}
                       disabled={cabecalhoBloqueado}
                       title="Buscar produto SKU"
-                      className="flex-none"
+                      className="flex-none h-11 w-11 md:h-10 md:w-10"
                     >
                       <Search className="h-4 w-4" />
                     </Button>
@@ -5150,15 +5150,15 @@ export default function ApontamentoOEE() {
               </div>
 
               {/* Botão de Controle de Turno e edição de cabeçalho */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex flex-col gap-2.5 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 {(statusTurno === 'INICIADO' || podeEditarTurnoFechado) && (editandoCabecalho || !modoConsulta) && (
-                  <div className="flex gap-2">
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                     {!editandoCabecalho ? (
                       !modoConsulta && (
                         <Button
                           variant="outline"
                           onClick={handleEditarCabecalho}
-                          className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                          className="w-full sm:w-auto min-h-11 md:min-h-10 border-orange-200 text-orange-700 hover:bg-orange-50"
                         >
                           <Pencil className="mr-2 h-4 w-4" />
                           Alterar Turno
@@ -5168,7 +5168,7 @@ export default function ApontamentoOEE() {
                       <Button
                         variant="outline"
                         onClick={handleCancelarEdicaoCabecalho}
-                        className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                        className="w-full sm:w-auto min-h-11 md:min-h-10 border-gray-300 text-gray-700 hover:bg-gray-100"
                       >
                         <X className="mr-2 h-4 w-4" />
                         Cancelar
@@ -5182,7 +5182,7 @@ export default function ApontamentoOEE() {
                   <Button
                     variant="outline"
                     onClick={() => setModalLotesAberto(true)}
-                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                    className="w-full sm:w-auto min-h-11 md:min-h-10 border-blue-200 text-blue-700 hover:bg-blue-50"
                   >
                     <Package className="mr-2 h-4 w-4" />
                     Lotes
@@ -5193,7 +5193,7 @@ export default function ApontamentoOEE() {
                   <Button
                     onClick={handleIniciarTurno}
                     disabled={!validarCamposCabecalho()}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="w-full sm:w-auto min-h-11 md:min-h-10 bg-green-600 hover:bg-green-700 text-white"
                   >
                     <Play className="mr-2 h-4 w-4" />
                     Iniciar Turno
@@ -5204,7 +5204,7 @@ export default function ApontamentoOEE() {
                   <Button
                     onClick={editandoCabecalho ? handleContinuarTurno : handleSolicitarEncerramento}
                     disabled={editandoCabecalho && !validarCamposCabecalho()}
-                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                    className="w-full sm:w-auto min-h-11 md:min-h-10 bg-orange-600 hover:bg-orange-700 text-white"
                   >
                     {editandoCabecalho ? (
                       <CircleCheck className="mr-2 h-4 w-4" />
@@ -5218,7 +5218,7 @@ export default function ApontamentoOEE() {
                 )}
 
                 {statusTurno === 'ENCERRADO' && (
-                  <div className="flex items-center gap-2 text-green-700 font-medium">
+                  <div className="flex w-full items-center justify-center gap-2 text-green-700 font-medium sm:w-auto sm:justify-start">
                     <CheckCircle className="h-5 w-5" />
                     Turno Encerrado
                   </div>
@@ -5385,11 +5385,11 @@ export default function ApontamentoOEE() {
 
           {/* Mensagem quando turno não foi iniciado */}
           {statusTurno === 'NAO_INICIADO' ? (
-            <div className="bg-white dark:bg-white p-12 rounded-lg shadow-md border border-border-light dark:border-border-dark">
-              <div className="flex flex-col items-center justify-center text-center space-y-6">
+            <div className="bg-white dark:bg-white p-6 md:p-12 rounded-2xl md:rounded-lg shadow-md border border-border-light dark:border-border-dark">
+              <div className="flex flex-col items-center justify-center text-center space-y-4 md:space-y-6">
                 {/* Ilustração SVG */}
                 <svg
-                  className="w-32 h-32 text-muted-foreground/40"
+                  className="w-24 h-24 md:w-32 md:h-32 text-muted-foreground/40"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -5405,10 +5405,10 @@ export default function ApontamentoOEE() {
 
                 {/* Mensagem principal */}
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-text-primary-light dark:text-text-primary-dark">
+                  <h3 className="text-lg md:text-xl font-semibold text-text-primary-light dark:text-text-primary-dark">
                     Turno não iniciado
                   </h3>
-                  <p className="text-muted-foreground max-w-md">
+                  <p className="text-sm md:text-base text-muted-foreground max-w-md">
                     Para começar a registrar apontamentos de produção, qualidade e paradas, é necessário iniciar um turno.
                   </p>
                   <p className="text-sm text-muted-foreground max-w-md">
@@ -5420,9 +5420,9 @@ export default function ApontamentoOEE() {
           ) : (
             <>
               {/* Cards de Seleção de Formulário */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 gap-3 md:gap-6 md:grid-cols-2 lg:grid-cols-3 mb-5 md:mb-6">
                 <div
-                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border-l-4 border-l-primary border cursor-pointer hover:shadow-md transition-shadow ${
+                  className={`bg-white dark:bg-white p-4 rounded-2xl md:rounded-lg shadow-sm border-l-4 border-l-primary border cursor-pointer hover:shadow-md transition-shadow ${
                     formularioAtivo === 'production-form'
                       ? 'border-primary ring-1 ring-primary'
                       : 'border-border-light dark:border-border-dark'
@@ -5436,7 +5436,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div
-                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+                  className={`bg-white dark:bg-white p-4 rounded-2xl md:rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
                     formularioAtivo === 'quality-form'
                       ? 'border-primary ring-1 ring-primary'
                       : 'border-border-light dark:border-border-dark'
@@ -5450,7 +5450,7 @@ export default function ApontamentoOEE() {
                 </div>
 
                 <div
-                  className={`bg-white dark:bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
+                  className={`bg-white dark:bg-white p-4 rounded-2xl md:rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${
                     formularioAtivo === 'downtime-form'
                       ? 'border-primary ring-1 ring-primary'
                       : 'border-border-light dark:border-border-dark'
@@ -5466,8 +5466,8 @@ export default function ApontamentoOEE() {
 
           {/* Formulário de Produção */}
           {formularioAtivo === 'production-form' && (
-            <div className="space-y-6">
-              <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+            <div className="space-y-4 md:space-y-6">
+              <section className="bg-white dark:bg-white p-4 md:p-6 rounded-2xl md:rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Produção</h2>
 
                 {linhasApontamento.length === 0 ? (
@@ -5477,8 +5477,116 @@ export default function ApontamentoOEE() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Tabela de linhas de apontamento */}
-                    <div className="overflow-x-auto">
+                    {/* Cards de linhas de apontamento (mobile) */}
+                    <div className="space-y-3 md:hidden">
+                      {linhasApontamento.map((linha, index) => (
+                        <div
+                          key={linha.id}
+                          className="rounded-2xl border border-border-light bg-slate-50/60 p-3.5 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-muted-foreground">Janela de apontamento</span>
+                            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                              Ciclo {index + 1}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="rounded-xl bg-white px-3 py-2">
+                              <p className="text-[11px] text-muted-foreground">Hora início</p>
+                              <p className="text-sm font-semibold text-foreground">{formatarHoraPtBr(linha.horaInicio, false)}</p>
+                            </div>
+                            <div className="rounded-xl bg-white px-3 py-2">
+                              <p className="text-[11px] text-muted-foreground">Hora fim</p>
+                              <p className="text-sm font-semibold text-foreground">{formatarHoraPtBr(linha.horaFim, false)}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <Label className="text-xs text-muted-foreground" htmlFor={`qtd-mobile-${linha.id}`}>
+                              Quantidade produzida
+                            </Label>
+                            <Input
+                              id={`qtd-mobile-${linha.id}`}
+                              type="number"
+                              value={linha.quantidadeProduzida}
+                              onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
+                              className={`mt-1 min-h-11 w-full ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                              disabled={!turnoPermiteEdicao || linha.editavel === false}
+                            />
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            {!linha.editavel && !modoConsulta && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void handleEditarLinha(linha.id)}
+                                className="h-10 border-primary/30 text-primary hover:bg-primary/10"
+                                title="Alterar linha"
+                                disabled={
+                                  modoConsulta ||
+                                  !turnoPermiteEdicao ||
+                                  !linha.apontamentoId ||
+                                  quantidadeProduzidaInvalida(linha.quantidadeProduzida)
+                                }
+                              >
+                                <Pencil className="mr-1.5 h-4 w-4" />
+                                Alterar
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSalvarLinha(linha)}
+                              className="h-10 border-green-200 text-green-700 hover:bg-green-50"
+                              title="Salvar linha"
+                              disabled={
+                                !turnoPermiteEdicao ||
+                                quantidadeProduzidaInvalida(linha.quantidadeProduzida) ||
+                                Boolean(linha.apontamentoId && !linha.editavel)
+                              }
+                            >
+                              <Save className="mr-1.5 h-4 w-4" />
+                              Salvar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleExcluirLinha(linha)}
+                              className="h-10 border-red-200 text-red-700 hover:bg-red-50"
+                              title="Excluir linha"
+                              disabled={
+                                modoConsulta ||
+                                !turnoPermiteEdicao ||
+                                !linha.apontamentoId ||
+                                quantidadeProduzidaInvalida(linha.quantidadeProduzida)
+                              }
+                            >
+                              <Trash className="mr-1.5 h-4 w-4" />
+                              Excluir
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAbrirAnotacoes(linha)}
+                              className="col-span-2 h-10 border-blue-200 text-blue-700 hover:bg-blue-50"
+                              title="Anotações"
+                              disabled={
+                                !linha.apontamentoId ||
+                                quantidadeProduzidaInvalida(linha.quantidadeProduzida)
+                              }
+                            >
+                              <StickyNote className="mr-1.5 h-4 w-4" />
+                              Anotações
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Tabela de linhas de apontamento (desktop) */}
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark">
                           <tr>
@@ -5601,9 +5709,57 @@ export default function ApontamentoOEE() {
                 )}
               </section>
 
-              <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+              <section className="bg-white dark:bg-white p-4 md:p-6 rounded-2xl md:rounded-lg shadow-md border border-border-light dark:border-border-dark">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Produção</h2>
-                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+
+                <div className="space-y-2 md:hidden">
+                  {historicoProducao.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border-light p-4 text-center text-sm text-muted-foreground">
+                      Nenhum registro de produção encontrado
+                    </div>
+                  ) : (
+                    historicoProducao.map((registro) => (
+                      <div
+                        key={registro.id}
+                        className="rounded-xl border border-border-light bg-slate-50/50 p-3 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">Data/Hora</p>
+                            <p className="truncate text-sm font-semibold text-foreground">{registro.dataHoraRegistro}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => confirmarExclusao(registro.id)}
+                            className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Excluir registro"
+                            disabled={modoConsulta}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Início</p>
+                            <p className="text-sm font-semibold">{formatarHoraPtBr(registro.horaInicio, false)}</p>
+                          </div>
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Fim</p>
+                            <p className="text-sm font-semibold">{formatarHoraPtBr(registro.horaFim, false)}</p>
+                          </div>
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Qtd.</p>
+                            <p className="text-sm font-semibold">{formatarQuantidade(registro.quantidadeProduzida)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto max-h-60 overflow-y-auto">
                   <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
                     <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
                       <tr>
@@ -5655,21 +5811,21 @@ export default function ApontamentoOEE() {
 
           {/* Formulário de Qualidade */}
           {formularioAtivo === 'quality-form' && (
-            <section className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+            <section className="bg-surface-light dark:bg-surface-dark p-4 md:p-6 rounded-2xl md:rounded-lg shadow-md border border-border-light dark:border-border-dark">
               <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Qualidade</h2>
-              <div className="space-y-6">
+              <div className="space-y-5 md:space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-2 border-b border-border-light dark:border-border-dark pb-2">
                     Perdas
                   </h3>
                   <div className="space-y-4">
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                      <div className="w-full sm:w-auto">
                         <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="loss-quantity">
                           Quantidade
                         </label>
                         <input
-                          className="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-48"
+                          className="flex h-11 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full sm:w-48"
                           id="loss-quantity"
                           type="text"
                           inputMode="decimal"
@@ -5681,7 +5837,7 @@ export default function ApontamentoOEE() {
                       </div>
 
                       <button
-                        className="h-9 bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="h-11 w-full sm:w-auto bg-primary text-white font-semibold px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                         type="button"
                         onClick={() => {
                           // Verificar se o turno está bloqueado (Fechado ou Cancelado)
@@ -5711,7 +5867,7 @@ export default function ApontamentoOEE() {
                       </button>
                       {qualidadeEmEdicao && (
                         <button
-                          className="h-9 border border-input text-foreground font-semibold px-4 rounded-md hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                          className="h-11 w-full sm:w-auto border border-input text-foreground font-semibold px-4 rounded-md hover:bg-muted transition-colors flex items-center justify-center gap-2"
                           type="button"
                           onClick={cancelarEdicaoQualidade}
                           disabled={salvandoQualidade}
@@ -5730,7 +5886,74 @@ export default function ApontamentoOEE() {
                 <h3 className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark mb-4">
                   Histórico de Registros de Qualidade
                 </h3>
-                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+
+                <div className="space-y-2 md:hidden">
+                  {historicoQualidadeAtivo.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border-light p-4 text-center text-sm text-muted-foreground">
+                      Nenhum registro de qualidade encontrado
+                    </div>
+                  ) : (
+                    <>
+                      {historicoQualidadeAtivo.map((registro) => (
+                        <div
+                          key={registro.id}
+                          className="rounded-xl border border-border-light bg-slate-50/50 p-3 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs text-muted-foreground">Data/Hora</p>
+                              <p className="truncate text-sm font-semibold text-foreground">{registro.dataHoraRegistro}</p>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-[11px] font-semibold ${
+                              registro.tipo === 'PERDAS'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {registro.tipo}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between rounded-lg bg-white px-3 py-2">
+                            <p className="text-xs text-muted-foreground">Quantidade</p>
+                            <p className="text-base font-bold text-foreground">{formatarQuantidade(registro.quantidade)}</p>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void iniciarEdicaoQualidade(registro)}
+                              className="h-10 border-primary/30 text-primary hover:bg-primary/10"
+                              title="Editar registro"
+                              disabled={modoConsulta}
+                            >
+                              <Pencil className="mr-1.5 h-4 w-4" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => confirmarExclusaoQualidade(registro.id)}
+                              className="h-10 border-red-200 text-red-700 hover:bg-red-50"
+                              title="Excluir registro"
+                              disabled={modoConsulta}
+                            >
+                              <Trash className="mr-1.5 h-4 w-4" />
+                              Excluir
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="rounded-xl border border-border-light bg-muted/40 px-3 py-2.5 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-foreground">Total</span>
+                        <span className="text-sm font-bold text-foreground">{formatarQuantidade(totalQuantidadeQualidade)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto max-h-60 overflow-y-auto">
                   <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
                     <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
                       <tr>
@@ -5812,13 +6035,13 @@ export default function ApontamentoOEE() {
 
           {/* Formulário de Tempo de Parada */}
           {formularioAtivo === 'downtime-form' && (
-            <section className="bg-surface-light dark:bg-surface-dark p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark">
+            <section className="bg-surface-light dark:bg-surface-dark p-4 md:p-6 rounded-2xl md:rounded-lg shadow-md border border-border-light dark:border-border-dark">
               <h2 className="font-display text-xl font-bold text-primary mb-4">Registro de Tempo de Parada</h2>
 
               {/* Tela de Estado Vazio - Nenhuma parada em andamento */}
               {paradasAtivas.length === 0 && !mostrarFormularioParada ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <CircleCheck className="h-16 w-16 text-green-500 mb-4" />
+                <div className="flex flex-col items-center justify-center py-10 md:py-12 text-center">
+                  <CircleCheck className="h-14 w-14 md:h-16 md:w-16 text-green-500 mb-4" />
                   <h3 className="text-lg font-semibold text-green-700">
                     ✅ Nenhuma parada em andamento
                   </h3>
@@ -5836,7 +6059,7 @@ export default function ApontamentoOEE() {
                       }
                       handleNovaParada()
                     }}
-                    className="mt-6"
+                    className="mt-6 min-h-11 w-full sm:w-auto"
                     variant="outline"
                     disabled={turnoBloqueadoParaEdicao || modoConsulta}
                   >
@@ -5847,14 +6070,14 @@ export default function ApontamentoOEE() {
               ) : (
                 <div className="space-y-4">
                   {/* 1, 2 e 3. Tipo de Parada + Hora Inicial/Final na mesma linha */}
-                  <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-row sm:gap-4">
                     <div className="w-full sm:w-[304px]">
                       <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="codigo-parada">
                         Tipo de Parada
                       </label>
                       <div className="flex gap-2">
                         <input
-                          className="flex flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex flex-1 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           id="codigo-parada"
                           type="text"
                           value={codigoParadaBusca}
@@ -5867,7 +6090,7 @@ export default function ApontamentoOEE() {
                         <button
                           type="button"
                           onClick={turnoBloqueadoParaEdicao ? undefined : abrirModalBuscaParadas}
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
                           title="Buscar tipo de parada"
                           disabled={turnoBloqueadoParaEdicao}
                         >
@@ -5877,12 +6100,12 @@ export default function ApontamentoOEE() {
                     </div>
 
                     {/* Hora Inicial */}
-                    <div className="flex flex-col">
+                    <div className="flex flex-col w-full sm:w-auto">
                       <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-inicial-parada">
                         Hora Inicial
                       </label>
                       <input
-                        className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full sm:w-20 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         id="hora-inicial-parada"
                         type="text"
                         value={horaInicialParada}
@@ -5896,13 +6119,13 @@ export default function ApontamentoOEE() {
                     </div>
 
                     {/* Hora Final */}
-                    <div className="flex flex-col">
+                    <div className="flex flex-col w-full sm:w-auto">
                       <label className="block text-sm font-medium text-muted-foreground mb-1" htmlFor="hora-final-parada">
                         Hora Final
                       </label>
                       <div className="flex items-center gap-2">
                         <input
-                          className="w-20 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="w-full sm:w-20 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           id="hora-final-parada"
                           type="text"
                           value={horaFinalParada}
@@ -5916,18 +6139,18 @@ export default function ApontamentoOEE() {
                         <button
                           type="button"
                           onClick={() => setModalAjudaViradaParadaAberto(true)}
-                          className="inline-flex items-center justify-center h-6 w-6 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-input bg-background hover:bg-accent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           title="Entenda a virada de meia-noite"
                           aria-label="Ajuda sobre virada de meia-noite"
                         >
-                          <Info className="w-6 h-6 text-blue-500 dark:text-blue-400" />
+                          <Info className="w-5 h-5 text-blue-500 dark:text-blue-400" />
                         </button>
                       </div>
                     </div>
 
                     <div className="flex flex-col justify-end sm:flex-1">
                       <button
-                        className="w-full bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full min-h-11 bg-primary text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                         type="button"
                         onClick={() => {
                           if (turnoBloqueadoParaEdicao) {
@@ -5989,7 +6212,7 @@ export default function ApontamentoOEE() {
                       Observações da Parada
                     </label>
                     <textarea
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px] md:min-h-[100px]"
                       id="observacoes-parada"
                       value={observacoesParada}
                       onChange={(e) => setObservacoesParada(e.target.value)}
@@ -6002,9 +6225,61 @@ export default function ApontamentoOEE() {
               )}
 
               {/* Histórico de Registros de Paradas */}
-              <section className="bg-white dark:bg-white p-6 rounded-lg shadow-md border border-border-light dark:border-border-dark mt-6">
+              <section className="bg-white dark:bg-white p-4 md:p-6 rounded-2xl md:rounded-lg shadow-md border border-border-light dark:border-border-dark mt-5 md:mt-6">
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Paradas</h2>
-                <div className="overflow-x-auto max-h-60 overflow-y-auto">
+
+                <div className="space-y-2 md:hidden">
+                  {historicoParadas.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border-light p-4 text-center text-sm text-muted-foreground">
+                      Nenhum registro de parada encontrado
+                    </div>
+                  ) : (
+                    historicoParadas.map((registro) => (
+                      <div
+                        key={registro.id}
+                        className="rounded-xl border border-border-light bg-slate-50/50 p-3 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">Data/Hora</p>
+                            <p className="truncate text-sm font-semibold text-foreground">{registro.dataHoraRegistro}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => confirmarExclusaoParada(registro.id)}
+                            className="h-9 w-9 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            title="Excluir registro"
+                            disabled={modoConsulta}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Início</p>
+                            <p className="text-sm font-semibold">{registro.horaInicio}</p>
+                          </div>
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Fim</p>
+                            <p className="text-sm font-semibold">{registro.horaFim}</p>
+                          </div>
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Duração</p>
+                            <p className="text-sm font-semibold">{formatarDuracao(registro.duracao)}</p>
+                          </div>
+                          <div className="rounded-lg bg-white px-2 py-2">
+                            <p className="text-[11px] text-muted-foreground">Tipo</p>
+                            <p className="truncate text-sm font-semibold">{registro.tipoParada}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto max-h-60 overflow-y-auto">
                   <table className="w-full text-sm text-left text-text-primary-light dark:text-text-primary-dark">
                     <thead className="text-xs text-muted-foreground uppercase bg-background-light dark:bg-background-dark sticky top-0">
                       <tr>
@@ -6061,39 +6336,39 @@ export default function ApontamentoOEE() {
         </div>
 
         {/* Sidebar Direita - OEE Real */}
-        <div className="w-80 lg:w-96 xl:w-[28rem] flex-shrink-0 pl-2 pr-4 py-4 bg-background-light dark:bg-background-dark self-start sticky top-16 max-h-[calc(100vh-4rem)] overflow-y-auto">
+        <div className="order-1 w-full flex-shrink-0 px-3 pb-3 pt-1 bg-background-light dark:bg-background-dark self-auto md:order-2 md:w-80 md:pl-2 md:pr-4 md:py-4 md:self-start md:sticky md:top-16 md:max-h-[calc(100vh-4rem)] xl:w-[28rem] overflow-visible md:overflow-y-auto">
 
           {/* Cards de Métricas - Grid 2x2 (FORA do aside) */}
-          <div className="grid grid-cols-2 gap-3 mb-4 w-full">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-4 w-full">
             {/* Card 1 - Meta */}
-            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-xl md:rounded-lg p-3 text-center shadow-sm">
               <span className="text-xs text-muted-foreground block mb-1">Meta</span>
               <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">65%</span>
             </div>
 
             {/* Card 2 - Horas Restantes */}
-            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-xl md:rounded-lg p-3 text-center shadow-sm">
               <span className="text-xs text-muted-foreground block mb-1">Horas Restantes</span>
               <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">{formatarHoras(horasRestantes)}</span>
             </div>
 
             {/* Card 3 - Total Horas Paradas */}
-            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-xl md:rounded-lg p-3 text-center shadow-sm">
               <span className="text-xs text-muted-foreground block mb-1">Horas Paradas</span>
               <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">{formatarHoras(totalHorasParadas)}</span>
             </div>
 
             {/* Card 4 - Perdas de Qualidade */}
-            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-lg p-3 text-center shadow-sm">
+            <div className="bg-white dark:bg-white border border-border-light dark:border-border-dark rounded-xl md:rounded-lg p-3 text-center shadow-sm">
               <span className="text-xs text-muted-foreground block mb-1">Perdas Qualidade</span>
               <span className="font-bold text-lg text-text-primary-light dark:text-text-primary-dark">{totalPerdasQualidade.toLocaleString('pt-BR')} un</span>
             </div>
           </div>
 
           {/* Aside do OEE Real - Velocímetro e Barras */}
-          <aside className="w-full bg-white dark:bg-white p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-lg shadow-sm">
+          <aside className="w-full bg-white dark:bg-white p-4 md:p-6 border border-border-light dark:border-border-dark flex flex-col items-center rounded-2xl md:rounded-lg shadow-sm">
             <div className="w-full">
-              <div className="relative mb-6 flex items-center justify-center">
+              <div className="relative mb-5 md:mb-6 flex items-center justify-center">
                 <h2 className="w-full text-xl font-bold text-text-primary-light dark:text-text-primary-dark text-center">
                   OEE Real
                 </h2>
@@ -6127,7 +6402,7 @@ export default function ApontamentoOEE() {
                   aria-busy={carregandoComponentesOee}
                   role="button"
                 >
-                  <svg className="w-64 h-64 transform -rotate-90" viewBox="0 0 120 120">
+                  <svg className="w-52 h-52 sm:w-64 sm:h-64 transform -rotate-90" viewBox="0 0 120 120">
                     {/* Círculo de fundo */}
                     <circle
                       className="stroke-gray-200 dark:stroke-gray-700"
@@ -6168,7 +6443,7 @@ export default function ApontamentoOEE() {
                     )}
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="font-bold text-text-primary-light dark:text-text-primary-dark" style={{ fontSize: '37.8px' }}>
+                    <span className="font-bold text-[2rem] sm:text-[37.8px] text-text-primary-light dark:text-text-primary-dark">
                       {formatarPercentual(oeeCalculado.oee)}%
                     </span>
                     {/* Ícone para indicar clique e detalhes */}
