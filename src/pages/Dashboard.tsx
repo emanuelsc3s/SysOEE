@@ -446,7 +446,13 @@ export default function Dashboard() {
   const [contagemRegressiva, setContagemRegressiva] = useState(0)
   const intervaloRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const contagemRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [filtrosAbertos, setFiltrosAbertos] = useState(true)
+  const [filtrosAbertos, setFiltrosAbertos] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true
+    }
+
+    return window.matchMedia('(min-width: 640px)').matches
+  })
 
   const carregarLinhas = useCallback(async () => {
     const { data, error } = await supabase
@@ -1005,10 +1011,10 @@ export default function Dashboard() {
         onLogout={signOut}
       />
 
-      <main className="max-w-[1920px] mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-[1920px] mx-auto px-3 py-6 space-y-6 sm:px-4">
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1.5">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <Filter className="h-5 w-5 text-primary" />
@@ -1020,15 +1026,16 @@ export default function Dashboard() {
               </div>
 
               {/* Controles de atualização automática */}
-              <div className="flex flex-col items-end gap-1.5">
-                <div className="flex items-center gap-2">
+              <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:items-end sm:gap-1.5">
+                <div className="ml-auto flex w-fit flex-col items-end gap-2 sm:ml-0 sm:w-auto sm:flex-row sm:flex-nowrap sm:items-center sm:justify-end sm:gap-2">
                   <span className="text-sm text-muted-foreground hidden sm:inline">Atualização:</span>
+                  <div className="order-2 flex items-center justify-end gap-2 sm:order-none sm:contents">
                     <Button
                       type="button"
                       variant={atualizacaoAutomatica ? 'default' : 'outline'}
                       size="sm"
                       onClick={alternarAtualizacaoAutomatica}
-                      className={`flex items-center gap-2 min-w-[100px] h-9 ${
+                      className={`flex h-11 w-11 min-w-[44px] items-center justify-center gap-0 sm:h-9 sm:w-auto sm:min-w-[100px] sm:gap-2 ${
                         atualizacaoAutomatica
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : theme === 'light'
@@ -1036,49 +1043,52 @@ export default function Dashboard() {
                             : ''
                       }`}
                       title={atualizacaoAutomatica ? 'Clique para pausar a atualização automática' : 'Clique para ativar a atualização automática'}
+                      aria-label={atualizacaoAutomatica ? 'Pausar atualização automática' : 'Ativar atualização automática'}
                     >
                     {atualizacaoAutomatica ? (
                       <>
                         <Pause className="h-4 w-4" />
-                        Pausar
+                        <span className="hidden sm:inline">Pausar</span>
                       </>
                     ) : (
                       <>
                         <Play className="h-4 w-4" />
-                        Auto
+                        <span className="hidden sm:inline">Auto</span>
                       </>
                     )}
                   </Button>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 rounded-md border border-border/60 bg-background px-2 py-1 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
                       <Input
                         type="text"
                         inputMode="numeric"
                         value={intervaloSegundos}
                       onChange={handleIntervaloChange}
-                      className="w-14 h-9 text-center"
+                      className="h-9 w-16 text-center sm:w-14"
                       title="Intervalo de atualização em segundos (mínimo: 5, máximo: 300)"
                       disabled={atualizacaoAutomatica}
                       />
-                      <span className="text-sm text-muted-foreground">seg</span>
+                      <span className="text-xs text-muted-foreground sm:text-sm">seg</span>
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       onClick={handleAtualizarIndicadores}
-                      className="h-9 w-9 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input"
+                      className="h-11 w-11 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input sm:h-9 sm:w-9"
                       title="Atualizar indicadores"
                       aria-label="Atualizar indicadores"
                       disabled={carregandoDados}
                     >
                       <RefreshCw className={`h-4 w-4 ${carregandoDados ? 'animate-spin' : ''}`} />
                     </Button>
+                  </div>
+                  <div className="order-1 flex items-center justify-end gap-2 sm:order-none sm:contents">
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       onClick={toggleTheme}
-                      className="h-9 w-9 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input"
+                      className="h-11 w-11 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input sm:h-9 sm:w-9"
                       title={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
                     >
                     {theme === 'dark' ? (
@@ -1092,22 +1102,23 @@ export default function Dashboard() {
                       variant="outline"
                       size="sm"
                       onClick={() => navigate('/')}
-                      className={`flex items-center gap-2 min-w-[80px] h-9 ${
+                      className={`flex h-11 w-11 min-w-[44px] items-center justify-center gap-0 sm:h-9 sm:w-auto sm:min-w-[80px] sm:gap-2 ${
                         theme === 'light'
                           ? '!bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white'
                           : ''
                       }`}
                       title="Voltar para a Home"
+                      aria-label="Voltar para a Home"
                     >
                       <ArrowLeft className="h-4 w-4" />
-                      Voltar
+                      <span className="hidden sm:inline">Voltar</span>
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       onClick={() => setFiltrosAbertos((prev) => !prev)}
-                      className="h-9 w-9 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input"
+                      className="h-11 w-11 !bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white dark:!bg-background dark:!text-foreground dark:!border-input dark:hover:!bg-accent dark:hover:!text-accent-foreground dark:hover:!border-input sm:h-9 sm:w-9"
                       title={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
                       aria-label={filtrosAbertos ? 'Recolher filtros do dashboard' : 'Expandir filtros do dashboard'}
                       aria-controls="filtros-dashboard-conteudo"
@@ -1117,9 +1128,10 @@ export default function Dashboard() {
                       className={`h-4 w-4 transition-transform ${filtrosAbertos ? 'rotate-180' : ''}`}
                     />
                   </Button>
+                  </div>
                 </div>
                 {atualizacaoAutomatica && (
-                  <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                  <div className="flex w-full items-center gap-1.5 text-[11px] text-green-600 dark:text-green-400 sm:w-auto sm:justify-end sm:text-xs">
                     <RefreshCw className="h-3 w-3 animate-spin" />
                     <span>Próxima atualização em {contagemRegressiva}s</span>
                   </div>
@@ -1147,7 +1159,7 @@ export default function Dashboard() {
                       <Button
                         id="filtro-linha"
                         variant="outline"
-                        className="w-full justify-between font-normal"
+                        className="h-11 w-full justify-between font-normal sm:h-10"
                       >
                         <span className="truncate">{resumoLinhasSelecionadas}</span>
                         <ChevronDown className="h-4 w-4 opacity-60" />
@@ -1222,7 +1234,7 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   <Label htmlFor="filtro-produto">Produto SKU</Label>
                   <Select value={filtros.produtoId} onValueChange={(value) => atualizarFiltro('produtoId', value)}>
-                    <SelectTrigger id="filtro-produto">
+                    <SelectTrigger id="filtro-produto" className="h-11 sm:h-10">
                       <SelectValue placeholder="Todos os produtos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1239,7 +1251,7 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   <Label htmlFor="filtro-turno">Turno</Label>
                   <Select value={filtros.turnoId} onValueChange={(value) => atualizarFiltro('turnoId', value)}>
-                    <SelectTrigger id="filtro-turno">
+                    <SelectTrigger id="filtro-turno" className="h-11 sm:h-10">
                       <SelectValue placeholder="Todos os turnos" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1255,7 +1267,7 @@ export default function Dashboard() {
 
                 <div className="space-y-2">
                   <Label>Período</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="flex items-center gap-2">
                       <Input
                         type="text"
@@ -1263,10 +1275,17 @@ export default function Dashboard() {
                         placeholder="dd/mm/aaaa"
                         value={filtros.dataInicio}
                         onChange={(e) => atualizarFiltro('dataInicio', formatarDataDigitada(e.target.value))}
+                        className="h-11 sm:h-10"
                       />
                       <Popover open={calendarioInicioAberto} onOpenChange={setCalendarioInicioAberto}>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="icon" aria-label="Selecionar data inicial">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Selecionar data inicial"
+                            className="h-11 w-11 shrink-0 sm:h-10 sm:w-10"
+                          >
                             <CalendarIcon className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
@@ -1293,10 +1312,17 @@ export default function Dashboard() {
                         placeholder="dd/mm/aaaa"
                         value={filtros.dataFim}
                         onChange={(e) => atualizarFiltro('dataFim', formatarDataDigitada(e.target.value))}
+                        className="h-11 sm:h-10"
                       />
                       <Popover open={calendarioFimAberto} onOpenChange={setCalendarioFimAberto}>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="icon" aria-label="Selecionar data final">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Selecionar data final"
+                            className="h-11 w-11 shrink-0 sm:h-10 sm:w-10"
+                          >
                             <CalendarIcon className="h-4 w-4" />
                           </Button>
                         </PopoverTrigger>
@@ -1377,14 +1403,14 @@ export default function Dashboard() {
                 title="Clique para ver o detalhamento do cálculo do OEE"
               >
                 <CardHeader className="pb-2">
-                  <CardTitle className="min-h-[3.5rem] text-lg break-words">
+                  <CardTitle className="min-h-[3rem] break-words text-base sm:min-h-[3.5rem] sm:text-lg">
                     {linha.linhaproducao || 'Linha sem nome'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-6">
                   {/* Velocímetro SVG inline com cores dinâmicas */}
                   <div className="relative flex-shrink-0">
-                    <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 120 120">
+                    <svg className="h-36 w-36 transform -rotate-90 sm:h-40 sm:w-40" viewBox="0 0 120 120">
                       {/* Círculo de fundo */}
                       <circle
                         className="stroke-gray-200 dark:stroke-gray-700"
@@ -1426,7 +1452,7 @@ export default function Dashboard() {
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="flex flex-col items-center">
-                        <span className="font-bold text-2xl text-foreground">
+                        <span className="font-bold text-xl text-foreground sm:text-2xl">
                           {formatarPercentual(linha.oee)}%
                         </span>
                         <svg
@@ -1450,11 +1476,11 @@ export default function Dashboard() {
                   </div>
 
                   {/* Barras de componentes com cores dinâmicas */}
-                  <div className="w-full space-y-4">
+                  <div className="w-full space-y-3 sm:space-y-4">
                     {/* Disponibilidade */}
                     <div>
                       <div className="flex justify-between items-center text-sm mb-1">
-                        <span className="font-semibold text-base">{formatarPercentual(linha.disponibilidade)}%</span>
+                        <span className="text-sm font-semibold sm:text-base">{formatarPercentual(linha.disponibilidade)}%</span>
                         <span className="text-muted-foreground">Disponibilidade</span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
@@ -1471,7 +1497,7 @@ export default function Dashboard() {
                     {/* Performance */}
                     <div>
                       <div className="flex justify-between items-center text-sm mb-1">
-                        <span className="font-semibold text-base">{formatarPercentual(linha.performance)}%</span>
+                        <span className="text-sm font-semibold sm:text-base">{formatarPercentual(linha.performance)}%</span>
                         <span className="text-muted-foreground">Performance</span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
@@ -1488,7 +1514,7 @@ export default function Dashboard() {
                     {/* Qualidade */}
                     <div>
                       <div className="flex justify-between items-center text-sm mb-1">
-                        <span className="font-semibold text-base">{formatarPercentual(linha.qualidade)}%</span>
+                        <span className="text-sm font-semibold sm:text-base">{formatarPercentual(linha.qualidade)}%</span>
                         <span className="text-muted-foreground">Qualidade</span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
@@ -1509,9 +1535,9 @@ export default function Dashboard() {
         )}
 
         <Dialog open={modalDetalhamentoAberto} onOpenChange={handleModalDetalhamentoChange}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-[calc(100vw-1.5rem)] overflow-y-auto p-4 sm:max-w-4xl sm:p-6">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-2xl">
+              <DialogTitle className="flex items-center gap-2 text-lg sm:text-2xl">
                 <Info className="w-6 h-6 text-blue-500" />
                 Detalhamento do cálculo do OEE
               </DialogTitle>
@@ -1565,9 +1591,9 @@ export default function Dashboard() {
 
             {!carregandoDetalhamento && !erroDetalhamento && componentesOeeDetalhe && detalhesComponentesOee && (
               <div className="space-y-6 py-4">
-                <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-6">
                   <div className="relative flex-shrink-0">
-                    <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 120 120">
+                    <svg className="h-32 w-32 transform -rotate-90 sm:h-40 sm:w-40" viewBox="0 0 120 120">
                       <circle
                         className="stroke-gray-200 dark:stroke-gray-700"
                         cx="60"
@@ -1605,7 +1631,7 @@ export default function Dashboard() {
                       )}
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="font-bold text-2xl text-foreground">
+                      <span className="font-bold text-xl text-foreground sm:text-2xl">
                         {formatarPercentual(componentesOeeDetalhe.oee)}%
                       </span>
                     </div>
@@ -1743,7 +1769,7 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">
                         Tempo disponível ajustado = Tempo disponível − Tempo estratégico
                       </p>
-                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                      <p className="mt-1 break-words font-mono text-[11px] text-foreground/90 sm:text-xs">
                         = {formatarNumeroDecimal(componentesOeeDetalhe.tempoDisponivelHoras)} − {formatarNumeroDecimal(componentesOeeDetalhe.tempoEstrategicoHoras)} = {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} h
                       </p>
                     </div>
@@ -1753,7 +1779,7 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">
                         Tempo de operação = Tempo disponível ajustado − Paradas grandes
                       </p>
-                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                      <p className="mt-1 break-words font-mono text-[11px] text-foreground/90 sm:text-xs">
                         = {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)} − {formatarNumeroDecimal(componentesOeeDetalhe.tempoParadasGrandesHoras)} = {formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)} h
                       </p>
                     </div>
@@ -1763,7 +1789,7 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">
                         Disponibilidade = (Tempo de operação ÷ Tempo disponível ajustado) × 100
                       </p>
-                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                      <p className="mt-1 break-words font-mono text-[11px] text-foreground/90 sm:text-xs">
                         = ({formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)} / {formatarNumeroDecimal(detalhesComponentesOee.tempoDisponivelAjustado)}) × 100 = {formatarPercentual(componentesOeeDetalhe.disponibilidade)}%
                       </p>
                     </div>
@@ -1773,7 +1799,7 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">
                         Performance = (Tempo operacional líquido ÷ Tempo de operação) × 100
                       </p>
-                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                      <p className="mt-1 break-words font-mono text-[11px] text-foreground/90 sm:text-xs">
                         = ({formatarNumeroDecimal(componentesOeeDetalhe.tempoOperacionalLiquido)} / {formatarNumeroDecimal(detalhesComponentesOee.tempoOperacaoCalculado)}) × 100 = {formatarPercentual(componentesOeeDetalhe.performance)}%
                       </p>
                     </div>
@@ -1783,7 +1809,7 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground">
                         Qualidade = (Unidades boas ÷ Unidades produzidas) × 100
                       </p>
-                      <p className="text-xs mt-1 font-mono text-foreground/90">
+                      <p className="mt-1 break-words font-mono text-[11px] text-foreground/90 sm:text-xs">
                         = ({formatarQuantidade(componentesOeeDetalhe.unidadesBoas)} / {formatarQuantidade(componentesOeeDetalhe.unidadesProduzidas)}) × 100 = {formatarPercentual(componentesOeeDetalhe.qualidade)}%
                       </p>
                     </div>
@@ -1795,9 +1821,9 @@ export default function Dashboard() {
         </Dialog>
 
         <Dialog open={modalParetoAberto} onOpenChange={handleModalParetoChange}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] max-w-[calc(100vw-1.5rem)] overflow-y-auto p-4 sm:max-w-5xl sm:p-6">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-2xl">
+              <DialogTitle className="flex items-center gap-2 text-lg sm:text-2xl">
                 <Info className="w-6 h-6 text-blue-500" />
                 Pareto de paradas grandes
               </DialogTitle>
@@ -1859,7 +1885,11 @@ export default function Dashboard() {
                       : '-'}
                   </p>
                 </div>
-                <ParetoParadasChart data={paretoParadas} />
+                <div className="w-full overflow-x-auto">
+                  <div className="min-w-[560px] sm:min-w-0">
+                    <ParetoParadasChart data={paretoParadas} />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1871,15 +1901,15 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        <div className="flex items-center justify-end gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-end sm:gap-4">
           {atualizacaoAutomatica && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+            <div className="flex w-full items-center gap-1.5 rounded-md bg-green-100 px-2 py-1 text-green-700 dark:bg-green-900/30 dark:text-green-400 sm:w-auto">
               <RefreshCw className="h-3 w-3 animate-spin" />
               <span>Atualização automática ativa ({intervaloSegundos}s)</span>
             </div>
           )}
           {carregandoDados && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex w-full items-center gap-1.5 sm:w-auto">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Atualizando indicadores...</span>
             </div>
