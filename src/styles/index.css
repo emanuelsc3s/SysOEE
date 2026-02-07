@@ -451,6 +451,15 @@
 
 /* Estilos customizados para scrollbar horizontal do Kanban */
 @layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* Scrollbar para navegadores Webkit (Chrome, Safari, Edge) */
   .scrollbar-thin::-webkit-scrollbar {
     height: 8px;

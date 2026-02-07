@@ -1,0 +1,106 @@
+import type { ComparativoTurno } from '../types'
+import { formatarQuantidade } from '../utils/formatters'
+
+type ComparativoTurnoChartProps = {
+  dados: ComparativoTurno[]
+  parametrosValidos: boolean
+  carregando: boolean
+}
+
+const obterAlturaPercentual = (valor: number, maximo: number): number => {
+  if (valor <= 0 || maximo <= 0) {
+    return 4
+  }
+
+  return Math.max(8, Math.round((valor / maximo) * 100))
+}
+
+export function ComparativoTurnoChart({
+  dados,
+  parametrosValidos,
+  carregando,
+}: ComparativoTurnoChartProps) {
+  const maximo = Math.max(
+    ...dados.flatMap((item) => [item.producao, item.perdas]),
+    1
+  )
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">Comparativo de Produção por Turno</h2>
+          <p className="text-[10px] text-gray-500">Análise comparativa de produção vs. perdas em cada turno.</p>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center">
+            <span className="mr-1.5 h-2.5 w-2.5 rounded-sm bg-primary"></span>
+            <span className="text-[10px] font-medium text-gray-600">Produção</span>
+          </div>
+          <div className="flex items-center">
+            <span className="mr-1.5 h-2.5 w-2.5 rounded-sm bg-red-400"></span>
+            <span className="text-[10px] font-medium text-gray-600">Perdas</span>
+          </div>
+        </div>
+      </div>
+
+      {!parametrosValidos && !carregando && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
+          Informe um período válido para exibir o comparativo.
+        </div>
+      )}
+
+      {parametrosValidos && carregando && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
+          Carregando comparativo por turno...
+        </div>
+      )}
+
+      {parametrosValidos && !carregando && (
+        <div className="relative h-48 w-full border-b border-gray-200 px-6 pb-2 sm:px-12">
+          <div className="pointer-events-none absolute inset-0 flex flex-col justify-between pb-8 pr-4">
+            <div className="h-0 w-full border-t border-dashed border-gray-100"></div>
+            <div className="h-0 w-full border-t border-dashed border-gray-100"></div>
+            <div className="h-0 w-full border-t border-dashed border-gray-100"></div>
+          </div>
+
+          <div className="relative z-10 flex h-full items-end justify-center gap-8 sm:gap-20">
+            {dados.map((item) => {
+              const alturaProducao = obterAlturaPercentual(item.producao, maximo)
+              const alturaPerdas = obterAlturaPercentual(item.perdas, maximo)
+
+              return (
+                <div key={item.id} className="group flex h-full flex-1 flex-col items-center justify-end">
+                  <div className="flex h-full w-full items-end justify-center space-x-2">
+                    <div
+                      className="relative w-12 rounded-t-md bg-primary transition-opacity hover:opacity-90"
+                      style={{ height: `${alturaProducao}%` }}
+                    >
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-gray-900 px-1.5 py-0.5 text-[9px] whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        {formatarQuantidade(item.producao)} un.
+                      </div>
+                    </div>
+
+                    <div
+                      className="relative w-12 rounded-t-md bg-red-400 transition-opacity hover:opacity-90"
+                      style={{ height: `${alturaPerdas}%` }}
+                    >
+                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-gray-900 px-1.5 py-0.5 text-[9px] whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        {formatarQuantidade(item.perdas)} un.
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                    {item.nome}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}

@@ -5,13 +5,17 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
+import {
+  AlertCircle,
+  CalendarRange,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react'
 
-import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -20,14 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 type ResumoOeeTurnoRow = {
   data?: string | null
@@ -74,6 +70,7 @@ type CardResumo = {
   valor: string
   detalhe: string
   classeValor?: string
+  classeCard?: string
 }
 
 const formatadorDataPtBr = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' })
@@ -267,299 +264,362 @@ export function ModalResumoOeeTurno({
       id: 'producao',
       titulo: 'Produção total',
       valor: formatarQuantidade(totais.quantidade),
-      detalhe: 'unidades',
+      detalhe: 'unidades produzidas',
       classeValor: 'text-primary',
+      classeCard: 'border-primary/20 bg-primary/[0.06]',
     },
     {
       id: 'perdas',
       titulo: 'Perdas totais',
       valor: formatarQuantidade(totais.perdas),
-      detalhe: 'unidades',
+      detalhe: 'unidades descartadas',
       classeValor: 'text-destructive',
+      classeCard: 'border-destructive/20 bg-destructive/[0.06]',
     },
     {
       id: 'boas',
       titulo: 'Unidades boas',
       valor: formatarQuantidade(totais.boas),
       detalhe: 'unidades aprovadas',
-      classeValor: 'text-emerald-600 dark:text-emerald-400',
+      classeValor: 'text-brand-secondary',
+      classeCard: 'border-brand-secondary/30 bg-brand-secondary/10',
     },
     {
       id: 'paradas-grandes',
       titulo: 'Paradas grandes',
       valor: formatarMinutos(totais.paradasGrandes),
-      detalhe: `${formatarDecimal(totais.paradasGrandes, 0)} min`,
+      detalhe: `${formatarDecimal(totais.paradasGrandes, 0)} min totais`,
+      classeValor: 'text-foreground',
+      classeCard: 'border-border bg-card',
     },
     {
       id: 'paradas-totais',
       titulo: 'Paradas totais',
       valor: formatarMinutos(totais.paradasTotais),
-      detalhe: `${formatarDecimal(totais.paradasTotais, 0)} min`,
+      detalhe: `${formatarDecimal(totais.paradasTotais, 0)} min totais`,
+      classeValor: 'text-foreground',
+      classeCard: 'border-border bg-card',
     },
     {
       id: 'paradas-estrategicas',
       titulo: 'Paradas estratégicas',
       valor: formatarMinutos(totais.paradasEstrategicas),
-      detalhe: `${formatarDecimal(totais.paradasEstrategicas, 0)} min`,
+      detalhe: `${formatarDecimal(totais.paradasEstrategicas, 0)} min totais`,
+      classeValor: 'text-foreground',
+      classeCard: 'border-border bg-card',
     }
   ]), [totais])
 
   const erroConsulta = error ? 'Não foi possível carregar o resumo do período informado.' : null
   const totalRegistros = linhas.length
+  const exibirSemDados = parametrosValidos && linhas.length === 0 && !isLoading
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[96vw] max-w-[1320px] max-h-[92vh] p-0 gap-0 overflow-hidden border-border bg-background"
+        className="w-[95vw] max-w-[1440px] max-h-[94dvh] gap-0 overflow-hidden rounded-[1.25rem] border border-border bg-background p-0 shadow-2xl"
       >
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="border-b border-border bg-gradient-to-r from-primary/[0.08] via-background to-background px-4 py-4 sm:px-6">
-            <DialogHeader className="space-y-1 text-left">
-              <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
-                Resumo consolidado de OEE
-              </DialogTitle>
-              <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-                Consolidado de produção e paradas por linha e produto.
-              </DialogDescription>
-            </DialogHeader>
+        <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-primary/[0.05] via-background to-background">
+          <div className="border-b border-border/80 bg-background/95 px-4 py-4 backdrop-blur sm:px-6 sm:py-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <DialogHeader className="space-y-2 pr-8 text-left sm:pr-10">
+                <DialogTitle className="text-xl font-semibold leading-tight text-foreground sm:text-2xl">
+                  Resumo consolidado de OEE
+                </DialogTitle>
+                <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                  Consolidado de produção e paradas por linha e produto no período selecionado.
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className="rounded-md px-2.5 py-1 text-[11px] font-medium tracking-wide text-foreground"
-              >
-                Período: {periodoDescricao}
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="rounded-md px-2.5 py-1 text-[11px] font-medium tracking-wide"
-              >
-                {totalRegistros} registro(s)
-              </Badge>
-              {isFetching && !isLoading && (
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 <Badge
-                  variant="info"
-                  className="rounded-md px-2.5 py-1 text-[11px] font-medium tracking-wide"
+                  variant="outline"
+                  className="inline-flex items-center gap-2 rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
                 >
-                  Atualizando dados…
+                  <CalendarRange className="h-3.5 w-3.5 text-primary/80" />
+                  <span>{periodoDescricao}</span>
                 </Badge>
-              )}
+                <Badge
+                  variant="secondary"
+                  className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-foreground tabular-nums"
+                >
+                  {totalRegistros} registro{totalRegistros !== 1 ? 's' : ''}
+                </Badge>
+                {isFetching && !isLoading && (
+                  <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Atualizando...
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-            {!parametrosValidos && !periodoInvalido && (
-              <div className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Informe um período válido para carregar o resumo.</p>
-              </div>
-            )}
+          <div className="flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="space-y-5">
+              {!parametrosValidos && !periodoInvalido && (
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <p>Informe um período válido para carregar o resumo.</p>
+                </div>
+              )}
 
-            {periodoInvalido && (
-              <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>A data inicial não pode ser maior que a data final.</p>
-              </div>
-            )}
+              {periodoInvalido && (
+                <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <p>A data inicial não pode ser maior que a data final.</p>
+                </div>
+              )}
 
-            {erroConsulta && (
-              <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>{erroConsulta}</p>
-              </div>
-            )}
+              {erroConsulta && (
+                <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <p>{erroConsulta}</p>
+                </div>
+              )}
 
-            {(isLoading || isFetching) && parametrosValidos && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground"
-              >
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando resumo…
-              </div>
-            )}
+              {(isLoading || isFetching) && parametrosValidos && (
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Carregando resumo do período...</span>
+                </div>
+              )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {cardsResumo.map((card) => (
-                <Card key={card.id} className="border-border/80 bg-card/95 shadow-sm">
-                  <CardContent className="p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 2xl:grid-cols-6">
+                {cardsResumo.map((card) => (
+                  <div
+                    key={card.id}
+                    className={cn(
+                      'rounded-xl border px-4 py-2.5 shadow-sm',
+                      card.classeCard || 'border-border bg-card'
+                    )}
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                       {card.titulo}
                     </p>
-                    <p
-                      className={cn(
-                        'mt-2 text-2xl font-semibold tracking-tight tabular-nums text-foreground',
-                        card.classeValor
-                      )}
-                    >
+                    <p className={cn('mt-0.5 text-[1.7rem] font-semibold leading-tight tabular-nums', card.classeValor || 'text-foreground')}>
                       {card.valor}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {card.detalhe}
                     </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="mb-3 mt-6 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Detalhamento por linha e produto
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Visão por data, linha, status e SKU.
-                </p>
+                  </div>
+                ))}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isFetching || !parametrosValidos}
-                className="min-w-[120px]"
-              >
-                {isFetching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Atualizar
-              </Button>
-            </div>
 
-            <div
-              className="relative overflow-auto rounded-lg border border-border bg-card"
-              style={{ maxHeight: '45vh' }}
-            >
-              <Table className="min-w-[1120px] text-sm" aria-label="Resumo consolidado de OEE por linha e produto">
-                <colgroup>
-                  <col style={{ width: '7%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '6%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '8%' }} />
-                </colgroup>
-                <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/60">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-11 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Data
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Linha
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Status
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Qtde. turnos
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Produto
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Produção
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Perdas
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Unidades boas
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Paradas
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Paradas totais
-                    </TableHead>
-                    <TableHead className="h-11 px-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Paradas estratégicas
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y divide-border">
-                  {(!parametrosValidos || linhas.length === 0) && !isLoading ? (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={11} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                        {!parametrosValidos
-                          ? 'Informe um período válido para carregar os dados.'
-                          : 'Nenhum dado encontrado para o período informado.'}
-                      </TableCell>
-                    </TableRow>
+              <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div>
+                    <h2 className="text-base font-semibold leading-tight text-foreground sm:text-lg">
+                      Detalhamento por linha e produto
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Visão consolidada por data, linha, status e SKU.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetch()}
+                    disabled={isFetching || !parametrosValidos}
+                    className="h-9 w-full gap-2 border-border bg-background text-foreground hover:bg-muted sm:w-auto"
+                  >
+                    {isFetching ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Atualizar
+                  </Button>
+                </div>
+
+                <div className="lg:hidden">
+                  {!parametrosValidos || exibirSemDados ? (
+                    <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      {!parametrosValidos
+                        ? 'Informe um período válido para carregar os dados.'
+                        : 'Nenhum dado encontrado para o período informado.'}
+                    </div>
                   ) : (
-                    linhas.map((linha, index) => (
-                      <TableRow
-                        key={`${linha.data}-${linha.linhaproducao_id}-${linha.produto_id}-${index}`}
-                        className="odd:bg-background even:bg-muted/[0.15] hover:bg-muted/40"
-                      >
-                        <TableCell className="px-3 py-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                          {formatarData(linha.data)}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-xs text-foreground">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="break-words leading-tight font-medium">{linha.linhaproducao || '-'}</span>
-                            <span className="text-[11px] text-muted-foreground">
-                              Lançamento: {linha.oeeturno_id ?? '-'}
+                    <div className="space-y-3 px-3 py-3">
+                      {linhas.map((linha, index) => (
+                        <article
+                          key={`${linha.data}-${linha.linhaproducao_id}-${linha.produto_id}-${index}`}
+                          className="rounded-xl border border-border bg-background p-3 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-foreground" title={linha.linhaproducao || ''}>
+                                {linha.linhaproducao || '-'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatarData(linha.data)} • Lançamento {linha.oeeturno_id ?? '-'}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={getBadgeStatus(linha.status_linha)}
+                              className="rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em]"
+                            >
+                              {linha.status_linha ? formatarStatus(linha.status_linha) : 'SEM STATUS'}
+                            </Badge>
+                          </div>
+
+                          <p className="mt-2 truncate text-xs text-muted-foreground" title={linha.produto || ''}>
+                            {linha.produto || 'Produto não informado'} • Cód. {linha.produto_id ?? '-'}
+                          </p>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <div className="rounded-lg bg-muted/50 p-2">
+                              <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Produção</p>
+                              <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                                {formatarQuantidade(normalizarNumero(linha.quantidade_produzida))}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-muted/50 p-2">
+                              <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Perdas</p>
+                              <p className="mt-1 text-sm font-semibold tabular-nums text-destructive">
+                                {formatarQuantidade(normalizarNumero(linha.perdas))}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-muted/50 p-2">
+                              <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Unid. boas</p>
+                              <p className="mt-1 text-sm font-semibold tabular-nums text-emerald-700">
+                                {formatarQuantidade(normalizarNumero(linha.unidades_boas))}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-muted/50 p-2">
+                              <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Paradas</p>
+                              <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                                {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_minutos))}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            <span className="rounded-md bg-muted px-2 py-1">
+                              Turnos: {linha.qtde_turnos ?? 0}
+                            </span>
+                            <span className="rounded-md bg-muted px-2 py-1">
+                              Totais: {linha.paradas_totais_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_totais_minutos))}
+                            </span>
+                            <span className="rounded-md bg-muted px-2 py-1">
+                              Estratégicas: {linha.paradas_estrategicas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_estrategicas_minutos))}
                             </span>
                           </div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-center text-xs text-foreground">
-                          <Badge variant={getBadgeStatus(linha.status_linha)} className="mx-auto w-fit px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                            {linha.status_linha ? formatarStatus(linha.status_linha) : 'SEM STATUS'}
-                          </Badge>
-                          <div className="mt-1 break-words text-[11px] leading-tight text-muted-foreground">
-                            {linha.status_turno_registrado ? formatarStatus(linha.status_turno_registrado) : '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-center text-xs font-medium tabular-nums text-foreground whitespace-nowrap">
-                          {linha.qtde_turnos ?? 0}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-xs text-foreground">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="break-words leading-tight" title={linha.produto || ''}>
-                              {linha.produto || 'Produto não informado'}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground">ID {linha.produto_id ?? '-'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right text-xs font-medium tabular-nums text-foreground whitespace-nowrap">
-                          {formatarQuantidade(normalizarNumero(linha.quantidade_produzida))}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right text-xs font-medium tabular-nums text-destructive whitespace-nowrap">
-                          {formatarQuantidade(normalizarNumero(linha.perdas))}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                          {formatarQuantidade(normalizarNumero(linha.unidades_boas))}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right text-xs tabular-nums text-foreground whitespace-nowrap">
-                          {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_minutos))}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right text-xs tabular-nums text-foreground whitespace-nowrap">
-                          {linha.paradas_totais_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_totais_minutos))}
-                        </TableCell>
-                        <TableCell className="px-3 py-2 text-right text-xs tabular-nums text-foreground whitespace-nowrap">
-                          {linha.paradas_estrategicas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_estrategicas_minutos))}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                        </article>
+                      ))}
+                    </div>
                   )}
-                </TableBody>
-              </Table>
+                </div>
+
+                <div className="hidden lg:block">
+                  <div className="relative overflow-auto px-1 pb-2 scrollbar-thin" style={{ maxHeight: '50vh' }}>
+                    <table className="w-full min-w-[1120px] table-auto" aria-label="Resumo consolidado de OEE por linha e produto">
+                      <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
+                        <tr className="border-b border-border">
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Data</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Linha</th>
+                          <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Status</th>
+                          <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Turnos</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Produto</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Produção</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Perdas</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Unid. boas</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Paradas</th>
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Par. totais</th>
+                          <th className="pl-4 pr-6 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Par. estratég.</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {(!parametrosValidos || exibirSemDados) && !isLoading ? (
+                          <tr>
+                            <td colSpan={11} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                              {!parametrosValidos
+                                ? 'Informe um período válido para carregar os dados.'
+                                : 'Nenhum dado encontrado para o período informado.'}
+                            </td>
+                          </tr>
+                        ) : (
+                          linhas.map((linha, index) => (
+                            <tr
+                              key={`${linha.data}-${linha.linhaproducao_id}-${linha.produto_id}-${index}`}
+                              className="align-top transition-colors odd:bg-background even:bg-muted/30 hover:bg-muted/55"
+                            >
+                              <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
+                                {formatarData(linha.data)}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-foreground">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-semibold leading-tight">{linha.linhaproducao || '-'}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Lançamento: {linha.oeeturno_id ?? '-'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center text-sm">
+                                <Badge
+                                  variant={getBadgeStatus(linha.status_linha)}
+                                  className="rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em]"
+                                >
+                                  {linha.status_linha ? formatarStatus(linha.status_linha) : 'SEM STATUS'}
+                                </Badge>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {linha.status_turno_registrado ? formatarStatus(linha.status_turno_registrado) : '-'}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-center text-sm font-semibold tabular-nums text-foreground">
+                                {linha.qtde_turnos ?? 0}
+                              </td>
+                              <td className="max-w-[320px] px-4 py-3 text-sm text-foreground">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="truncate" title={linha.produto || ''}>
+                                    {linha.produto || 'Produto não informado'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    Cód. {linha.produto_id ?? '-'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums text-foreground">
+                                {formatarQuantidade(normalizarNumero(linha.quantidade_produzida))}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums text-destructive">
+                                {formatarQuantidade(normalizarNumero(linha.perdas))}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums text-brand-secondary">
+                                {formatarQuantidade(normalizarNumero(linha.unidades_boas))}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-foreground">
+                                {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_minutos))}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-foreground">
+                                {linha.paradas_totais_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_totais_minutos))}
+                              </td>
+                              <td className="whitespace-nowrap pl-4 pr-6 py-3 text-right text-sm tabular-nums text-foreground">
+                                {linha.paradas_estrategicas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_estrategicas_minutos))}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border bg-background/95 px-4 py-3 sm:px-6 sm:justify-between sm:space-x-0">
+        <DialogFooter className="border-t border-border/80 bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:space-x-0 sm:px-6 sm:py-4">
           <p className="text-xs text-muted-foreground">
-            Tempos de parada apresentados em HH:MM.
+            Tempos de parada em HH:MM • {totalRegistros} linha{totalRegistros !== 1 ? 's' : ''}
           </p>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="w-full border-border bg-background text-foreground hover:bg-muted sm:w-auto"
+          >
             Fechar
           </Button>
         </DialogFooter>

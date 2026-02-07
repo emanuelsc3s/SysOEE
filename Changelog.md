@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o layout dos cards do resumo de OEE por turno para reduzir a altura e exibir os 6 cards em uma linha no desktop.
+- Aumentado o contraste do modal de resumo de OEE por turno para melhorar a leitura.
+- Refinado o design do modal de resumo de OEE por turno com visual clean e premium.
 - Adicionado modal de resumo consolidado do `OeeTurno` com KPIs e tabela baseada em RPC.
 - Criada a RPC `fn_resumo_oee_turno` para consolidar produção, perdas e paradas por período/linha/produto.
 - Ajustada a sublinha da coluna "Linha" no modal de resumo para exibir o lançamento (`oeeturno_id`).
