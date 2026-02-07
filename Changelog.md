@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Removida a seção de resumo consolidado de OEE no topo da página `ResumoOeeTurno`.
 - Ajustado o layout dos cards do resumo de OEE por turno para reduzir a altura e exibir os 6 cards em uma linha no desktop.
 - Aumentado o contraste do modal de resumo de OEE por turno para melhorar a leitura.
 - Refinado o design do modal de resumo de OEE por turno com visual clean e premium.

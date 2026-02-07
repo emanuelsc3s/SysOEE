@@ -3,7 +3,7 @@
  * Exibe KPIs e tabela a partir da RPC fn_resumo_oee_turno.
  */
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   AlertCircle,
@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DataPagination } from '@/components/ui/data-pagination'
 import {
   Dialog,
   DialogContent,
@@ -74,6 +75,7 @@ type CardResumo = {
 }
 
 const formatadorDataPtBr = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' })
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const
 
 const normalizarNumero = (valor: number | string | null | undefined): number => {
   if (typeof valor === 'number') {
@@ -313,6 +315,44 @@ export function ModalResumoOeeTurno({
   const erroConsulta = error ? 'Não foi possível carregar o resumo do período informado.' : null
   const totalRegistros = linhas.length
   const exibirSemDados = parametrosValidos && linhas.length === 0 && !isLoading
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(25)
+  const paginationRef = useRef<HTMLDivElement | null>(null)
+
+  const totalPages = Math.ceil(totalRegistros / itemsPerPage)
+  const totalPagesValidas = Math.max(totalPages, 1)
+  const paginaAtualExibida = Math.min(currentPage, totalPagesValidas)
+  const inicioFaixaItens = totalRegistros === 0 ? 0 : (paginaAtualExibida - 1) * itemsPerPage + 1
+  const fimFaixaItens = totalRegistros === 0 ? 0 : Math.min(paginaAtualExibida * itemsPerPage, totalRegistros)
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [open, parametrosRpc, totalRegistros])
+
+  useEffect(() => {
+    if (currentPage <= totalPagesValidas) {
+      return
+    }
+    setCurrentPage(totalPagesValidas)
+  }, [currentPage, totalPagesValidas])
+
+  const linhasPaginadas = useMemo(() => {
+    const inicio = (paginaAtualExibida - 1) * itemsPerPage
+    return linhas.slice(inicio, inicio + itemsPerPage)
+  }, [linhas, paginaAtualExibida, itemsPerPage])
+
+  const handlePageChange = (page: number) => {
+    const next = Math.max(1, Math.min(page, totalPagesValidas))
+    setCurrentPage(next)
+  }
+
+  const handleItemsPerPageChange = (size: number) => {
+    if (!Number.isFinite(size) || size <= 0) {
+      return
+    }
+    setItemsPerPage(size)
+    setCurrentPage(1)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -408,29 +448,47 @@ export function ModalResumoOeeTurno({
               </div>
 
               <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                  <div>
-                    <h2 className="text-base font-semibold leading-tight text-foreground sm:text-lg">
-                      Detalhamento por linha e produto
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Visão consolidada por data, linha, status e SKU.
-                    </p>
+                <div className="border-b border-border px-4 py-4 sm:px-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+                    <div>
+                      <h2 className="text-base font-semibold leading-tight text-foreground sm:text-lg">
+                        Detalhamento por linha e produto
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Visão consolidada por data, linha, status e SKU.
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-start gap-2 md:items-end md:self-center">
+                      <div className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground lg:hidden">
+                        Página {paginaAtualExibida} de {totalPagesValidas}
+                      </div>
+                      <div className="hidden lg:flex lg:items-center lg:gap-3 lg:flex-wrap lg:justify-end">
+                        <DataPagination
+                          currentPage={paginaAtualExibida}
+                          totalPages={totalPages}
+                          onPageChange={handlePageChange}
+                          itemsPerPage={itemsPerPage}
+                          totalItems={totalRegistros}
+                          showInfo={false}
+                          className="!border-0 !bg-transparent !px-0 !py-0 !justify-end"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetch()}
+                        disabled={isFetching || !parametrosValidos}
+                        className="h-9 w-full gap-2 border-border bg-background text-foreground hover:bg-muted md:w-auto"
+                      >
+                        {isFetching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        Atualizar
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refetch()}
-                    disabled={isFetching || !parametrosValidos}
-                    className="h-9 w-full gap-2 border-border bg-background text-foreground hover:bg-muted sm:w-auto"
-                  >
-                    {isFetching ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                    Atualizar
-                  </Button>
                 </div>
 
                 <div className="lg:hidden">
@@ -442,7 +500,7 @@ export function ModalResumoOeeTurno({
                     </div>
                   ) : (
                     <div className="space-y-3 px-3 py-3">
-                      {linhas.map((linha, index) => (
+                      {linhasPaginadas.map((linha, index) => (
                         <article
                           key={`${linha.data}-${linha.linhaproducao_id}-${linha.produto_id}-${index}`}
                           className="rounded-xl border border-border bg-background p-3 shadow-sm"
@@ -540,7 +598,7 @@ export function ModalResumoOeeTurno({
                             </td>
                           </tr>
                         ) : (
-                          linhas.map((linha, index) => (
+                          linhasPaginadas.map((linha, index) => (
                             <tr
                               key={`${linha.data}-${linha.linhaproducao_id}-${linha.produto_id}-${index}`}
                               className="align-top transition-colors odd:bg-background even:bg-muted/30 hover:bg-muted/55"
@@ -604,6 +662,63 @@ export function ModalResumoOeeTurno({
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                <div className="lg:hidden border-t border-border bg-background px-4 py-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      Mostrando {inicioFaixaItens} a {fimFaixaItens} de {totalRegistros}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Por página</span>
+                      <select
+                        value={String(itemsPerPage)}
+                        className="h-9 rounded-md border border-border bg-background px-2.5 text-xs text-foreground"
+                        onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                      >
+                        {PAGE_SIZE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      className="h-10"
+                      onClick={() => handlePageChange(paginaAtualExibida - 1)}
+                      disabled={paginaAtualExibida <= 1}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-10"
+                      onClick={() => handlePageChange(paginaAtualExibida + 1)}
+                      disabled={paginaAtualExibida >= totalPagesValidas}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Página {paginaAtualExibida} de {totalPagesValidas}
+                  </p>
+                </div>
+
+                <div className="hidden lg:block">
+                  <DataPagination
+                    containerRef={paginationRef}
+                    currentPage={paginaAtualExibida}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    itemsPerPage={itemsPerPage}
+                    totalItems={totalRegistros}
+                    showInfo
+                    pageSizeOptions={PAGE_SIZE_OPTIONS as unknown as number[]}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                  />
                 </div>
               </section>
             </div>
