@@ -32,13 +32,16 @@ export function PeriodoSelector({
   return (
     <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-2">
       <div className="space-y-1 sm:space-y-0">
-        <Label className="text-[11px] text-gray-500 sm:hidden">Data inicial</Label>
+        <Label htmlFor="periodo-data-inicial" className="text-[11px] text-gray-500 sm:hidden">Data inicial</Label>
         <div className="flex items-center gap-2">
           <Input
+            id="periodo-data-inicial"
+            name="periodo_data_inicial"
             type="text"
             inputMode="numeric"
+            autoComplete="off"
             placeholder="dd/mm/aaaa"
-            className="h-10 w-full min-w-0 text-sm border border-gray-200 rounded-md"
+            className="h-10 w-full min-w-0 rounded-md border border-gray-200 bg-white text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-primary/30"
             value={dataInicio}
             onChange={(event) => onDataInicioChange(formatarDataDigitada(event.target.value))}
           />
@@ -51,7 +54,7 @@ export function PeriodoSelector({
                 className="h-10 w-10 shrink-0"
                 aria-label="Selecionar data inicial"
               >
-                <CalendarIcon className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" aria-hidden="true" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto overflow-hidden p-0" align="start">
@@ -75,13 +78,16 @@ export function PeriodoSelector({
       <span className="hidden text-xs text-gray-400 sm:inline">até</span>
 
       <div className="space-y-1 sm:space-y-0">
-        <Label className="text-[11px] text-gray-500 sm:hidden">Data final</Label>
+        <Label htmlFor="periodo-data-final" className="text-[11px] text-gray-500 sm:hidden">Data final</Label>
         <div className="flex items-center gap-2">
           <Input
+            id="periodo-data-final"
+            name="periodo_data_final"
             type="text"
             inputMode="numeric"
+            autoComplete="off"
             placeholder="dd/mm/aaaa"
-            className="h-10 w-full min-w-0 text-sm border border-gray-200 rounded-md"
+            className="h-10 w-full min-w-0 rounded-md border border-gray-200 bg-white text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-primary/30"
             value={dataFim}
             onChange={(event) => onDataFimChange(formatarDataDigitada(event.target.value))}
           />
@@ -94,7 +100,7 @@ export function PeriodoSelector({
                 className="h-10 w-10 shrink-0"
                 aria-label="Selecionar data final"
               >
-                <CalendarIcon className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" aria-hidden="true" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto overflow-hidden p-0" align="start">

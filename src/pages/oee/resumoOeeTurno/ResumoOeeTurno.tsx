@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Filter, Loader2, RefreshCw, Search } from 'lucide-react'
+import { CalendarDays, Factory, Filter, Loader2, Package, RefreshCw, Search } from 'lucide-react'
 
 import { AppHeader } from '@/components/layout/AppHeader'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -121,11 +122,25 @@ export default function ResumoOeeTurno() {
 
   const linhasAgrupadas = useMemo(() => agruparLinhasResumo(linhasFiltradas), [linhasFiltradas])
   const cardsResumo = useMemo(() => criarCardsResumo(totais), [totais])
+  const totalProdutosFiltrados = useMemo(() => {
+    return linhasAgrupadas.reduce((acumulador, linha) => acumulador + linha.produtos.length, 0)
+  }, [linhasAgrupadas])
   const appliedCount = useMemo(() => {
     return [appliedFilters.linha, appliedFilters.produto, appliedFilters.status]
       .filter((valor) => valor.trim().length > 0)
       .length
   }, [appliedFilters.linha, appliedFilters.produto, appliedFilters.status])
+  const periodoSelecionado = useMemo(() => {
+    if (!dataInicio && !dataFim) {
+      return 'Período não informado'
+    }
+
+    if (dataInicio === dataFim) {
+      return dataInicio
+    }
+
+    return `${dataInicio} a ${dataFim}`
+  }, [dataFim, dataInicio])
 
   useEffect(() => {
     setLinhasExpandidas(new Set(linhasAgrupadas.map((linha) => linha.id)))
@@ -169,25 +184,69 @@ export default function ResumoOeeTurno() {
       />
 
       <div className="mx-auto w-full max-w-none px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-        <main className="mx-auto max-w-[1600px] space-y-4">
+        <main className="mx-auto max-w-[1600px] space-y-5">
+          <section className="relative overflow-hidden rounded-2xl border border-brand-primary/15 bg-gradient-to-r from-white via-white to-brand-primary/5 p-4 shadow-sm sm:p-5">
+            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-44 bg-[radial-gradient(circle_at_right,rgba(6,98,195,0.18),transparent_72%)] sm:block" />
+
+            <div className="relative flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold leading-tight tracking-tight text-gray-900 sm:text-xl">
+                  Resumo Consolidado por Turno
+                </h2>
+                <p className="mt-1 max-w-[72ch] text-sm leading-6 text-gray-600">
+                  Acompanhe produção, perdas e paradas no período selecionado em uma visão única por linha e produto.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700"
+                >
+                  <CalendarDays className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
+                  {periodoSelecionado}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700"
+                >
+                  <Factory className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
+                  {linhasAgrupadas.length} linha{linhasAgrupadas.length !== 1 ? 's' : ''}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700"
+                >
+                  <Package className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
+                  {totalProdutosFiltrados} produto{totalProdutosFiltrados !== 1 ? 's' : ''}
+                </Badge>
+                {appliedCount > 0 && (
+                  <Badge className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
+                    {appliedCount} filtro{appliedCount !== 1 ? 's' : ''} ativo{appliedCount !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </section>
+
           <ResumoKpis cards={cardsResumo} />
 
           {periodoInvalido && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700">
               A data inicial não pode ser maior que a data final.
             </div>
           )}
 
           {erroConsulta && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700">
               {erroConsulta}
             </div>
           )}
 
           {isLoading && parametrosValidos && (
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando resumo do período...
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-4 py-3 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Carregando resumo do período…
             </div>
           )}
 
@@ -199,20 +258,26 @@ export default function ResumoOeeTurno() {
             carregando={isLoading}
             atualizando={isFetching}
             toolbar={(
-              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
-                <div className="relative w-full md:flex-1 max-w-none">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <div className="mb-6 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-end">
+                <div className="relative w-full">
+                  <Label htmlFor="busca-resumo-turno" className="sr-only">
+                    Pesquisar apontamentos
+                  </Label>
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
                   <Input
+                    id="busca-resumo-turno"
+                    name="busca_resumo_turno"
                     type="text"
-                    placeholder="Pesquisar por linha, turno, SKU ou produto..."
-                    className="h-11 md:h-10 pl-10 w-full border border-gray-200 rounded-md text-sm"
+                    autoComplete="off"
+                    placeholder="Pesquisar por linha, turno, SKU ou produto…"
+                    className="h-11 w-full rounded-md border-gray-200 bg-white pl-10 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-primary/30 md:h-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
-                <div className="flex flex-col gap-1 md:shrink-0">
-                  <Label className="text-xs font-medium text-gray-500">Período</Label>
+                <div className="flex flex-col gap-1 xl:shrink-0">
+                  <Label className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Período</Label>
                   <PeriodoSelector
                     dataInicio={dataInicio}
                     dataFim={dataFim}
@@ -221,7 +286,7 @@ export default function ResumoOeeTurno() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-2 md:shrink-0 sm:flex-row">
+                <div className="flex flex-col gap-2 sm:flex-row xl:shrink-0">
                   <Dialog
                     open={openFilterDialog}
                     onOpenChange={(open) => {
@@ -234,12 +299,15 @@ export default function ResumoOeeTurno() {
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
+                        className={cn(
+                          'h-11 w-full gap-2 border-gray-200 bg-white px-4 text-gray-700 hover:bg-gray-50 sm:h-10 sm:w-auto',
+                          appliedCount > 0 && 'border-brand-primary/40 bg-brand-primary/5 text-brand-primary hover:bg-brand-primary/10'
+                        )}
                       >
-                        <Filter className="h-4 w-4" />
+                        <Filter className="h-4 w-4" aria-hidden="true" />
                         Filtros
                         {appliedCount > 0 && (
-                          <Badge variant="secondary" className="ml-1">
+                          <Badge variant="secondary" className="ml-1 border border-brand-primary/20 bg-brand-primary/10 text-brand-primary">
                             {appliedCount}
                           </Badge>
                         )}
@@ -259,6 +327,8 @@ export default function ResumoOeeTurno() {
                             <Label htmlFor="f-linha">Linha</Label>
                             <Input
                               id="f-linha"
+                              name="filtro_linha"
+                              autoComplete="off"
                               placeholder="Ex.: SPEP Linha A"
                               value={draftFilters.linha}
                               onChange={(e) =>
@@ -271,7 +341,9 @@ export default function ResumoOeeTurno() {
                             <Label htmlFor="f-produto">Produto</Label>
                             <Input
                               id="f-produto"
-                              placeholder="Ex.: Solução..."
+                              name="filtro_produto"
+                              autoComplete="off"
+                              placeholder="Ex.: Solução…"
                               value={draftFilters.produto}
                               onChange={(e) =>
                                 setDraftFilters((anterior) => ({ ...anterior, produto: e.target.value }))
@@ -283,7 +355,8 @@ export default function ResumoOeeTurno() {
                             <Label htmlFor="f-status">Status</Label>
                             <select
                               id="f-status"
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                              name="filtro_status"
+                              className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                               value={draftFilters.status}
                               onChange={(e) =>
                                 setDraftFilters((anterior) => ({ ...anterior, status: e.target.value }))
@@ -300,7 +373,7 @@ export default function ResumoOeeTurno() {
                         </div>
                       </div>
 
-                      <DialogFooter className="sticky bottom-0 z-10 bg-white border-t px-4 sm:px-6 py-3 items-center justify-end sm:justify-end">
+                      <DialogFooter className="sticky bottom-0 z-10 border-t bg-white/95 px-4 py-3 backdrop-blur sm:px-6 items-center justify-end sm:justify-end">
                         <Button variant="outline" onClick={limparFiltros}>
                           Limpar Filtros
                         </Button>
@@ -310,16 +383,15 @@ export default function ResumoOeeTurno() {
                   </Dialog>
 
                   <Button
-                    variant="outline"
                     onClick={() => void refetch()}
                     disabled={!parametrosValidos || isFetching}
-                    className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
+                    className="h-11 w-full gap-2 px-4 sm:h-10 sm:w-auto"
                     title="Atualizar lista"
                   >
                     {isFetching ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
                     ) : (
-                      <RefreshCw className="h-4 w-4" />
+                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     )}
                     Atualizar
                   </Button>

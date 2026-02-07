@@ -71,18 +71,36 @@ export function ResumoDetalhamentoTable({
 
   const renderTabela = (tableClassName: string) => (
     <table className={tableClassName}>
-      <thead className="bg-gray-50 sticky top-0 z-10">
+      <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
         <tr className="border-b border-gray-200">
-          <th className="bg-gray-50 w-10 px-4 md:px-6 py-3"></th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Linha / Produto</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">Turnos</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Produção</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Perdas</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Unid. boas</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Paradas</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Par. totais</th>
-          <th className="bg-gray-50 px-4 md:px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Par. estratég.</th>
+          <th scope="col" className="w-12 bg-slate-50/95 px-4 py-3 md:px-6"></th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Linha / Produto
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Status
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Turnos
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Produção
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Perdas
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Unid. boas
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Paradas
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Par. totais
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Par. estratég.
+          </th>
         </tr>
       </thead>
 
@@ -108,45 +126,54 @@ export function ResumoDetalhamentoTable({
 
           return (
             <Fragment key={`linha-${linha.id}`}>
-              <tr
-                className="cursor-pointer bg-gray-50/60 transition-colors hover:bg-gray-100"
-                onClick={() => onAlternarLinha(linha.id)}
-              >
+              <tr className="bg-slate-50/70 transition-colors hover:bg-slate-100/70">
                 <td className="px-4 py-3 text-center">
-                  {expandida ? (
-                    <ChevronDown className="mx-auto h-4 w-4 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="mx-auto h-4 w-4 text-gray-500" />
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onAlternarLinha(linha.id)}
+                    className="h-8 w-8 text-gray-500 hover:bg-white hover:text-gray-700"
+                    aria-expanded={expandida}
+                    aria-label={expandida ? `Recolher linha ${linha.linha}` : `Expandir linha ${linha.linha}`}
+                  >
+                    {expandida ? (
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </Button>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-gray-900">{linha.linha}</span>
-                    <span className="text-[10px] text-gray-500">Total de {linha.produtos.length} produto{linha.produtos.length !== 1 ? 's' : ''}</span>
+                    <span className="text-xs font-semibold text-gray-900">{linha.linha}</span>
+                    <span className="text-[11px] text-gray-500">
+                      Total de {linha.produtos.length} produto{linha.produtos.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <Badge
                     variant={getBadgeStatus(linha.status)}
-                    className="px-2 py-0.5 text-[10px] font-bold"
+                    className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
                   >
                     {formatarStatus(linha.status)}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 text-center text-xs text-gray-900">{linha.qtdeTurnos}</td>
-                <td className="px-4 py-3 text-right text-xs font-bold text-gray-900">{formatarQuantidade(linha.quantidade)}</td>
-                <td className="px-4 py-3 text-right text-xs font-bold text-red-600">{formatarQuantidade(linha.perdas)}</td>
-                <td className="px-4 py-3 text-right text-xs font-bold text-emerald-600">{formatarQuantidade(linha.unidadesBoas)}</td>
-                <td className="px-4 py-3 text-right text-xs text-gray-600">{formatarMinutos(linha.paradas)}</td>
-                <td className="px-4 py-3 text-right text-xs font-medium text-gray-600">{formatarMinutos(linha.paradasTotais)}</td>
-                <td className="px-4 py-3 text-right text-xs text-gray-600">{formatarMinutos(linha.paradasEstrategicas)}</td>
+                <td className="px-4 py-3 text-center text-xs tabular-nums text-gray-900">{linha.qtdeTurnos}</td>
+                <td className="px-4 py-3 text-right text-xs font-bold tabular-nums text-gray-900">{formatarQuantidade(linha.quantidade)}</td>
+                <td className="px-4 py-3 text-right text-xs font-bold tabular-nums text-red-600">{formatarQuantidade(linha.perdas)}</td>
+                <td className="px-4 py-3 text-right text-xs font-bold tabular-nums text-emerald-600">{formatarQuantidade(linha.unidadesBoas)}</td>
+                <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-600">{formatarMinutos(linha.paradas)}</td>
+                <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-gray-600">{formatarMinutos(linha.paradasTotais)}</td>
+                <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-600">{formatarMinutos(linha.paradasEstrategicas)}</td>
               </tr>
 
               {expandida &&
                 linha.produtos.map((produto) => (
                   <tr
                     key={`produto-${linha.id}-${produto.id}`}
-                    className="transition-colors hover:bg-gray-50"
+                    className="transition-colors hover:bg-slate-50/70"
                   >
                     <td className="border-r border-gray-100 px-4 py-3"></td>
                     <td className="px-4 py-3">
@@ -158,13 +185,13 @@ export function ResumoDetalhamentoTable({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center text-xs text-gray-500">-</td>
-                    <td className="px-4 py-3 text-center text-xs text-gray-900">{produto.qtdeTurnos}</td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-700">{formatarQuantidade(produto.quantidade)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-red-500">{formatarQuantidade(produto.perdas)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-emerald-500">{formatarQuantidade(produto.unidadesBoas)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-500">{formatarMinutos(produto.paradas)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-500">{formatarMinutos(produto.paradasTotais)}</td>
-                    <td className="px-4 py-3 text-right text-xs text-gray-500">{formatarMinutos(produto.paradasEstrategicas)}</td>
+                    <td className="px-4 py-3 text-center text-xs tabular-nums text-gray-900">{produto.qtdeTurnos}</td>
+                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-700">{formatarQuantidade(produto.quantidade)}</td>
+                    <td className="px-4 py-3 text-right text-xs tabular-nums text-red-500">{formatarQuantidade(produto.perdas)}</td>
+                    <td className="px-4 py-3 text-right text-xs tabular-nums text-emerald-500">{formatarQuantidade(produto.unidadesBoas)}</td>
+                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-500">{formatarMinutos(produto.paradas)}</td>
+                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-500">{formatarMinutos(produto.paradasTotais)}</td>
+                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-500">{formatarMinutos(produto.paradasEstrategicas)}</td>
                   </tr>
                 ))}
             </Fragment>
@@ -175,17 +202,17 @@ export function ResumoDetalhamentoTable({
   )
 
   return (
-    <section className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden mb-6">
-      <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+    <section className="mb-6 flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_14px_30px_-28px_rgba(15,23,42,0.55)]">
+      <div className="border-b border-gray-200 bg-gradient-to-r from-white to-slate-50/80 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800 leading-tight">Lista de Apontamentos</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-base font-semibold leading-tight text-gray-900 sm:text-lg">Lista de Apontamentos</h2>
+            <p className="mt-1 text-sm text-gray-500">
               Total de {totalItems} apontamento{totalItems !== 1 ? 's' : ''} encontrados
             </p>
           </div>
           <div className="flex flex-col items-start gap-2 md:items-end md:self-center">
-            <div className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 sm:hidden">
+            <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium tabular-nums text-gray-600 sm:hidden">
               Página {paginaAtualExibida} de {totalPagesValidas}
             </div>
             <div className="hidden sm:flex sm:items-center sm:gap-3 sm:flex-wrap md:justify-end">
@@ -201,24 +228,24 @@ export function ResumoDetalhamentoTable({
             </div>
             {atualizando && (
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Carregando...
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Carregando…
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 py-4 flex flex-col">
+      <div className="flex flex-col px-4 py-4 sm:px-6">
         {toolbar}
 
         <div className="relative">
-          <div className="sm:hidden relative overflow-auto rounded-lg border border-gray-200 mb-4">
+          <div className="relative mb-4 overflow-auto rounded-lg border border-gray-200 sm:hidden">
             {renderTabela('w-full min-w-[1060px] table-auto')}
           </div>
 
           <div
-            className="hidden sm:block relative overflow-auto rounded-lg border border-gray-200"
+            className="relative hidden overflow-auto rounded-lg border border-gray-200 sm:block"
             style={{ maxHeight: '60vh' }}
           >
             {renderTabela('w-full table-auto')}
@@ -226,14 +253,15 @@ export function ResumoDetalhamentoTable({
         </div>
       </div>
 
-      <div className="sm:hidden border-t border-gray-200 bg-white px-4 py-4 space-y-3">
+      <div className="space-y-3 border-t border-gray-200 bg-white px-4 py-4 sm:hidden">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-600">
+          <p className="text-xs tabular-nums text-gray-600">
             Mostrando {inicioFaixaItens} a {fimFaixaItens} de {totalItems}
           </p>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Por página</span>
             <select
+              name="itens_por_pagina_mobile"
               value={String(itemsPerPage)}
               className="h-9 rounded-md border border-gray-200 bg-white px-2.5 text-xs text-gray-700"
               onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
@@ -264,7 +292,7 @@ export function ResumoDetalhamentoTable({
             Próxima
           </Button>
         </div>
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs tabular-nums text-gray-500">
           Página {paginaAtualExibida} de {totalPagesValidas}
         </p>
       </div>
