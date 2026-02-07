@@ -131,7 +131,7 @@ export function useOeeParada() {
   /**
    * Busca uma parada OEE específica por ID
    */
-  const fetchParada = async (id: string): Promise<OeeParadaFormData | null> => {
+  const fetchParada = useCallback(async (id: string): Promise<OeeParadaFormData | null> => {
     try {
       setLoading(true)
 
@@ -159,7 +159,7 @@ export function useOeeParada() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   /**
    * Salva uma parada OEE (criar ou atualizar)
@@ -171,7 +171,7 @@ export function useOeeParada() {
    * IMPORTANTE: O userId deve ser um UUID válido do Supabase Auth,
    * pois as colunas created_by/updated_by são FKs para auth.users(id)
    */
-  const saveParada = async (
+  const saveParada = useCallback(async (
     formData: OeeParadaFormData,
     userId: string
   ): Promise<boolean> => {
@@ -252,7 +252,7 @@ export function useOeeParada() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   /**
    * Exclui logicamente uma parada OEE (soft delete)
@@ -264,7 +264,7 @@ export function useOeeParada() {
    * IMPORTANTE: O userId deve ser um UUID válido do Supabase Auth,
    * pois a coluna deleted_by é FK para auth.users(id)
    */
-  const deleteParada = async (id: string, userId: string): Promise<boolean> => {
+  const deleteParada = useCallback(async (id: string, userId: string): Promise<boolean> => {
     try {
       // Validar userId antes de prosseguir
       if (!isValidUUID(userId)) {
@@ -309,7 +309,7 @@ export function useOeeParada() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   return {
     loading,

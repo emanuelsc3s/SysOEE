@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a cor do título "Lista de Apontamentos" na tabela de detalhamento do resumo por turno.
+- Aplicado o estilo de descrição dos KPIs no texto introdutório do `ResumoOeeTurno`, removendo a limitação de largura.
+- Ajustado o tamanho e a cor do título "Resumo Consolidado por Turno" para maior destaque.
+- Ajustado o título do `ResumoOeeTurno` para usar o mesmo estilo tipográfico dos cards, mantendo o peso da fonte.
+- Removido o fundo com caixa e degradê do bloco de título no `ResumoOeeTurno`.
 - Removida a seção de resumo consolidado de OEE no topo da página `ResumoOeeTurno`.
 - Ajustado o layout dos cards do resumo de OEE por turno para reduzir a altura e exibir os 6 cards em uma linha no desktop.
 - Aumentado o contraste do modal de resumo de OEE por turno para melhorar a leitura.

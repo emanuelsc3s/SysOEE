@@ -74,31 +74,31 @@ export function ResumoDetalhamentoTable({
       <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
         <tr className="border-b border-gray-200">
           <th scope="col" className="w-12 bg-slate-50/95 px-4 py-3 md:px-6"></th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-left text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Linha / Produto
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Status
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-center text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Turnos
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Produção
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Perdas
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Unid. boas
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Paradas
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Par. totais
           </th>
-          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Par. estratég.
           </th>
         </tr>
@@ -146,8 +146,8 @@ export function ResumoDetalhamentoTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-gray-900">{linha.linha}</span>
-                    <span className="text-[11px] text-gray-500">
+                    <span className="text-sm font-semibold text-gray-900">{linha.linha}</span>
+                    <span className="text-sm text-gray-500">
                       Total de {linha.produtos.length} produto{linha.produtos.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -160,13 +160,13 @@ export function ResumoDetalhamentoTable({
                     {formatarStatus(linha.status)}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 text-center text-xs tabular-nums text-gray-900">{linha.qtdeTurnos}</td>
-                <td className="px-4 py-3 text-right text-xs font-bold tabular-nums text-gray-900">{formatarQuantidade(linha.quantidade)}</td>
-                <td className="px-4 py-3 text-right text-xs font-bold tabular-nums text-red-600">{formatarQuantidade(linha.perdas)}</td>
-                <td className="px-4 py-3 text-right text-xs font-bold tabular-nums text-emerald-600">{formatarQuantidade(linha.unidadesBoas)}</td>
-                <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-600">{formatarMinutos(linha.paradas)}</td>
-                <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-gray-600">{formatarMinutos(linha.paradasTotais)}</td>
-                <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-600">{formatarMinutos(linha.paradasEstrategicas)}</td>
+                <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-900">{linha.qtdeTurnos}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-gray-900">{formatarQuantidade(linha.quantidade)}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-red-600">{formatarQuantidade(linha.perdas)}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-emerald-600">{formatarQuantidade(linha.unidadesBoas)}</td>
+                <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-600">{formatarMinutos(linha.paradas)}</td>
+                <td className="px-4 py-3 text-right text-sm font-medium tabular-nums text-gray-600">{formatarMinutos(linha.paradasTotais)}</td>
+                <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-600">{formatarMinutos(linha.paradasEstrategicas)}</td>
               </tr>
 
               {expandida &&
@@ -178,20 +178,20 @@ export function ResumoDetalhamentoTable({
                     <td className="border-r border-gray-100 px-4 py-3"></td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="max-w-[280px] truncate text-xs text-gray-900" title={produto.produto}>
+                        <span className="max-w-[280px] truncate text-sm text-gray-900" title={produto.produto}>
                           {produto.produto}
                         </span>
                         <span className="text-[10px] text-gray-500">Cód. {produto.produtoId ?? '-'}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center text-xs text-gray-500">-</td>
-                    <td className="px-4 py-3 text-center text-xs tabular-nums text-gray-900">{produto.qtdeTurnos}</td>
-                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-700">{formatarQuantidade(produto.quantidade)}</td>
-                    <td className="px-4 py-3 text-right text-xs tabular-nums text-red-500">{formatarQuantidade(produto.perdas)}</td>
-                    <td className="px-4 py-3 text-right text-xs tabular-nums text-emerald-500">{formatarQuantidade(produto.unidadesBoas)}</td>
-                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-500">{formatarMinutos(produto.paradas)}</td>
-                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-500">{formatarMinutos(produto.paradasTotais)}</td>
-                    <td className="px-4 py-3 text-right text-xs tabular-nums text-gray-500">{formatarMinutos(produto.paradasEstrategicas)}</td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-500">-</td>
+                    <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-900">{produto.qtdeTurnos}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-700">{formatarQuantidade(produto.quantidade)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-red-500">{formatarQuantidade(produto.perdas)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-emerald-500">{formatarQuantidade(produto.unidadesBoas)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-500">{formatarMinutos(produto.paradas)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-500">{formatarMinutos(produto.paradasTotais)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-500">{formatarMinutos(produto.paradasEstrategicas)}</td>
                   </tr>
                 ))}
             </Fragment>
@@ -206,13 +206,13 @@ export function ResumoDetalhamentoTable({
       <div className="border-b border-gray-200 bg-gradient-to-r from-white to-slate-50/80 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
           <div>
-            <h2 className="text-base font-semibold leading-tight text-gray-900 sm:text-lg">Lista de Apontamentos</h2>
+            <h2 className="text-base font-semibold leading-tight text-gray-700 sm:text-lg">Lista de Apontamentos</h2>
             <p className="mt-1 text-sm text-gray-500">
               Total de {totalItems} apontamento{totalItems !== 1 ? 's' : ''} encontrados
             </p>
           </div>
           <div className="flex flex-col items-start gap-2 md:items-end md:self-center">
-            <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium tabular-nums text-gray-600 sm:hidden">
+            <div className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium tabular-nums text-gray-600 sm:hidden">
               Página {paginaAtualExibida} de {totalPagesValidas}
             </div>
             <div className="hidden sm:flex sm:items-center sm:gap-3 sm:flex-wrap md:justify-end">
@@ -255,15 +255,15 @@ export function ResumoDetalhamentoTable({
 
       <div className="space-y-3 border-t border-gray-200 bg-white px-4 py-4 sm:hidden">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs tabular-nums text-gray-600">
+          <p className="text-sm tabular-nums text-gray-600">
             Mostrando {inicioFaixaItens} a {fimFaixaItens} de {totalItems}
           </p>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Por página</span>
+            <span className="text-sm text-gray-500">Por página</span>
             <select
               name="itens_por_pagina_mobile"
               value={String(itemsPerPage)}
-              className="h-9 rounded-md border border-gray-200 bg-white px-2.5 text-xs text-gray-700"
+              className="h-9 rounded-md border border-gray-200 bg-white px-2.5 text-sm text-gray-700"
               onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
             >
               {PAGE_SIZE_OPTIONS.map((option) => (
@@ -292,7 +292,7 @@ export function ResumoDetalhamentoTable({
             Próxima
           </Button>
         </div>
-        <p className="text-center text-xs tabular-nums text-gray-500">
+        <p className="text-center text-sm tabular-nums text-gray-500">
           Página {paginaAtualExibida} de {totalPagesValidas}
         </p>
       </div>

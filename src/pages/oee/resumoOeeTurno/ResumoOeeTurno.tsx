@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, Factory, Filter, Loader2, Package, RefreshCw, Search } from 'lucide-react'
+import { Filter, Loader2, RefreshCw, Search } from 'lucide-react'
 
 import { AppHeader } from '@/components/layout/AppHeader'
 import { cn } from '@/lib/utils'
@@ -17,7 +17,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/useAuth'
-import { ComparativoTurnoChart } from './components/ComparativoTurnoChart'
 import { PeriodoSelector } from './components/PeriodoSelector'
 import { ResumoDetalhamentoTable } from './components/ResumoDetalhamentoTable'
 import { ResumoKpis } from './components/ResumoKpis'
@@ -54,7 +53,6 @@ export default function ResumoOeeTurno() {
   const {
     linhas,
     totais,
-    comparativoTurnos,
     parametrosValidos,
     periodoInvalido,
     isLoading,
@@ -122,26 +120,11 @@ export default function ResumoOeeTurno() {
 
   const linhasAgrupadas = useMemo(() => agruparLinhasResumo(linhasFiltradas), [linhasFiltradas])
   const cardsResumo = useMemo(() => criarCardsResumo(totais), [totais])
-  const totalProdutosFiltrados = useMemo(() => {
-    return linhasAgrupadas.reduce((acumulador, linha) => acumulador + linha.produtos.length, 0)
-  }, [linhasAgrupadas])
   const appliedCount = useMemo(() => {
     return [appliedFilters.linha, appliedFilters.produto, appliedFilters.status]
       .filter((valor) => valor.trim().length > 0)
       .length
   }, [appliedFilters.linha, appliedFilters.produto, appliedFilters.status])
-  const periodoSelecionado = useMemo(() => {
-    if (!dataInicio && !dataFim) {
-      return 'Período não informado'
-    }
-
-    if (dataInicio === dataFim) {
-      return dataInicio
-    }
-
-    return `${dataInicio} a ${dataFim}`
-  }, [dataFim, dataInicio])
-
   useEffect(() => {
     setLinhasExpandidas(new Set(linhasAgrupadas.map((linha) => linha.id)))
   }, [linhasAgrupadas])
@@ -185,47 +168,24 @@ export default function ResumoOeeTurno() {
 
       <div className="mx-auto w-full max-w-none px-4 pb-6 pt-4 sm:px-6 lg:px-8">
         <main className="mx-auto max-w-[1600px] space-y-5">
-          <section className="relative overflow-hidden rounded-2xl border border-brand-primary/15 bg-gradient-to-r from-white via-white to-brand-primary/5 p-4 shadow-sm sm:p-5">
-            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-44 bg-[radial-gradient(circle_at_right,rgba(6,98,195,0.18),transparent_72%)] sm:block" />
-
+          <section className="relative">
             <div className="relative flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
-                <h2 className="text-lg font-semibold leading-tight tracking-tight text-gray-900 sm:text-xl">
+                <h2 className="text-lg font-semibold uppercase tracking-[0.08em] text-gray-700">
                   Resumo Consolidado por Turno
                 </h2>
-                <p className="mt-1 max-w-[72ch] text-sm leading-6 text-gray-600">
+                <p className="mt-1 text-sm leading-5 text-gray-500">
                   Acompanhe produção, perdas e paradas no período selecionado em uma visão única por linha e produto.
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <Badge
-                  variant="secondary"
-                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700"
-                >
-                  <CalendarDays className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
-                  {periodoSelecionado}
-                </Badge>
-                <Badge
-                  variant="secondary"
-                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700"
-                >
-                  <Factory className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
-                  {linhasAgrupadas.length} linha{linhasAgrupadas.length !== 1 ? 's' : ''}
-                </Badge>
-                <Badge
-                  variant="secondary"
-                  className="flex items-center gap-1 rounded-full border border-gray-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700"
-                >
-                  <Package className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
-                  {totalProdutosFiltrados} produto{totalProdutosFiltrados !== 1 ? 's' : ''}
-                </Badge>
-                {appliedCount > 0 && (
-                  <Badge className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
+              {appliedCount > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2.5 py-1 text-sm font-semibold text-brand-primary">
                     {appliedCount} filtro{appliedCount !== 1 ? 's' : ''} ativo{appliedCount !== 1 ? 's' : ''}
                   </Badge>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </section>
 
@@ -277,7 +237,7 @@ export default function ResumoOeeTurno() {
                 </div>
 
                 <div className="flex flex-col gap-1 xl:shrink-0">
-                  <Label className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Período</Label>
+                  <Label className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-500">Período</Label>
                   <PeriodoSelector
                     dataInicio={dataInicio}
                     dataFim={dataFim}
@@ -398,12 +358,6 @@ export default function ResumoOeeTurno() {
                 </div>
               </div>
             )}
-          />
-
-          <ComparativoTurnoChart
-            dados={comparativoTurnos}
-            parametrosValidos={parametrosValidos}
-            carregando={isLoading}
           />
         </main>
       </div>

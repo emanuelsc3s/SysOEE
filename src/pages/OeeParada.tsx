@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,10 +53,20 @@ import { DataPagination } from '@/components/ui/data-pagination'
 const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_parada_items_per_page'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 
+type OeeParadaLocationState = {
+  shouldRefresh?: boolean
+  restoreSearchTerm?: string
+}
+
 export default function OeeParada() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const locationState = location.state as OeeParadaLocationState | null
+  const restoredSearchTerm = typeof locationState?.restoreSearchTerm === 'string'
+    ? locationState.restoreSearchTerm
+    : ''
   const [searchParams, setSearchParams] = useSearchParams()
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(restoredSearchTerm)
   const [currentPage, setCurrentPage] = useState(() => {
     const p = Number(searchParams.get('page'))
     return Number.isFinite(p) && p > 0 ? p : 1
@@ -159,6 +169,15 @@ export default function OeeParada() {
   const paradasPaginadas = paradasData?.data || []
   const totalItems = paradasData?.count || 0
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const shouldRefreshFromNavigation = Boolean(locationState?.shouldRefresh)
+
+  useEffect(() => {
+    // Se voltamos do cadastro com sinalização de refresh, refaz a consulta automaticamente
+    if (shouldRefreshFromNavigation) {
+      void refetch()
+      navigate(location.pathname + location.search, { replace: true })
+    }
+  }, [shouldRefreshFromNavigation, refetch, navigate, location.pathname, location.search])
 
   // Resetar página para 1 quando searchTerm ou filtros mudarem
   useEffect(() => {
@@ -214,7 +233,9 @@ export default function OeeParada() {
   }
 
   const handleEditar = (parada: OeeParadaFormData) => {
-    navigate(`/oee-parada-cad/${parada.id}`)
+    navigate(`/oee-parada-cad/${parada.id}`, {
+      state: { returnSearchTerm: searchTerm }
+    })
   }
 
   const handleExcluirClick = (parada: OeeParadaFormData) => {
@@ -297,7 +318,9 @@ export default function OeeParada() {
               <Button
                 variant="outline"
                 className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
-                onClick={() => navigate('/oee-parada-cad')}
+                onClick={() => navigate('/oee-parada-cad', {
+                  state: { returnSearchTerm: searchTerm }
+                })}
               >
                 <Plus className="h-4 w-4" />
                 Nova Parada

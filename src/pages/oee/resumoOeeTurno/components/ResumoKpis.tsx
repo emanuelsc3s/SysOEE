@@ -30,7 +30,7 @@ export function ResumoKpis({ cards }: ResumoKpisProps) {
             aria-hidden="true"
           />
 
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-500">
             {card.titulo}
           </h3>
           <p
@@ -41,7 +41,7 @@ export function ResumoKpis({ cards }: ResumoKpisProps) {
           >
             {card.valor}
           </p>
-          <p className="mt-1 text-xs leading-5 text-gray-500">{card.detalhe}</p>
+          <p className="mt-1 text-sm leading-5 text-gray-500">{card.detalhe}</p>
         </article>
       ))}
     </section>

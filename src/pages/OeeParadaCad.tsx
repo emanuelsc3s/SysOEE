@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -38,10 +39,20 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { ArrowLeft, Save, Trash2, AlertTriangle, FileText } from 'lucide-react'
 
+type OeeParadaCadLocationState = {
+  returnSearchTerm?: string
+}
+
 export default function OeeParadaCad() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, fetchParada, saveParada, deleteParada } = useOeeParada()
+  const location = useLocation()
+  const locationState = location.state as OeeParadaCadLocationState | null
+  const queryClient = useQueryClient()
+  const { fetchParada, saveParada, deleteParada } = useOeeParada()
+  const returnSearchTerm = typeof locationState?.returnSearchTerm === 'string'
+    ? locationState.returnSearchTerm || ''
+    : ''
 
   // Hook de autenticação
   const { user: authUser } = useAuth()
@@ -58,10 +69,18 @@ export default function OeeParadaCad() {
 
   // Estados de UI
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isFetchingData, setIsFetchingData] = useState(Boolean(id))
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const loadData = useCallback(async () => {
+    if (!id) {
+      return
+    }
+
     try {
-      const data = await fetchParada(id!)
+      setIsFetchingData(true)
+      const data = await fetchParada(id)
       if (data) {
         setFormData(data)
       } else {
@@ -70,6 +89,8 @@ export default function OeeParadaCad() {
     } catch (error) {
       console.error('Erro ao carregar parada:', error)
       navigate('/oee-parada')
+    } finally {
+      setIsFetchingData(false)
     }
   }, [fetchParada, id, navigate])
 
@@ -82,6 +103,10 @@ export default function OeeParadaCad() {
 
   const handleSave = async () => {
     try {
+      if (isSaving) {
+        return
+      }
+
       // Validar autenticação
       if (!authUser?.id) {
         toast({
@@ -102,18 +127,32 @@ export default function OeeParadaCad() {
         return
       }
 
+      setIsSaving(true)
+
       // Salvar (authUser.id é o UUID do Supabase Auth)
       const sucesso = await saveParada(formData, authUser.id)
       if (sucesso) {
-        navigate('/oee-parada')
+        await queryClient.invalidateQueries({ queryKey: ['oee-paradas'] })
+        navigate('/oee-parada', {
+          state: {
+            shouldRefresh: true,
+            restoreSearchTerm: returnSearchTerm,
+          }
+        })
       }
     } catch (error) {
       console.error('Erro ao salvar parada:', error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const handleDelete = async () => {
     try {
+      if (isDeleting) {
+        return
+      }
+
       // Validar autenticação
       if (!authUser?.id) {
         toast({
@@ -125,19 +164,54 @@ export default function OeeParadaCad() {
       }
 
       if (id) {
+        setIsDeleting(true)
+
         // authUser.id é o UUID do Supabase Auth
         const sucesso = await deleteParada(id, authUser.id)
         if (sucesso) {
-          navigate('/oee-parada')
+          await queryClient.invalidateQueries({ queryKey: ['oee-paradas'] })
+          navigate('/oee-parada', {
+            state: {
+              shouldRefresh: true,
+              restoreSearchTerm: returnSearchTerm,
+            }
+          })
         }
       }
     } catch (error) {
       console.error('Erro ao excluir parada:', error)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   const handleVoltar = () => {
-    navigate('/oee-parada')
+    navigate('/oee-parada', {
+      state: {
+        restoreSearchTerm: returnSearchTerm,
+      }
+    })
+  }
+
+  const isActionDisabled = isFetchingData || isSaving || isDeleting
+
+  // Exibir loading enquanto carrega dados em modo edição
+  if (id && isFetchingData && !formData.id) {
+    return (
+      <>
+        <AppHeader
+          title="SICFAR OEE - Cadastro de Paradas"
+          userName={user.name}
+          userInitials={user.initials}
+          userRole={user.role}
+        />
+        <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-0 max-w-[1366px]">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-500">Carregando dados...</div>
+          </div>
+        </div>
+      </>
+    )
   }
 
   return (
@@ -151,7 +225,7 @@ export default function OeeParadaCad() {
       />
 
       {/* Container principal */}
-      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-0 max-w-none">
+      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-0 max-w-[1366px]">
         <div className="flex flex-col gap-4">
           {/* Cabeçalho responsivo */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -168,6 +242,7 @@ export default function OeeParadaCad() {
                 variant="outline"
                 className="flex items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-10 px-4"
                 onClick={handleVoltar}
+                disabled={isSaving || isDeleting}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
@@ -176,21 +251,21 @@ export default function OeeParadaCad() {
                 <Button
                   variant="destructive"
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  disabled={loading}
+                  disabled={isActionDisabled}
                   className="flex items-center justify-center gap-2 min-h-10 px-4"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Excluir
+                  {isDeleting ? 'Excluindo...' : 'Excluir'}
                 </Button>
               )}
               <Button
                 variant="outline"
                 className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
                 onClick={handleSave}
-                disabled={loading}
+                disabled={isActionDisabled}
               >
                 <Save className="h-4 w-4" />
-                {loading ? 'Salvando...' : 'Salvar'}
+                {isSaving ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
           </div>
@@ -264,14 +339,14 @@ export default function OeeParadaCad() {
                   <div className="space-y-2">
                     <Label htmlFor="componente">Componente OEE</Label>
                     <Select
-                      value={formData.componente || ''}
-                      onValueChange={(value) => setFormData({ ...formData, componente: value })}
+                      value={formData.componente || 'NONE'}
+                      onValueChange={(value) => setFormData({ ...formData, componente: value === 'NONE' ? '' : value })}
                     >
                       <SelectTrigger id="componente">
                         <SelectValue placeholder="Selecione o componente" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="NONE">Nenhum</SelectItem>
                         {COMPONENTE_OEE_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
@@ -288,14 +363,14 @@ export default function OeeParadaCad() {
                   <div className="space-y-2">
                     <Label htmlFor="classe">Classe</Label>
                     <Select
-                      value={formData.classe || ''}
-                      onValueChange={(value) => setFormData({ ...formData, classe: value })}
+                      value={formData.classe || 'NONE'}
+                      onValueChange={(value) => setFormData({ ...formData, classe: value === 'NONE' ? '' : value })}
                     >
                       <SelectTrigger id="classe">
                         <SelectValue placeholder="Selecione a classe" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhuma</SelectItem>
+                        <SelectItem value="NONE">Nenhuma</SelectItem>
                         {CLASSE_PARADA_OPTIONS.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
@@ -384,9 +459,10 @@ export default function OeeParadaCad() {
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
+                  disabled={isDeleting}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  Excluir
+                  {isDeleting ? 'Excluindo...' : 'Excluir'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

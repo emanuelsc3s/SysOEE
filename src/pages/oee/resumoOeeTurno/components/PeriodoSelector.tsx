@@ -32,7 +32,7 @@ export function PeriodoSelector({
   return (
     <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-2">
       <div className="space-y-1 sm:space-y-0">
-        <Label htmlFor="periodo-data-inicial" className="text-[11px] text-gray-500 sm:hidden">Data inicial</Label>
+        <Label htmlFor="periodo-data-inicial" className="text-sm text-gray-500 sm:hidden">Data inicial</Label>
         <div className="flex items-center gap-2">
           <Input
             id="periodo-data-inicial"
@@ -75,10 +75,10 @@ export function PeriodoSelector({
         </div>
       </div>
 
-      <span className="hidden text-xs text-gray-400 sm:inline">até</span>
+      <span className="hidden text-sm text-gray-400 sm:inline">até</span>
 
       <div className="space-y-1 sm:space-y-0">
-        <Label htmlFor="periodo-data-final" className="text-[11px] text-gray-500 sm:hidden">Data final</Label>
+        <Label htmlFor="periodo-data-final" className="text-sm text-gray-500 sm:hidden">Data final</Label>
         <div className="flex items-center gap-2">
           <Input
             id="periodo-data-final"

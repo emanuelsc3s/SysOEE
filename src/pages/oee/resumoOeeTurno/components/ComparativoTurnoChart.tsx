@@ -31,17 +31,17 @@ export function ComparativoTurnoChart({
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold text-gray-900">Comparativo de Produção por Turno</h2>
-          <p className="mt-1 text-xs leading-5 text-gray-500">Análise comparativa de produção x perdas em cada turno.</p>
+          <p className="mt-1 text-sm leading-5 text-gray-500">Análise comparativa de produção x perdas em cada turno.</p>
         </div>
 
         <div className="flex items-center space-x-3">
           <div className="flex items-center">
             <span className="mr-1.5 h-2.5 w-2.5 rounded-sm bg-primary"></span>
-            <span className="text-[11px] font-medium text-gray-600">Produção</span>
+            <span className="text-sm font-medium text-gray-600">Produção</span>
           </div>
           <div className="flex items-center">
             <span className="mr-1.5 h-2.5 w-2.5 rounded-sm bg-red-400"></span>
-            <span className="text-[11px] font-medium text-gray-600">Perdas</span>
+            <span className="text-sm font-medium text-gray-600">Perdas</span>
           </div>
         </div>
       </div>
