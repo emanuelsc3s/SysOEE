@@ -55,6 +55,7 @@ export default function ResumoOeeTurno() {
     totais,
     parametrosValidos,
     periodoInvalido,
+    resumoAtualizadoEm,
     isLoading,
     isFetching,
     erroConsulta,
@@ -126,7 +127,25 @@ export default function ResumoOeeTurno() {
       .length
   }, [appliedFilters.linha, appliedFilters.produto, appliedFilters.status])
   useEffect(() => {
-    setLinhasExpandidas(new Set(linhasAgrupadas.map((linha) => linha.id)))
+    setLinhasExpandidas((estadoAnterior) => {
+      if (estadoAnterior.size === 0) {
+        return estadoAnterior
+      }
+      if (linhasAgrupadas.length === 0) {
+        return new Set()
+      }
+      const idsValidos = new Set(linhasAgrupadas.map((linha) => linha.id))
+      let existeInvalido = false
+      estadoAnterior.forEach((id) => {
+        if (!idsValidos.has(id)) {
+          existeInvalido = true
+        }
+      })
+      if (!existeInvalido) {
+        return estadoAnterior
+      }
+      return new Set(Array.from(estadoAnterior).filter((id) => idsValidos.has(id)))
+    })
   }, [linhasAgrupadas])
 
   const alternarLinhaExpandida = (id: string) => {
@@ -138,6 +157,19 @@ export default function ResumoOeeTurno() {
         proximoEstado.add(id)
       }
       return proximoEstado
+    })
+  }
+
+  const alternarTodasLinhas = () => {
+    setLinhasExpandidas((estadoAnterior) => {
+      if (linhasAgrupadas.length === 0) {
+        return estadoAnterior
+      }
+      const todasExpandidas = linhasAgrupadas.every((linha) => estadoAnterior.has(linha.id))
+      if (todasExpandidas) {
+        return new Set()
+      }
+      return new Set(linhasAgrupadas.map((linha) => linha.id))
     })
   }
 
@@ -175,7 +207,7 @@ export default function ResumoOeeTurno() {
                   Resumo Consolidado por Turno
                 </h2>
                 <p className="mt-1 text-sm leading-5 text-gray-500">
-                  Acompanhe produção, perdas e paradas no período selecionado em uma visão única por linha e produto.
+                  Acompanhe produção, perdas e paradas no período selecionado em uma visão única por linha e turno.
                 </p>
               </div>
 
@@ -189,7 +221,7 @@ export default function ResumoOeeTurno() {
             </div>
           </section>
 
-          <ResumoKpis cards={cardsResumo} />
+          <ResumoKpis cards={cardsResumo} animacaoKey={resumoAtualizadoEm} />
 
           {periodoInvalido && (
             <div className="rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700">
@@ -214,6 +246,7 @@ export default function ResumoOeeTurno() {
             linhas={linhasAgrupadas}
             linhasExpandidas={linhasExpandidas}
             onAlternarLinha={alternarLinhaExpandida}
+            onAlternarTodasLinhas={alternarTodasLinhas}
             parametrosValidos={parametrosValidos}
             carregando={isLoading}
             atualizando={isFetching}

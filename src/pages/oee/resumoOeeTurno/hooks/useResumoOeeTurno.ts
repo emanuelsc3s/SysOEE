@@ -22,6 +22,7 @@ type UseResumoOeeTurnoRetorno = {
   comparativoTurnos: ComparativoTurno[]
   parametrosValidos: boolean
   periodoInvalido: boolean
+  resumoAtualizadoEm: number
   isLoading: boolean
   isFetching: boolean
   erroConsulta: string | null
@@ -153,6 +154,7 @@ export const useResumoOeeTurno = ({
     comparativoTurnos,
     parametrosValidos,
     periodoInvalido,
+    resumoAtualizadoEm: resumoQuery.dataUpdatedAt,
     isLoading: resumoQuery.isLoading || comparativoQuery.isLoading,
     isFetching: resumoQuery.isFetching || comparativoQuery.isFetching,
     erroConsulta,

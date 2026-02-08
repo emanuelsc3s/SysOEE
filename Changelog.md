@@ -1,7 +1,19 @@
 # Changelog
 
 ## [Unreleased]
+- Adicionado efeito de contador incremental (do zero até o valor) nos cards do `ResumoOeeTurno`.
+- Corrigida a contagem incremental dos KPIs do `ResumoOeeTurno` para usar os valores numéricos totais corretos.
+- Ajustado o contador dos KPIs do `ResumoOeeTurno` para animar apenas quando a RPC é atualizada.
+- Ajustado o `ResumoOeeTurno` para iniciar o drill-down global recolhido na primeira carga.
+- Adicionado controle global de drill-down para expandir/recolher todas as linhas no resumo por turno.
+- Ajustado o drill-down do `ResumoOeeTurno` para detalhar lançamentos por `oeeturno_id` na tabela, com contagem de produtos por turno.
+- Atualizada a sublinha dos turnos no `ResumoOeeTurno` para listar os produtos do `tboee_turno_producao`.
+- Ajustado o texto do lançamento no detalhamento do `ResumoOeeTurno` para destacar o `oeeturno_id`.
+- Ajustado o destaque do `oeeturno_id` no detalhamento para manter os colchetes em negrito.
+- Ajustada a RPC `fn_resumo_oee_turno` para consolidar produção, perdas e paradas por produto e `oeeturno_id`, suportando múltiplos produtos no mesmo turno.
+- Ajustada a agregação do `ResumoOeeTurno` para contabilizar turnos distintos por `oeeturno_id` no agrupamento por linha.
 - Ajustada a cor do título "Lista de Apontamentos" na tabela de detalhamento do resumo por turno.
+- Ajustada a cor do valor de produção na tabela de detalhamento do resumo por turno.
 - Aplicado o estilo de descrição dos KPIs no texto introdutório do `ResumoOeeTurno`, removendo a limitação de largura.
 - Ajustado o tamanho e a cor do título "Resumo Consolidado por Turno" para maior destaque.
 - Ajustado o título do `ResumoOeeTurno` para usar o mesmo estilo tipográfico dos cards, mantendo o peso da fonte.

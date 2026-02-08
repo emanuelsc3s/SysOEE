@@ -70,22 +70,10 @@ export type CardResumo = {
   id: string
   titulo: string
   valor: string
+  valorNumero?: number
   detalhe: string
   classeValor?: string
   classeCard?: string
-}
-
-export type ProdutoAgrupado = {
-  id: string
-  produtoId: number | null
-  produto: string
-  qtdeTurnos: number
-  quantidade: number
-  perdas: number
-  unidadesBoas: number
-  paradas: number
-  paradasTotais: number
-  paradasEstrategicas: number
 }
 
 export type LinhaAgrupada = {
@@ -100,7 +88,23 @@ export type LinhaAgrupada = {
   paradas: number
   paradasTotais: number
   paradasEstrategicas: number
-  produtos: ProdutoAgrupado[]
+  turnos: TurnoAgrupado[]
+}
+
+export type TurnoAgrupado = {
+  id: string
+  oeeturnoId: number | null
+  data: string | null
+  status: string
+  qtdeTurnos: number
+  quantidade: number
+  perdas: number
+  unidadesBoas: number
+  paradas: number
+  paradasTotais: number
+  paradasEstrategicas: number
+  produtos: string[]
+  produtosCount: number
 }
 
 export type ComparativoTurno = {

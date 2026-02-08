@@ -74,7 +74,6 @@ BEGIN
         OR (p.p_oeeturno_id IS NOT NULL AND t.oeeturno_id = p.p_oeeturno_id)
       )
       AND (p.p_turno_id IS NULL OR t.turno_id = p.p_turno_id)
-      AND (p.p_produto_id IS NULL OR t.produto_id = p.p_produto_id)
       AND (p.p_linhaproducao_id IS NULL OR t.linhaproducao_id = p.p_linhaproducao_id)
   ),
 
@@ -128,24 +127,106 @@ BEGIN
     JOIN tbproduto p ON p.produto_id = prm.p_produto_id
   ),
 
-  produtos_linha_data AS (
-    -- Produtos que realmente tiveram turno na data/linha
+  produtos_detail_raw AS (
+    SELECT
+      p.oeeturno_id,
+      COALESCE(p.produto_id, tf.produto_id) AS produto_id,
+      COALESCE(NULLIF(TRIM(p.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
+      CASE
+        WHEN COALESCE(p.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(p.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(p.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key
+    FROM tboee_turno_producao p
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = p.oeeturno_id
+    WHERE p.deletado IS NULL OR p.deletado = 'N'
+
+    UNION ALL
+
+    SELECT
+      q.oeeturno_id,
+      COALESCE(q.produto_id, tf.produto_id) AS produto_id,
+      COALESCE(NULLIF(TRIM(q.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
+      CASE
+        WHEN COALESCE(q.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(q.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(q.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key
+    FROM tboee_turno_perda q
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = q.oeeturno_id
+    WHERE q.deletado = 'N'
+
+    UNION ALL
+
+    SELECT
+      pr.oeeturno_id,
+      COALESCE(pr.produto_id, tf.produto_id) AS produto_id,
+      COALESCE(NULLIF(TRIM(pr.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
+      CASE
+        WHEN COALESCE(pr.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(pr.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(pr.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key
+    FROM tboee_turno_parada pr
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = pr.oeeturno_id
+    WHERE pr.deletado = 'N'
+  ),
+
+  produtos_detail AS (
+    SELECT
+      pdr.oeeturno_id,
+      MAX(pdr.produto_id) AS produto_id,
+      COALESCE(
+        MAX(pdr.produto) FILTER (WHERE pdr.produto <> 'Produto não informado'),
+        MAX(pdr.produto)
+      ) AS produto,
+      pdr.produto_key
+    FROM produtos_detail_raw pdr
+    GROUP BY pdr.oeeturno_id, pdr.produto_key
+  ),
+
+  produtos_turno AS (
+    SELECT DISTINCT
+      tf.data,
+      tf.linhaproducao_id,
+      tf.oeeturno_id,
+      pd.produto_id,
+      pd.produto,
+      pd.produto_key
+    FROM turnos_filtrados tf
+    JOIN produtos_detail pd ON pd.oeeturno_id = tf.oeeturno_id
+    CROSS JOIN params p
+    WHERE p.p_produto_id IS NULL OR pd.produto_id = p.p_produto_id
+  ),
+
+  produtos_turno_fallback AS (
     SELECT
       tf.data,
       tf.linhaproducao_id,
+      tf.oeeturno_id,
       tf.produto_id,
+      COALESCE(NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
       CASE
-        WHEN COUNT(DISTINCT tf.oeeturno_id) = 1 THEN MIN(tf.oeeturno_id)
-        ELSE NULL
-      END AS oeeturno_id,
-      COUNT(DISTINCT tf.oeeturno_id)::integer AS qtde_turnos,
-      COALESCE(NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto
+        WHEN tf.produto_id IS NOT NULL THEN 'id:' || tf.produto_id::text
+        ELSE 'txt:' || COALESCE(NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key
     FROM turnos_filtrados tf
-    GROUP BY
-      tf.data,
-      tf.linhaproducao_id,
-      tf.produto_id,
-      COALESCE(NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+    CROSS JOIN params p
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM produtos_detail pd
+      WHERE pd.oeeturno_id = tf.oeeturno_id
+    )
+      AND (p.p_produto_id IS NULL OR tf.produto_id = p.p_produto_id)
+  ),
+
+  produtos_turno_base AS (
+    SELECT * FROM produtos_turno
+    UNION ALL
+    SELECT * FROM produtos_turno_fallback
   ),
 
   agenda_produto AS (
@@ -154,23 +235,30 @@ BEGIN
       ab.data,
       ab.linhaproducao_id,
       ab.linhaproducao,
-      pld.oeeturno_id AS oeeturno_id,
-      COALESCE(pld.qtde_turnos, 0) AS qtde_turnos,
-      COALESCE(pld.produto_id, pf.produto_id) AS produto_id,
-      COALESCE(pld.produto, pf.produto, 'Produto não informado') AS produto
+      pt.oeeturno_id AS oeeturno_id,
+      CASE WHEN pt.oeeturno_id IS NULL THEN 0 ELSE 1 END AS qtde_turnos,
+      COALESCE(pt.produto_id, pf.produto_id) AS produto_id,
+      COALESCE(pt.produto, pf.produto, 'Produto não informado') AS produto,
+      COALESCE(
+        pt.produto_key,
+        CASE
+          WHEN pf.produto_id IS NOT NULL THEN 'id:' || pf.produto_id::text
+          ELSE 'txt:' || COALESCE(pf.produto, 'Produto não informado')
+        END
+      ) AS produto_key
     FROM agenda_base ab
-    LEFT JOIN produtos_linha_data pld
-      ON pld.data = ab.data
-     AND pld.linhaproducao_id = ab.linhaproducao_id
+    LEFT JOIN produtos_turno_base pt
+      ON pt.data = ab.data
+     AND pt.linhaproducao_id = ab.linhaproducao_id
     LEFT JOIN produto_filtro pf
-      ON pld.produto_id IS NULL
+      ON pt.oeeturno_id IS NULL
   ),
 
-  status_linha AS (
+  status_turno AS (
     SELECT
+      tf.oeeturno_id,
       tf.data,
       tf.linhaproducao_id,
-      tf.produto_id,
       CASE
         WHEN BOOL_OR(LOWER(COALESCE(tf.status::text, '')) = 'aberto') THEN 'EM_PRODUCAO'
         WHEN BOOL_OR(LOWER(COALESCE(tf.status::text, '')) = 'fechado') THEN 'FECHADA'
@@ -182,64 +270,111 @@ BEGIN
         ', '
       ) AS status_turnos
     FROM turnos_filtrados tf
-    GROUP BY tf.data, tf.linhaproducao_id, tf.produto_id
+    GROUP BY tf.oeeturno_id, tf.data, tf.linhaproducao_id
   ),
 
   producao AS (
     SELECT
       tf.data,
       tf.linhaproducao_id,
-      tf.produto_id,
+      p.oeeturno_id,
+      COALESCE(p.produto_id, tf.produto_id) AS produto_id,
+      COALESCE(NULLIF(TRIM(p.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
+      CASE
+        WHEN COALESCE(p.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(p.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(p.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key,
       SUM(COALESCE(p.quantidade, 0))::numeric AS unidades_produzidas
-    FROM turnos_filtrados tf
-    LEFT JOIN tboee_turno_producao p
-      ON p.oeeturno_id = tf.oeeturno_id
-     AND (p.deletado IS NULL OR p.deletado = 'N')
-    GROUP BY tf.data, tf.linhaproducao_id, tf.produto_id
+    FROM tboee_turno_producao p
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = p.oeeturno_id
+    WHERE p.deletado IS NULL OR p.deletado = 'N'
+    GROUP BY
+      tf.data,
+      tf.linhaproducao_id,
+      p.oeeturno_id,
+      COALESCE(p.produto_id, tf.produto_id),
+      COALESCE(NULLIF(TRIM(p.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado'),
+      CASE
+        WHEN COALESCE(p.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(p.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(p.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END
   ),
 
   perdas AS (
     SELECT
       tf.data,
       tf.linhaproducao_id,
-      tf.produto_id,
+      q.oeeturno_id,
+      COALESCE(q.produto_id, tf.produto_id) AS produto_id,
+      COALESCE(NULLIF(TRIM(q.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
+      CASE
+        WHEN COALESCE(q.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(q.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(q.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key,
       SUM(COALESCE(q.perda, 0))::numeric AS unidades_perdas
-    FROM turnos_filtrados tf
-    LEFT JOIN tboee_turno_perda q
-      ON q.oeeturno_id = tf.oeeturno_id
-     AND q.deletado = 'N'
-    GROUP BY tf.data, tf.linhaproducao_id, tf.produto_id
+    FROM tboee_turno_perda q
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = q.oeeturno_id
+    WHERE q.deletado = 'N'
+    GROUP BY
+      tf.data,
+      tf.linhaproducao_id,
+      q.oeeturno_id,
+      COALESCE(q.produto_id, tf.produto_id),
+      COALESCE(NULLIF(TRIM(q.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado'),
+      CASE
+        WHEN COALESCE(q.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(q.produto_id, tf.produto_id)::text
+        ELSE
+          'txt:' || COALESCE(NULLIF(TRIM(q.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END
   ),
 
   paradas_raw AS (
     SELECT
       tf.data,
       tf.linhaproducao_id,
-      tf.produto_id,
+      pr.oeeturno_id,
+      COALESCE(pr.produto_id, tf.produto_id) AS produto_id,
+      COALESCE(NULLIF(TRIM(pr.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
       CASE
-        WHEN p.hora_inicio IS NULL OR p.hora_fim IS NULL THEN 0
-        WHEN EXTRACT(EPOCH FROM p.hora_fim::time) > EXTRACT(EPOCH FROM p.hora_inicio::time)
-          THEN (EXTRACT(EPOCH FROM p.hora_fim::time) - EXTRACT(EPOCH FROM p.hora_inicio::time)) / 60.0
+        WHEN COALESCE(pr.produto_id, tf.produto_id) IS NOT NULL
+          THEN 'id:' || COALESCE(pr.produto_id, tf.produto_id)::text
         ELSE
-          ((86400 - EXTRACT(EPOCH FROM p.hora_inicio::time)) + EXTRACT(EPOCH FROM p.hora_fim::time)) / 60.0
+          'txt:' || COALESCE(NULLIF(TRIM(pr.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado')
+      END AS produto_key,
+      CASE
+        WHEN pr.hora_inicio IS NULL OR pr.hora_fim IS NULL THEN 0
+        WHEN EXTRACT(EPOCH FROM pr.hora_fim::time) > EXTRACT(EPOCH FROM pr.hora_inicio::time)
+          THEN (EXTRACT(EPOCH FROM pr.hora_fim::time) - EXTRACT(EPOCH FROM pr.hora_inicio::time)) / 60.0
+        ELSE
+          ((86400 - EXTRACT(EPOCH FROM pr.hora_inicio::time)) + EXTRACT(EPOCH FROM pr.hora_fim::time)) / 60.0
       END AS duracao_minutos,
       LOWER(
-        COALESCE(p.oeeparada_id::text, '') || ' ' ||
-        COALESCE(p.parada, '') || ' ' ||
-        COALESCE(p.natureza, '') || ' - ' ||
-        COALESCE(p.classe, '') || ' ' ||
-        COALESCE(p.observacao, '')
+        COALESCE(pr.oeeparada_id::text, '') || ' ' ||
+        COALESCE(pr.parada, '') || ' ' ||
+        COALESCE(pr.natureza, '') || ' - ' ||
+        COALESCE(pr.classe, '') || ' ' ||
+        COALESCE(pr.observacao, '')
       ) AS texto
-    FROM tboee_turno_parada p
-    JOIN turnos_filtrados tf ON tf.oeeturno_id = p.oeeturno_id
-    WHERE p.deletado = 'N'
+    FROM tboee_turno_parada pr
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = pr.oeeturno_id
+    WHERE pr.deletado = 'N'
   ),
 
   paradas_classificadas AS (
     SELECT
       pr.data,
       pr.linhaproducao_id,
+      pr.oeeturno_id,
       pr.produto_id,
+      pr.produto,
+      pr.produto_key,
       pr.duracao_minutos,
       (
         pr.texto LIKE '%feriado%' OR
@@ -260,12 +395,21 @@ BEGIN
     SELECT
       pc.data,
       pc.linhaproducao_id,
+      pc.oeeturno_id,
       pc.produto_id,
+      pc.produto,
+      pc.produto_key,
       SUM(pc.duracao_minutos)::numeric AS paradas_totais_minutos,
       SUM(CASE WHEN pc.estrategica THEN pc.duracao_minutos ELSE 0 END)::numeric AS paradas_estrategicas_minutos,
       SUM(CASE WHEN NOT pc.estrategica AND pc.duracao_minutos >= 10 THEN pc.duracao_minutos ELSE 0 END)::numeric AS paradas_grandes_minutos
     FROM paradas_classificadas pc
-    GROUP BY pc.data, pc.linhaproducao_id, pc.produto_id
+    GROUP BY
+      pc.data,
+      pc.linhaproducao_id,
+      pc.oeeturno_id,
+      pc.produto_id,
+      pc.produto,
+      pc.produto_key
   ),
 
   base AS (
@@ -285,22 +429,21 @@ BEGIN
       ROUND(COALESCE(pa.paradas_estrategicas_minutos, 0))::bigint AS paradas_estrategicas_minutos,
       ROUND(COALESCE(pa.paradas_grandes_minutos, 0))::bigint AS paradas_grandes_minutos
     FROM agenda_produto ap
-    LEFT JOIN status_linha sl
-      ON sl.data = ap.data
+    LEFT JOIN status_turno sl
+      ON sl.oeeturno_id = ap.oeeturno_id
      AND sl.linhaproducao_id = ap.linhaproducao_id
-     AND sl.produto_id IS NOT DISTINCT FROM ap.produto_id
     LEFT JOIN producao pr
-      ON pr.data = ap.data
+      ON pr.oeeturno_id = ap.oeeturno_id
      AND pr.linhaproducao_id = ap.linhaproducao_id
-     AND pr.produto_id IS NOT DISTINCT FROM ap.produto_id
+     AND pr.produto_key = ap.produto_key
     LEFT JOIN perdas pe
-      ON pe.data = ap.data
+      ON pe.oeeturno_id = ap.oeeturno_id
      AND pe.linhaproducao_id = ap.linhaproducao_id
-     AND pe.produto_id IS NOT DISTINCT FROM ap.produto_id
+     AND pe.produto_key = ap.produto_key
     LEFT JOIN paradas pa
-      ON pa.data = ap.data
+      ON pa.oeeturno_id = ap.oeeturno_id
      AND pa.linhaproducao_id = ap.linhaproducao_id
-     AND pa.produto_id IS NOT DISTINCT FROM ap.produto_id
+     AND pa.produto_key = ap.produto_key
   )
 
   SELECT

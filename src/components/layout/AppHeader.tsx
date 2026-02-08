@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+const APP_SUBTITLE = "Sistema de Monitoramento de Eficiência Operacional"
+
 interface AppHeaderProps {
   /** Título da aplicação (padrão: "SysOEE - Sistema de Monitoramento OEE") */
   title?: string
@@ -40,6 +42,20 @@ interface AppHeaderProps {
   onProfileClick?: () => void
 }
 
+function gerarIniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean)
+
+  if (partes.length === 0) {
+    return "US"
+  }
+
+  if (partes.length === 1) {
+    return partes[0].slice(0, 2).toUpperCase()
+  }
+
+  return `${partes[0][0]}${partes[partes.length - 1][0]}`.toUpperCase()
+}
+
 export function AppHeader({
   title = "SICFAR OEE - Sistema de Monitoramento OEE",
   userName = "Usuário",
@@ -50,97 +66,133 @@ export function AppHeader({
   onProfileClick,
 }: AppHeaderProps) {
   const navigate = useNavigate()
-  // Calcula as iniciais do usuário se não foram fornecidas
-  const initials = userInitials || userName.substring(0, 2).toUpperCase()
+  const nomeExibicao = userName.trim() || "Usuário"
+  const cargoExibicao = userRole.trim() || "Operador"
+  const initials = userInitials?.trim().slice(0, 2).toUpperCase() || gerarIniciais(nomeExibicao)
+  const semAcoes = !onProfileClick && !onLogout
+
   const handleLogoClick = () => {
     navigate("/")
   }
-	  return (
-	    <header className="bg-white dark:bg-background border-b dark:border-border h-16 flex items-center justify-between px-6 sticky top-0 z-40">
-	      {/* Seção esquerda - Título */}
-	      <div className="flex items-center gap-4 min-w-0">
-        <button
-          type="button"
-          onClick={handleLogoClick}
-          className="h-full flex items-center bg-transparent border-0 p-0"
-          aria-label="Ir para a página inicial"
-        >
-          <img
-            src="/logo-farmace.png"
-            alt="Logo Farmace"
-            className="h-full w-[132px] flex-shrink-0 object-contain"
-          />
-        </button>
 
-        <div className="flex flex-col gap-0 min-w-0 leading-[18px]">
-          <h1 className="text-lg sm:text-xl font-semibold text-primary leading-tight tracking-tight truncate">
-	            {title}
-	          </h1>
-          <p className="text-sm text-muted-foreground leading-tight truncate">
-	            Sistema de Monitoramento de Eficiência Operacional
-	          </p>
-	        </div>
-	      </div>
+  return (
+    <header className="sticky top-0 z-40 h-16 border-b bg-background/95 backdrop-blur-sm">
+      <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
+        {/* Seção esquerda - Título e identidade */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+          <button
+            type="button"
+            onClick={handleLogoClick}
+            className="inline-flex h-11 items-center justify-center rounded-md px-1 transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label="Ir para a página inicial"
+          >
+            <img
+              src="/logo-farmace.png"
+              alt="Logo Farmace"
+              className="h-9 w-auto max-w-[124px] shrink-0 object-contain"
+            />
+          </button>
 
-	      {/* Seção direita - Menu do usuário */}
-	      <div className="flex items-center gap-4">
-	        <DropdownMenu>
-	          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2"
-              aria-label="Menu do usuário"
-            >
-              <div className="flex items-center gap-2">
-                {/* Avatar */}
-                <Avatar className="h-8 w-8">
-                  {userPhotoUrl ? (
-                    <AvatarImage src={userPhotoUrl} alt={userName} />
-                  ) : null}
-                  <AvatarFallback className="bg-primary text-primary-foreground dark:bg-primary dark:text-primary-foreground font-medium">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-semibold leading-tight tracking-tight text-primary sm:text-lg">
+              {title}
+            </h1>
+            <p className="hidden truncate text-xs text-muted-foreground sm:block">
+              {APP_SUBTITLE}
+            </p>
+          </div>
+        </div>
 
-                {/* Informações do usuário - oculto em mobile */}
-                <div className="text-sm text-left hidden md:block">
-                  <p className="font-medium leading-none mb-1">
-                    {userName}
-                  </p>
-                  <p className="text-xs text-muted-foreground leading-none">
-                    {userRole}
-                  </p>
+        {/* Seção direita - Menu do usuário */}
+        <div className="ml-2 flex shrink-0 items-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-11 min-w-[44px] gap-2 rounded-full border border-transparent px-1.5 pr-2 transition-colors hover:border-border hover:bg-accent/70 data-[state=open]:border-border data-[state=open]:bg-accent/70 sm:px-2 sm:pr-3"
+                aria-label={`Abrir menu do usuário ${nomeExibicao}`}
+              >
+                <div className="flex items-center gap-2">
+                  {/* Avatar */}
+                  <Avatar className="h-8 w-8 ring-1 ring-border/80">
+                    {userPhotoUrl ? (
+                      <AvatarImage src={userPhotoUrl} alt={nomeExibicao} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Informações do usuário - oculto em mobile */}
+                  <div className="hidden max-w-[180px] text-left md:block">
+                    <p className="truncate text-sm font-medium leading-none text-foreground">
+                      {nomeExibicao}
+                    </p>
+                    <p className="mt-1 truncate text-xs leading-none text-muted-foreground">
+                      {cargoExibicao}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Ícone dropdown */}
-              <ChevronDown className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
+                {/* Ícone dropdown */}
+                <ChevronDown
+                  className="h-4 w-4 text-muted-foreground transition-transform duration-200"
+                  aria-hidden="true"
+                />
+              </Button>
+            </DropdownMenuTrigger>
 
-          {/* Conteúdo do dropdown */}
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            {/* Conteúdo do dropdown */}
+            <DropdownMenuContent align="end" sideOffset={8} className="w-64 rounded-lg p-2">
+              <DropdownMenuLabel className="px-2 py-2">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    {userPhotoUrl ? (
+                      <AvatarImage src={userPhotoUrl} alt={nomeExibicao} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {nomeExibicao}
+                    </p>
+                    <p className="truncate text-xs font-normal text-muted-foreground">
+                      {cargoExibicao}
+                    </p>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
 
-            {onProfileClick && (
-              <>
-                <DropdownMenuItem onClick={onProfileClick}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Perfil</span>
+              {onProfileClick && (
+                <>
+                  <DropdownMenuItem className="min-h-11 cursor-pointer rounded-md" onClick={onProfileClick}>
+                    <User className="mr-2 h-4 w-4" aria-hidden="true" />
+                    <span>Perfil</span>
+                  </DropdownMenuItem>
+                  {onLogout ? <DropdownMenuSeparator /> : null}
+                </>
+              )}
+
+              {onLogout && (
+                <DropdownMenuItem
+                  className="min-h-11 cursor-pointer rounded-md text-destructive focus:text-destructive"
+                  onClick={onLogout}
+                >
+                  <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <span>Sair</span>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
-
-            {onLogout && (
-              <DropdownMenuItem onClick={onLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Sair</span>
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              )}
+              {semAcoes && (
+                <DropdownMenuItem disabled className="min-h-11 rounded-md text-muted-foreground">
+                  Nenhuma ação disponível
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   )
