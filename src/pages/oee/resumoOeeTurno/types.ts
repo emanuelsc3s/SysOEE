@@ -17,7 +17,8 @@ export type ResumoOeeTurnoRow = {
   status_turno_registrado?: string | null
   produto_id?: number | null
   produto?: string | null
-  quantidade_produzida?: number | string | null
+  qtd_envase?: number | string | null
+  qtd_embalagem?: number | string | null
   perdas?: number | string | null
   unidades_boas?: number | string | null
   paradas_minutos?: number | string | null
@@ -40,7 +41,8 @@ export type ResumoOeeTurnoParametros = {
 
 export type ResumoOeeTurnoLinhaNormalizada = Omit<
   ResumoOeeTurnoRow,
-  | 'quantidade_produzida'
+  | 'qtd_envase'
+  | 'qtd_embalagem'
   | 'perdas'
   | 'unidades_boas'
   | 'paradas_minutos'
@@ -48,7 +50,8 @@ export type ResumoOeeTurnoLinhaNormalizada = Omit<
   | 'paradas_totais_minutos'
   | 'paradas_estrategicas_minutos'
 > & {
-  quantidade_produzida: number
+  qtd_envase: number
+  qtd_embalagem: number
   perdas: number
   unidades_boas: number
   paradas_minutos: number
@@ -58,6 +61,8 @@ export type ResumoOeeTurnoLinhaNormalizada = Omit<
 }
 
 export type ResumoTotais = {
+  qtdEnvase: number
+  qtdEmbalagem: number
   quantidade: number
   perdas: number
   boas: number
@@ -82,6 +87,8 @@ export type LinhaAgrupada = {
   linha: string
   status: string
   qtdeTurnos: number
+  qtdEnvase: number
+  qtdEmbalagem: number
   quantidade: number
   perdas: number
   unidadesBoas: number
@@ -97,6 +104,8 @@ export type TurnoAgrupado = {
   data: string | null
   status: string
   qtdeTurnos: number
+  qtdEnvase: number
+  qtdEmbalagem: number
   quantidade: number
   perdas: number
   unidadesBoas: number

@@ -129,7 +129,8 @@ const KpiValorAnimado = ({
 }
 
 const CARD_ACCENTS: Record<string, string> = {
-  producao: 'bg-primary/80',
+  'producao-envase': 'bg-primary/80',
+  'producao-embalagem': 'bg-indigo-500/80',
   perdas: 'bg-red-500/80',
   boas: 'bg-emerald-500/80',
   'paradas-grandes': 'bg-orange-500/80',

@@ -6,7 +6,7 @@
  * - Altura fixa de 64px (h-16)
  * - Sticky no topo da página
  * - Menu dropdown com perfil do usuário
- * - Responsivo (oculta informações em mobile)
+ * - Responsivo (layout centralizado e compacto em mobile)
  * - Acessível (ARIA attributes)
  */
 
@@ -70,6 +70,7 @@ export function AppHeader({
   const cargoExibicao = userRole.trim() || "Operador"
   const initials = userInitials?.trim().slice(0, 2).toUpperCase() || gerarIniciais(nomeExibicao)
   const semAcoes = !onProfileClick && !onLogout
+  const tituloMobile = title.includes(" - ") ? title.split(" - ")[0].trim() : title
 
   const handleLogoClick = () => {
     navigate("/")
@@ -77,9 +78,9 @@ export function AppHeader({
 
   return (
     <header className="sticky top-0 z-40 h-16 border-b bg-background/95 backdrop-blur-sm">
-      <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-2 px-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
         {/* Seção esquerda - Título e identidade */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4 sm:flex-1">
           <button
             type="button"
             onClick={handleLogoClick}
@@ -93,7 +94,7 @@ export function AppHeader({
             />
           </button>
 
-          <div className="min-w-0">
+          <div className="hidden min-w-0 sm:block">
             <h1 className="truncate text-sm font-semibold leading-tight tracking-tight text-primary sm:text-lg">
               {title}
             </h1>
@@ -103,8 +104,14 @@ export function AppHeader({
           </div>
         </div>
 
+        <div className="min-w-0 justify-self-center text-center sm:hidden">
+          <p className="truncate text-sm font-semibold leading-tight tracking-tight text-primary">
+            {tituloMobile}
+          </p>
+        </div>
+
         {/* Seção direita - Menu do usuário */}
-        <div className="ml-2 flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center justify-self-end sm:ml-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -136,14 +143,14 @@ export function AppHeader({
 
                 {/* Ícone dropdown */}
                 <ChevronDown
-                  className="h-4 w-4 text-muted-foreground transition-transform duration-200"
+                  className="hidden h-4 w-4 text-muted-foreground transition-transform duration-200 sm:block"
                   aria-hidden="true"
                 />
               </Button>
             </DropdownMenuTrigger>
 
             {/* Conteúdo do dropdown */}
-            <DropdownMenuContent align="end" sideOffset={8} className="w-64 rounded-lg p-2">
+            <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-lg p-2 sm:w-64">
               <DropdownMenuLabel className="px-2 py-2">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9">

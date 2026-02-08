@@ -114,7 +114,10 @@ export function ResumoDetalhamentoTable({
             Turnos
           </th>
           <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
-            Produção
+            Qtd. envase
+          </th>
+          <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
+            Qtd. embalagem
           </th>
           <th scope="col" className="bg-slate-50/95 px-4 py-3 text-right text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 md:px-6">
             Perdas
@@ -137,7 +140,7 @@ export function ResumoDetalhamentoTable({
       <tbody className="divide-y divide-gray-200">
         {!parametrosValidos && !carregando && (
           <tr>
-            <td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-500">
+            <td colSpan={11} className="px-4 py-12 text-center text-sm text-gray-500">
               Informe um período válido para carregar os dados.
             </td>
           </tr>
@@ -145,7 +148,7 @@ export function ResumoDetalhamentoTable({
 
         {exibirSemDados && (
           <tr>
-            <td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-500">
+            <td colSpan={11} className="px-4 py-12 text-center text-sm text-gray-500">
               Nenhum dado encontrado para o período informado.
             </td>
           </tr>
@@ -191,7 +194,8 @@ export function ResumoDetalhamentoTable({
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-900">{linha.qtdeTurnos}</td>
-                <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-gray-700">{formatarQuantidade(linha.quantidade)}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-slate-700">{formatarQuantidade(linha.qtdEnvase)}</td>
+                <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-indigo-600">{formatarQuantidade(linha.qtdEmbalagem)}</td>
                 <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-red-600">{formatarQuantidade(linha.perdas)}</td>
                 <td className="px-4 py-3 text-right text-sm font-bold tabular-nums text-emerald-600">{formatarQuantidade(linha.unidadesBoas)}</td>
                 <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-600">{formatarMinutos(linha.paradas)}</td>
@@ -232,7 +236,8 @@ export function ResumoDetalhamentoTable({
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-center text-sm tabular-nums text-gray-900">{turno.qtdeTurnos}</td>
-                    <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-700">{formatarQuantidade(turno.quantidade)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-slate-700">{formatarQuantidade(turno.qtdEnvase)}</td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums text-indigo-500">{formatarQuantidade(turno.qtdEmbalagem)}</td>
                     <td className="px-4 py-3 text-right text-sm tabular-nums text-red-500">{formatarQuantidade(turno.perdas)}</td>
                     <td className="px-4 py-3 text-right text-sm tabular-nums text-emerald-500">{formatarQuantidade(turno.unidadesBoas)}</td>
                     <td className="px-4 py-3 text-right text-sm tabular-nums text-gray-500">{formatarMinutos(turno.paradas)}</td>
@@ -287,7 +292,7 @@ export function ResumoDetalhamentoTable({
 
         <div className="relative">
           <div className="relative mb-4 overflow-auto rounded-lg border border-gray-200 sm:hidden">
-            {renderTabela('w-full min-w-[1060px] table-auto')}
+            {renderTabela('w-full min-w-[1180px] table-auto')}
           </div>
 
           <div

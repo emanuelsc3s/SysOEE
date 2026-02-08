@@ -36,7 +36,8 @@ type ResumoOeeTurnoRow = {
   status_turno_registrado?: string | null
   produto_id?: number | null
   produto?: string | null
-  quantidade_produzida?: number | string | null
+  qtd_envase?: number | string | null
+  qtd_embalagem?: number | string | null
   perdas?: number | string | null
   unidades_boas?: number | string | null
   paradas_minutos?: number | string | null
@@ -175,6 +176,10 @@ const getBadgeStatus = (status: string | null | undefined):
   return 'secondary'
 }
 
+const obterQuantidadeTotal = (linha: Pick<ResumoOeeTurnoRow, 'qtd_envase' | 'qtd_embalagem'>): number => {
+  return normalizarNumero(linha.qtd_envase) + normalizarNumero(linha.qtd_embalagem)
+}
+
 export function ModalResumoOeeTurno({
   open,
   onOpenChange,
@@ -233,7 +238,8 @@ export function ModalResumoOeeTurno({
 
   const linhas = useMemo(() => (resumoData || []).map((linha) => ({
     ...linha,
-    quantidade_produzida: normalizarNumero(linha.quantidade_produzida),
+    qtd_envase: normalizarNumero(linha.qtd_envase),
+    qtd_embalagem: normalizarNumero(linha.qtd_embalagem),
     perdas: normalizarNumero(linha.perdas),
     unidades_boas: normalizarNumero(linha.unidades_boas),
     paradas_minutos: normalizarNumero(linha.paradas_minutos),
@@ -244,7 +250,7 @@ export function ModalResumoOeeTurno({
 
   const totais = useMemo(() => {
     return linhas.reduce((acc, linha) => {
-      acc.quantidade += normalizarNumero(linha.quantidade_produzida)
+      acc.quantidade += obterQuantidadeTotal(linha)
       acc.perdas += normalizarNumero(linha.perdas)
       acc.boas += normalizarNumero(linha.unidades_boas)
       acc.paradasGrandes += normalizarNumero(linha.paradas_grandes_minutos)
@@ -530,7 +536,7 @@ export function ModalResumoOeeTurno({
                             <div className="rounded-lg bg-muted/50 p-2">
                               <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Produção</p>
                               <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                                {formatarQuantidade(normalizarNumero(linha.quantidade_produzida))}
+                                {formatarQuantidade(obterQuantidadeTotal(linha))}
                               </p>
                             </div>
                             <div className="rounded-lg bg-muted/50 p-2">
@@ -639,7 +645,7 @@ export function ModalResumoOeeTurno({
                                 </div>
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums text-foreground">
-                                {formatarQuantidade(normalizarNumero(linha.quantidade_produzida))}
+                                {formatarQuantidade(obterQuantidadeTotal(linha))}
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold tabular-nums text-destructive">
                                 {formatarQuantidade(normalizarNumero(linha.perdas))}

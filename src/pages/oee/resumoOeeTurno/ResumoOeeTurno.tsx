@@ -207,7 +207,7 @@ export default function ResumoOeeTurno() {
                   Resumo Consolidado por Turno
                 </h2>
                 <p className="mt-1 text-sm leading-5 text-gray-500">
-                  Acompanhe produção, perdas e paradas no período selecionado em uma visão única por linha e turno.
+                  Acompanhe quantidades de envase e embalagem, além de perdas e paradas, no período selecionado.
                 </p>
               </div>
 

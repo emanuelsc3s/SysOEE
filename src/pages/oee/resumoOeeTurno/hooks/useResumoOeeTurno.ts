@@ -38,7 +38,8 @@ const TURNOS_COMPARATIVO_PADRAO: ComparativoTurno[] = [
 const normalizarLinhas = (linhas: ResumoOeeTurnoRow[]): ResumoOeeTurnoLinhaNormalizada[] => {
   return linhas.map((linha) => ({
     ...linha,
-    quantidade_produzida: normalizarNumero(linha.quantidade_produzida),
+    qtd_envase: normalizarNumero(linha.qtd_envase),
+    qtd_embalagem: normalizarNumero(linha.qtd_embalagem),
     perdas: normalizarNumero(linha.perdas),
     unidades_boas: normalizarNumero(linha.unidades_boas),
     paradas_minutos: normalizarNumero(linha.paradas_minutos),
@@ -51,7 +52,9 @@ const normalizarLinhas = (linhas: ResumoOeeTurnoRow[]): ResumoOeeTurnoLinhaNorma
 const somarTotais = (linhas: ResumoOeeTurnoLinhaNormalizada[]): ResumoTotais => {
   return linhas.reduce(
     (acc, linha) => {
-      acc.quantidade += linha.quantidade_produzida
+      acc.qtdEnvase += linha.qtd_envase
+      acc.qtdEmbalagem += linha.qtd_embalagem
+      acc.quantidade += linha.qtd_envase + linha.qtd_embalagem
       acc.perdas += linha.perdas
       acc.boas += linha.unidades_boas
       acc.paradasGrandes += linha.paradas_grandes_minutos
@@ -60,6 +63,8 @@ const somarTotais = (linhas: ResumoOeeTurnoLinhaNormalizada[]): ResumoTotais => 
       return acc
     },
     {
+      qtdEnvase: 0,
+      qtdEmbalagem: 0,
       quantidade: 0,
       perdas: 0,
       boas: 0,

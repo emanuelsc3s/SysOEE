@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o `AppHeader` para layout mobile centralizado e compacto, com título abreviado e menu mais clean.
 - Adicionado efeito de contador incremental (do zero até o valor) nos cards do `ResumoOeeTurno`.
 - Corrigida a contagem incremental dos KPIs do `ResumoOeeTurno` para usar os valores numéricos totais corretos.
 - Ajustado o contador dos KPIs do `ResumoOeeTurno` para animar apenas quando a RPC é atualizada.

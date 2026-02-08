@@ -3,6 +3,13 @@
 -- Gera resumo consolidado de produção, perdas e paradas por data/linha/produto
 -- para uso no modal de resumo do OEE Turno.
 --
+-- ALTERAÇÕES RESUMIDAS (2026-02-08):
+-- - Coluna de saída `quantidade_produzida` substituída por `qtd_envase`.
+-- - Nova coluna de saída `qtd_embalagem`.
+-- - `qtd_envase` soma produção apenas para linhas com tipo = 'Envase'.
+-- - `qtd_embalagem` soma produção para tipos 'Embalagem' e 'Envase+Embalagem'.
+-- - `unidades_boas` passou a usar (qtd_envase + qtd_embalagem) - perdas.
+--
 -- Baseado nos filtros:
 -- - período (data início/fim)
 -- - turno
@@ -33,7 +40,8 @@ RETURNS TABLE (
   status_turno_registrado TEXT,
   produto_id INTEGER,
   produto TEXT,
-  quantidade_produzida NUMERIC,
+  qtd_envase NUMERIC,
+  qtd_embalagem NUMERIC,
   perdas NUMERIC,
   unidades_boas NUMERIC,
   paradas_minutos BIGINT,
@@ -100,7 +108,8 @@ BEGIN
   linhas_ativas AS (
     SELECT
       lp.linhaproducao_id,
-      lp.linhaproducao
+      lp.linhaproducao,
+      COALESCE(lp.tipo::text, '') AS tipo_linha
     FROM tblinhaproducao lp
     CROSS JOIN params p
     WHERE lp.deleted_at IS NULL
@@ -113,7 +122,8 @@ BEGIN
     SELECT
       d.data,
       l.linhaproducao_id,
-      l.linhaproducao
+      l.linhaproducao,
+      l.tipo_linha
     FROM datas_referencia d
     CROSS JOIN linhas_ativas l
   ),
@@ -235,6 +245,7 @@ BEGIN
       ab.data,
       ab.linhaproducao_id,
       ab.linhaproducao,
+      ab.tipo_linha,
       pt.oeeturno_id AS oeeturno_id,
       CASE WHEN pt.oeeturno_id IS NULL THEN 0 ELSE 1 END AS qtde_turnos,
       COALESCE(pt.produto_id, pf.produto_id) AS produto_id,
@@ -423,7 +434,14 @@ BEGIN
       COALESCE(sl.status_turnos, 'Turno Não Iniciado') AS status_turnos,
       ap.produto_id,
       ap.produto,
-      COALESCE(pr.unidades_produzidas, 0)::numeric AS quantidade_produzida,
+      CASE
+        WHEN ap.tipo_linha = 'Envase' THEN COALESCE(pr.unidades_produzidas, 0)::numeric
+        ELSE 0::numeric
+      END AS qtd_envase,
+      CASE
+        WHEN ap.tipo_linha IN ('Embalagem', 'Envase+Embalagem') THEN COALESCE(pr.unidades_produzidas, 0)::numeric
+        ELSE 0::numeric
+      END AS qtd_embalagem,
       COALESCE(pe.unidades_perdas, 0)::numeric AS perdas,
       ROUND(COALESCE(pa.paradas_totais_minutos, 0))::bigint AS paradas_totais_minutos,
       ROUND(COALESCE(pa.paradas_estrategicas_minutos, 0))::bigint AS paradas_estrategicas_minutos,
@@ -456,9 +474,10 @@ BEGIN
     b.status_turnos AS status_turno_registrado,
     b.produto_id,
     b.produto,
-    b.quantidade_produzida,
+    b.qtd_envase,
+    b.qtd_embalagem,
     b.perdas,
-    GREATEST(b.quantidade_produzida - b.perdas, 0) AS unidades_boas,
+    GREATEST((b.qtd_envase + b.qtd_embalagem) - b.perdas, 0) AS unidades_boas,
     b.paradas_grandes_minutos AS paradas_minutos,
     b.paradas_grandes_minutos,
     b.paradas_totais_minutos,

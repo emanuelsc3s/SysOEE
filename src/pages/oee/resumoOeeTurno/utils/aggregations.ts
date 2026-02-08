@@ -34,6 +34,8 @@ export const agruparLinhasResumo = (
         linhaId,
         linha: nomeLinha,
         qtdeTurnos: 0,
+        qtdEnvase: 0,
+        qtdEmbalagem: 0,
         quantidade: 0,
         perdas: 0,
         unidadesBoas: 0,
@@ -54,7 +56,9 @@ export const agruparLinhasResumo = (
         grupoLinha.turnosSet.add(turnoNumero)
       }
     }
-    grupoLinha.quantidade += linha.quantidade_produzida
+    grupoLinha.qtdEnvase += linha.qtd_envase
+    grupoLinha.qtdEmbalagem += linha.qtd_embalagem
+    grupoLinha.quantidade += linha.qtd_envase + linha.qtd_embalagem
     grupoLinha.perdas += linha.perdas
     grupoLinha.unidadesBoas += linha.unidades_boas
     grupoLinha.paradas += linha.paradas_minutos
@@ -71,6 +75,8 @@ export const agruparLinhasResumo = (
         oeeturnoId: turnoId,
         data: dataTurno,
         qtdeTurnos: 0,
+        qtdEnvase: 0,
+        qtdEmbalagem: 0,
         quantidade: 0,
         perdas: 0,
         unidadesBoas: 0,
@@ -84,7 +90,9 @@ export const agruparLinhasResumo = (
 
     const grupoTurno = grupoLinha.turnosMap.get(chaveTurno)!
     grupoTurno.qtdeTurnos += linha.qtde_turnos ?? 0
-    grupoTurno.quantidade += linha.quantidade_produzida
+    grupoTurno.qtdEnvase += linha.qtd_envase
+    grupoTurno.qtdEmbalagem += linha.qtd_embalagem
+    grupoTurno.quantidade += linha.qtd_envase + linha.qtd_embalagem
     grupoTurno.perdas += linha.perdas
     grupoTurno.unidadesBoas += linha.unidades_boas
     grupoTurno.paradas += linha.paradas_minutos
@@ -103,6 +111,8 @@ export const agruparLinhasResumo = (
       linha: linha.linha,
       status: obterStatusPrioritario(linha.statusLista),
       qtdeTurnos: linha.turnosSet.size,
+      qtdEnvase: linha.qtdEnvase,
+      qtdEmbalagem: linha.qtdEmbalagem,
       quantidade: linha.quantidade,
       perdas: linha.perdas,
       unidadesBoas: linha.unidadesBoas,
@@ -116,6 +126,8 @@ export const agruparLinhasResumo = (
           data: turno.data,
           status: obterStatusPrioritario(turno.statusLista),
           qtdeTurnos: turno.qtdeTurnos,
+          qtdEnvase: turno.qtdEnvase,
+          qtdEmbalagem: turno.qtdEmbalagem,
           quantidade: turno.quantidade,
           perdas: turno.perdas,
           unidadesBoas: turno.unidadesBoas,
@@ -140,12 +152,20 @@ export const agruparLinhasResumo = (
 export const criarCardsResumo = (totais: ResumoTotais): CardResumo[] => {
   return [
     {
-      id: 'producao',
-      titulo: 'Produção Total',
-      valor: formatarQuantidade(totais.quantidade),
-      valorNumero: totais.quantidade,
-      detalhe: 'unidades produzidas',
+      id: 'producao-envase',
+      titulo: 'Produção Envase',
+      valor: formatarQuantidade(totais.qtdEnvase),
+      valorNumero: totais.qtdEnvase,
+      detalhe: 'unidades de linhas Envase',
       classeValor: 'text-primary dark:text-blue-400',
+    },
+    {
+      id: 'producao-embalagem',
+      titulo: 'Produção Embalagem',
+      valor: formatarQuantidade(totais.qtdEmbalagem),
+      valorNumero: totais.qtdEmbalagem,
+      detalhe: 'unidades de Embalagem e Envase+Embalagem',
+      classeValor: 'text-indigo-600 dark:text-indigo-400',
     },
     {
       id: 'perdas',
