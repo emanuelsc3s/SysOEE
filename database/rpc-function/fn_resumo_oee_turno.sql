@@ -9,6 +9,7 @@
 -- - `qtd_envase` soma produção apenas para linhas com tipo = 'Envase'.
 -- - `qtd_embalagem` soma produção para tipos 'Embalagem' e 'Envase+Embalagem'.
 -- - `unidades_boas` passou a usar (qtd_envase + qtd_embalagem) - perdas.
+-- - Nova coluna de saída `paradas_pequenas_minutos` (paradas <= 10 min).
 --
 -- Baseado nos filtros:
 -- - período (data início/fim)
@@ -46,6 +47,7 @@ RETURNS TABLE (
   unidades_boas NUMERIC,
   paradas_minutos BIGINT,
   paradas_grandes_minutos BIGINT,
+  paradas_pequenas_minutos BIGINT,
   paradas_totais_minutos BIGINT,
   paradas_estrategicas_minutos BIGINT,
   paradas_hh_mm TEXT,
@@ -351,6 +353,7 @@ BEGIN
       tf.data,
       tf.linhaproducao_id,
       pr.oeeturno_id,
+      pr.oeeparada_id,
       COALESCE(pr.produto_id, tf.produto_id) AS produto_id,
       COALESCE(NULLIF(TRIM(pr.produto), ''), NULLIF(TRIM(tf.produto), ''), 'Produto não informado') AS produto,
       CASE
@@ -383,6 +386,7 @@ BEGIN
       pr.data,
       pr.linhaproducao_id,
       pr.oeeturno_id,
+      pr.oeeparada_id,
       pr.produto_id,
       pr.produto,
       pr.produto_key,
@@ -402,7 +406,7 @@ BEGIN
     FROM paradas_raw pr
   ),
 
-  paradas AS (
+  paradas_gerais AS (
     SELECT
       pc.data,
       pc.linhaproducao_id,
@@ -412,7 +416,7 @@ BEGIN
       pc.produto_key,
       SUM(pc.duracao_minutos)::numeric AS paradas_totais_minutos,
       SUM(CASE WHEN pc.estrategica THEN pc.duracao_minutos ELSE 0 END)::numeric AS paradas_estrategicas_minutos,
-      SUM(CASE WHEN NOT pc.estrategica AND pc.duracao_minutos >= 10 THEN pc.duracao_minutos ELSE 0 END)::numeric AS paradas_grandes_minutos
+      SUM(CASE WHEN NOT pc.estrategica AND pc.duracao_minutos > 10 THEN pc.duracao_minutos ELSE 0 END)::numeric AS paradas_grandes_minutos
     FROM paradas_classificadas pc
     GROUP BY
       pc.data,
@@ -421,6 +425,68 @@ BEGIN
       pc.produto_id,
       pc.produto,
       pc.produto_key
+  ),
+
+  paradas_pequenas_por_codigo AS (
+    SELECT
+      pc.data,
+      pc.linhaproducao_id,
+      pc.oeeturno_id,
+      pc.produto_id,
+      pc.produto,
+      pc.produto_key,
+      pc.oeeparada_id,
+      SUM(pc.duracao_minutos)::numeric AS paradas_pequenas_minutos_codigo
+    FROM paradas_classificadas pc
+    WHERE NOT pc.estrategica
+      AND pc.duracao_minutos <= 10
+    GROUP BY
+      pc.data,
+      pc.linhaproducao_id,
+      pc.oeeturno_id,
+      pc.produto_id,
+      pc.produto,
+      pc.produto_key,
+      pc.oeeparada_id
+  ),
+
+  paradas_pequenas_totais AS (
+    SELECT
+      ppc.data,
+      ppc.linhaproducao_id,
+      ppc.oeeturno_id,
+      ppc.produto_id,
+      ppc.produto,
+      ppc.produto_key,
+      SUM(ppc.paradas_pequenas_minutos_codigo)::numeric AS paradas_pequenas_minutos
+    FROM paradas_pequenas_por_codigo ppc
+    GROUP BY
+      ppc.data,
+      ppc.linhaproducao_id,
+      ppc.oeeturno_id,
+      ppc.produto_id,
+      ppc.produto,
+      ppc.produto_key
+  ),
+
+  paradas AS (
+    SELECT
+      pg.data,
+      pg.linhaproducao_id,
+      pg.oeeturno_id,
+      pg.produto_id,
+      pg.produto,
+      pg.produto_key,
+      pg.paradas_totais_minutos,
+      pg.paradas_estrategicas_minutos,
+      pg.paradas_grandes_minutos,
+      COALESCE(pt.paradas_pequenas_minutos, 0)::numeric AS paradas_pequenas_minutos
+    FROM paradas_gerais pg
+    LEFT JOIN paradas_pequenas_totais pt
+      ON pt.data = pg.data
+     AND pt.linhaproducao_id = pg.linhaproducao_id
+     AND pt.oeeturno_id = pg.oeeturno_id
+     AND pt.produto_key = pg.produto_key
   ),
 
   base AS (
@@ -445,7 +511,8 @@ BEGIN
       COALESCE(pe.unidades_perdas, 0)::numeric AS perdas,
       ROUND(COALESCE(pa.paradas_totais_minutos, 0))::bigint AS paradas_totais_minutos,
       ROUND(COALESCE(pa.paradas_estrategicas_minutos, 0))::bigint AS paradas_estrategicas_minutos,
-      ROUND(COALESCE(pa.paradas_grandes_minutos, 0))::bigint AS paradas_grandes_minutos
+      ROUND(COALESCE(pa.paradas_grandes_minutos, 0))::bigint AS paradas_grandes_minutos,
+      ROUND(COALESCE(pa.paradas_pequenas_minutos, 0))::bigint AS paradas_pequenas_minutos
     FROM agenda_produto ap
     LEFT JOIN status_turno sl
       ON sl.oeeturno_id = ap.oeeturno_id
@@ -480,6 +547,7 @@ BEGIN
     GREATEST((b.qtd_envase + b.qtd_embalagem) - b.perdas, 0) AS unidades_boas,
     b.paradas_grandes_minutos AS paradas_minutos,
     b.paradas_grandes_minutos,
+    b.paradas_pequenas_minutos,
     b.paradas_totais_minutos,
     b.paradas_estrategicas_minutos,
     LPAD((b.paradas_grandes_minutos / 60)::text, 2, '0') || ':' || LPAD((b.paradas_grandes_minutos % 60)::text, 2, '0') AS paradas_hh_mm,

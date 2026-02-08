@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o tamanho do título mobile do `AppHeader` para 24px.
+- Duplicado o tamanho do título mobile no `AppHeader` e renomeado para "SICFAR OEE".
+- Ajustado o `AppHeader` no mobile para usar fundo da cor primária, removendo a logomarca e adicionando botão de voltar com ícone.
 - Ajustado o `AppHeader` para layout mobile centralizado e compacto, com título abreviado e menu mais clean.
 - Adicionado efeito de contador incremental (do zero até o valor) nos cards do `ResumoOeeTurno`.
 - Corrigida a contagem incremental dos KPIs do `ResumoOeeTurno` para usar os valores numéricos totais corretos.

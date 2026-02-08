@@ -10,7 +10,7 @@
  * - Acessível (ARIA attributes)
  */
 
-import { ChevronDown, User, LogOut } from "lucide-react"
+import { ArrowLeft, ChevronDown, User, LogOut } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import {
@@ -70,28 +70,24 @@ export function AppHeader({
   const cargoExibicao = userRole.trim() || "Operador"
   const initials = userInitials?.trim().slice(0, 2).toUpperCase() || gerarIniciais(nomeExibicao)
   const semAcoes = !onProfileClick && !onLogout
-  const tituloMobile = title.includes(" - ") ? title.split(" - ")[0].trim() : title
+  const tituloMobile = "SICFAR OEE"
 
-  const handleLogoClick = () => {
-    navigate("/")
+  const handleVoltarClick = () => {
+    navigate(-1)
   }
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 h-16 border-b bg-primary text-primary-foreground sm:bg-background/95 sm:text-foreground sm:backdrop-blur-sm">
       <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-2 px-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
         {/* Seção esquerda - Título e identidade */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-4 sm:flex-1">
           <button
             type="button"
-            onClick={handleLogoClick}
-            className="inline-flex h-11 items-center justify-center rounded-md px-1 transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            aria-label="Ir para a página inicial"
+            onClick={handleVoltarClick}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:hover:bg-accent/60"
+            aria-label="Voltar"
           >
-            <img
-              src="/logo-farmace.png"
-              alt="Logo Farmace"
-              className="h-9 w-auto max-w-[124px] shrink-0 object-contain"
-            />
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </button>
 
           <div className="hidden min-w-0 sm:block">
@@ -105,7 +101,7 @@ export function AppHeader({
         </div>
 
         <div className="min-w-0 justify-self-center text-center sm:hidden">
-          <p className="truncate text-sm font-semibold leading-tight tracking-tight text-primary">
+          <p className="truncate text-[24px] font-semibold leading-tight tracking-tight text-primary-foreground">
             {tituloMobile}
           </p>
         </div>
