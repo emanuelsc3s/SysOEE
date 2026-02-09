@@ -145,7 +145,45 @@ export const useResumoOeeTurno = ({
       if (error) {
         throw error
       }
-      return normalizarLinhas((data || []) as ResumoOeeTurnoRow[])
+      const linhasNormalizadas = normalizarLinhas((data || []) as ResumoOeeTurnoRow[])
+      const oeeturnoIds = Array.from(
+        new Set(
+          linhasNormalizadas
+            .map((linha) => linha.oeeturno_id)
+            .filter((id): id is number => typeof id === 'number')
+        )
+      )
+      const turnoPorOee = new Map<number, string>()
+
+      if (oeeturnoIds.length > 0) {
+        const { data: turnosData, error: turnosError } = await supabase
+          .from('tboee_turno')
+          .select('oeeturno_id, turno')
+          .in('oeeturno_id', oeeturnoIds)
+          .eq('deletado', 'N')
+
+        if (!turnosError) {
+          ;(turnosData || []).forEach((registro) => {
+            if (typeof registro.oeeturno_id !== 'number') {
+              return
+            }
+            const nomeTurno = registro.turno?.trim()
+            if (nomeTurno) {
+              turnoPorOee.set(registro.oeeturno_id, nomeTurno)
+            }
+          })
+        }
+      }
+
+      return linhasNormalizadas.map((linha) => {
+        const turnoNome =
+          linha.turno ??
+          (linha.oeeturno_id != null ? turnoPorOee.get(linha.oeeturno_id) ?? null : null)
+        return {
+          ...linha,
+          turno: turnoNome,
+        }
+      })
     },
     enabled: parametrosValidos,
     staleTime: 60_000,

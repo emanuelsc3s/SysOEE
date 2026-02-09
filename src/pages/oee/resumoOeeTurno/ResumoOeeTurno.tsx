@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Filter, Loader2, RefreshCw, Search, Sparkles } from 'lucide-react'
+import { ArrowLeft, Filter, Loader2, RefreshCw, Search, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { AppHeader } from '@/components/layout/AppHeader'
 import { cn } from '@/lib/utils'
@@ -58,6 +59,7 @@ const INSIGHT_ETAPA_PROGRESSO: Record<InsightEtapaId, number> = {
 }
 
 export default function ResumoOeeTurno() {
+  const navigate = useNavigate()
   const { user: authUser } = useAuth()
   const dataAtualInicialRef = useRef(obterDataAtualFormatada())
   const filtrosIniciais = useRef({
@@ -354,6 +356,15 @@ export default function ResumoOeeTurno() {
     iniciarGeracaoInsight()
   }
 
+  const handleVoltar = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+
+    navigate('/')
+  }
+
   const insightEtapaIndex = Math.max(
     0,
     INSIGHT_ETAPAS.findIndex((etapa) => etapa.id === insightEtapa)
@@ -389,9 +400,19 @@ export default function ResumoOeeTurno() {
                   </Badge>
                 )}
                 <Button
+                  onClick={handleVoltar}
+                  variant="outline"
+                  className="h-10 min-w-[115px] gap-2 border-primary bg-white px-4 text-primary hover:bg-primary/10 hover:text-primary"
+                  title="Voltar para página anterior"
+                >
+                  <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                  Voltar
+                </Button>
+                <Button
                   onClick={abrirInsightModal}
                   disabled={!parametrosValidos || isLoading || isFetching || insightCarregando}
-                  className="h-10 min-w-[115px] gap-2 px-4"
+                  variant="outline"
+                  className="h-10 min-w-[115px] gap-2 border-primary bg-white px-4 text-primary hover:bg-primary/10 hover:text-primary"
                   title="Gerar insight local"
                 >
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
@@ -464,7 +485,7 @@ export default function ResumoOeeTurno() {
                             </div>
                             <div className="h-2 rounded-full bg-muted/60">
                               <div
-                                className="h-full rounded-full bg-gradient-to-r from-brand-primary/30 via-brand-primary to-brand-primary/40 transition-[width] duration-[1200ms] ease-out"
+                                className="h-full rounded-full bg-gradient-to-r from-brand-primary/30 via-brand-primary to-brand-primary/40 transition-[width] transition-duration-[1200ms] ease-out"
                                 style={{ width: `${insightPercentual}%` }}
                               />
                             </div>

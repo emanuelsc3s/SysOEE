@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o cabeçalho mobile da Home para usar fundo primário e contraste reforçado nos textos.
+- Exibido o turno do lançamento na tabela de detalhamento do resumo por turno, buscando o nome pelo `oeeturno_id` no Supabase.
 - Aplicado o mesmo formato de período das paradas estratégicas aos totais de minutos dos cards de paradas no resumo por turno.
 - Evitado o reset do insight do resumo por turno durante o processamento quando a sessão do usuário é atualizada.
 - Ajustada a animação de carregamento do insight do resumo por turno para 15 segundos, mantendo as etapas de coleta, análise e preparação.

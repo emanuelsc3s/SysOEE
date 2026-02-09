@@ -18,6 +18,15 @@ type LinhaAgrupadaInterna = Omit<LinhaAgrupada, 'turnos' | 'status'> & {
   turnosSet: Set<number>
 }
 
+const ordenarTurnos = (a: TurnoAgrupado, b: TurnoAgrupado): number => {
+  const dataA = a.data || ''
+  const dataB = b.data || ''
+  if (dataA !== dataB) {
+    return dataA.localeCompare(dataB, 'pt-BR')
+  }
+  return (a.oeeturnoId ?? 0) - (b.oeeturnoId ?? 0)
+}
+
 export const agruparLinhasResumo = (
   linhas: ResumoOeeTurnoLinhaNormalizada[]
 ): LinhaAgrupada[] => {
@@ -73,6 +82,7 @@ export const agruparLinhasResumo = (
       grupoLinha.turnosMap.set(chaveTurno, {
         id: chaveTurno,
         oeeturnoId: turnoId,
+        turno: linha.turno ?? null,
         data: dataTurno,
         qtdeTurnos: 0,
         qtdEnvase: 0,
@@ -89,7 +99,10 @@ export const agruparLinhasResumo = (
     }
 
     const grupoTurno = grupoLinha.turnosMap.get(chaveTurno)!
-    grupoTurno.qtdeTurnos += linha.qtde_turnos ?? 0
+    if (!grupoTurno.turno && linha.turno) {
+      grupoTurno.turno = linha.turno
+    }
+    grupoTurno.qtdeTurnos = Math.max(grupoTurno.qtdeTurnos, linha.qtde_turnos ?? 0)
     grupoTurno.qtdEnvase += linha.qtd_envase
     grupoTurno.qtdEmbalagem += linha.qtd_embalagem
     grupoTurno.quantidade += linha.qtd_envase + linha.qtd_embalagem
@@ -105,24 +118,12 @@ export const agruparLinhasResumo = (
   }
 
   return Array.from(linhasMap.values())
-    .map((linha) => ({
-      id: linha.id,
-      linhaId: linha.linhaId,
-      linha: linha.linha,
-      status: obterStatusPrioritario(linha.statusLista),
-      qtdeTurnos: linha.turnosSet.size,
-      qtdEnvase: linha.qtdEnvase,
-      qtdEmbalagem: linha.qtdEmbalagem,
-      quantidade: linha.quantidade,
-      perdas: linha.perdas,
-      unidadesBoas: linha.unidadesBoas,
-      paradas: linha.paradas,
-      paradasTotais: linha.paradasTotais,
-      paradasEstrategicas: linha.paradasEstrategicas,
-      turnos: Array.from(linha.turnosMap.values())
+    .map((linha) => {
+      const turnosNormalizados = Array.from(linha.turnosMap.values())
         .map((turno) => ({
           id: turno.id,
           oeeturnoId: turno.oeeturnoId,
+          turno: turno.turno ?? null,
           data: turno.data,
           status: obterStatusPrioritario(turno.statusLista),
           qtdeTurnos: turno.qtdeTurnos,
@@ -137,15 +138,94 @@ export const agruparLinhasResumo = (
           produtos: Array.from(turno.produtosSet.values()).sort((a, b) => a.localeCompare(b, 'pt-BR')),
           produtosCount: turno.produtosSet.size,
         }))
-        .sort((a, b) => {
-          const dataA = a.data || ''
-          const dataB = b.data || ''
-          if (dataA !== dataB) {
-            return dataA.localeCompare(dataB, 'pt-BR')
+        .sort(ordenarTurnos)
+
+      const turnosComLancamento = turnosNormalizados.filter((turno) => turno.oeeturnoId !== null)
+
+      const turnosExibicao: TurnoAgrupado[] = (() => {
+        if (turnosComLancamento.length > 0) {
+          return turnosComLancamento
+        }
+
+        if (turnosNormalizados.length === 0) {
+          return []
+        }
+
+        const agregadoSemLancamento = turnosNormalizados.reduce(
+          (acumulado, turno) => {
+            acumulado.qtdeTurnos += turno.qtdeTurnos
+            acumulado.qtdEnvase += turno.qtdEnvase
+            acumulado.qtdEmbalagem += turno.qtdEmbalagem
+            acumulado.quantidade += turno.quantidade
+            acumulado.perdas += turno.perdas
+            acumulado.unidadesBoas += turno.unidadesBoas
+            acumulado.paradas += turno.paradas
+            acumulado.paradasTotais += turno.paradasTotais
+            acumulado.paradasEstrategicas += turno.paradasEstrategicas
+            acumulado.statusLista.push(turno.status)
+            turno.produtos.forEach((produto) => acumulado.produtosSet.add(produto))
+            return acumulado
+          },
+          {
+            qtdeTurnos: 0,
+            qtdEnvase: 0,
+            qtdEmbalagem: 0,
+            quantidade: 0,
+            perdas: 0,
+            unidadesBoas: 0,
+            paradas: 0,
+            paradasTotais: 0,
+            paradasEstrategicas: 0,
+            statusLista: [] as string[],
+            produtosSet: new Set<string>(),
           }
-          return (a.oeeturnoId ?? 0) - (b.oeeturnoId ?? 0)
-        }),
-    }))
+        )
+
+        const produtosSemLancamento = Array.from(agregadoSemLancamento.produtosSet.values())
+          .filter((produto) => produto.trim() !== '' && produto !== 'Produto não informado')
+          .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
+        return [
+          {
+            id: `${linha.id}-sem-lancamento`,
+            oeeturnoId: null,
+            turno: null,
+            data: null,
+            status: obterStatusPrioritario(agregadoSemLancamento.statusLista),
+            qtdeTurnos: agregadoSemLancamento.qtdeTurnos,
+            qtdEnvase: agregadoSemLancamento.qtdEnvase,
+            qtdEmbalagem: agregadoSemLancamento.qtdEmbalagem,
+            quantidade: agregadoSemLancamento.quantidade,
+            perdas: agregadoSemLancamento.perdas,
+            unidadesBoas: agregadoSemLancamento.unidadesBoas,
+            paradas: agregadoSemLancamento.paradas,
+            paradasTotais: agregadoSemLancamento.paradasTotais,
+            paradasEstrategicas: agregadoSemLancamento.paradasEstrategicas,
+            produtos: produtosSemLancamento,
+            produtosCount: produtosSemLancamento.length,
+            semLancamento: true,
+            diasSemLancamento: turnosNormalizados.length,
+          },
+        ]
+      })()
+
+      return {
+        id: linha.id,
+        linhaId: linha.linhaId,
+        linha: linha.linha,
+        status: obterStatusPrioritario(linha.statusLista),
+        qtdeTurnos: linha.turnosSet.size,
+        qtdEnvase: linha.qtdEnvase,
+        qtdEmbalagem: linha.qtdEmbalagem,
+        quantidade: linha.quantidade,
+        perdas: linha.perdas,
+        unidadesBoas: linha.unidadesBoas,
+        paradas: linha.paradas,
+        paradasTotais: linha.paradasTotais,
+        paradasEstrategicas: linha.paradasEstrategicas,
+        turnos: turnosExibicao,
+      }
+    })
     .sort((a, b) => a.linha.localeCompare(b.linha, 'pt-BR'))
 }
 

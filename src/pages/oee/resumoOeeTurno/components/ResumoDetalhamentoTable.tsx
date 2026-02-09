@@ -212,19 +212,36 @@ export function ResumoDetalhamentoTable({
                     <td className="border-r border-gray-100 px-4 py-3"></td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-900">
-                          {turno.oeeturnoId !== null ? (
-                            <>
-                              Lançamento: <strong className="font-semibold">[{turno.oeeturnoId}]</strong>
-                            </>
-                          ) : (
-                            'Lançamento não informado'
-                          )}
-                        </span>
-                        <span className="text-sm text-gray-900">
-                          {formatarDataExibicao(turno.data)} -{' '}
-                          {turno.produtos.length > 0 ? turno.produtos.join(', ') : 'Produto não informado'}
-                        </span>
+                        {turno.semLancamento ? (
+                          <>
+                            <span className="text-sm font-semibold text-gray-900">
+                              Sem lançamento no período selecionado
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              {turno.diasSemLancamento && turno.diasSemLancamento > 1
+                                ? `${turno.diasSemLancamento} dias sem apontamento`
+                                : 'Nenhum apontamento encontrado para esta linha'}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm text-gray-900">
+                              {turno.oeeturnoId !== null ? (
+                                <>
+                                  Lançamento: <strong className="font-semibold">[{turno.oeeturnoId}]</strong>
+                                  {' '}
+                                  Turno: <strong className="font-semibold">[{turno.turno ?? 'Não informado'}]</strong>
+                                </>
+                              ) : (
+                                'Lançamento não informado'
+                              )}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {formatarDataExibicao(turno.data)} -{' '}
+                              {turno.produtos.length > 0 ? turno.produtos.join(', ') : 'Produto não informado'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">

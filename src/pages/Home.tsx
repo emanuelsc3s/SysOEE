@@ -256,13 +256,13 @@ export default function Home() {
       <div className="flex-1 md:ml-[25%] md:w-3/4 lg:w-3/4 flex flex-col bg-gradient-to-b from-background via-background to-muted/60 md:bg-muted md:pb-20 tab-prod:pb-12">
         {/* Header Mobile (visível apenas em mobile) */}
         <div className="md:hidden sticky top-0 z-20 border-b border-border/80 bg-background/95 backdrop-blur-sm">
-          <div className="px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+          <div className="px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.5rem)] bg-primary text-primary-foreground">
             <div className="flex items-center justify-between gap-3 py-1">
-              <div className="min-w-0 border-l-2 border-primary/35 pl-2.5">
-                <h1 className="text-base font-semibold tracking-tight text-[hsl(211.8947_94.0594%_28%)]">SICFAR OEE</h1>
-                <p className="mt-0.5 text-xs text-muted-foreground/90">Eficiência Operacional de Equipamentos</p>
+              <div className="min-w-0 border-l-2 border-primary-foreground/40 pl-2.5">
+                <h1 className="text-base font-semibold tracking-tight text-primary-foreground">SICFAR OEE</h1>
+                <p className="mt-0.5 text-xs text-primary-foreground/80">Eficiência Operacional de Equipamentos</p>
               </div>
-              <span className="inline-flex items-center rounded-full border border-primary/25 bg-transparent px-2.5 py-1 text-[11px] font-semibold text-primary">
+              <span className="inline-flex items-center rounded-full border border-primary-foreground/40 bg-primary-foreground/10 px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
                 37 linhas
               </span>
             </div>

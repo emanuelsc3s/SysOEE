@@ -12,6 +12,7 @@ export type ResumoOeeTurnoRow = {
   linhaproducao_id?: number | null
   linhaproducao?: string | null
   oeeturno_id?: number | null
+  turno?: string | null
   qtde_turnos?: number | null
   status_linha?: string | null
   status_turno_registrado?: string | null
@@ -121,6 +122,7 @@ export type LinhaAgrupada = {
 export type TurnoAgrupado = {
   id: string
   oeeturnoId: number | null
+  turno?: string | null
   data: string | null
   status: string
   qtdeTurnos: number
@@ -134,6 +136,8 @@ export type TurnoAgrupado = {
   paradasEstrategicas: number
   produtos: string[]
   produtosCount: number
+  semLancamento?: boolean
+  diasSemLancamento?: number
 }
 
 export type ComparativoTurno = {
