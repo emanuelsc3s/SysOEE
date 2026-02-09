@@ -129,19 +129,32 @@ const KpiValorAnimado = ({
 }
 
 const CARD_ACCENTS: Record<string, string> = {
-  'producao-envase': 'bg-primary/80',
-  'producao-embalagem': 'bg-indigo-500/80',
-  perdas: 'bg-red-500/80',
-  boas: 'bg-emerald-500/80',
-  'paradas-grandes': 'bg-orange-500/80',
-  'paradas-totais': 'bg-orange-500/80',
-  'paradas-estrategicas': 'bg-slate-400/80',
+  qtd_envase: 'bg-primary/80',
+  perdas_envase: 'bg-red-500/80',
+  envasado: 'bg-primary/80',
+  paradas_grandes: 'bg-orange-500/80',
+  sku_produzidos: 'bg-primary/80',
+  paradas_estrategicas: 'bg-slate-400/80',
+  qtd_embalagem: 'bg-primary/80',
+  perdas_embalagem: 'bg-red-500/80',
+  embalado: 'bg-primary/80',
+  pequenas_paradas: 'bg-amber-500/80',
+  qtde_turnos: 'bg-primary/80',
+  paradas_totais: 'bg-orange-500/80',
 }
 
 export function ResumoKpis({ cards, animacaoKey }: ResumoKpisProps) {
-  return (
-    <section className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-      {cards.map((card) => {
+  const PRIMEIRA_LINHA_IDS = ['qtd_envase', 'perdas_envase', 'envasado', 'paradas_grandes', 'sku_produzidos', 'paradas_estrategicas']
+  const SEGUNDA_LINHA_IDS = ['qtd_embalagem', 'perdas_embalagem', 'embalado', 'pequenas_paradas', 'qtde_turnos', 'paradas_totais']
+  const isCardResumo = (card: CardResumo | undefined): card is CardResumo => Boolean(card)
+
+  const cardsPorId = new Map(cards.map((card) => [card.id, card]))
+  const primeiraLinha = PRIMEIRA_LINHA_IDS.map((id) => cardsPorId.get(id)).filter(isCardResumo)
+  const segundaLinha = SEGUNDA_LINHA_IDS.map((id) => cardsPorId.get(id)).filter(isCardResumo)
+
+  const renderLinhaCards = (cardsLinha: CardResumo[]) => (
+    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+      {cardsLinha.map((card) => {
         const tipoValor = obterTipoValor(card.id, card.valor)
 
         return (
@@ -151,7 +164,7 @@ export function ResumoKpis({ cards, animacaoKey }: ResumoKpisProps) {
           >
             <span
               className={cn(
-                'mb-3 block h-1.5 w-11 rounded-full transition-[width] duration-200 group-hover:w-14 motion-reduce:transition-none',
+                'mb-3 block h-1.5 w-11 rounded-full text-[rgba(10,10,10,1)] transition-[width] duration-200 group-hover:w-14 motion-reduce:transition-none',
                 CARD_ACCENTS[card.id] || 'bg-gray-300'
               )}
               aria-hidden="true"
@@ -171,6 +184,13 @@ export function ResumoKpis({ cards, animacaoKey }: ResumoKpisProps) {
           </article>
         )
       })}
+    </div>
+  )
+
+  return (
+    <section className="space-y-2">
+      {renderLinhaCards(primeiraLinha)}
+      {renderLinhaCards(segundaLinha)}
     </section>
   )
 }

@@ -61,7 +61,7 @@ export const agruparLinhasResumo = (
     grupoLinha.quantidade += linha.qtd_envase + linha.qtd_embalagem
     grupoLinha.perdas += linha.perdas
     grupoLinha.unidadesBoas += linha.unidades_boas
-    grupoLinha.paradas += linha.paradas_minutos
+    grupoLinha.paradas += linha.paradas_grandes_minutos
     grupoLinha.paradasTotais += linha.paradas_totais_minutos
     grupoLinha.paradasEstrategicas += linha.paradas_estrategicas_minutos
     grupoLinha.statusLista.push(linha.status_linha || 'SEM_STATUS')
@@ -95,7 +95,7 @@ export const agruparLinhasResumo = (
     grupoTurno.quantidade += linha.qtd_envase + linha.qtd_embalagem
     grupoTurno.perdas += linha.perdas
     grupoTurno.unidadesBoas += linha.unidades_boas
-    grupoTurno.paradas += linha.paradas_minutos
+    grupoTurno.paradas += linha.paradas_grandes_minutos
     grupoTurno.paradasTotais += linha.paradas_totais_minutos
     grupoTurno.paradasEstrategicas += linha.paradas_estrategicas_minutos
     grupoTurno.statusLista.push(linha.status_linha || 'SEM_STATUS')
@@ -152,60 +152,112 @@ export const agruparLinhasResumo = (
 export const criarCardsResumo = (totais: ResumoTotais): CardResumo[] => {
   return [
     {
-      id: 'producao-envase',
-      titulo: 'Produção Envase',
+      id: 'qtd_envase',
+      campoRpc: 'qtd_envase',
+      titulo: 'Envase',
       valor: formatarQuantidade(totais.qtdEnvase),
       valorNumero: totais.qtdEnvase,
-      detalhe: 'unidades de linhas Envase',
+      detalhe: 'unidades trabalhadas',
       classeValor: 'text-primary dark:text-blue-400',
     },
     {
-      id: 'producao-embalagem',
-      titulo: 'Produção Embalagem',
-      valor: formatarQuantidade(totais.qtdEmbalagem),
-      valorNumero: totais.qtdEmbalagem,
-      detalhe: 'unidades de Embalagem e Envase+Embalagem',
-      classeValor: 'text-indigo-600 dark:text-indigo-400',
-    },
-    {
-      id: 'perdas',
-      titulo: 'Perdas Totais',
-      valor: formatarQuantidade(totais.perdas),
-      valorNumero: totais.perdas,
-      detalhe: 'unidades descartadas',
+      id: 'perdas_envase',
+      campoRpc: 'perdas_envase',
+      titulo: 'Perdas de Envase',
+      valor: formatarQuantidade(totais.perdasEnvase),
+      valorNumero: totais.perdasEnvase,
+      detalhe: 'unidades perdidas',
       classeValor: 'text-red-600 dark:text-red-400',
     },
     {
-      id: 'boas',
-      titulo: 'Unidades Boas',
-      valor: formatarQuantidade(totais.boas),
-      valorNumero: totais.boas,
-      detalhe: 'unidades aprovadas',
-      classeValor: 'text-emerald-600 dark:text-emerald-400',
+      id: 'envasado',
+      campoRpc: 'envasado',
+      titulo: 'Total Envasado',
+      valor: formatarQuantidade(totais.envasado),
+      valorNumero: totais.envasado,
+      detalhe: 'unidades envasadas',
+      classeValor: 'text-primary dark:text-blue-400',
     },
     {
-      id: 'paradas-grandes',
-      titulo: 'Paradas Grandes',
+      id: 'paradas_grandes',
+      campoRpc: 'paradas_grandes_minutos',
+      titulo: 'Grandes Paradas',
       valor: formatarMinutos(totais.paradasGrandes),
       valorNumero: totais.paradasGrandes,
       detalhe: `${formatarDecimal(totais.paradasGrandes, 0)} min totais`,
       classeValor: 'text-orange-500 dark:text-orange-400',
     },
     {
-      id: 'paradas-totais',
+      id: 'sku_produzidos',
+      campoRpc: 'sku_produzidos',
+      titulo: 'SKU Produzidos',
+      valor: formatarQuantidade(totais.skuProduzidos),
+      valorNumero: totais.skuProduzidos,
+      detalhe: 'produtos distintos',
+      classeValor: 'text-primary dark:text-blue-400',
+    },
+    {
+      id: 'paradas_estrategicas',
+      campoRpc: 'paradas_estrategicas_minutos',
+      titulo: 'Paradas Estratégicas',
+      valor: formatarMinutos(totais.paradasEstrategicas),
+      valorNumero: totais.paradasEstrategicas,
+      detalhe: `${formatarDecimal(totais.paradasEstrategicas, 0)} min totais`,
+      classeValor: 'text-gray-500 dark:text-gray-100',
+    },
+    {
+      id: 'qtd_embalagem',
+      campoRpc: 'qtd_embalagem',
+      titulo: 'Embalagem',
+      valor: formatarQuantidade(totais.qtdEmbalagem),
+      valorNumero: totais.qtdEmbalagem,
+      detalhe: 'unidades processadas',
+      classeValor: 'text-primary dark:text-blue-400',
+    },
+    {
+      id: 'perdas_embalagem',
+      campoRpc: 'perdas_embalagem',
+      titulo: 'Perdas de Embalagem',
+      valor: formatarQuantidade(totais.perdasEmbalagem),
+      valorNumero: totais.perdasEmbalagem,
+      detalhe: 'unidades perdidas',
+      classeValor: 'text-red-600 dark:text-red-400',
+    },
+    {
+      id: 'embalado',
+      campoRpc: 'embalado',
+      titulo: 'Total Embalado',
+      valor: formatarQuantidade(totais.embalado),
+      valorNumero: totais.embalado,
+      detalhe: 'unidades embaladas',
+      classeValor: 'text-primary dark:text-blue-400',
+    },
+    {
+      id: 'pequenas_paradas',
+      campoRpc: 'paradas_pequenas_minutos',
+      titulo: 'Pequenas Paradas',
+      valor: formatarMinutos(totais.paradasPequenas),
+      valorNumero: totais.paradasPequenas,
+      detalhe: `${formatarDecimal(totais.paradasPequenas, 0)} min totais`,
+      classeValor: 'text-orange-500 dark:text-orange-400',
+    },
+    {
+      id: 'qtde_turnos',
+      campoRpc: 'qtde_turnos',
+      titulo: 'Turnos Apontados',
+      valor: formatarQuantidade(totais.turnosDistintos),
+      valorNumero: totais.turnosDistintos,
+      detalhe: 'turnos distintos no período',
+      classeValor: 'text-primary dark:text-blue-400',
+    },
+    {
+      id: 'paradas_totais',
+      campoRpc: 'paradas_totais_minutos',
       titulo: 'Paradas Totais',
       valor: formatarMinutos(totais.paradasTotais),
       valorNumero: totais.paradasTotais,
       detalhe: `${formatarDecimal(totais.paradasTotais, 0)} min totais`,
       classeValor: 'text-orange-500 dark:text-orange-400',
-    },
-    {
-      id: 'paradas-estrategicas',
-      titulo: 'Paradas Estratégicas',
-      valor: formatarMinutos(totais.paradasEstrategicas),
-      valorNumero: totais.paradasEstrategicas,
-      detalhe: `${formatarDecimal(totais.paradasEstrategicas, 0)} min totais`,
-      classeValor: 'text-gray-800 dark:text-gray-100',
     },
   ]
 }

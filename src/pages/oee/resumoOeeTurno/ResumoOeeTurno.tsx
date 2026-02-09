@@ -211,13 +211,26 @@ export default function ResumoOeeTurno() {
                 </p>
               </div>
 
-              {appliedCount > 0 && (
-                <div className="flex flex-wrap items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                {appliedCount > 0 && (
                   <Badge className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2.5 py-1 text-sm font-semibold text-brand-primary">
                     {appliedCount} filtro{appliedCount !== 1 ? 's' : ''} ativo{appliedCount !== 1 ? 's' : ''}
                   </Badge>
-                </div>
-              )}
+                )}
+                <Button
+                  onClick={() => void refetch()}
+                  disabled={!parametrosValidos || isFetching}
+                  className="h-10 gap-2 px-4"
+                  title="Atualizar lista"
+                >
+                  {isFetching ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  Atualizar
+                </Button>
+              </div>
             </div>
           </section>
 
@@ -374,20 +387,6 @@ export default function ResumoOeeTurno() {
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
-
-                  <Button
-                    onClick={() => void refetch()}
-                    disabled={!parametrosValidos || isFetching}
-                    className="h-11 w-full gap-2 px-4 sm:h-10 sm:w-auto"
-                    title="Atualizar lista"
-                  >
-                    {isFetching ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    Atualizar
-                  </Button>
                 </div>
               </div>
             )}

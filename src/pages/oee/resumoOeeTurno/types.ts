@@ -17,12 +17,16 @@ export type ResumoOeeTurnoRow = {
   status_turno_registrado?: string | null
   produto_id?: number | null
   produto?: string | null
+  sku_produzidos?: number | string | null
   qtd_envase?: number | string | null
+  envasado?: number | string | null
+  embalado?: number | string | null
   qtd_embalagem?: number | string | null
-  perdas?: number | string | null
+  perdas_envase?: number | string | null
+  perdas_embalagem?: number | string | null
   unidades_boas?: number | string | null
-  paradas_minutos?: number | string | null
   paradas_grandes_minutos?: number | string | null
+  paradas_pequenas_minutos?: number | string | null
   paradas_totais_minutos?: number | string | null
   paradas_estrategicas_minutos?: number | string | null
   paradas_hh_mm?: string | null
@@ -42,37 +46,53 @@ export type ResumoOeeTurnoParametros = {
 export type ResumoOeeTurnoLinhaNormalizada = Omit<
   ResumoOeeTurnoRow,
   | 'qtd_envase'
+  | 'sku_produzidos'
+  | 'envasado'
+  | 'embalado'
   | 'qtd_embalagem'
-  | 'perdas'
+  | 'perdas_envase'
+  | 'perdas_embalagem'
   | 'unidades_boas'
-  | 'paradas_minutos'
   | 'paradas_grandes_minutos'
+  | 'paradas_pequenas_minutos'
   | 'paradas_totais_minutos'
   | 'paradas_estrategicas_minutos'
 > & {
+  sku_produzidos: number
   qtd_envase: number
+  envasado: number
+  embalado: number
   qtd_embalagem: number
+  perdas_envase: number
+  perdas_embalagem: number
   perdas: number
   unidades_boas: number
-  paradas_minutos: number
   paradas_grandes_minutos: number
+  paradas_pequenas_minutos: number
   paradas_totais_minutos: number
   paradas_estrategicas_minutos: number
 }
 
 export type ResumoTotais = {
+  skuProduzidos: number
+  turnosDistintos: number
   qtdEnvase: number
+  perdasEnvase: number
+  envasado: number
   qtdEmbalagem: number
+  perdasEmbalagem: number
+  embalado: number
   quantidade: number
   perdas: number
-  boas: number
   paradasGrandes: number
+  paradasPequenas: number
   paradasTotais: number
   paradasEstrategicas: number
 }
 
 export type CardResumo = {
   id: string
+  campoRpc?: string
   titulo: string
   valor: string
   valorNumero?: number

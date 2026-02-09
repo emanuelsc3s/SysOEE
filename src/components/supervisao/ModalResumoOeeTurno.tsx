@@ -38,9 +38,9 @@ type ResumoOeeTurnoRow = {
   produto?: string | null
   qtd_envase?: number | string | null
   qtd_embalagem?: number | string | null
-  perdas?: number | string | null
+  perdas_envase?: number | string | null
+  perdas_embalagem?: number | string | null
   unidades_boas?: number | string | null
-  paradas_minutos?: number | string | null
   paradas_grandes_minutos?: number | string | null
   paradas_totais_minutos?: number | string | null
   paradas_estrategicas_minutos?: number | string | null
@@ -236,17 +236,27 @@ export function ModalResumoOeeTurno({
     staleTime: 60_000
   })
 
-  const linhas = useMemo(() => (resumoData || []).map((linha) => ({
-    ...linha,
-    qtd_envase: normalizarNumero(linha.qtd_envase),
-    qtd_embalagem: normalizarNumero(linha.qtd_embalagem),
-    perdas: normalizarNumero(linha.perdas),
-    unidades_boas: normalizarNumero(linha.unidades_boas),
-    paradas_minutos: normalizarNumero(linha.paradas_minutos),
-    paradas_grandes_minutos: normalizarNumero(linha.paradas_grandes_minutos),
-    paradas_totais_minutos: normalizarNumero(linha.paradas_totais_minutos),
-    paradas_estrategicas_minutos: normalizarNumero(linha.paradas_estrategicas_minutos)
-  })), [resumoData])
+  const linhas = useMemo(
+    () =>
+      (resumoData || []).map((linha) => {
+        const perdasEnvase = normalizarNumero(linha.perdas_envase)
+        const perdasEmbalagem = normalizarNumero(linha.perdas_embalagem)
+
+        return {
+          ...linha,
+          qtd_envase: normalizarNumero(linha.qtd_envase),
+          qtd_embalagem: normalizarNumero(linha.qtd_embalagem),
+          perdas_envase: perdasEnvase,
+          perdas_embalagem: perdasEmbalagem,
+          perdas: perdasEnvase + perdasEmbalagem,
+          unidades_boas: normalizarNumero(linha.unidades_boas),
+          paradas_grandes_minutos: normalizarNumero(linha.paradas_grandes_minutos),
+          paradas_totais_minutos: normalizarNumero(linha.paradas_totais_minutos),
+          paradas_estrategicas_minutos: normalizarNumero(linha.paradas_estrategicas_minutos),
+        }
+      }),
+    [resumoData]
+  )
 
   const totais = useMemo(() => {
     return linhas.reduce((acc, linha) => {
@@ -554,7 +564,7 @@ export function ModalResumoOeeTurno({
                             <div className="rounded-lg bg-muted/50 p-2">
                               <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Paradas</p>
                               <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                                {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_minutos))}
+                                {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_grandes_minutos))}
                               </p>
                             </div>
                           </div>
@@ -654,7 +664,7 @@ export function ModalResumoOeeTurno({
                                 {formatarQuantidade(normalizarNumero(linha.unidades_boas))}
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-foreground">
-                                {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_minutos))}
+                                {linha.paradas_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_grandes_minutos))}
                               </td>
                               <td className="whitespace-nowrap px-4 py-3 text-right text-sm tabular-nums text-foreground">
                                 {linha.paradas_totais_hh_mm || formatarMinutos(normalizarNumero(linha.paradas_totais_minutos))}

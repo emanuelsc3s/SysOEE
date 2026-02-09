@@ -8,8 +8,16 @@
 -- - Nova coluna de saída `qtd_embalagem`.
 -- - `qtd_envase` soma produção apenas para linhas com tipo = 'Envase'.
 -- - `qtd_embalagem` soma produção para tipos 'Embalagem' e 'Envase+Embalagem'.
--- - `unidades_boas` passou a usar (qtd_envase + qtd_embalagem) - perdas.
+-- - Nova coluna de saída `envasado` com (qtd_envase - perdas_envase).
+-- - Nova coluna de saída `embalado` com o valor original de `qtd_embalagem`.
+-- - `qtd_embalagem` passa a incluir perdas (qtd_embalagem + perdas_embalagem).
+-- - `envasado` espelha `embalado` quando tipo = 'Envase+Embalagem'.
+-- - Removida a coluna de saída `unidades_boas`.
 -- - Nova coluna de saída `paradas_pequenas_minutos` (paradas <= 10 min).
+-- - Nova coluna de saída `sku_produzidos` com contagem distinta de `tboee_turno_producao.produto_id`.
+-- - `perdas` foi substituído por `perdas_envase` e `perdas_embalagem`.
+-- - Perdas são atribuídas pelo tipo da linha (Envase x Embalagem/Envase+Embalagem).
+-- - Classificação de paradas estratégicas baseada em `tboee_parada.classe`.
 --
 -- Baseado nos filtros:
 -- - período (data início/fim)
@@ -41,11 +49,13 @@ RETURNS TABLE (
   status_turno_registrado TEXT,
   produto_id INTEGER,
   produto TEXT,
+  sku_produzidos BIGINT,
   qtd_envase NUMERIC,
+  envasado NUMERIC,
+  embalado NUMERIC,
   qtd_embalagem NUMERIC,
-  perdas NUMERIC,
-  unidades_boas NUMERIC,
-  paradas_minutos BIGINT,
+  perdas_envase NUMERIC,
+  perdas_embalagem NUMERIC,
   paradas_grandes_minutos BIGINT,
   paradas_pequenas_minutos BIGINT,
   paradas_totais_minutos BIGINT,
@@ -317,6 +327,21 @@ BEGIN
       END
   ),
 
+  skus_produzidos AS (
+    SELECT
+      tf.data,
+      tf.linhaproducao_id,
+      p.oeeturno_id,
+      COUNT(DISTINCT p.produto_id)::bigint AS sku_produzidos
+    FROM tboee_turno_producao p
+    JOIN turnos_filtrados tf ON tf.oeeturno_id = p.oeeturno_id
+    WHERE p.deletado IS NULL OR p.deletado = 'N'
+    GROUP BY
+      tf.data,
+      tf.linhaproducao_id,
+      p.oeeturno_id
+  ),
+
   perdas AS (
     SELECT
       tf.data,
@@ -369,15 +394,10 @@ BEGIN
         ELSE
           ((86400 - EXTRACT(EPOCH FROM pr.hora_inicio::time)) + EXTRACT(EPOCH FROM pr.hora_fim::time)) / 60.0
       END AS duracao_minutos,
-      LOWER(
-        COALESCE(pr.oeeparada_id::text, '') || ' ' ||
-        COALESCE(pr.parada, '') || ' ' ||
-        COALESCE(pr.natureza, '') || ' - ' ||
-        COALESCE(pr.classe, '') || ' ' ||
-        COALESCE(pr.observacao, '')
-      ) AS texto
+      tp.classe AS classe_parada
     FROM tboee_turno_parada pr
     JOIN turnos_filtrados tf ON tf.oeeturno_id = pr.oeeturno_id
+    LEFT JOIN tboee_parada tp ON tp.oeeparada_id = pr.oeeparada_id
     WHERE pr.deletado = 'N'
   ),
 
@@ -391,18 +411,7 @@ BEGIN
       pr.produto,
       pr.produto_key,
       pr.duracao_minutos,
-      (
-        pr.texto LIKE '%feriado%' OR
-        pr.texto LIKE '%inventário%' OR
-        pr.texto LIKE '%inventario%' OR
-        pr.texto LIKE '%atividade programada%' OR
-        pr.texto LIKE '%parada estratégica%' OR
-        pr.texto LIKE '%parada estrategica%' OR
-        pr.texto LIKE '%sem programação%' OR
-        pr.texto LIKE '%sem programacao%' OR
-        pr.texto LIKE '%sem demanda%' OR
-        pr.texto LIKE '%ociosidade planejada%'
-      ) AS estrategica
+      (TRIM(COALESCE(pr.classe_parada, '')) = 'Parada Estratégica') AS estrategica
     FROM paradas_raw pr
   ),
 
@@ -494,21 +503,32 @@ BEGIN
       ap.data,
       ap.linhaproducao_id,
       ap.linhaproducao,
+      ap.tipo_linha,
       ap.oeeturno_id,
       ap.qtde_turnos,
       COALESCE(sl.status_linha, 'Turno Não Iniciado') AS status_linha,
       COALESCE(sl.status_turnos, 'Turno Não Iniciado') AS status_turnos,
       ap.produto_id,
       ap.produto,
+      COALESCE(sp.sku_produzidos, 0)::bigint AS sku_produzidos,
       CASE
-        WHEN ap.tipo_linha = 'Envase' THEN COALESCE(pr.unidades_produzidas, 0)::numeric
+        WHEN ap.tipo_linha IN ('Envase', 'Envase+Embalagem')
+          THEN COALESCE(pr.unidades_produzidas, 0)::numeric
         ELSE 0::numeric
       END AS qtd_envase,
       CASE
         WHEN ap.tipo_linha IN ('Embalagem', 'Envase+Embalagem') THEN COALESCE(pr.unidades_produzidas, 0)::numeric
         ELSE 0::numeric
       END AS qtd_embalagem,
-      COALESCE(pe.unidades_perdas, 0)::numeric AS perdas,
+      CASE
+        WHEN ap.tipo_linha = 'Envase' THEN COALESCE(pe.unidades_perdas, 0)::numeric
+        ELSE 0::numeric
+      END AS perdas_envase,
+      CASE
+        WHEN ap.tipo_linha IN ('Embalagem', 'Envase+Embalagem')
+          THEN COALESCE(pe.unidades_perdas, 0)::numeric
+        ELSE 0::numeric
+      END AS perdas_embalagem,
       ROUND(COALESCE(pa.paradas_totais_minutos, 0))::bigint AS paradas_totais_minutos,
       ROUND(COALESCE(pa.paradas_estrategicas_minutos, 0))::bigint AS paradas_estrategicas_minutos,
       ROUND(COALESCE(pa.paradas_grandes_minutos, 0))::bigint AS paradas_grandes_minutos,
@@ -521,6 +541,10 @@ BEGIN
       ON pr.oeeturno_id = ap.oeeturno_id
      AND pr.linhaproducao_id = ap.linhaproducao_id
      AND pr.produto_key = ap.produto_key
+    LEFT JOIN skus_produzidos sp
+      ON sp.oeeturno_id = ap.oeeturno_id
+     AND sp.linhaproducao_id = ap.linhaproducao_id
+     AND sp.data = ap.data
     LEFT JOIN perdas pe
       ON pe.oeeturno_id = ap.oeeturno_id
      AND pe.linhaproducao_id = ap.linhaproducao_id
@@ -541,11 +565,17 @@ BEGIN
     b.status_turnos AS status_turno_registrado,
     b.produto_id,
     b.produto,
+    b.sku_produzidos,
     b.qtd_envase,
-    b.qtd_embalagem,
-    b.perdas,
-    GREATEST((b.qtd_envase + b.qtd_embalagem) - b.perdas, 0) AS unidades_boas,
-    b.paradas_grandes_minutos AS paradas_minutos,
+    CASE
+      WHEN b.tipo_linha = 'Envase' THEN (b.qtd_envase - b.perdas_envase)
+      WHEN b.tipo_linha = 'Envase+Embalagem' THEN b.qtd_embalagem
+      ELSE 0::numeric
+    END AS envasado,
+    b.qtd_embalagem AS embalado,
+    (b.qtd_embalagem + b.perdas_embalagem) AS qtd_embalagem,
+    b.perdas_envase,
+    b.perdas_embalagem,
     b.paradas_grandes_minutos,
     b.paradas_pequenas_minutos,
     b.paradas_totais_minutos,

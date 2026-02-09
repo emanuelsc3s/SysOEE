@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
+import { ModalSelecaoApontamentoOee } from '@/components/apontamento/ModalSelecaoApontamentoOee'
 
 /**
  * Retorna a saudação apropriada baseada no horário atual
@@ -69,6 +70,9 @@ export default function Home() {
 
   // Estado para controlar o modal de seleção de operação
   const [modalOperacaoAberto, setModalOperacaoAberto] = useState(false)
+
+  // Estado para controlar o modal de seleção do apontamento OEE
+  const [modalApontamentoOeeAberto, setModalApontamentoOeeAberto] = useState(false)
 
   // Estado para controlar o dialog de confirmação de logout
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
@@ -100,6 +104,20 @@ export default function Home() {
    */
   const handleFecharModalOperacao = () => {
     setModalOperacaoAberto(false)
+  }
+
+  /**
+   * Abre o modal de seleção do apontamento OEE
+   */
+  const handleAbrirModalApontamentoOee = () => {
+    setModalApontamentoOeeAberto(true)
+  }
+
+  /**
+   * Fecha o modal de seleção do apontamento OEE
+   */
+  const handleFecharModalApontamentoOee = () => {
+    setModalApontamentoOeeAberto(false)
   }
 
   /**
@@ -169,7 +187,9 @@ export default function Home() {
       title: 'Apontamento OEE',
       icon: <FileText className={iconClassName} />,
       path: '/oee-turno',
-      description: 'Listagem e consulta de apontamentos de OEE por turno'
+      description: 'Listagem e consulta de apontamentos de OEE por turno',
+      // Intercepta o clique para abrir o modal de seleção
+      onClick: handleAbrirModalApontamentoOee
     },
     {
       title: 'Paradas',
@@ -361,6 +381,12 @@ export default function Home() {
         onFechar={handleFecharModalOperacao}
         onSelecionarOrdemProducao={handleSelecionarOrdemProducao}
         onSelecionarEquipamento={handleSelecionarEquipamento}
+      />
+
+      {/* Modal de Seleção do Apontamento OEE */}
+      <ModalSelecaoApontamentoOee
+        aberto={modalApontamentoOeeAberto}
+        onFechar={handleFecharModalApontamentoOee}
       />
 
       {/* Dialog de Confirmação de Logout */}

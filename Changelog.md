@@ -1,10 +1,26 @@
 # Changelog
 
 ## [Unreleased]
+- Substituído o card duplicado de "Grandes Paradas" por "Turnos Apontados" no resumo por turno, com total calculado por `DISTINCT oeeturno_id` no frontend.
+- Ajustada a cor do valor de paradas estratégicas e do marcador dos cards no resumo por turno.
+- Adicionado modal de seleção do apontamento OEE na Home com atalhos para lista por turno e resumo consolidado.
+- Ajustada a navegação dos cards da Home para usar Link e estados de foco acessíveis.
+- Ajustado o visual dos cards do modal de apontamento OEE para o estilo clean com título, descrição e CTA.
+- Ajustada a coluna `sku_produzidos` na RPC `fn_resumo_oee_turno` para `COUNT(DISTINCT produto_id)`.
+- Ajustada a RPC `fn_resumo_oee_turno` para classificar paradas estratégicas pela `tboee_parada.classe`.
+- Atualizado o resumo por turno no frontend para usar `paradas_grandes_minutos` no lugar de `paradas_minutos`.
+- Removida a coluna `paradas_minutos` da RPC `fn_resumo_oee_turno`.
+- Ajustada a RPC `fn_resumo_oee_turno` para permitir `unidades_boas` negativas quando perdas excedem produção.
+- Ajustada a RPC `fn_resumo_oee_turno` para espelhar `envasado` em linhas Envase+Embalagem e calcular `unidades_boas` por tipo de linha.
+- Ajustada a RPC `fn_resumo_oee_turno` para preencher `qtd_envase` em linhas Envase+Embalagem.
+- Removida a coluna `unidades_boas` da RPC `fn_resumo_oee_turno`.
+- Ajustados os campos de quantidade na RPC `fn_resumo_oee_turno`, adicionando `envasado` e `embalado` e incluindo perdas em `qtd_embalagem`.
+- Separadas as perdas da RPC `fn_resumo_oee_turno` em `perdas_envase` e `perdas_embalagem`, com cálculo por tipo de linha.
 - Ajustado o tamanho do título mobile do `AppHeader` para 24px.
 - Duplicado o tamanho do título mobile no `AppHeader` e renomeado para "SICFAR OEE".
 - Ajustado o `AppHeader` no mobile para usar fundo da cor primária, removendo a logomarca e adicionando botão de voltar com ícone.
 - Ajustado o `AppHeader` para layout mobile centralizado e compacto, com título abreviado e menu mais clean.
+- Atualizado o `AppHeader` com logomarca à esquerda no desktop/tablet e visual clean com fundo primário.
 - Adicionado efeito de contador incremental (do zero até o valor) nos cards do `ResumoOeeTurno`.
 - Corrigida a contagem incremental dos KPIs do `ResumoOeeTurno` para usar os valores numéricos totais corretos.
 - Ajustado o contador dos KPIs do `ResumoOeeTurno` para animar apenas quando a RPC é atualizada.

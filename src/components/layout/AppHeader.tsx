@@ -77,26 +77,34 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b bg-primary text-primary-foreground sm:bg-background/95 sm:text-foreground sm:backdrop-blur-sm">
+    <header className="sticky top-0 z-40 h-16 border-b border-primary/20 bg-primary text-primary-foreground shadow-sm">
       <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-2 px-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
         {/* Seção esquerda - Título e identidade */}
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4 sm:flex-1">
+        <div className="flex h-full min-w-0 items-center gap-2 sm:gap-4 sm:flex-1">
           <button
             type="button"
             onClick={handleVoltarClick}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:hover:bg-accent/60"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:hidden"
             aria-label="Voltar"
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </button>
 
-          <div className="hidden min-w-0 sm:block">
-            <h1 className="truncate text-sm font-semibold leading-tight tracking-tight text-primary sm:text-lg">
-              {title}
-            </h1>
-            <p className="hidden truncate text-xs text-muted-foreground sm:block">
-              {APP_SUBTITLE}
-            </p>
+          <div className="hidden h-full min-w-0 items-center gap-3 sm:flex">
+            <img
+              src="/logo-farmace.png"
+              alt="Logomarca Farmace"
+              className="h-14 w-auto object-contain"
+              loading="eager"
+            />
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold leading-tight tracking-tight text-primary-foreground sm:text-base lg:text-lg">
+                {title}
+              </h1>
+              <p className="hidden truncate text-xs text-primary-foreground/70 sm:block">
+                {APP_SUBTITLE}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -112,26 +120,26 @@ export function AppHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-11 min-w-[44px] gap-2 rounded-full border border-transparent px-1.5 pr-2 transition-colors hover:border-border hover:bg-accent/70 data-[state=open]:border-border data-[state=open]:bg-accent/70 sm:px-2 sm:pr-3"
+                className="h-11 min-w-[44px] gap-2 rounded-full border border-transparent px-1.5 pr-2 text-primary-foreground transition-colors hover:border-primary-foreground/20 hover:bg-primary-foreground/10 data-[state=open]:border-primary-foreground/20 data-[state=open]:bg-primary-foreground/10 sm:px-2 sm:pr-3"
                 aria-label={`Abrir menu do usuário ${nomeExibicao}`}
               >
                 <div className="flex items-center gap-2">
                   {/* Avatar */}
-                  <Avatar className="h-8 w-8 ring-1 ring-border/80">
+                  <Avatar className="h-8 w-8 ring-1 ring-primary-foreground/20">
                     {userPhotoUrl ? (
                       <AvatarImage src={userPhotoUrl} alt={nomeExibicao} />
                     ) : null}
-                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                    <AvatarFallback className="bg-primary-foreground/15 text-primary-foreground font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
 
                   {/* Informações do usuário - oculto em mobile */}
                   <div className="hidden max-w-[180px] text-left md:block">
-                    <p className="truncate text-sm font-medium leading-none text-foreground">
+                    <p className="truncate text-sm font-medium leading-none text-primary-foreground">
                       {nomeExibicao}
                     </p>
-                    <p className="mt-1 truncate text-xs leading-none text-muted-foreground">
+                    <p className="mt-1 truncate text-xs leading-none text-primary-foreground/70">
                       {cargoExibicao}
                     </p>
                   </div>
@@ -139,7 +147,7 @@ export function AppHeader({
 
                 {/* Ícone dropdown */}
                 <ChevronDown
-                  className="hidden h-4 w-4 text-muted-foreground transition-transform duration-200 sm:block"
+                  className="hidden h-4 w-4 text-primary-foreground/70 transition-transform duration-200 sm:block"
                   aria-hidden="true"
                 />
               </Button>

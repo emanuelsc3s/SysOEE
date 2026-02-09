@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 interface NavigationCardProps {
@@ -10,6 +10,8 @@ interface NavigationCardProps {
   path: string
   /** Função de callback opcional (sobrescreve navegação padrão) */
   onClick?: () => void
+  /** Tamanho visual do card */
+  size?: 'default' | 'compact'
   /** Classes CSS adicionais */
   className?: string
 }
@@ -23,51 +25,76 @@ export function NavigationCard({
   icon,
   path,
   onClick,
+  size = 'default',
   className,
 }: NavigationCardProps) {
-  const navigate = useNavigate()
+  const isCompact = size === 'compact'
+  const cardClasses = cn(
+    // Layout e dimensões fixas com aspect ratio
+    'flex flex-col items-center justify-center',
+    'aspect-[4/3] w-full',
+    isCompact ? 'p-3 sm:p-4 tab-prod:p-2' : 'p-4 sm:p-6 tab-prod:p-2',
+    // Cursor e transições
+    'cursor-pointer motion-safe:transition-transform motion-safe:transition-shadow motion-safe:transition-colors motion-safe:duration-300',
+    'touch-manipulation',
+    // Background e bordas
+    'bg-card rounded-xl shadow-sm',
+    'no-underline',
+    // Hover effects
+    'hover:shadow-md motion-safe:hover:scale-[1.02]',
+    'border border-transparent hover:border-primary/20',
+    // Estados de foco para acessibilidade
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+    // Posicionamento relativo para barra inferior
+    'relative overflow-hidden',
+    className
+  )
 
-  const handleClick = () => {
-    if (onClick) {
-      onClick()
-    } else {
-      navigate(path)
-    }
-  }
-
-  return (
-    <div
-      onClick={handleClick}
-      className={cn(
-        // Layout e dimensões fixas com aspect ratio
-        'flex flex-col items-center justify-center',
-        'aspect-[4/3] w-full',
-        'p-4 sm:p-6 tab-prod:p-2',
-        // Cursor e transições
-        'cursor-pointer transition-all duration-300',
-        // Background e bordas
-        'bg-card rounded-xl shadow-sm',
-        // Hover effects
-        'hover:shadow-md hover:scale-[1.02]',
-        'border border-transparent hover:border-primary/20',
-        // Posicionamento relativo para barra inferior
-        'relative overflow-hidden',
-        className
-      )}
-    >
+  const conteudo = (
+    <>
       {/* Ícone */}
-      <div className="mb-3 tab-prod:mb-1.5 text-primary flex-shrink-0 tab-prod:scale-75">
+      <div
+        className={cn(
+          'text-primary flex-shrink-0 tab-prod:scale-75',
+          isCompact ? 'mb-2 tab-prod:mb-1' : 'mb-3 tab-prod:mb-1.5'
+        )}
+        aria-hidden="true"
+      >
         {icon}
       </div>
 
       {/* Título */}
-      <p className="font-medium text-center text-foreground text-sm md:text-base tab-prod:text-xs tab-prod:leading-tight">
+      <p
+        className={cn(
+          'font-medium text-center text-foreground tab-prod:leading-tight',
+          isCompact ? 'text-[13px] md:text-sm tab-prod:text-[11px]' : 'text-sm md:text-base tab-prod:text-xs'
+        )}
+      >
         {title}
       </p>
 
       {/* Barra decorativa inferior */}
-      <div className="absolute bottom-0 left-0 w-full h-1.5 tab-prod:h-1 bg-primary"></div>
-    </div>
+      <div
+        className={cn(
+          'absolute bottom-0 left-0 w-full bg-primary',
+          isCompact ? 'h-1 tab-prod:h-0.5' : 'h-1.5 tab-prod:h-1'
+        )}
+      ></div>
+    </>
+  )
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={cardClasses}>
+        {conteudo}
+      </button>
+    )
+  }
+
+  return (
+    <Link to={path} className={cardClasses}>
+      {conteudo}
+    </Link>
   )
 }
 
