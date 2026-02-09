@@ -5,7 +5,7 @@ import type {
   ResumoTotais,
   TurnoAgrupado,
 } from '../types'
-import { formatarDecimal, formatarMinutos, formatarQuantidade, obterStatusPrioritario } from './formatters'
+import { formatarMinutos, formatarPeriodoMinutos, formatarQuantidade, obterStatusPrioritario } from './formatters'
 
 type TurnoAgrupadoInterno = Omit<TurnoAgrupado, 'produtos' | 'produtosCount' | 'status'> & {
   statusLista: string[]
@@ -184,7 +184,7 @@ export const criarCardsResumo = (totais: ResumoTotais): CardResumo[] => {
       titulo: 'Grandes Paradas',
       valor: formatarMinutos(totais.paradasGrandes),
       valorNumero: totais.paradasGrandes,
-      detalhe: `${formatarDecimal(totais.paradasGrandes, 0)} min totais`,
+      detalhe: formatarPeriodoMinutos(totais.paradasGrandes),
       classeValor: 'text-orange-500 dark:text-orange-400',
     },
     {
@@ -202,7 +202,7 @@ export const criarCardsResumo = (totais: ResumoTotais): CardResumo[] => {
       titulo: 'Paradas Estratégicas',
       valor: formatarMinutos(totais.paradasEstrategicas),
       valorNumero: totais.paradasEstrategicas,
-      detalhe: `${formatarDecimal(totais.paradasEstrategicas, 0)} min totais`,
+      detalhe: formatarPeriodoMinutos(totais.paradasEstrategicas),
       classeValor: 'text-gray-500 dark:text-gray-100',
     },
     {
@@ -238,7 +238,7 @@ export const criarCardsResumo = (totais: ResumoTotais): CardResumo[] => {
       titulo: 'Pequenas Paradas',
       valor: formatarMinutos(totais.paradasPequenas),
       valorNumero: totais.paradasPequenas,
-      detalhe: `${formatarDecimal(totais.paradasPequenas, 0)} min totais`,
+      detalhe: formatarPeriodoMinutos(totais.paradasPequenas),
       classeValor: 'text-orange-500 dark:text-orange-400',
     },
     {
@@ -256,7 +256,7 @@ export const criarCardsResumo = (totais: ResumoTotais): CardResumo[] => {
       titulo: 'Paradas Totais',
       valor: formatarMinutos(totais.paradasTotais),
       valorNumero: totais.paradasTotais,
-      detalhe: `${formatarDecimal(totais.paradasTotais, 0)} min totais`,
+      detalhe: formatarPeriodoMinutos(totais.paradasTotais),
       classeValor: 'text-orange-500 dark:text-orange-400',
     },
   ]

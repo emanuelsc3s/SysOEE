@@ -55,6 +55,66 @@ export const formatarMinutos = (minutos: number): string => {
   return `${String(horas).padStart(2, '0')}:${String(resto).padStart(2, '0')}`
 }
 
+const MINUTOS_POR_HORA = 60
+const MINUTOS_POR_DIA = 24 * MINUTOS_POR_HORA
+const MINUTOS_POR_MES = 30 * MINUTOS_POR_DIA
+const MINUTOS_POR_ANO = 365 * MINUTOS_POR_DIA
+
+const formatarParteTempo = (quantidade: number, singular: string, plural: string): string => {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`
+}
+
+const juntarPartesTempo = (partes: string[]): string => {
+  if (partes.length === 0) {
+    return '0min'
+  }
+  if (partes.length === 1) {
+    return partes[0]
+  }
+  if (partes.length === 2) {
+    return `${partes[0]} e ${partes[1]}`
+  }
+  return `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
+}
+
+export const formatarPeriodoMinutos = (minutos: number): string => {
+  if (!Number.isFinite(minutos)) return '0min'
+
+  let restante = Math.max(0, Math.round(minutos))
+  const partes: string[] = []
+
+  const anos = Math.floor(restante / MINUTOS_POR_ANO)
+  if (anos > 0) {
+    partes.push(formatarParteTempo(anos, 'ano', 'anos'))
+    restante -= anos * MINUTOS_POR_ANO
+  }
+
+  // Mês fixo de 30 dias para uma representação estável do total acumulado.
+  const meses = Math.floor(restante / MINUTOS_POR_MES)
+  if (meses > 0) {
+    partes.push(formatarParteTempo(meses, 'mês', 'meses'))
+    restante -= meses * MINUTOS_POR_MES
+  }
+
+  const dias = Math.floor(restante / MINUTOS_POR_DIA)
+  if (dias > 0) {
+    partes.push(formatarParteTempo(dias, 'dia', 'dias'))
+    restante -= dias * MINUTOS_POR_DIA
+  }
+
+  const horas = Math.floor(restante / MINUTOS_POR_HORA)
+  if (horas > 0) {
+    partes.push(`${horas}h`)
+    restante -= horas * MINUTOS_POR_HORA
+  }
+
+  if (restante > 0 || partes.length === 0) {
+    partes.push(`${restante}min`)
+  }
+
+  return juntarPartesTempo(partes)
+}
+
 export const formatarStatus = (status?: string | null): string => {
   const valor = (status || '').trim()
   if (!valor) return '-'
@@ -63,6 +123,7 @@ export const formatarStatus = (status?: string | null): string => {
 
 export const getBadgeStatus = (status: string | null | undefined): BadgeStatusVariant => {
   const valor = (status || '').toUpperCase()
+  if (valor.includes('PARADA')) return 'destructive'
   if (valor.includes('FECHADA')) return 'success'
   if (valor.includes('CANCELADA')) return 'destructive'
   if (valor.includes('EM_PRODUCAO')) return 'info'
@@ -73,6 +134,9 @@ export const getBadgeStatus = (status: string | null | undefined): BadgeStatusVa
 export const obterStatusPrioritario = (statuses: string[]): string => {
   const valores = statuses.map((status) => (status || '').toUpperCase())
 
+  if (valores.some((status) => status.includes('PARADA'))) {
+    return 'Parada'
+  }
   if (valores.some((status) => status.includes('EM_PRODUCAO') || status.includes('ABERTO'))) {
     return 'EM_PRODUCAO'
   }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Filter, Loader2, RefreshCw, Search } from 'lucide-react'
+import { Filter, Loader2, RefreshCw, Search, Sparkles } from 'lucide-react'
 
 import { AppHeader } from '@/components/layout/AppHeader'
 import { cn } from '@/lib/utils'
@@ -23,6 +23,39 @@ import { ResumoKpis } from './components/ResumoKpis'
 import { useResumoOeeTurno } from './hooks/useResumoOeeTurno'
 import { agruparLinhasResumo, criarCardsResumo } from './utils/aggregations'
 import { converterDataBrParaIso, obterDataAtualFormatada } from './utils/date'
+import {
+  construirContextoInsight,
+  criarChaveInsightSessao,
+  gerarInsight,
+  type InsightGerado,
+  type InsightTipo,
+  lerInsightsUsados,
+  salvarInsightsUsados,
+} from './utils/insights'
+
+const INSIGHT_PLACEHOLDER =
+  'Clique em "Gerar insight" para obter uma análise rápida dos dados (sem uso de IA externa).'
+
+const INSIGHT_TIPO_CONFIG: Record<InsightTipo, { label: string; badge: 'warning' | 'success' | 'destructive' | 'info' }> = {
+  warning: { label: 'Atenção', badge: 'warning' },
+  success: { label: 'Positivo', badge: 'success' },
+  critical: { label: 'Crítico', badge: 'destructive' },
+  info: { label: 'Informativo', badge: 'info' },
+}
+
+const INSIGHT_ETAPAS = [
+  { id: 'coletando', label: 'Coletando dados' },
+  { id: 'analisando', label: 'Analisando' },
+  { id: 'preparando', label: 'Preparando insight...' },
+] as const
+
+type InsightEtapaId = (typeof INSIGHT_ETAPAS)[number]['id']
+
+const INSIGHT_ETAPA_PROGRESSO: Record<InsightEtapaId, number> = {
+  coletando: 0.22,
+  analisando: 0.6,
+  preparando: 0.88,
+}
 
 export default function ResumoOeeTurno() {
   const { user: authUser } = useAuth()
@@ -31,6 +64,17 @@ export default function ResumoOeeTurno() {
     linha: '',
     produto: '',
     status: '',
+  })
+  const insightTimersRef = useRef<number[]>([])
+  const insightEmProcessoRef = useRef(false)
+  const insightResetRef = useRef<{
+    dataInicioIso?: string
+    dataFimIso?: string
+    insightSessaoKey: string
+  }>({
+    dataInicioIso: undefined,
+    dataFimIso: undefined,
+    insightSessaoKey: '',
   })
 
   const user = {
@@ -46,9 +90,16 @@ export default function ResumoOeeTurno() {
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
   const [draftFilters, setDraftFilters] = useState(() => ({ ...filtrosIniciais.current }))
   const [appliedFilters, setAppliedFilters] = useState(() => ({ ...filtrosIniciais.current }))
+  const [insightAtual, setInsightAtual] = useState<InsightGerado | null>(null)
+  const [insightAviso, setInsightAviso] = useState(INSIGHT_PLACEHOLDER)
+  const [insightModalOpen, setInsightModalOpen] = useState(false)
+  const [insightCarregando, setInsightCarregando] = useState(false)
+  const [insightEtapa, setInsightEtapa] = useState<InsightEtapaId>('coletando')
+  const [insightProgresso, setInsightProgresso] = useState(0)
 
   const dataInicioIso = converterDataBrParaIso(dataInicio)
   const dataFimIso = converterDataBrParaIso(dataFim)
+  const insightSessaoKey = useMemo(() => criarChaveInsightSessao(authUser?.id), [authUser?.id])
 
   const {
     linhas,
@@ -121,11 +172,22 @@ export default function ResumoOeeTurno() {
 
   const linhasAgrupadas = useMemo(() => agruparLinhasResumo(linhasFiltradas), [linhasFiltradas])
   const cardsResumo = useMemo(() => criarCardsResumo(totais), [totais])
+  const contextoInsight = useMemo(
+    () => construirContextoInsight(linhasFiltradas, linhasAgrupadas),
+    [linhasFiltradas, linhasAgrupadas]
+  )
   const appliedCount = useMemo(() => {
     return [appliedFilters.linha, appliedFilters.produto, appliedFilters.status]
       .filter((valor) => valor.trim().length > 0)
       .length
   }, [appliedFilters.linha, appliedFilters.produto, appliedFilters.status])
+
+  const limparAnimacaoInsight = () => {
+    insightTimersRef.current.forEach((timer) => window.clearTimeout(timer))
+    insightTimersRef.current = []
+    insightEmProcessoRef.current = false
+  }
+
   useEffect(() => {
     setLinhasExpandidas((estadoAnterior) => {
       if (estadoAnterior.size === 0) {
@@ -147,6 +209,41 @@ export default function ResumoOeeTurno() {
       return new Set(Array.from(estadoAnterior).filter((id) => idsValidos.has(id)))
     })
   }, [linhasAgrupadas])
+
+  useEffect(() => {
+    const estadoAnterior = insightResetRef.current
+    const mudouPeriodo =
+      estadoAnterior.dataInicioIso !== dataInicioIso || estadoAnterior.dataFimIso !== dataFimIso
+    const mudouSessao = estadoAnterior.insightSessaoKey !== insightSessaoKey
+
+    insightResetRef.current = { dataInicioIso, dataFimIso, insightSessaoKey }
+
+    if (insightEmProcessoRef.current && !mudouPeriodo && mudouSessao) {
+      return
+    }
+
+    setInsightAtual(null)
+    setInsightAviso(INSIGHT_PLACEHOLDER)
+    setInsightCarregando(false)
+    setInsightEtapa('coletando')
+    setInsightProgresso(0)
+    limparAnimacaoInsight()
+  }, [dataInicioIso, dataFimIso, insightSessaoKey])
+
+  useEffect(() => {
+    if (!insightModalOpen) {
+      limparAnimacaoInsight()
+      setInsightCarregando(false)
+      setInsightEtapa('coletando')
+      setInsightProgresso(0)
+    }
+  }, [insightModalOpen])
+
+  useEffect(() => {
+    return () => {
+      limparAnimacaoInsight()
+    }
+  }, [])
 
   const alternarLinhaExpandida = (id: string) => {
     setLinhasExpandidas((estadoAnterior) => {
@@ -189,6 +286,80 @@ export default function ResumoOeeTurno() {
     setOpenFilterDialog(false)
   }
 
+  const gerarInsightLocal = () => {
+    if (!parametrosValidos) {
+      setInsightAtual(null)
+      setInsightAviso('Informe um período válido para gerar insights.')
+      return
+    }
+
+    if (erroConsulta) {
+      setInsightAtual(null)
+      setInsightAviso('Não foi possível gerar insights devido a um erro na consulta.')
+      return
+    }
+
+    if (linhasFiltradas.length === 0) {
+      setInsightAtual(null)
+      setInsightAviso('Nenhum dado disponível para gerar insights no período/filtros selecionados.')
+      return
+    }
+
+    const usados = lerInsightsUsados(insightSessaoKey)
+    const insight = gerarInsight(contextoInsight, usados)
+
+    if (!insight) {
+      setInsightAtual(null)
+      setInsightAviso('Nenhum insight disponível para os dados atuais.')
+      return
+    }
+
+    usados.add(insight.id)
+    salvarInsightsUsados(insightSessaoKey, usados)
+    setInsightAtual(insight)
+    setInsightAviso('')
+  }
+
+  const iniciarGeracaoInsight = () => {
+    limparAnimacaoInsight()
+    insightEmProcessoRef.current = true
+    setInsightAtual(null)
+    setInsightAviso('')
+    setInsightCarregando(true)
+    setInsightEtapa('coletando')
+    setInsightProgresso(INSIGHT_ETAPA_PROGRESSO.coletando)
+
+    const timerAnalise = window.setTimeout(() => {
+      setInsightEtapa('analisando')
+      setInsightProgresso(INSIGHT_ETAPA_PROGRESSO.analisando)
+    }, 5000)
+
+    const timerPreparacao = window.setTimeout(() => {
+      setInsightEtapa('preparando')
+      setInsightProgresso(INSIGHT_ETAPA_PROGRESSO.preparando)
+    }, 10000)
+
+    const timerFinal = window.setTimeout(() => {
+      setInsightProgresso(1)
+      gerarInsightLocal()
+      setInsightCarregando(false)
+      insightEmProcessoRef.current = false
+    }, 15000)
+
+    insightTimersRef.current = [timerAnalise, timerPreparacao, timerFinal]
+  }
+
+  const abrirInsightModal = () => {
+    setInsightModalOpen(true)
+    iniciarGeracaoInsight()
+  }
+
+  const insightEtapaIndex = Math.max(
+    0,
+    INSIGHT_ETAPAS.findIndex((etapa) => etapa.id === insightEtapa)
+  )
+  const insightPercentual = Math.round(insightProgresso * 100)
+
   return (
     <>
       <AppHeader
@@ -218,9 +389,18 @@ export default function ResumoOeeTurno() {
                   </Badge>
                 )}
                 <Button
+                  onClick={abrirInsightModal}
+                  disabled={!parametrosValidos || isLoading || isFetching || insightCarregando}
+                  className="h-10 min-w-[115px] gap-2 px-4"
+                  title="Gerar insight local"
+                >
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  Lis IA
+                </Button>
+                <Button
                   onClick={() => void refetch()}
                   disabled={!parametrosValidos || isFetching}
-                  className="h-10 gap-2 px-4"
+                  className="h-10 min-w-[115px] gap-2 px-4"
                   title="Atualizar lista"
                 >
                   {isFetching ? (
@@ -235,6 +415,161 @@ export default function ResumoOeeTurno() {
           </section>
 
           <ResumoKpis cards={cardsResumo} animacaoKey={resumoAtualizadoEm} />
+
+          <Dialog open={insightModalOpen} onOpenChange={setInsightModalOpen}>
+              <DialogContent className="w-[95vw] max-w-[760px] max-h-[85vh] gap-0 overflow-hidden rounded-2xl border border-border bg-background p-0 shadow-2xl">
+                <div className="flex h-full flex-col">
+                  <div className="border-b border-border/80 bg-background px-4 py-4 sm:px-6">
+                    <DialogHeader className="space-y-2 text-left">
+                      <DialogTitle className="text-lg font-semibold text-foreground sm:text-xl">
+                        Insight Lis IA
+                      </DialogTitle>
+                      <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                        Análise baseada nos dados carregados e processados conforme filtro aplicado.
+                      </DialogDescription>
+                    </DialogHeader>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-6">
+                    {insightCarregando ? (
+                      <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+                        <div className="flex flex-col gap-5">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-brand-primary/20 bg-brand-primary/10">
+                                <div className="absolute inset-0 rounded-full border border-brand-primary/20 animate-[pulse_2.6s_ease-in-out_infinite]" />
+                                <Loader2
+                                  className="relative h-5 w-5 text-brand-primary animate-[spin_1.6s_linear_infinite]"
+                                  aria-hidden="true"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-foreground">Processando insight</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Consolidando dados e preparando a análise do período.
+                                </p>
+                              </div>
+                            </div>
+                            <div className="hidden items-center gap-1 text-xs font-semibold uppercase tracking-[0.2em] text-brand-primary/70 sm:flex">
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary/70 animate-[pulse_2s_ease-in-out_infinite]" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary/50 animate-[pulse_2.4s_ease-in-out_infinite]" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-primary/40 animate-[pulse_2.8s_ease-in-out_infinite]" />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                              <span>{INSIGHT_ETAPAS[insightEtapaIndex]?.label}</span>
+                              <span>{insightPercentual}%</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted/60">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-brand-primary/30 via-brand-primary to-brand-primary/40 transition-[width] duration-[1200ms] ease-out"
+                                style={{ width: `${insightPercentual}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            {INSIGHT_ETAPAS.map((etapa, index) => {
+                              const ativo = index <= insightEtapaIndex
+                              return (
+                                <div
+                                  key={etapa.id}
+                                  className={cn(
+                                    'rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors',
+                                    ativo
+                                      ? 'border-brand-primary/30 bg-brand-primary/10 text-brand-primary'
+                                      : 'border-border bg-muted/40 text-muted-foreground'
+                                  )}
+                                >
+                                  {etapa.label}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ) : insightAtual ? (
+                      <article className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <Badge
+                              variant={INSIGHT_TIPO_CONFIG[insightAtual.tipo].badge}
+                              className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                            >
+                              {INSIGHT_TIPO_CONFIG[insightAtual.tipo].label}
+                            </Badge>
+                            <h3 className="text-base font-semibold text-foreground">{insightAtual.titulo}</h3>
+                          </div>
+                          {typeof insightAtual.confianca === 'number' && (
+                            <Badge
+                              variant="outline"
+                              className="rounded-full border-border bg-muted/40 px-3 py-1 text-xs font-semibold text-muted-foreground"
+                            >
+                              Confiança {insightAtual.confianca}%
+                            </Badge>
+                          )}
+                        </div>
+
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                          {insightAtual.texto}
+                        </p>
+
+                        {insightAtual.recomendacao && (
+                          <div className="mt-4 rounded-xl border border-border bg-muted/40 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                              Recomendação
+                            </p>
+                            <p className="mt-1 text-sm text-foreground/90">{insightAtual.recomendacao}</p>
+                          </div>
+                        )}
+
+                        {insightAtual.tags.length > 0 && (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {insightAtual.tags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="rounded-md border border-border bg-muted/60 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </article>
+                    ) : (
+                      <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm text-muted-foreground">
+                        {insightAviso}
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter className="flex-col border-t border-border/80 bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:space-x-0 sm:px-6">
+                    <p className="text-xs text-muted-foreground">
+                      Baseado nos dados do período selecionado.
+                    </p>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                      <Button
+                        variant="outline"
+                        onClick={() => setInsightModalOpen(false)}
+                        className="w-full border-border bg-background text-foreground hover:bg-muted sm:w-auto"
+                      >
+                        Fechar
+                      </Button>
+                      <Button
+                        onClick={iniciarGeracaoInsight}
+                        disabled={!parametrosValidos || isLoading || isFetching || insightCarregando}
+                        className="w-full sm:w-auto"
+                      >
+                        Gerar novo insight
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                </div>
+              </DialogContent>
+          </Dialog>
 
           {periodoInvalido && (
             <div className="rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700">

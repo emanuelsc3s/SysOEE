@@ -1,6 +1,22 @@
 # Changelog
 
 ## [Unreleased]
+- Aplicado o mesmo formato de período das paradas estratégicas aos totais de minutos dos cards de paradas no resumo por turno.
+- Evitado o reset do insight do resumo por turno durante o processamento quando a sessão do usuário é atualizada.
+- Ajustada a animação de carregamento do insight do resumo por turno para 15 segundos, mantendo as etapas de coleta, análise e preparação.
+- Padronizada a largura mínima dos botões "Lis IA" e "Atualizar" no topo do resumo por turno.
+- Atualizado o texto do botão de insight para "Lis IA".
+- Atualizado o ícone do botão "Gerar insight" para um símbolo de IA.
+- Atualizado o texto descritivo do modal de insight conforme nova redação.
+- Ajustado o título do modal de insight para "Insight Lis IA".
+- Exibido o insight do resumo por turno em modal com layout baseado no design system.
+- Removido o insight redundante sobre mix alto de SKUs no resumo por turno.
+- Reestruturados os insights do resumo por turno em famílias com variações e placeholders dinâmicos.
+- Removido o bloqueio de repetição de insights na sessão do resumo por turno.
+- Refinados os textos dos insights do resumo por turno com descrições mais completas e contextuais.
+- Adicionado botão de insight local no resumo por turno, com análises pré-definidas e controle de repetição por sessão.
+- Movido o botão de insight local para o topo do resumo por turno, ao lado do botão Atualizar.
+- Removida a seção informativa de insight local do resumo por turno.
 - Substituído o card duplicado de "Grandes Paradas" por "Turnos Apontados" no resumo por turno, com total calculado por `DISTINCT oeeturno_id` no frontend.
 - Ajustada a cor do valor de paradas estratégicas e do marcador dos cards no resumo por turno.
 - Adicionado modal de seleção do apontamento OEE na Home com atalhos para lista por turno e resumo consolidado.

@@ -296,6 +296,23 @@ BEGIN
     GROUP BY tf.oeeturno_id, tf.data, tf.linhaproducao_id
   ),
 
+  duracao_turno AS (
+    SELECT DISTINCT
+      tf.oeeturno_id,
+      tf.linhaproducao_id,
+      CASE
+        WHEN tt.hora_inicio IS NULL OR tt.hora_fim IS NULL THEN NULL::numeric
+        WHEN EXTRACT(EPOCH FROM tt.hora_fim::time) > EXTRACT(EPOCH FROM tt.hora_inicio::time)
+          THEN (EXTRACT(EPOCH FROM tt.hora_fim::time) - EXTRACT(EPOCH FROM tt.hora_inicio::time)) / 60.0
+        WHEN EXTRACT(EPOCH FROM tt.hora_fim::time) = EXTRACT(EPOCH FROM tt.hora_inicio::time)
+          THEN 0::numeric
+        ELSE
+          ((86400 - EXTRACT(EPOCH FROM tt.hora_inicio::time)) + EXTRACT(EPOCH FROM tt.hora_fim::time)) / 60.0
+      END AS duracao_turno_minutos
+    FROM turnos_filtrados tf
+    LEFT JOIN tbturno tt ON tt.turno_id = tf.turno_id
+  ),
+
   producao AS (
     SELECT
       tf.data,
@@ -508,6 +525,7 @@ BEGIN
       ap.qtde_turnos,
       COALESCE(sl.status_linha, 'Turno Não Iniciado') AS status_linha,
       COALESCE(sl.status_turnos, 'Turno Não Iniciado') AS status_turnos,
+      dt.duracao_turno_minutos,
       ap.produto_id,
       ap.produto,
       COALESCE(sp.sku_produzidos, 0)::bigint AS sku_produzidos,
@@ -537,6 +555,9 @@ BEGIN
     LEFT JOIN status_turno sl
       ON sl.oeeturno_id = ap.oeeturno_id
      AND sl.linhaproducao_id = ap.linhaproducao_id
+    LEFT JOIN duracao_turno dt
+      ON dt.oeeturno_id = ap.oeeturno_id
+     AND dt.linhaproducao_id = ap.linhaproducao_id
     LEFT JOIN producao pr
       ON pr.oeeturno_id = ap.oeeturno_id
      AND pr.linhaproducao_id = ap.linhaproducao_id
@@ -561,7 +582,14 @@ BEGIN
     b.linhaproducao,
     b.oeeturno_id,
     b.qtde_turnos,
-    b.status_linha,
+    CASE
+      WHEN b.oeeturno_id IS NOT NULL
+        AND b.duracao_turno_minutos IS NOT NULL
+        AND COALESCE(b.paradas_totais_minutos, 0) >= COALESCE(b.duracao_turno_minutos, 0)
+        AND (COALESCE(b.duracao_turno_minutos, 0) - COALESCE(b.paradas_totais_minutos, 0)) <= 0
+        THEN 'Parada'
+      ELSE b.status_linha
+    END AS status_linha,
     b.status_turnos AS status_turno_registrado,
     b.produto_id,
     b.produto,

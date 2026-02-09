@@ -170,6 +170,7 @@ const formatarStatus = (status?: string | null): string => {
 const getBadgeStatus = (status: string | null | undefined):
   'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info' => {
   const valor = (status || '').toUpperCase()
+  if (valor.includes('PARADA')) return 'destructive'
   if (valor.includes('FECHADA')) return 'success'
   if (valor.includes('CANCELADA')) return 'destructive'
   if (valor.includes('EM_PRODUCAO')) return 'info'
