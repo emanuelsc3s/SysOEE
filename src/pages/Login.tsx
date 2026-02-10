@@ -1,5 +1,5 @@
 // React Core
-import { useState, FormEvent, useEffect, FocusEvent } from 'react'
+import { useState, FormEvent, useEffect, FocusEvent, useRef, useCallback, CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // Supabase
@@ -283,6 +283,7 @@ export default function Login() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [keyboardInset, setKeyboardInset] = useState(0)
   const [errorDialog, setErrorDialog] = useState<{
     isOpen: boolean
     title: string
@@ -294,6 +295,8 @@ export default function Login() {
   })
 
   const navigate = useNavigate()
+  const formPanelRef = useRef<HTMLElement | null>(null)
+  const focusScrollTimeoutsRef = useRef<number[]>([])
   const anoAtual = new Date().getFullYear()
   const textoCopyright = `© ${anoAtual} FARMACE. Todos os direitos reservados.`
 
@@ -310,26 +313,163 @@ export default function Login() {
   }, [navigate])
 
   /**
-   * Em telas menores, centraliza o input focado para evitar
-   * que o teclado virtual cubra os campos de autenticação.
+   * Detecta quando o layout atual é touch + tablet/mobile.
+   * Escopo: apenas cenários em que teclado virtual pode sobrepor campos.
    */
-  const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
+  const isTouchTabletOrMobileLayout = useCallback(() => {
     const isTouchDevice = window.matchMedia('(any-pointer: coarse)').matches
     const isTabletOrMobileLayout = window.matchMedia('(max-width: 1023px)').matches
-    if (!isTouchDevice || !isTabletOrMobileLayout) {
+    return isTouchDevice && isTabletOrMobileLayout
+  }, [])
+
+  /**
+   * Limpa timeouts pendentes de scroll para evitar disparos concorrentes.
+   */
+  const clearFocusScrollTimeouts = useCallback(() => {
+    focusScrollTimeoutsRef.current.forEach((timeoutId) => {
+      window.clearTimeout(timeoutId)
+    })
+    focusScrollTimeoutsRef.current = []
+  }, [])
+
+  /**
+   * Calcula quanto do viewport está ocupado pelo teclado virtual em navegadores
+   * que expõem VisualViewport (principalmente iOS/Safari e Android Chromium).
+   */
+  const getKeyboardInset = useCallback(() => {
+    const visualViewport = window.visualViewport
+    if (!visualViewport) {
+      return 0
+    }
+
+    const inset = Math.max(
+      0,
+      window.innerHeight - visualViewport.height - visualViewport.offsetTop
+    )
+
+    // Evita oscilações pequenas de viewport que não representam teclado aberto.
+    return inset > 40 ? inset : 0
+  }, [])
+
+  /**
+   * Garante que o input ativo permaneça visível, inclusive em alturas críticas.
+   * Primeiro aplica scrollIntoView e depois faz ajuste fino por coordenadas.
+   */
+  const ensureInputVisibility = useCallback((inputElement: HTMLInputElement, behavior: ScrollBehavior = 'smooth') => {
+    const panelElement = formPanelRef.current
+    if (!panelElement || !panelElement.contains(inputElement)) {
       return
     }
 
-    const inputElement = event.currentTarget
+    const visualViewport = window.visualViewport
+    const viewportTop = visualViewport?.offsetTop ?? 0
+    const viewportHeight = visualViewport?.height ?? window.innerHeight
+    const viewportBottom = viewportTop + viewportHeight
+    const isCriticalHeight = viewportHeight <= 500
 
-    // Delay curto para aguardar a abertura do teclado virtual
-    window.setTimeout(() => {
-      inputElement.scrollIntoView({
-        block: 'center',
-        inline: 'nearest',
-        behavior: 'smooth',
+    // Para altura crítica, sempre usa 'start' para posicionar o input no topo da área visível
+    const blockMode: ScrollLogicalPosition = isCriticalHeight ? 'start' : 'center'
+
+    inputElement.scrollIntoView({
+      block: blockMode,
+      inline: 'nearest',
+      behavior,
+    })
+
+    const inputRect = inputElement.getBoundingClientRect()
+    // Em altura crítica, aumentamos significativamente a margem inferior para deixar mais espaço acima do teclado
+    const upperLimit = viewportTop + (isCriticalHeight ? 48 : 20)
+    const lowerLimit = viewportBottom - (isCriticalHeight ? 140 : 64)
+
+    if (inputRect.bottom > lowerLimit) {
+      panelElement.scrollBy({
+        top: inputRect.bottom - lowerLimit,
+        behavior,
       })
-    }, 250)
+    } else if (inputRect.top < upperLimit) {
+      panelElement.scrollBy({
+        top: inputRect.top - upperLimit,
+        behavior,
+      })
+    }
+  }, [])
+
+  /**
+   * Sincroniza inset de teclado e reposiciona input focado quando o viewport
+   * muda (abertura/fechamento do teclado, rolagem visual e rotação).
+   */
+  useEffect(() => {
+    if (!isTouchTabletOrMobileLayout()) {
+      setKeyboardInset(0)
+      return
+    }
+
+    const handleViewportChange = () => {
+      if (!isTouchTabletOrMobileLayout()) {
+        setKeyboardInset(0)
+        return
+      }
+
+      const nextInset = getKeyboardInset()
+      setKeyboardInset((currentInset) => {
+        return Math.abs(currentInset - nextInset) > 1 ? nextInset : currentInset
+      })
+
+      const activeElement = document.activeElement
+      if (activeElement instanceof HTMLInputElement) {
+        ensureInputVisibility(activeElement, 'auto')
+      }
+    }
+
+    const visualViewport = window.visualViewport
+    handleViewportChange()
+
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', handleViewportChange)
+      visualViewport.addEventListener('scroll', handleViewportChange)
+    }
+
+    window.addEventListener('orientationchange', handleViewportChange)
+    window.addEventListener('resize', handleViewportChange)
+
+    return () => {
+      clearFocusScrollTimeouts()
+
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', handleViewportChange)
+        visualViewport.removeEventListener('scroll', handleViewportChange)
+      }
+
+      window.removeEventListener('orientationchange', handleViewportChange)
+      window.removeEventListener('resize', handleViewportChange)
+    }
+  }, [clearFocusScrollTimeouts, ensureInputVisibility, getKeyboardInset, isTouchTabletOrMobileLayout])
+
+  /**
+   * Em telas menores, rola o input focado para a área visível para evitar
+   * que o teclado virtual cubra os campos de autenticação. Dispara mais de
+   * uma tentativa em sequência para cobrir o tempo de abertura do teclado.
+   */
+  const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
+    if (!isTouchTabletOrMobileLayout()) {
+      return
+    }
+
+    clearFocusScrollTimeouts()
+
+    const inputElement = event.currentTarget
+    const focusDelays = [0, 120, 280, 420]
+
+    focusDelays.forEach((delay) => {
+      const timeoutId = window.setTimeout(() => {
+        ensureInputVisibility(inputElement, 'auto')
+      }, delay)
+      focusScrollTimeoutsRef.current.push(timeoutId)
+    })
+  }
+
+  const loginFormPanelStyle: CSSProperties = {
+    ['--login-keyboard-inset' as string]: `${keyboardInset}px`,
   }
 
   /**
@@ -506,6 +646,7 @@ export default function Login() {
           - xl: mesma compensação
           ============================================================ */}
       <section
+        ref={formPanelRef}
         className={cn(
           "login-page-section login-form-panel flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden max-sm:overflow-y-auto max-sm:[scroll-padding-bottom:12rem]",
           // Mobile: fundo com área azul corporativa no topo
@@ -518,6 +659,7 @@ export default function Login() {
           "login-form-section"
         )}
         aria-label="Formulário de login"
+        style={loginFormPanelStyle}
       >
         {/* Background corporativo para mobile */}
         <MobileBackground />

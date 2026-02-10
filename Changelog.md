@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Melhorada a visibilidade das inputs de login em tablets com altura crítica (~430px): aumentado o `scroll-padding-bottom` para 18rem e o `padding-bottom` do painel para 1.5rem, garantindo que os campos permaneçam visíveis acima do teclado virtual. Ajustado o posicionamento para usar `block: 'start'` em todas as inputs em altura crítica, com margem inferior de 140px para maior espaço acima do teclado.
+- Ajustada a tela de Login em tablets com altura ~430px: painel do formulário passa a rolar quando o teclado virtual abre (overflow-y auto + scroll-padding-bottom), e o input focado é posicionado no início da área visível (block: start) para permanecer acima do teclado, sem zoom automático.
 - Refinado o design do `Login` para tablets de baixa altura com base nas guidelines de UI/UX: branding integrado ao cabeçalho do card (logo + selo visual), hierarquia tipográfica mais limpa, espaçamentos mais equilibrados e redução progressiva de informações secundárias em altura crítica.
 - Reposicionada a logomarca do `Login` no layout de tablet para dentro do card de autenticação, com ajuste responsivo de tamanho/espaçamento em baixa altura para melhor composição visual.
 - Refinado o `Login` para cenários de altura crítica (~430px) em tablets: removida rolagem interna do card no modo compacto, reduzida a área de branding e ocultada a descrição secundária para evitar corte visual no topo do formulário.

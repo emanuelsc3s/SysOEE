@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft } from 'lucide-react'
+import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -127,6 +127,9 @@ type FiltrosDashboard = {
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
+const CAMERA_WHEP_POR_LINHA: Record<string, string> = {
+  'spep 3 - linha h - envase': 'http://192.168.1.170:8889/cam_spep02_linha_d/whep'
+}
 
 const formatarPercentual = (valor: number): string => {
   return valor.toLocaleString('pt-BR', {
@@ -439,6 +442,14 @@ export default function Dashboard() {
   const [paretoParadas, setParetoParadas] = useState<ParetoParadaChartItem[]>([])
   const [carregandoPareto, setCarregandoPareto] = useState(false)
   const [erroPareto, setErroPareto] = useState<string | null>(null)
+  const [modalCameraAberto, setModalCameraAberto] = useState(false)
+  const [linhaCameraSelecionada, setLinhaCameraSelecionada] = useState<OeeLinhaRow | null>(null)
+  const [carregandoCamera, setCarregandoCamera] = useState(false)
+  const [erroCamera, setErroCamera] = useState<string | null>(null)
+  const [cameraAguardandoFrame, setCameraAguardandoFrame] = useState(false)
+  const [videoCameraPronto, setVideoCameraPronto] = useState(false)
+  const videoCameraRef = useRef<HTMLVideoElement | null>(null)
+  const conexaoCameraRef = useRef<RTCPeerConnection | null>(null)
 
   // Estados para atualização automática
   const [atualizacaoAutomatica, setAtualizacaoAutomatica] = useState(false)
@@ -1002,6 +1013,141 @@ export default function Dashboard() {
     }
   }, [abrirParetoParadas])
 
+  const obterUrlCameraWhep = useCallback((nomeLinha: string | null | undefined): string | null => {
+    if (!nomeLinha) {
+      return null
+    }
+
+    const chave = normalizarTexto(nomeLinha).replace(/\s+/g, ' ').trim()
+    return CAMERA_WHEP_POR_LINHA[chave] ?? null
+  }, [])
+
+  const encerrarConexaoCamera = useCallback(() => {
+    const conexao = conexaoCameraRef.current
+    if (conexao) {
+      conexao.ontrack = null
+      conexao.getSenders().forEach((sender) => sender.track?.stop())
+      conexao.getReceivers().forEach((receiver) => receiver.track?.stop())
+      conexao.close()
+      conexaoCameraRef.current = null
+    }
+
+    const video = videoCameraRef.current
+    if (!video) {
+      return
+    }
+
+    if (video.srcObject instanceof MediaStream) {
+      video.srcObject.getTracks().forEach((track) => track.stop())
+    }
+
+    video.srcObject = null
+  }, [])
+
+  const definirVideoCameraRef = useCallback((elemento: HTMLVideoElement | null) => {
+    videoCameraRef.current = elemento
+    setVideoCameraPronto(Boolean(elemento))
+  }, [])
+
+  const iniciarStreamCamera = useCallback(async (linha: OeeLinhaRow) => {
+    const urlWhep = obterUrlCameraWhep(linha.linhaproducao)
+    if (!urlWhep) {
+      setErroCamera('Câmera não configurada para esta linha.')
+      setCarregandoCamera(false)
+      setCameraAguardandoFrame(false)
+      return
+    }
+
+    if (!videoCameraRef.current) {
+      return
+    }
+
+    setCarregandoCamera(true)
+    setCameraAguardandoFrame(true)
+    setErroCamera(null)
+    encerrarConexaoCamera()
+
+    try {
+      const pc = new RTCPeerConnection()
+      conexaoCameraRef.current = pc
+
+      pc.addTransceiver('video', { direction: 'recvonly' })
+      pc.ontrack = (evento) => {
+        const [stream] = evento.streams
+        const video = videoCameraRef.current
+        if (stream && video) {
+          video.srcObject = stream
+          void video.play().catch(() => {
+            // Navegadores podem bloquear play sem interação explícita em alguns cenários.
+          })
+        }
+      }
+
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+
+      const resposta = await fetch(urlWhep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp' },
+        body: offer.sdp || ''
+      })
+
+      if (!resposta.ok) {
+        throw new Error(`Falha ao conectar ao stream de vídeo (HTTP ${resposta.status}).`)
+      }
+
+      const answerSdp = await resposta.text()
+      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
+    } catch (error) {
+      console.error('❌ Erro ao iniciar stream da câmera via WHEP:', error)
+      setErroCamera('Não foi possível abrir a câmera. Verifique endpoint WHEP, rede e permissões do servidor.')
+      setCameraAguardandoFrame(false)
+      encerrarConexaoCamera()
+    } finally {
+      setCarregandoCamera(false)
+    }
+  }, [encerrarConexaoCamera, obterUrlCameraWhep])
+
+  const abrirModalCamera = useCallback((linha: OeeLinhaRow) => {
+    setLinhaCameraSelecionada(linha)
+    setErroCamera(null)
+    setModalCameraAberto(true)
+  }, [])
+
+  const handleModalCameraChange = useCallback((aberto: boolean) => {
+    setModalCameraAberto(aberto)
+    if (!aberto) {
+      encerrarConexaoCamera()
+      setCarregandoCamera(false)
+      setCameraAguardandoFrame(false)
+      setErroCamera(null)
+      setLinhaCameraSelecionada(null)
+      setVideoCameraPronto(false)
+    }
+  }, [encerrarConexaoCamera])
+
+  const handleAtualizarCamera = useCallback(() => {
+    if (!linhaCameraSelecionada || !videoCameraPronto || carregandoCamera) {
+      return
+    }
+
+    void iniciarStreamCamera(linhaCameraSelecionada)
+  }, [carregandoCamera, iniciarStreamCamera, linhaCameraSelecionada, videoCameraPronto])
+
+  useEffect(() => {
+    if (!modalCameraAberto || !linhaCameraSelecionada || !videoCameraPronto) {
+      return
+    }
+
+    void iniciarStreamCamera(linhaCameraSelecionada)
+
+    return () => {
+      encerrarConexaoCamera()
+    }
+  }, [encerrarConexaoCamera, iniciarStreamCamera, linhaCameraSelecionada, modalCameraAberto, videoCameraPronto])
+
+  const cameraEmProcessamento = carregandoCamera || cameraAguardandoFrame
+
   return (
     <div className="min-h-screen bg-muted">
       <AppHeader
@@ -1381,33 +1527,58 @@ export default function Dashboard() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {dadosOee.map((linha) => (
-              <Card
-                key={linha.linhaproducao_id}
-                className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                onClick={carregandoDetalhamento ? undefined : () => void abrirDetalhamentoLinha(linha)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    if (!carregandoDetalhamento) {
-                      void abrirDetalhamentoLinha(linha)
+            {dadosOee.map((linha) => {
+              const cameraDisponivel = Boolean(obterUrlCameraWhep(linha.linhaproducao))
+
+              return (
+                <Card
+                  key={linha.linhaproducao_id}
+                  className="cursor-pointer transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={carregandoDetalhamento ? undefined : () => void abrirDetalhamentoLinha(linha)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      if (!carregandoDetalhamento) {
+                        void abrirDetalhamentoLinha(linha)
+                      }
                     }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-busy={
+                    carregandoDetalhamento &&
+                    linhaDetalheSelecionada?.linhaproducao_id === linha.linhaproducao_id
                   }
-                }}
-                role="button"
-                tabIndex={0}
-                aria-busy={
-                  carregandoDetalhamento &&
-                  linhaDetalheSelecionada?.linhaproducao_id === linha.linhaproducao_id
-                }
-                title="Clique para ver o detalhamento do cálculo do OEE"
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="min-h-[3rem] break-words text-base sm:min-h-[3.5rem] sm:text-lg">
-                    {linha.linhaproducao || 'Linha sem nome'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center gap-6">
+                  title="Clique para ver o detalhamento do cálculo do OEE"
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="min-h-[3rem] flex-1 break-words text-base sm:min-h-[3.5rem] sm:text-lg">
+                        {linha.linhaproducao || 'Linha sem nome'}
+                      </CardTitle>
+                      {cameraDisponivel && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            abrirModalCamera(linha)
+                          }}
+                          onKeyDown={(event) => {
+                            event.stopPropagation()
+                          }}
+                          title={`Abrir câmera da linha ${linha.linhaproducao || ''}`}
+                          aria-label={`Abrir câmera da linha ${linha.linhaproducao || 'selecionada'}`}
+                        >
+                          <Video className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center gap-6">
                   {/* Velocímetro SVG inline com cores dinâmicas */}
                   <div className="relative flex-shrink-0">
                     <svg className="h-36 w-36 transform -rotate-90 sm:h-40 sm:w-40" viewBox="0 0 120 120">
@@ -1528,11 +1699,77 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
+
+        <Dialog open={modalCameraAberto} onOpenChange={handleModalCameraChange}>
+          <DialogContent className="max-w-[calc(100vw-1.5rem)] p-4 sm:max-w-4xl sm:p-6">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg sm:text-2xl">
+                <Video className="h-5 w-5 text-blue-500" />
+                Câmera da linha
+              </DialogTitle>
+              <DialogDescription>
+                {linhaCameraSelecionada?.linhaproducao || 'Linha não definida'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="relative overflow-hidden rounded-lg border border-border bg-black">
+              <video
+                ref={definirVideoCameraRef}
+                autoPlay
+                playsInline
+                muted
+                onPlaying={() => setCameraAguardandoFrame(false)}
+                onWaiting={() => setCameraAguardandoFrame(true)}
+                onStalled={() => setCameraAguardandoFrame(true)}
+                className="aspect-video w-full bg-black object-contain"
+              />
+              {cameraEmProcessamento && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-950/85 via-slate-900/70 to-black/85 backdrop-blur-[1px]">
+                  <div className="relative h-14 w-14">
+                    <div className="absolute inset-0 rounded-full border border-cyan-300/40" />
+                    <div className="absolute inset-0 rounded-full border-2 border-transparent border-r-cyan-400/70 border-t-cyan-300 animate-spin" />
+                    <div className="absolute inset-2 rounded-full border border-cyan-300/30 animate-pulse" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-cyan-100">Processando stream da câmera</p>
+                    <p className="text-xs text-cyan-200/80">Aguarde alguns segundos...</p>
+                  </div>
+                  <div className="h-1.5 w-48 overflow-hidden rounded-full bg-cyan-400/20">
+                    <div className="h-full w-1/2 animate-pulse rounded-full bg-cyan-300/70" />
+                  </div>
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(125,211,252,0.08)_50%,transparent_100%)] bg-[length:100%_6px] opacity-40" />
+                </div>
+              )}
+            </div>
+
+            {erroCamera && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-300">
+                {erroCamera}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAtualizarCamera}
+                disabled={!linhaCameraSelecionada || !videoCameraPronto || carregandoCamera}
+              >
+                <RefreshCw className={`h-4 w-4 ${carregandoCamera ? 'animate-spin' : ''}`} />
+                Atualizar câmera
+              </Button>
+              <Button type="button" variant="outline" onClick={() => handleModalCameraChange(false)}>
+                Fechar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={modalDetalhamentoAberto} onOpenChange={handleModalDetalhamentoChange}>
           <DialogContent className="max-h-[90vh] max-w-[calc(100vw-1.5rem)] overflow-y-auto p-4 sm:max-w-4xl sm:p-6">
