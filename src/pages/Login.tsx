@@ -315,8 +315,8 @@ export default function Login() {
    */
   const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
     const isTouchDevice = window.matchMedia('(any-pointer: coarse)').matches
-    const isMobileLayout = window.matchMedia('(max-width: 639px)').matches
-    if (!isTouchDevice || !isMobileLayout) {
+    const isTabletOrMobileLayout = window.matchMedia('(max-width: 1023px)').matches
+    if (!isTouchDevice || !isTabletOrMobileLayout) {
       return
     }
 
@@ -507,7 +507,7 @@ export default function Login() {
           ============================================================ */}
       <section
         className={cn(
-          "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden max-sm:overflow-y-auto max-sm:[scroll-padding-bottom:12rem]",
+          "login-page-section login-form-panel flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden max-sm:overflow-y-auto max-sm:[scroll-padding-bottom:12rem]",
           // Mobile: fundo com área azul corporativa no topo
           "max-sm:bg-transparent",
           // Tablet/Desktop: fundo padrão
@@ -530,6 +530,8 @@ export default function Login() {
             <img
               src="/logo-farmace.png"
               alt="Farmace"
+              width={256}
+              height={100}
               className="h-14 w-auto drop-shadow-[0_4px_10px_rgba(0,0,0,0.18)]"
             />
             <h1 className="mt-3 text-[1.38rem] font-semibold tracking-[0.08em] text-white">
@@ -566,7 +568,7 @@ export default function Login() {
                   Usuário
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <Input
                     id="credential"
                     name="credential"
@@ -578,6 +580,7 @@ export default function Login() {
                     disabled={isLoading}
                     required
                     autoComplete="username"
+                    spellCheck={false}
                     className="h-12 rounded-xl border-input bg-white pl-10 text-[16px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                 </div>
@@ -589,7 +592,7 @@ export default function Login() {
                   Senha
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <Input
                     id="password"
                     name="password"
@@ -600,6 +603,7 @@ export default function Login() {
                     onFocus={handleInputFocus}
                     disabled={isLoading}
                     required
+                    autoComplete="current-password"
                     className="h-12 rounded-xl border-input bg-white pl-10 pr-11 text-[16px] shadow-sm placeholder:text-muted-foreground/80 focus:placeholder:text-transparent focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                   <button
@@ -609,9 +613,9 @@ export default function Login() {
                     aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-4 w-4" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -626,7 +630,7 @@ export default function Login() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Entrando...
+                    Entrando…
                   </>
                 ) : (
                   'Entrar'
@@ -647,110 +651,181 @@ export default function Login() {
         </div>
 
         {/* ===== LAYOUT TABLET/DESKTOP (≥ 640px) ===== */}
-        <div className="hidden sm:flex sm:flex-col sm:items-center sm:justify-between sm:h-full sm:w-full">
+        <div className="login-tablet-desktop-layout hidden sm:flex sm:flex-col sm:items-center sm:justify-between sm:h-full sm:w-full">
 
-          {/* Logo Farmace */}
-          <div className="mb-4 md:mb-6 flex justify-center shrink-0">
+          {/* Logo Farmace (visível apenas em lg+) */}
+          <div className="login-tablet-logo mb-4 md:mb-6 hidden lg:flex justify-center shrink-0">
             <img
               src="/logo-farmace.png"
               alt="Farmace"
-              className="h-12 md:h-16 lg:h-20 w-auto"
+              width={256}
+              height={100}
+              className="login-tablet-logo-image h-12 md:h-16 lg:h-20 w-auto"
             />
           </div>
 
-          {/* Container central flexível para o card */}
-          <div className="flex-1 flex items-center justify-center w-full min-h-0">
-            <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up transition-lift hover:shadow-xl">
-              <CardHeader className="space-y-2 pb-4 md:pb-6 pt-6">
-                <CardTitle className="text-2xl md:text-3xl font-bold text-brand-text-primary text-center">
-                  Bem-vindo
-                </CardTitle>
-                <CardDescription className="text-center text-base text-brand-text-secondary">
-                  Faça login para acessar o sistema
-                </CardDescription>
-              </CardHeader>
+          {/* Container central - Layout de duas colunas para tablets (md a lg) */}
+          <div className="login-tablet-card-region flex-1 flex items-center justify-center w-full min-h-0">
+            <div className="w-full max-w-5xl md:grid md:grid-cols-2 md:gap-8 lg:flex lg:justify-center md:px-4">
 
-              <CardContent className="pb-6">
-                <form onSubmit={handleLogin} className="space-y-4 md:space-y-5">
-                  {/* Campo Usuário */}
+              {/* Coluna Esquerda: Logo + Informações do Projeto (visível apenas em md até lg) */}
+              <div className="hidden md:flex lg:hidden flex-col items-center justify-center space-y-3 px-4">
+                {/* Logo em destaque */}
+                <div className="flex flex-col items-center space-y-4">
+                  <img
+                    src="/logo-farmace.png"
+                    alt="Farmace"
+                    width={256}
+                    height={100}
+                    className="h-20 w-auto drop-shadow-md"
+                  />
+                  <div className="flex items-center justify-center">
+                    <h2 className="text-2xl font-bold tracking-tight" style={{ color: '#242F65' }}>
+                      SICFAR OEE
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Informações do projeto */}
+                <div className="space-y-4 text-center max-w-sm">
                   <div className="space-y-2">
-                    <Label htmlFor="credential-desktop" className="text-brand-text-primary font-medium text-base">
-                      Usuário
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="credential-desktop"
-                        name="credential"
-                        type="text"
-                        placeholder="Digite seu usuário"
-                        value={formData.credential}
-                        onChange={(e) => setFormData({ ...formData, credential: e.target.value.toLowerCase() })}
-                        onFocus={handleInputFocus}
-                        disabled={isLoading}
-                        required
-                        autoComplete="username"
-                        className="pl-10 h-11 text-[16px] focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
-                      />
+                    <p className="text-sm text-brand-text-secondary leading-relaxed">
+                      Disponibilidade, Performance e Qualidade em tempo real.
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 px-4 py-2 text-sm font-medium text-brand-primary">
+                      <Shield className="h-4 w-4" aria-hidden="true" />
+                      Ambiente Seguro e Validado
                     </div>
                   </div>
 
-                  {/* Campo Senha */}
-                  <div className="space-y-2">
-                    <Label htmlFor="password-desktop" className="text-brand-text-primary font-medium text-base">
-                      Senha
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="password-desktop"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        onFocus={handleInputFocus}
-                        disabled={isLoading}
-                        required
-                        className="pl-10 pr-10 h-11 text-[16px] focus:placeholder:text-transparent focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                  <div className="pt-2 space-y-1 text-xs text-brand-text-secondary/70">
+                    <p>✓ Dados em conformidade com ALCOA+</p>
+                    <p>✓ Registro contemporâneo de eventos</p>
+                    <p>✓ Rastreabilidade completa</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coluna Direita: Formulário de Login */}
+              <div className="md:flex md:items-center md:justify-center">
+                <Card className="login-tablet-card w-full max-w-md border border-slate-200/80 bg-card shadow-[0_22px_44px_-28px_rgba(15,23,42,0.55)] animate-fade-in-up transition-lift hover:shadow-xl lg:border-0 lg:shadow-lg">
+                  <CardHeader className="login-tablet-card-header !px-5 !pt-4 !pb-3 md:!px-6 md:!pt-5 md:!pb-4 space-y-2">
+                    {/* Brand inline apenas para telas pequenas (sm, não md) */}
+                    <div className="login-tablet-inline-brand sm:flex md:hidden items-center gap-3 rounded-xl border border-brand-primary/15 bg-brand-primary/5 px-3 py-2">
+                      <img
+                        src="/logo-farmace.png"
+                        alt="Farmace"
+                        width={256}
+                        height={100}
+                        className="login-tablet-inline-logo-image h-8 w-auto shrink-0"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold tracking-[0.08em] text-brand-text-primary/90 uppercase">
+                          SICFAR OEE
+                        </p>
+                        <p className="login-tablet-inline-brand-subtitle text-xs leading-tight text-brand-text-secondary">
+                          Ambiente seguro Farmace
+                        </p>
+                      </div>
+                      <Shield className="h-4 w-4 shrink-0 text-brand-primary/75" aria-hidden="true" />
+                    </div>
+                    <CardTitle className="login-tablet-card-title text-[1.65rem] md:text-[1.95rem] lg:text-3xl font-bold text-center" style={{ color: '#242F65' }}>
+                      Bem-vindo
+                    </CardTitle>
+                    <CardDescription className="login-tablet-card-description text-center text-sm md:text-base text-brand-text-secondary">
+                      Faça login para acessar o sistema
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="login-tablet-card-content !px-5 !pb-5 md:!px-6 md:!pb-6">
+                    <form onSubmit={handleLogin} className="login-tablet-form space-y-3.5 md:space-y-4 lg:space-y-5">
+                      {/* Campo Usuário */}
+                      <div className="space-y-2">
+                        <Label htmlFor="credential-desktop" className="text-brand-text-primary font-medium text-sm md:text-[0.95rem] lg:text-base">
+                          Usuário
+                        </Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                          <Input
+                            id="credential-desktop"
+                            name="credential"
+                            type="text"
+                            placeholder="Digite seu usuário"
+                            value={formData.credential}
+                            onChange={(e) => setFormData({ ...formData, credential: e.target.value.toLowerCase() })}
+                            onFocus={handleInputFocus}
+                            disabled={isLoading}
+                            required
+                            autoComplete="username"
+                            spellCheck={false}
+                            className="pl-10 h-11 text-[16px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Campo Senha */}
+                      <div className="space-y-2">
+                        <Label htmlFor="password-desktop" className="text-brand-text-primary font-medium text-sm md:text-[0.95rem] lg:text-base">
+                          Senha
+                        </Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                          <Input
+                            id="password-desktop"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            onFocus={handleInputFocus}
+                            disabled={isLoading}
+                            required
+                            autoComplete="current-password"
+                            className="pl-10 pr-10 h-11 text-[16px] focus:placeholder:text-transparent focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary transition-all duration-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-2 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+                            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
+                            ) : (
+                              <Eye className="h-4 w-4" aria-hidden="true" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Botão Submit */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 transition-all duration-200 shadow-md hover:shadow-lg"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Entrando…
+                          </>
                         ) : (
-                          <Eye className="h-4 w-4" />
+                          'Entrar'
                         )}
-                      </button>
-                    </div>
-                  </div>
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
 
-                  {/* Botão Submit */}
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Entrando...
-                      </>
-                    ) : (
-                      'Entrar'
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+            </div>
           </div>
 
           {/* Copyright */}
-          <div className="login-copyright-footer mt-4 md:mt-6 text-center shrink-0 transition-opacity duration-150">
+          <div className="login-copyright-footer login-tablet-copyright mt-4 md:mt-6 text-center shrink-0 transition-opacity duration-150">
             <p className="text-sm text-brand-text-secondary">
               {textoCopyright}
             </p>

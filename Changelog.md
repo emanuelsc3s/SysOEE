@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+- Refinado o design do `Login` para tablets de baixa altura com base nas guidelines de UI/UX: branding integrado ao cabeçalho do card (logo + selo visual), hierarquia tipográfica mais limpa, espaçamentos mais equilibrados e redução progressiva de informações secundárias em altura crítica.
+- Reposicionada a logomarca do `Login` no layout de tablet para dentro do card de autenticação, com ajuste responsivo de tamanho/espaçamento em baixa altura para melhor composição visual.
+- Refinado o `Login` para cenários de altura crítica (~430px) em tablets: removida rolagem interna do card no modo compacto, reduzida a área de branding e ocultada a descrição secundária para evitar corte visual no topo do formulário.
+- Melhorada a usabilidade do `Login` em tablets com baixa altura útil: modo compacto por altura, ajuste de fluxo do card/rodapé para evitar sobreposição, foco com teclado virtual em até 1023px touch e alvo de toque ampliado no botão de visualizar senha.
 - Ajustado o cabeçalho mobile da Home para usar fundo primário e contraste reforçado nos textos.
 - Exibido o turno do lançamento na tabela de detalhamento do resumo por turno, buscando o nome pelo `oeeturno_id` no Supabase.
 - Aplicado o mesmo formato de período das paradas estratégicas aos totais de minutos dos cards de paradas no resumo por turno.
