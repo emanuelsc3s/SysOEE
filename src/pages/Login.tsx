@@ -1,5 +1,5 @@
 // React Core
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, FormEvent, useEffect, FocusEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 // Supabase
@@ -288,6 +288,28 @@ export default function Login() {
   }, [navigate])
 
   /**
+   * Em telas menores, centraliza o input focado para evitar
+   * que o teclado virtual cubra os campos de autenticação.
+   */
+  const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
+    const isTouchDevice = window.matchMedia('(any-pointer: coarse)').matches
+    if (!isTouchDevice) {
+      return
+    }
+
+    const inputElement = event.currentTarget
+
+    // Delay curto para aguardar a abertura do teclado virtual
+    window.setTimeout(() => {
+      inputElement.scrollIntoView({
+        block: 'center',
+        inline: 'nearest',
+        behavior: 'smooth',
+      })
+    }, 250)
+  }
+
+  /**
    * Validação client-side do formulário
    * Retorna objeto com status de validação e mensagem de erro
    */
@@ -462,7 +484,7 @@ export default function Login() {
           ============================================================ */}
       <section
         className={cn(
-          "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden",
+          "login-page-section flex-1 lg:w-1/2 xl:w-2/5 flex flex-col relative overflow-hidden max-sm:overflow-y-auto max-sm:[scroll-padding-bottom:12rem]",
           // Mobile: fundo com área azul corporativa no topo
           "max-sm:bg-transparent",
           // Tablet/Desktop: fundo padrão
@@ -478,7 +500,7 @@ export default function Login() {
         <MobileBackground />
 
         {/* ===== LAYOUT MOBILE (< 640px) ===== */}
-        <div className="sm:hidden relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
+        <div className="sm:hidden relative z-10 flex min-h-full flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5">
 
           {/* Header azul com logo, título e selo de segurança */}
           <div className="flex flex-col items-center px-2 text-center">
@@ -529,10 +551,11 @@ export default function Login() {
                     placeholder="Digite seu usuário"
                     value={formData.credential}
                     onChange={(e) => setFormData({ ...formData, credential: e.target.value.toLowerCase() })}
+                    onFocus={handleInputFocus}
                     disabled={isLoading}
                     required
                     autoComplete="username"
-                    className="h-12 rounded-xl border-input bg-white pl-10 text-[15px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="h-12 rounded-xl border-input bg-white pl-10 text-[16px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                 </div>
               </div>
@@ -551,9 +574,10 @@ export default function Login() {
                     placeholder="••••••••"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onFocus={handleInputFocus}
                     disabled={isLoading}
                     required
-                    className="h-12 rounded-xl border-input bg-white pl-10 pr-11 text-[15px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="h-12 rounded-xl border-input bg-white pl-10 pr-11 text-[16px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                   <button
                     type="button"
@@ -639,10 +663,11 @@ export default function Login() {
                         placeholder="Digite seu usuário"
                         value={formData.credential}
                         onChange={(e) => setFormData({ ...formData, credential: e.target.value.toLowerCase() })}
+                        onFocus={handleInputFocus}
                         disabled={isLoading}
                         required
                         autoComplete="username"
-                        className="pl-10 h-11 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="pl-10 h-11 text-[16px] focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
                       />
                     </div>
                   </div>
@@ -661,9 +686,10 @@ export default function Login() {
                         placeholder="••••••••"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        onFocus={handleInputFocus}
                         disabled={isLoading}
                         required
-                        className="pl-10 pr-10 h-11 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="pl-10 pr-10 h-11 text-[16px] focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
                       />
                       <button
                         type="button"

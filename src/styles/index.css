@@ -120,25 +120,23 @@
   }
 
   /*
-    Estilos específicos para página de login
-    Garante que não haja scroll vertical em nenhum dispositivo
+    Estilos específicos para página de login.
+    Desktop mantém layout estável; mobile/tablet permite ajuste com teclado virtual.
   */
   html:has(.login-page),
   body:has(.login-page) {
-    height: 100vh;
-    height: 100dvh; /* Dynamic Viewport Height - resolve problema da barra de endereço mobile */
-    max-height: 100vh;
-    max-height: 100dvh;
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     overflow: hidden;
-    position: fixed;
     width: 100%;
   }
 
   .login-page {
     height: 100vh;
     height: 100dvh;
-    max-height: 100vh;
-    max-height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
     overflow: hidden;
     width: 100%;
     /* Variaveis da diagonal para alinhar clip-path e barra azul */
@@ -154,6 +152,47 @@
     max-height: 100vh;
     max-height: 100dvh;
     overflow: hidden;
+  }
+
+  /*
+    iOS aplica zoom automático quando a fonte do input é menor que 16px.
+    Mantemos 16px no login para evitar zoom involuntário em foco.
+  */
+  .login-page input,
+  .login-page select,
+  .login-page textarea {
+    font-size: 16px;
+  }
+
+  /*
+    Em dispositivos touch (celulares e tablets), liberamos rolagem vertical
+    para permitir reposicionamento dos campos quando o teclado virtual abrir.
+  */
+  @media (max-width: 1023px), (any-pointer: coarse) {
+    html:has(.login-page),
+    body:has(.login-page) {
+      overflow: hidden;
+      position: static;
+    }
+
+    .login-page {
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    .login-page-section {
+      height: 100%;
+      min-height: 100%;
+      max-height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: auto;
+      touch-action: pan-y;
+      scroll-padding-bottom: 12rem;
+    }
   }
 
   /*
