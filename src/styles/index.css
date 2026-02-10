@@ -196,6 +196,19 @@
   }
 
   /*
+    Em tablets touch (iOS/Android), quando um campo recebe foco e o teclado
+    virtual abre, ocultamos o copyright para evitar que ele "suba" no layout.
+    Mantemos visibility/opacity para preservar o espaço e não gerar salto.
+  */
+  @media (any-pointer: coarse) and (min-width: 640px) {
+    .login-page-section:focus-within .login-copyright-footer {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+
+  /*
     Otimizações para tablets com alto DPI (Device Pixel Ratio)
 
     Problema: Tablets como Samsung Galaxy Tab A7 Lite (1340x800px físicos, 196 DPI)

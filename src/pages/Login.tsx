@@ -293,7 +293,8 @@ export default function Login() {
    */
   const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
     const isTouchDevice = window.matchMedia('(any-pointer: coarse)').matches
-    if (!isTouchDevice) {
+    const isMobileLayout = window.matchMedia('(max-width: 639px)').matches
+    if (!isTouchDevice || !isMobileLayout) {
       return
     }
 
@@ -577,7 +578,7 @@ export default function Login() {
                     onFocus={handleInputFocus}
                     disabled={isLoading}
                     required
-                    className="h-12 rounded-xl border-input bg-white pl-10 pr-11 text-[16px] shadow-sm placeholder:text-muted-foreground/80 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="h-12 rounded-xl border-input bg-white pl-10 pr-11 text-[16px] shadow-sm placeholder:text-muted-foreground/80 focus:placeholder:text-transparent focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   />
                   <button
                     type="button"
@@ -689,7 +690,7 @@ export default function Login() {
                         onFocus={handleInputFocus}
                         disabled={isLoading}
                         required
-                        className="pl-10 pr-10 h-11 text-[16px] focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                        className="pl-10 pr-10 h-11 text-[16px] focus:placeholder:text-transparent focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
                       />
                       <button
                         type="button"
@@ -727,7 +728,7 @@ export default function Login() {
           </div>
 
           {/* Copyright */}
-          <div className="mt-4 md:mt-6 text-center shrink-0">
+          <div className="login-copyright-footer mt-4 md:mt-6 text-center shrink-0 transition-opacity duration-150">
             <p className="text-sm text-brand-text-secondary">
               {textoCopyright}
             </p>
