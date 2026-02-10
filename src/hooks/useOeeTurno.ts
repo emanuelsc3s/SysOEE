@@ -447,6 +447,10 @@ export function useOeeTurno() {
         supabase
           .from('tboee_turno_perda')
           .update(payloadExclusaoRelacionado)
+          .eq('oeeturno_id', turnoId),
+        supabase
+          .from('tboee_turno_lote')
+          .update(payloadExclusaoRelacionado)
           .eq('oeeturno_id', turnoId)
       ])
 
