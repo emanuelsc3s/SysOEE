@@ -37,6 +37,28 @@ function isEmail(value: string): boolean {
 }
 
 /**
+ * Traduz mensagens de erro de autenticação para português.
+ * Mantém fallback para a mensagem original quando não houver mapeamento.
+ */
+function traduzirErroLogin(mensagem: string): string {
+  const mensagemNormalizada = mensagem.trim().toLowerCase()
+
+  if (mensagemNormalizada.includes('invalid login credentials')) {
+    return 'Usuário ou senha inválidos.'
+  }
+
+  if (mensagemNormalizada.includes('email not confirmed')) {
+    return 'E-mail não confirmado. Verifique sua caixa de entrada para ativar o acesso.'
+  }
+
+  if (mensagemNormalizada.includes('too many requests')) {
+    return 'Muitas tentativas de login em sequência. Aguarde alguns minutos e tente novamente.'
+  }
+
+  return mensagem
+}
+
+/**
  * Componente MobileBackground
  * Background minimalista e corporativo para dispositivos mobile
  * Visível apenas em telas menores que 640px (sm breakpoint)
@@ -425,7 +447,7 @@ export default function Login() {
       })
 
       if (error) {
-        const errorMessage = handleSupabaseError(error)
+        const errorMessage = traduzirErroLogin(handleSupabaseError(error))
 
         setErrorDialog({
           isOpen: true,
