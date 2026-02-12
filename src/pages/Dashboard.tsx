@@ -1131,8 +1131,7 @@ export default function Dashboard() {
 
       console.info('📷 Iniciando stream WHEP', {
         linhaproducaoId,
-        cameraSegmento,
-        urlWhep
+        cameraSegmento
       })
 
       const resposta = await fetch(urlWhep, {
@@ -1151,7 +1150,6 @@ export default function Dashboard() {
       console.error('❌ Erro ao iniciar stream da câmera via WHEP:', {
         linhaproducaoId,
         cameraSegmento,
-        urlWhep,
         error
       })
       let mensagemErro = 'Não foi possível abrir a câmera. Verifique endpoint WHEP, rede e permissões do servidor.'
@@ -1160,10 +1158,10 @@ export default function Dashboard() {
         try {
           const respostaBase = await fetch(urlBaseCamera, { method: 'GET' })
           if (respostaBase.ok) {
-            mensagemErro = `Servidor da câmera respondeu no endpoint base (${urlBaseCamera}), mas o POST no WHEP falhou (${urlWhep}).`
+            mensagemErro = 'Servidor da câmera respondeu, mas a inicialização do stream falhou.'
           }
         } catch {
-          mensagemErro = `Falha de rede ao acessar o servidor da câmera (${urlWhep}).`
+          mensagemErro = 'Falha de rede ao acessar o servidor da câmera.'
         }
       }
 
