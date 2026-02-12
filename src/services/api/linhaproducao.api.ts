@@ -12,6 +12,7 @@ import { LinhaProducao, LinhasProducaoResponse } from '@/types/linhaproducao'
 interface LinhaProducaoSupabase {
   linhaproducao_id: number
   linhaproducao: string
+  camera: string | null
   tipo: string
   bloqueado: string | null
   departamento_id: number | null
@@ -136,6 +137,7 @@ export async function buscarLinhasProducao(
     const linhasComDepartamento = (data || []).map((linha: LinhaProducaoSupabase): Partial<LinhaProducao> => ({
       linhaproducao_id: linha.linhaproducao_id,
       linhaproducao: linha.linhaproducao,
+      camera: linha.camera ?? null,
       tipo: linha.tipo,
       ativo: linha.bloqueado === 'Não' ? 'S' : 'N',
       departamento_id: linha.departamento_id,

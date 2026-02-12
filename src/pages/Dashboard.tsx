@@ -27,6 +27,15 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -52,6 +61,7 @@ type TurnoOption = {
 type LinhaOption = {
   linhaproducao_id: number
   linhaproducao: string | null
+  camera: string | null
 }
 
 type ProdutoOption = {
@@ -127,9 +137,7 @@ type FiltrosDashboard = {
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
-const CAMERA_WHEP_POR_LINHA: Record<string, string> = {
-  'spep 3 - linha h - envase': 'http://192.168.1.170:8889/cam_spep02_linha_d/whep'
-}
+const MENSAGEM_PERMISSAO_CAMERA = 'Usuário de Nível Operador sem permissão para visualizar cameras'
 
 const formatarPercentual = (valor: number): string => {
   return valor.toLocaleString('pt-BR', {
@@ -448,6 +456,8 @@ export default function Dashboard() {
   const [erroCamera, setErroCamera] = useState<string | null>(null)
   const [cameraAguardandoFrame, setCameraAguardandoFrame] = useState(false)
   const [videoCameraPronto, setVideoCameraPronto] = useState(false)
+  const [validandoPermissaoCamera, setValidandoPermissaoCamera] = useState(false)
+  const [modalPermissaoCameraAberto, setModalPermissaoCameraAberto] = useState(false)
   const videoCameraRef = useRef<HTMLVideoElement | null>(null)
   const conexaoCameraRef = useRef<RTCPeerConnection | null>(null)
 
@@ -468,7 +478,7 @@ export default function Dashboard() {
   const carregarLinhas = useCallback(async () => {
     const { data, error } = await supabase
       .from('tblinhaproducao')
-      .select('linhaproducao_id, linhaproducao, bloqueado, deleted_at')
+      .select('linhaproducao_id, linhaproducao, camera, bloqueado, deleted_at')
       .is('deleted_at', null)
       .or('bloqueado.eq.Não,bloqueado.is.null')
       .order('linhaproducao', { ascending: true })
@@ -1013,14 +1023,33 @@ export default function Dashboard() {
     }
   }, [abrirParetoParadas])
 
-  const obterUrlCameraWhep = useCallback((nomeLinha: string | null | undefined): string | null => {
-    if (!nomeLinha) {
+  const obterSegmentoCameraPorLinhaId = useCallback((linhaproducaoId: number): string | null => {
+    const cameraBruta = linhas.find((linha) => linha.linhaproducao_id === linhaproducaoId)?.camera
+    const cameraNormalizada = (cameraBruta || '').trim().replace(/^\/+|\/+$/g, '')
+    return cameraNormalizada || null
+  }, [linhas])
+
+  const obterUrlCameraWhepPorLinhaId = useCallback((linhaproducaoId: number): string | null => {
+    const cameraBase = (import.meta.env.VITE_CAMERA_URL || '').trim().replace(/\/+$/g, '')
+    const cameraSegmento = obterSegmentoCameraPorLinhaId(linhaproducaoId)
+
+    if (!cameraBase || !cameraSegmento) {
       return null
     }
 
-    const chave = normalizarTexto(nomeLinha).replace(/\s+/g, ' ').trim()
-    return CAMERA_WHEP_POR_LINHA[chave] ?? null
-  }, [])
+    return `${cameraBase}/${cameraSegmento}/whep`
+  }, [obterSegmentoCameraPorLinhaId])
+
+  const obterUrlCameraBasePorLinhaId = useCallback((linhaproducaoId: number): string | null => {
+    const cameraBase = (import.meta.env.VITE_CAMERA_URL || '').trim().replace(/\/+$/g, '')
+    const cameraSegmento = obterSegmentoCameraPorLinhaId(linhaproducaoId)
+
+    if (!cameraBase || !cameraSegmento) {
+      return null
+    }
+
+    return `${cameraBase}/${cameraSegmento}/`
+  }, [obterSegmentoCameraPorLinhaId])
 
   const encerrarConexaoCamera = useCallback(() => {
     const conexao = conexaoCameraRef.current
@@ -1049,10 +1078,19 @@ export default function Dashboard() {
     setVideoCameraPronto(Boolean(elemento))
   }, [])
 
-  const iniciarStreamCamera = useCallback(async (linha: OeeLinhaRow) => {
-    const urlWhep = obterUrlCameraWhep(linha.linhaproducao)
-    if (!urlWhep) {
+  const iniciarStreamCamera = useCallback(async (linhaproducaoId: number) => {
+    const cameraSegmento = obterSegmentoCameraPorLinhaId(linhaproducaoId)
+    if (!cameraSegmento) {
       setErroCamera('Câmera não configurada para esta linha.')
+      setCarregandoCamera(false)
+      setCameraAguardandoFrame(false)
+      return
+    }
+
+    const urlWhep = obterUrlCameraWhepPorLinhaId(linhaproducaoId)
+    const urlBaseCamera = obterUrlCameraBasePorLinhaId(linhaproducaoId)
+    if (!urlWhep) {
+      setErroCamera('URL base da câmera não configurada. Defina VITE_CAMERA_URL no ambiente.')
       setCarregandoCamera(false)
       setCameraAguardandoFrame(false)
       return
@@ -1085,11 +1123,22 @@ export default function Dashboard() {
 
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
+      const offerSdp = offer.sdp
+
+      if (!offerSdp) {
+        throw new Error('Não foi possível gerar SDP de oferta para conexão WHEP.')
+      }
+
+      console.info('📷 Iniciando stream WHEP', {
+        linhaproducaoId,
+        cameraSegmento,
+        urlWhep
+      })
 
       const resposta = await fetch(urlWhep, {
         method: 'POST',
         headers: { 'Content-Type': 'application/sdp' },
-        body: offer.sdp || ''
+        body: offerSdp
       })
 
       if (!resposta.ok) {
@@ -1099,20 +1148,93 @@ export default function Dashboard() {
       const answerSdp = await resposta.text()
       await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
     } catch (error) {
-      console.error('❌ Erro ao iniciar stream da câmera via WHEP:', error)
-      setErroCamera('Não foi possível abrir a câmera. Verifique endpoint WHEP, rede e permissões do servidor.')
+      console.error('❌ Erro ao iniciar stream da câmera via WHEP:', {
+        linhaproducaoId,
+        cameraSegmento,
+        urlWhep,
+        error
+      })
+      let mensagemErro = 'Não foi possível abrir a câmera. Verifique endpoint WHEP, rede e permissões do servidor.'
+
+      if (error instanceof TypeError && urlBaseCamera) {
+        try {
+          const respostaBase = await fetch(urlBaseCamera, { method: 'GET' })
+          if (respostaBase.ok) {
+            mensagemErro = `Servidor da câmera respondeu no endpoint base (${urlBaseCamera}), mas o POST no WHEP falhou (${urlWhep}).`
+          }
+        } catch {
+          mensagemErro = `Falha de rede ao acessar o servidor da câmera (${urlWhep}).`
+        }
+      }
+
+      setErroCamera(mensagemErro)
       setCameraAguardandoFrame(false)
       encerrarConexaoCamera()
     } finally {
       setCarregandoCamera(false)
     }
-  }, [encerrarConexaoCamera, obterUrlCameraWhep])
+  }, [encerrarConexaoCamera, obterSegmentoCameraPorLinhaId, obterUrlCameraBasePorLinhaId, obterUrlCameraWhepPorLinhaId])
+
+  const validarPermissaoVisualizacaoCamera = useCallback(async (): Promise<boolean> => {
+    if (!user?.id) {
+      setModalPermissaoCameraAberto(true)
+      return false
+    }
+
+    try {
+      setValidandoPermissaoCamera(true)
+
+      const { data, error } = await supabase
+        .from('tbusuario')
+        .select('perfil')
+        .eq('user_id', user.id)
+        .eq('deletado', 'N')
+        .maybeSingle()
+
+      if (error) {
+        throw error
+      }
+
+      const perfilNormalizado = (data?.perfil || '').trim().toLowerCase()
+      const semPermissao = !perfilNormalizado || perfilNormalizado === 'operador'
+
+      if (semPermissao) {
+        setModalPermissaoCameraAberto(true)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('❌ Erro ao validar perfil para visualizar câmera:', error)
+      toast({
+        title: 'Erro ao validar permissão',
+        description: 'Não foi possível validar a permissão para visualizar câmera.',
+        variant: 'destructive'
+      })
+      return false
+    } finally {
+      setValidandoPermissaoCamera(false)
+    }
+  }, [toast, user?.id])
 
   const abrirModalCamera = useCallback((linha: OeeLinhaRow) => {
     setLinhaCameraSelecionada(linha)
     setErroCamera(null)
     setModalCameraAberto(true)
   }, [])
+
+  const handleAbrirCameraComPermissao = useCallback(async (linha: OeeLinhaRow) => {
+    if (validandoPermissaoCamera) {
+      return
+    }
+
+    const permitido = await validarPermissaoVisualizacaoCamera()
+    if (!permitido) {
+      return
+    }
+
+    abrirModalCamera(linha)
+  }, [abrirModalCamera, validarPermissaoVisualizacaoCamera, validandoPermissaoCamera])
 
   const handleModalCameraChange = useCallback((aberto: boolean) => {
     setModalCameraAberto(aberto)
@@ -1131,7 +1253,7 @@ export default function Dashboard() {
       return
     }
 
-    void iniciarStreamCamera(linhaCameraSelecionada)
+    void iniciarStreamCamera(linhaCameraSelecionada.linhaproducao_id)
   }, [carregandoCamera, iniciarStreamCamera, linhaCameraSelecionada, videoCameraPronto])
 
   useEffect(() => {
@@ -1139,7 +1261,7 @@ export default function Dashboard() {
       return
     }
 
-    void iniciarStreamCamera(linhaCameraSelecionada)
+    void iniciarStreamCamera(linhaCameraSelecionada.linhaproducao_id)
 
     return () => {
       encerrarConexaoCamera()
@@ -1528,7 +1650,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {dadosOee.map((linha) => {
-              const cameraDisponivel = Boolean(obterUrlCameraWhep(linha.linhaproducao))
+              const cameraDisponivel = Boolean(obterSegmentoCameraPorLinhaId(linha.linhaproducao_id))
 
               return (
                 <Card
@@ -1565,11 +1687,12 @@ export default function Dashboard() {
                           onClick={(event) => {
                             event.preventDefault()
                             event.stopPropagation()
-                            abrirModalCamera(linha)
+                            void handleAbrirCameraComPermissao(linha)
                           }}
                           onKeyDown={(event) => {
                             event.stopPropagation()
                           }}
+                          disabled={validandoPermissaoCamera}
                           title={`Abrir câmera da linha ${linha.linhaproducao || ''}`}
                           aria-label={`Abrir câmera da linha ${linha.linhaproducao || 'selecionada'}`}
                         >
@@ -1706,6 +1829,22 @@ export default function Dashboard() {
           </div>
         )}
 
+        <AlertDialog open={modalPermissaoCameraAberto} onOpenChange={setModalPermissaoCameraAberto}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permissão necessária</AlertDialogTitle>
+              <AlertDialogDescription>
+                {MENSAGEM_PERMISSAO_CAMERA}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setModalPermissaoCameraAberto(false)}>
+                Entendi
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Dialog open={modalCameraAberto} onOpenChange={handleModalCameraChange}>
           <DialogContent className="max-w-[calc(100vw-1.5rem)] p-4 sm:max-w-4xl sm:p-6">
             <DialogHeader>
@@ -1729,8 +1868,45 @@ export default function Dashboard() {
                 onStalled={() => setCameraAguardandoFrame(true)}
                 className="aspect-video w-full bg-black object-contain"
               />
+              {linhaCameraSelecionada && (
+                <div className="pointer-events-none absolute left-3 top-3 z-10">
+                  <div className="rounded-xl border border-white/20 bg-black/40 p-2.5 backdrop-blur-sm">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-white/80">
+                      OEE atual
+                    </p>
+                    <div className="relative mt-1 h-20 w-20 sm:h-24 sm:w-24">
+                      <svg className="h-full w-full transform -rotate-90" viewBox="0 0 120 120">
+                        <circle
+                          cx="60"
+                          cy="60"
+                          fill="none"
+                          r="54"
+                          strokeWidth="12"
+                          className="stroke-white/25"
+                        />
+                        <circle
+                          cx="60"
+                          cy="60"
+                          fill="none"
+                          r="54"
+                          strokeDasharray="339.292"
+                          strokeDashoffset={339.292 - (339.292 * linhaCameraSelecionada.oee) / 100}
+                          strokeLinecap="round"
+                          strokeWidth="12"
+                          stroke={getColorByPercentage(linhaCameraSelecionada.oee)}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-bold text-white sm:text-sm">
+                          {formatarPercentual(linhaCameraSelecionada.oee)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {cameraEmProcessamento && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-950/85 via-slate-900/70 to-black/85 backdrop-blur-[1px]">
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-950/85 via-slate-900/70 to-black/85 backdrop-blur-[1px]">
                   <div className="relative h-14 w-14">
                     <div className="absolute inset-0 rounded-full border border-cyan-300/40" />
                     <div className="absolute inset-0 rounded-full border-2 border-transparent border-r-cyan-400/70 border-t-cyan-300 animate-spin" />

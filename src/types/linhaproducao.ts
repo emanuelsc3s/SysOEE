@@ -10,6 +10,8 @@ export interface LinhaProducao {
   linhaproducao_id: number
   /** Nome da linha de produção */
   linhaproducao: string | null
+  /** Segmento da câmera (sem barras no início/fim), ex: cam_spep02_linha_d */
+  camera: string | null
   /** ID do departamento/setor */
   departamento_id: number | null
   /** Nome do departamento (join) */

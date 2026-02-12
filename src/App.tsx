@@ -30,7 +30,12 @@ import { Toaster } from '@/components/ui/toaster'
  */
 function App() {
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Toaster />
       <Routes>
         {/* Rota pública de Login */}

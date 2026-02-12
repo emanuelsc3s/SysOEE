@@ -77,14 +77,14 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-primary/20 bg-primary text-primary-foreground shadow-sm">
+    <header className="sticky top-0 z-40 h-16 border-b border-primary/20 bg-primary text-primary-foreground shadow-sm dark:bg-muted dark:border-border dark:text-foreground">
       <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-2 px-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
         {/* Seção esquerda - Título e identidade */}
         <div className="flex h-full min-w-0 items-center gap-2 sm:gap-4 sm:flex-1">
           <button
             type="button"
             onClick={handleVoltarClick}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-primary-foreground/10 dark:hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:hidden"
             aria-label="Voltar"
           >
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
@@ -94,14 +94,14 @@ export function AppHeader({
             <img
               src="/logo-farmace.png"
               alt="Logomarca Farmace"
-              className="h-14 w-auto object-contain"
+              className="w-[138px] h-auto object-contain"
               loading="eager"
             />
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold leading-tight tracking-tight text-primary-foreground sm:text-base lg:text-lg">
+              <h1 className="truncate text-sm font-semibold leading-tight tracking-tight text-primary-foreground dark:text-foreground sm:text-base lg:text-lg">
                 {title}
               </h1>
-              <p className="hidden truncate text-xs text-primary-foreground/70 sm:block">
+              <p className="hidden truncate text-xs text-primary-foreground/70 dark:text-muted-foreground sm:block">
                 {APP_SUBTITLE}
               </p>
             </div>
@@ -109,7 +109,7 @@ export function AppHeader({
         </div>
 
         <div className="min-w-0 justify-self-center text-center sm:hidden">
-          <p className="truncate text-[24px] font-semibold leading-tight tracking-tight text-primary-foreground">
+          <p className="truncate text-[24px] font-semibold leading-tight tracking-tight text-primary-foreground dark:text-foreground">
             {tituloMobile}
           </p>
         </div>
@@ -120,26 +120,26 @@ export function AppHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-11 min-w-[44px] gap-2 rounded-full border border-transparent px-1.5 pr-2 text-primary-foreground transition-colors hover:border-primary-foreground/20 hover:bg-primary-foreground/10 data-[state=open]:border-primary-foreground/20 data-[state=open]:bg-primary-foreground/10 sm:px-2 sm:pr-3"
+                className="h-11 min-w-[44px] gap-2 rounded-full border border-transparent px-1.5 pr-2 text-primary-foreground transition-colors hover:border-primary-foreground/20 hover:bg-primary-foreground/10 data-[state=open]:border-primary-foreground/20 data-[state=open]:bg-primary-foreground/10 dark:text-foreground dark:hover:border-border dark:hover:bg-accent dark:data-[state=open]:border-border dark:data-[state=open]:bg-accent sm:px-2 sm:pr-3"
                 aria-label={`Abrir menu do usuário ${nomeExibicao}`}
               >
                 <div className="flex items-center gap-2">
                   {/* Avatar */}
-                  <Avatar className="h-8 w-8 ring-1 ring-primary-foreground/20">
+                  <Avatar className="h-8 w-8 ring-1 ring-primary-foreground/20 dark:ring-white/[0.08]">
                     {userPhotoUrl ? (
                       <AvatarImage src={userPhotoUrl} alt={nomeExibicao} />
                     ) : null}
-                    <AvatarFallback className="bg-primary-foreground/15 text-primary-foreground font-semibold">
+                    <AvatarFallback className="bg-primary-foreground/15 text-primary-foreground font-semibold dark:bg-white/[0.08] dark:text-foreground">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
 
                   {/* Informações do usuário - oculto em mobile */}
                   <div className="hidden max-w-[180px] text-left md:block">
-                    <p className="truncate text-sm font-medium leading-none text-primary-foreground">
+                    <p className="truncate text-sm font-medium leading-none text-primary-foreground dark:text-foreground">
                       {nomeExibicao}
                     </p>
-                    <p className="mt-1 truncate text-xs leading-none text-primary-foreground/70">
+                    <p className="mt-1 truncate text-xs leading-none text-primary-foreground/70 dark:text-muted-foreground">
                       {cargoExibicao}
                     </p>
                   </div>
@@ -147,7 +147,7 @@ export function AppHeader({
 
                 {/* Ícone dropdown */}
                 <ChevronDown
-                  className="hidden h-4 w-4 text-primary-foreground/70 transition-transform duration-200 sm:block"
+                  className="hidden h-4 w-4 text-primary-foreground/70 dark:text-muted-foreground transition-transform duration-200 sm:block"
                   aria-hidden="true"
                 />
               </Button>
@@ -157,11 +157,11 @@ export function AppHeader({
             <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-lg p-2 sm:w-64">
               <DropdownMenuLabel className="px-2 py-2">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
+                  <Avatar className="h-9 w-9 ring-1 ring-primary/30 dark:ring-white/[0.08]">
                     {userPhotoUrl ? (
                       <AvatarImage src={userPhotoUrl} alt={nomeExibicao} />
                     ) : null}
-                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-semibold dark:bg-white/[0.08] dark:text-foreground">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
