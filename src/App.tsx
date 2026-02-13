@@ -51,13 +51,13 @@ function App() {
         <Route path="/dashboard-oee" element={<ProtectedRoute><DashboardOEE /></ProtectedRoute>} />
 
         {/* Página de Operação - Kanban de OPs */}
-        <Route path="/operacao" element={<ProtectedRoute><Operacao /></ProtectedRoute>} />
+        <Route path="/operacao" element={<ProtectedRoute requireAdmin><Operacao /></ProtectedRoute>} />
 
         {/* Página de Operação - Por Equipamento */}
-        <Route path="/operacao-equipamento" element={<ProtectedRoute><OperacaoPorEquipamento /></ProtectedRoute>} />
+        <Route path="/operacao-equipamento" element={<ProtectedRoute requireAdmin><OperacaoPorEquipamento /></ProtectedRoute>} />
 
         {/* Página de Detalhes de OP */}
-        <Route path="/operacao/:numeroOP" element={<ProtectedRoute><OperacaoDetalheOP /></ProtectedRoute>} />
+        <Route path="/operacao/:numeroOP" element={<ProtectedRoute requireAdmin><OperacaoDetalheOP /></ProtectedRoute>} />
 
         {/* Página de Apontamento de OEE */}
         <Route path="/apontamento-oee" element={<ProtectedRoute><ApontamentoOEE /></ProtectedRoute>} />
@@ -72,12 +72,12 @@ function App() {
         <Route path="/oee-resumo-turno" element={<ProtectedRoute><ResumoOeeTurno /></ProtectedRoute>} />
 
         {/* Página de Cadastro de Velocidade Nominal por Linha e Produto */}
-        <Route path="/oee-linha-velocidade" element={<ProtectedRoute><OeeLinhaVelocidade /></ProtectedRoute>} />
+        <Route path="/oee-linha-velocidade" element={<ProtectedRoute requireAdmin><OeeLinhaVelocidade /></ProtectedRoute>} />
 
         {/* Páginas de Cadastro de Paradas OEE */}
-        <Route path="/oee-parada" element={<ProtectedRoute><OeeParada /></ProtectedRoute>} />
-        <Route path="/oee-parada-cad" element={<ProtectedRoute><OeeParadaCad /></ProtectedRoute>} />
-        <Route path="/oee-parada-cad/:id" element={<ProtectedRoute><OeeParadaCad /></ProtectedRoute>} />
+        <Route path="/oee-parada" element={<ProtectedRoute requireAdmin><OeeParada /></ProtectedRoute>} />
+        <Route path="/oee-parada-cad" element={<ProtectedRoute requireAdmin><OeeParadaCad /></ProtectedRoute>} />
+        <Route path="/oee-parada-cad/:id" element={<ProtectedRoute requireAdmin><OeeParadaCad /></ProtectedRoute>} />
 
         {/* Página de Perfil do Colaborador */}
         <Route path="/colaborador/:id" element={<ProtectedRoute><ColaboradorPerfil /></ProtectedRoute>} />
@@ -86,7 +86,7 @@ function App() {
         <Route
           path="/ordem-producao"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin>
               <Placeholder
                 title="Ordem de Produção"
                 description="Gestão de ordens de produção ativas e histórico de produção."
@@ -117,20 +117,20 @@ function App() {
           }
         />
         {/* Página de Linhas de Produção - Consulta */}
-        <Route path="/equipamentos" element={<ProtectedRoute><LinhaProducaoConsulta /></ProtectedRoute>} />
+        <Route path="/equipamentos" element={<ProtectedRoute requireAdmin><LinhaProducaoConsulta /></ProtectedRoute>} />
 
         {/* Páginas de Turnos - Gerenciamento de Turnos */}
-        <Route path="/turno" element={<ProtectedRoute><Turnos /></ProtectedRoute>} />
-        <Route path="/turno/:id" element={<ProtectedRoute><TurnosCad /></ProtectedRoute>} />
+        <Route path="/turno" element={<ProtectedRoute requireAdmin><Turnos /></ProtectedRoute>} />
+        <Route path="/turno/:id" element={<ProtectedRoute requireAdmin><TurnosCad /></ProtectedRoute>} />
         {/* Páginas de Usuários - Gerenciamento de Usuários */}
-        <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
-        <Route path="/usuario/:id" element={<ProtectedRoute><UsuariosCad /></ProtectedRoute>} />
+        <Route path="/usuarios" element={<ProtectedRoute requireAdmin><Usuarios /></ProtectedRoute>} />
+        <Route path="/usuario/:id" element={<ProtectedRoute requireAdmin><UsuariosCad /></ProtectedRoute>} />
         {/* Página de Armazéns - Gestão de Armazéns de Estoque */}
-        <Route path="/armazens" element={<ProtectedRoute><ArmazemSaldo /></ProtectedRoute>} />
+        <Route path="/armazens" element={<ProtectedRoute requireAdmin><ArmazemSaldo /></ProtectedRoute>} />
         <Route
           path="/ordem-servico"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin>
               <Placeholder
                 title="Ordem de Serviço"
                 description="Manutenção preventiva e corretiva, ordens de serviço."
@@ -141,7 +141,7 @@ function App() {
         <Route
           path="/auditoria"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin>
               <Placeholder
                 title="Auditoria"
                 description="Audit trail completo, rastreabilidade de alterações e conformidade ALCOA+."
@@ -152,7 +152,7 @@ function App() {
         <Route
           path="/configuracoes"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin>
               <Placeholder
                 title="Configurações"
                 description="Configurações gerais do sistema, velocidades nominais e metas de OEE."

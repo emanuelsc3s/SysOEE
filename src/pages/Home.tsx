@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
 import { ModalSelecaoApontamentoOee } from '@/components/apontamento/ModalSelecaoApontamentoOee'
+import { isPerfilAdministrador } from '@/utils/perfil.utils'
 
 /**
  * Retorna a saudação apropriada baseada no horário atual
@@ -88,6 +89,7 @@ export default function Home() {
     photoUrl: null,
     role: authUser?.perfil || 'Operador',
   }
+  const isAdmin = isPerfilAdministrador(authUser?.perfil)
 
   // Obtém a saudação baseada no horário
   const saudacao = getSaudacao()
@@ -173,13 +175,15 @@ export default function Home() {
       title: 'Ordem de Produção',
       icon: <ClipboardList className={iconClassName} />,
       path: '/ordem-producao',
-      description: 'Gestão de ordens de produção ativas'
+      description: 'Gestão de ordens de produção ativas',
+      adminOnly: true
     },
     {
       title: 'Operação',
       icon: <Activity className={iconClassName} />,
       path: '/operacao',
       description: 'Visualizar quais equipamentos estão atualmente em operação',
+      adminOnly: true,
       // Intercepta o clique para abrir o modal de seleção
       onClick: handleAbrirModalOperacao
     },
@@ -195,55 +199,64 @@ export default function Home() {
       title: 'Paradas',
       icon: <AlertCircle className={iconClassName} />,
       path: '/oee-parada',
-      description: 'Análise de paradas e Books de Paradas'
+      description: 'Análise de paradas e Books de Paradas',
+      adminOnly: true
     },
     {
       title: 'Linha de Produção',
       icon: <Wrench className={iconClassName} />,
       path: '/equipamentos',
-      description: 'Cadastro de linhas e setores'
+      description: 'Cadastro de linhas e setores',
+      adminOnly: true
     },
     {
       title: 'Velocidade Nominal',
       icon: <Gauge className={iconClassName} />,
       path: '/oee-linha-velocidade',
-      description: 'Cadastro de velocidades nominais por linha e produto'
+      description: 'Cadastro de velocidades nominais por linha e produto',
+      adminOnly: true
     },
     {
       title: 'Turnos',
       icon: <Clock className={iconClassName} />,
       path: '/turno',
-      description: 'Configuração de turnos de trabalho'
+      description: 'Configuração de turnos de trabalho',
+      adminOnly: true
     },
     {
       title: 'Usuários',
       icon: <Users className={iconClassName} />,
       path: '/usuarios',
-      description: 'Gerenciamento de usuários e permissões'
+      description: 'Gerenciamento de usuários e permissões',
+      adminOnly: true
     },
     {
       title: 'Armazéns',
       icon: <Package className={iconClassName} />,
       path: '/armazens',
-      description: 'Gestão de armazéns e estoque'
+      description: 'Gestão de armazéns e estoque',
+      adminOnly: true
     },
     {
       title: 'Ordem de Serviço',
       icon: <Wrench className={iconClassName} />,
       path: '/ordem-servico',
-      description: 'Manutenção e ordens de serviço'
+      description: 'Manutenção e ordens de serviço',
+      adminOnly: true
     },
     {
       title: 'Auditoria',
       icon: <Shield className={iconClassName} />,
       path: '/auditoria',
-      description: 'Audit trail e rastreabilidade'
+      description: 'Audit trail e rastreabilidade',
+      adminOnly: true
     },
     {
       title: 'Configurações',
       icon: <Settings className={iconClassName} />,
       path: '/configuracoes',
-      description: 'Configurações do sistema'
+      description: 'Configurações do sistema',
+      adminOnly: true
     },
   ]
 
@@ -349,16 +362,22 @@ export default function Home() {
                 <p className="text-xs text-muted-foreground">Escolha o módulo que deseja acessar.</p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-2 tab:grid-cols-3 tab-prod:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 tab-prod:gap-2 auto-rows-fr">
-                {navigationItems.map((item) => (
-                  <NavigationCard
-                    key={item.path}
-                    title={item.title}
-                    icon={item.icon}
-                    path={item.path}
-                    onClick={item.onClick}
-                    className="aspect-[5/4] rounded-2xl border-primary/10 bg-card/95 p-3.5 shadow-[0_12px_28px_-24px_hsl(var(--foreground)/0.6)] hover:border-primary/30 hover:shadow-[0_18px_36px_-24px_hsl(var(--primary)/0.45)] md:aspect-[4/3] md:rounded-xl md:bg-card md:p-4 md:shadow-sm"
-                  />
-                ))}
+                {navigationItems.map((item) => {
+                  const semPermissao = Boolean(item.adminOnly && !isAdmin)
+
+                  return (
+                    <NavigationCard
+                      key={item.path}
+                      title={item.title}
+                      icon={item.icon}
+                      path={item.path}
+                      onClick={semPermissao ? undefined : item.onClick}
+                      disabled={semPermissao}
+                      disabledMessage="Acesso negado: módulo exclusivo para Administrador."
+                      className="aspect-[5/4] rounded-2xl border-primary/10 bg-card/95 p-3.5 shadow-[0_12px_28px_-24px_hsl(var(--foreground)/0.6)] hover:border-primary/30 hover:shadow-[0_18px_36px_-24px_hsl(var(--primary)/0.45)] md:aspect-[4/3] md:rounded-xl md:bg-card md:p-4 md:shadow-sm"
+                    />
+                  )
+                })}
               </div>
             </section>
           </div>

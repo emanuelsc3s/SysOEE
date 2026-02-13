@@ -12,6 +12,10 @@ interface NavigationCardProps {
   onClick?: () => void
   /** Tamanho visual do card */
   size?: 'default' | 'compact'
+  /** Se true, bloqueia a navegação e o clique */
+  disabled?: boolean
+  /** Mensagem de tooltip quando desabilitado */
+  disabledMessage?: string
   /** Classes CSS adicionais */
   className?: string
 }
@@ -26,6 +30,8 @@ export function NavigationCard({
   path,
   onClick,
   size = 'default',
+  disabled = false,
+  disabledMessage = 'Acesso negado',
   className,
 }: NavigationCardProps) {
   const isCompact = size === 'compact'
@@ -35,14 +41,15 @@ export function NavigationCard({
     'aspect-[4/3] w-full',
     isCompact ? 'p-3 sm:p-4 tab-prod:p-2' : 'p-4 sm:p-6 tab-prod:p-2',
     // Cursor e transições
-    'cursor-pointer motion-safe:transition-transform motion-safe:transition-shadow motion-safe:transition-colors motion-safe:duration-300',
+    'motion-safe:transition-transform motion-safe:transition-shadow motion-safe:transition-colors motion-safe:duration-300',
     'touch-manipulation',
     // Background e bordas
     'bg-card rounded-xl shadow-sm',
     'no-underline',
     // Hover effects
-    'hover:shadow-md motion-safe:hover:scale-[1.02]',
-    'border border-transparent hover:border-primary/20',
+    disabled
+      ? 'cursor-not-allowed opacity-55 border border-transparent'
+      : 'cursor-pointer hover:shadow-md motion-safe:hover:scale-[1.02] border border-transparent hover:border-primary/20',
     // Estados de foco para acessibilidade
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     // Posicionamento relativo para barra inferior
@@ -85,7 +92,28 @@ export function NavigationCard({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={cardClasses}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cardClasses}
+        disabled={disabled}
+        aria-disabled={disabled}
+        title={disabled ? disabledMessage : undefined}
+      >
+        {conteudo}
+      </button>
+    )
+  }
+
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        className={cardClasses}
+        disabled
+        aria-disabled
+        title={disabledMessage}
+      >
         {conteudo}
       </button>
     )
