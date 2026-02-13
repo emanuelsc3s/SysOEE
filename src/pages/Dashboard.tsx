@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useTheme } from '@/hooks/useTheme'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { ParetoParadasChart, type ParetoParadaChartItem } from '@/components/charts/ParetoParadasChart'
+import { DashboardDialogContent } from '@/pages/dashboard/components/DashboardDialogContent'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -137,7 +138,16 @@ type FiltrosDashboard = {
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
+const TOLERANCIA_BUFFER_CAMERA_MS = 1200
 const MENSAGEM_PERMISSAO_CAMERA = 'Usuário de Nível Operador sem permissão para visualizar cameras'
+const TOTAL_TENTATIVAS_CONEXAO_CAMERA = 10
+const INTERVALO_ENTRE_TENTATIVAS_CAMERA_MS = 1000
+
+const aguardar = (tempoMs: number): Promise<void> => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, tempoMs)
+  })
+}
 
 const formatarPercentual = (valor: number): string => {
   return valor.toLocaleString('pt-BR', {
@@ -455,11 +465,13 @@ export default function Dashboard() {
   const [carregandoCamera, setCarregandoCamera] = useState(false)
   const [erroCamera, setErroCamera] = useState<string | null>(null)
   const [cameraAguardandoFrame, setCameraAguardandoFrame] = useState(false)
+  const [cameraImagemCarregada, setCameraImagemCarregada] = useState(false)
   const [videoCameraPronto, setVideoCameraPronto] = useState(false)
   const [validandoPermissaoCamera, setValidandoPermissaoCamera] = useState(false)
   const [modalPermissaoCameraAberto, setModalPermissaoCameraAberto] = useState(false)
   const videoCameraRef = useRef<HTMLVideoElement | null>(null)
   const conexaoCameraRef = useRef<RTCPeerConnection | null>(null)
+  const timeoutOcultarOeeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Estados para atualização automática
   const [atualizacaoAutomatica, setAtualizacaoAutomatica] = useState(false)
@@ -1040,17 +1052,6 @@ export default function Dashboard() {
     return `${cameraBase}/${cameraSegmento}/whep`
   }, [obterSegmentoCameraPorLinhaId])
 
-  const obterUrlCameraBasePorLinhaId = useCallback((linhaproducaoId: number): string | null => {
-    const cameraBase = (import.meta.env.VITE_CAMERA_URL || '').trim().replace(/\/+$/g, '')
-    const cameraSegmento = obterSegmentoCameraPorLinhaId(linhaproducaoId)
-
-    if (!cameraBase || !cameraSegmento) {
-      return null
-    }
-
-    return `${cameraBase}/${cameraSegmento}/`
-  }, [obterSegmentoCameraPorLinhaId])
-
   const encerrarConexaoCamera = useCallback(() => {
     const conexao = conexaoCameraRef.current
     if (conexao) {
@@ -1073,6 +1074,21 @@ export default function Dashboard() {
     video.srcObject = null
   }, [])
 
+  const limparTimeoutOcultarOee = useCallback(() => {
+    if (timeoutOcultarOeeRef.current) {
+      clearTimeout(timeoutOcultarOeeRef.current)
+      timeoutOcultarOeeRef.current = null
+    }
+  }, [])
+
+  const agendarOcultarOee = useCallback(() => {
+    limparTimeoutOcultarOee()
+    timeoutOcultarOeeRef.current = setTimeout(() => {
+      setCameraImagemCarregada(false)
+      timeoutOcultarOeeRef.current = null
+    }, TOLERANCIA_BUFFER_CAMERA_MS)
+  }, [limparTimeoutOcultarOee])
+
   const definirVideoCameraRef = useCallback((elemento: HTMLVideoElement | null) => {
     videoCameraRef.current = elemento
     setVideoCameraPronto(Boolean(elemento))
@@ -1088,7 +1104,6 @@ export default function Dashboard() {
     }
 
     const urlWhep = obterUrlCameraWhepPorLinhaId(linhaproducaoId)
-    const urlBaseCamera = obterUrlCameraBasePorLinhaId(linhaproducaoId)
     if (!urlWhep) {
       setErroCamera('URL base da câmera não configurada. Defina VITE_CAMERA_URL no ambiente.')
       setCarregandoCamera(false)
@@ -1102,76 +1117,89 @@ export default function Dashboard() {
 
     setCarregandoCamera(true)
     setCameraAguardandoFrame(true)
+    limparTimeoutOcultarOee()
+    setCameraImagemCarregada(false)
     setErroCamera(null)
     encerrarConexaoCamera()
 
     try {
-      const pc = new RTCPeerConnection()
-      conexaoCameraRef.current = pc
-
-      pc.addTransceiver('video', { direction: 'recvonly' })
-      pc.ontrack = (evento) => {
-        const [stream] = evento.streams
-        const video = videoCameraRef.current
-        if (stream && video) {
-          video.srcObject = stream
-          void video.play().catch(() => {
-            // Navegadores podem bloquear play sem interação explícita em alguns cenários.
-          })
-        }
-      }
-
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-      const offerSdp = offer.sdp
-
-      if (!offerSdp) {
-        throw new Error('Não foi possível gerar SDP de oferta para conexão WHEP.')
-      }
-
-      console.info('📷 Iniciando stream WHEP', {
-        linhaproducaoId,
-        cameraSegmento
-      })
-
-      const resposta = await fetch(urlWhep, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/sdp' },
-        body: offerSdp
-      })
-
-      if (!resposta.ok) {
-        throw new Error(`Falha ao conectar ao stream de vídeo (HTTP ${resposta.status}).`)
-      }
-
-      const answerSdp = await resposta.text()
-      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
-    } catch (error) {
-      console.error('❌ Erro ao iniciar stream da câmera via WHEP:', {
-        linhaproducaoId,
-        cameraSegmento,
-        error
-      })
-      let mensagemErro = 'Não foi possível abrir a câmera. Verifique endpoint WHEP, rede e permissões do servidor.'
-
-      if (error instanceof TypeError && urlBaseCamera) {
+      for (let tentativa = 1; tentativa <= TOTAL_TENTATIVAS_CONEXAO_CAMERA; tentativa += 1) {
         try {
-          const respostaBase = await fetch(urlBaseCamera, { method: 'GET' })
-          if (respostaBase.ok) {
-            mensagemErro = 'Servidor da câmera respondeu, mas a inicialização do stream falhou.'
+          const pc = new RTCPeerConnection()
+          conexaoCameraRef.current = pc
+
+          pc.addTransceiver('video', { direction: 'recvonly' })
+          pc.ontrack = (evento) => {
+            const [stream] = evento.streams
+            const video = videoCameraRef.current
+            if (stream && video) {
+              video.srcObject = stream
+              void video.play().catch(() => {
+                // Navegadores podem bloquear play sem interação explícita em alguns cenários.
+              })
+            }
           }
-        } catch {
-          mensagemErro = 'Falha de rede ao acessar o servidor da câmera.'
+
+          const offer = await pc.createOffer()
+          await pc.setLocalDescription(offer)
+          const offerSdp = offer.sdp
+
+          if (!offerSdp) {
+            throw new Error('Não foi possível gerar SDP de oferta para conexão WHEP.')
+          }
+
+          console.info('📷 Iniciando stream WHEP', {
+            linhaproducaoId,
+            cameraSegmento,
+            tentativa,
+            totalTentativas: TOTAL_TENTATIVAS_CONEXAO_CAMERA
+          })
+
+          const resposta = await fetch(urlWhep, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/sdp' },
+            body: offerSdp
+          })
+
+          if (!resposta.ok) {
+            throw new Error(`Falha ao conectar ao stream de vídeo (HTTP ${resposta.status}).`)
+          }
+
+          const answerSdp = await resposta.text()
+          await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp })
+          setErroCamera(null)
+          return
+        } catch (error) {
+          console.error('❌ Erro ao iniciar stream da câmera via WHEP:', {
+            linhaproducaoId,
+            cameraSegmento,
+            tentativa,
+            totalTentativas: TOTAL_TENTATIVAS_CONEXAO_CAMERA,
+            error
+          })
+          encerrarConexaoCamera()
+
+          if (tentativa < TOTAL_TENTATIVAS_CONEXAO_CAMERA) {
+            setErroCamera(
+              `Tentativa de conexão ${tentativa} de ${TOTAL_TENTATIVAS_CONEXAO_CAMERA} falhou. Tentando novamente...`
+            )
+            await aguardar(INTERVALO_ENTRE_TENTATIVAS_CAMERA_MS)
+            continue
+          }
+
+          setErroCamera(
+            `Não foi possível abrir a câmera após ${TOTAL_TENTATIVAS_CONEXAO_CAMERA} tentativas. Entre em contato com o suporte.`
+          )
+          setCameraAguardandoFrame(false)
+          limparTimeoutOcultarOee()
+          setCameraImagemCarregada(false)
+          return
         }
       }
-
-      setErroCamera(mensagemErro)
-      setCameraAguardandoFrame(false)
-      encerrarConexaoCamera()
     } finally {
       setCarregandoCamera(false)
     }
-  }, [encerrarConexaoCamera, obterSegmentoCameraPorLinhaId, obterUrlCameraBasePorLinhaId, obterUrlCameraWhepPorLinhaId])
+  }, [encerrarConexaoCamera, limparTimeoutOcultarOee, obterSegmentoCameraPorLinhaId, obterUrlCameraWhepPorLinhaId])
 
   const validarPermissaoVisualizacaoCamera = useCallback(async (): Promise<boolean> => {
     if (!user?.id) {
@@ -1240,11 +1268,13 @@ export default function Dashboard() {
       encerrarConexaoCamera()
       setCarregandoCamera(false)
       setCameraAguardandoFrame(false)
+      limparTimeoutOcultarOee()
+      setCameraImagemCarregada(false)
       setErroCamera(null)
       setLinhaCameraSelecionada(null)
       setVideoCameraPronto(false)
     }
-  }, [encerrarConexaoCamera])
+  }, [encerrarConexaoCamera, limparTimeoutOcultarOee])
 
   const handleAtualizarCamera = useCallback(() => {
     if (!linhaCameraSelecionada || !videoCameraPronto || carregandoCamera) {
@@ -1266,7 +1296,13 @@ export default function Dashboard() {
     }
   }, [encerrarConexaoCamera, iniciarStreamCamera, linhaCameraSelecionada, modalCameraAberto, videoCameraPronto])
 
-  const cameraEmProcessamento = carregandoCamera || cameraAguardandoFrame
+  useEffect(() => {
+    return () => {
+      limparTimeoutOcultarOee()
+    }
+  }, [limparTimeoutOcultarOee])
+
+  const cameraEmProcessamento = carregandoCamera || (cameraAguardandoFrame && !cameraImagemCarregada)
 
   return (
     <div className="min-h-screen bg-muted">
@@ -1844,15 +1880,26 @@ export default function Dashboard() {
         </AlertDialog>
 
         <Dialog open={modalCameraAberto} onOpenChange={handleModalCameraChange}>
-          <DialogContent className="max-w-[calc(100vw-1.5rem)] p-4 sm:max-w-4xl sm:p-6">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-lg sm:text-2xl">
-                <Video className="h-5 w-5 text-blue-500" />
-                Câmera da linha
-              </DialogTitle>
-              <DialogDescription>
-                {linhaCameraSelecionada?.linhaproducao || 'Linha não definida'}
-              </DialogDescription>
+          <DashboardDialogContent className="max-w-[calc(100vw-1.5rem)] p-4 sm:max-w-4xl sm:p-6">
+            <DialogHeader className="flex flex-row items-center justify-between gap-4">
+              <div className="flex min-w-0 flex-col text-center sm:text-left space-y-2">
+                <DialogTitle className="flex items-center justify-center gap-2 text-lg sm:justify-start sm:text-2xl">
+                  <Video className="h-5 w-5 shrink-0 text-blue-500" />
+                  Câmera da linha
+                </DialogTitle>
+                <DialogDescription className="text-left">
+                  {linhaCameraSelecionada?.linhaproducao || 'Linha não definida'}
+                </DialogDescription>
+              </div>
+              <div className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-red-500/60 bg-red-500/10 px-3 py-1">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-80" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                  Ao vivo
+                </span>
+              </div>
             </DialogHeader>
 
             <div className="relative overflow-hidden rounded-lg border border-border bg-black">
@@ -1861,12 +1908,22 @@ export default function Dashboard() {
                 autoPlay
                 playsInline
                 muted
-                onPlaying={() => setCameraAguardandoFrame(false)}
-                onWaiting={() => setCameraAguardandoFrame(true)}
-                onStalled={() => setCameraAguardandoFrame(true)}
+                onPlaying={() => {
+                  setCameraAguardandoFrame(false)
+                  limparTimeoutOcultarOee()
+                  setCameraImagemCarregada(true)
+                }}
+                onWaiting={() => {
+                  setCameraAguardandoFrame(true)
+                  agendarOcultarOee()
+                }}
+                onStalled={() => {
+                  setCameraAguardandoFrame(true)
+                  agendarOcultarOee()
+                }}
                 className="aspect-video w-full bg-black object-contain"
               />
-              {linhaCameraSelecionada && (
+              {linhaCameraSelecionada && cameraImagemCarregada && (
                 <div className="pointer-events-none absolute left-3 top-3 z-10">
                   <div className="rounded-xl border border-white/20 bg-black/40 p-2.5 backdrop-blur-sm">
                     <p className="text-[10px] font-medium uppercase tracking-wide text-white/80">
@@ -1942,7 +1999,7 @@ export default function Dashboard() {
                 Fechar
               </Button>
             </div>
-          </DialogContent>
+          </DashboardDialogContent>
         </Dialog>
 
         <Dialog open={modalDetalhamentoAberto} onOpenChange={handleModalDetalhamentoChange}>
