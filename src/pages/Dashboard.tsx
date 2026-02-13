@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video } from 'lucide-react'
+import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, Maximize, Minimize, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -135,6 +135,25 @@ type FiltrosDashboard = {
   turnoId: string
   dataInicio: string
   dataFim: string
+}
+
+type DocumentoFullscreenLegado = Document & {
+  webkitFullscreenElement?: Element | null
+  mozFullScreenElement?: Element | null
+  msFullscreenElement?: Element | null
+  webkitExitFullscreen?: () => Promise<void> | void
+  mozCancelFullScreen?: () => Promise<void> | void
+  msExitFullscreen?: () => Promise<void> | void
+}
+
+type ElementoFullscreenLegado = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void
+  mozRequestFullScreen?: () => Promise<void> | void
+  msRequestFullscreen?: () => Promise<void> | void
+}
+
+type VideoFullscreenLegado = HTMLVideoElement & ElementoFullscreenLegado & {
+  webkitEnterFullscreen?: () => void
 }
 
 const TEMPO_DISPONIVEL_PADRAO = 12
@@ -469,7 +488,9 @@ export default function Dashboard() {
   const [videoCameraPronto, setVideoCameraPronto] = useState(false)
   const [validandoPermissaoCamera, setValidandoPermissaoCamera] = useState(false)
   const [modalPermissaoCameraAberto, setModalPermissaoCameraAberto] = useState(false)
+  const [cameraTelaCheia, setCameraTelaCheia] = useState(false)
   const videoCameraRef = useRef<HTMLVideoElement | null>(null)
+  const containerVideoRef = useRef<HTMLDivElement | null>(null)
   const conexaoCameraRef = useRef<RTCPeerConnection | null>(null)
   const timeoutOcultarOeeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -1284,6 +1305,113 @@ export default function Dashboard() {
     void iniciarStreamCamera(linhaCameraSelecionada.linhaproducao_id)
   }, [carregandoCamera, iniciarStreamCamera, linhaCameraSelecionada, videoCameraPronto])
 
+  const toggleTelaCheia = useCallback(async () => {
+    const video = videoCameraRef.current
+    const container = containerVideoRef.current
+    if (!video || !container) return
+
+    const videoLegado = video as VideoFullscreenLegado
+    const containerLegado = container as ElementoFullscreenLegado
+    const documentoLegado = document as DocumentoFullscreenLegado
+
+    try {
+      // Detectar se está em fullscreen
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        documentoLegado.webkitFullscreenElement ||
+        documentoLegado.mozFullScreenElement ||
+        documentoLegado.msFullscreenElement
+      )
+
+      if (!isFullscreen) {
+        // Entrar em fullscreen
+        // Em iOS/Safari mobile, usar webkitEnterFullscreen no vídeo
+        if (videoLegado.webkitEnterFullscreen && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          videoLegado.webkitEnterFullscreen()
+          setCameraTelaCheia(true)
+        }
+        // Em outros navegadores mobile, tentar fullscreen no vídeo primeiro
+        else if (/Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+          if (video.requestFullscreen) {
+            await video.requestFullscreen()
+          } else if (videoLegado.webkitRequestFullscreen) {
+            await videoLegado.webkitRequestFullscreen()
+          } else if (videoLegado.mozRequestFullScreen) {
+            await videoLegado.mozRequestFullScreen()
+          } else if (videoLegado.msRequestFullscreen) {
+            await videoLegado.msRequestFullscreen()
+          }
+          setCameraTelaCheia(true)
+        }
+        // Em desktop, usar fullscreen no container para incluir controles
+        else {
+          if (container.requestFullscreen) {
+            await container.requestFullscreen()
+          } else if (containerLegado.webkitRequestFullscreen) {
+            await containerLegado.webkitRequestFullscreen()
+          } else if (containerLegado.mozRequestFullScreen) {
+            await containerLegado.mozRequestFullScreen()
+          } else if (containerLegado.msRequestFullscreen) {
+            await containerLegado.msRequestFullscreen()
+          }
+          setCameraTelaCheia(true)
+        }
+      } else {
+        // Sair de fullscreen
+        // iOS Safari usa webkitExitFullscreen no vídeo
+        if (documentoLegado.webkitExitFullscreen && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          documentoLegado.webkitExitFullscreen()
+        } else if (document.exitFullscreen) {
+          await document.exitFullscreen()
+        } else if (documentoLegado.webkitExitFullscreen) {
+          await documentoLegado.webkitExitFullscreen()
+        } else if (documentoLegado.mozCancelFullScreen) {
+          await documentoLegado.mozCancelFullScreen()
+        } else if (documentoLegado.msExitFullscreen) {
+          await documentoLegado.msExitFullscreen()
+        }
+        setCameraTelaCheia(false)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao alternar tela cheia:', error)
+      // Tentar fallback: se falhar com container, tentar com vídeo
+      try {
+        if (video.requestFullscreen) {
+          await video.requestFullscreen()
+          setCameraTelaCheia(true)
+        }
+      } catch {
+        // Se ainda assim falhar, silenciar erro
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const documentoLegado = document as DocumentoFullscreenLegado
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        documentoLegado.webkitFullscreenElement ||
+        documentoLegado.mozFullScreenElement ||
+        documentoLegado.msFullscreenElement
+      )
+      setCameraTelaCheia(isFullscreen)
+    }
+
+    // Adicionar listeners para todos os navegadores
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+    }
+  }, [])
+
   useEffect(() => {
     if (!modalCameraAberto || !linhaCameraSelecionada || !videoCameraPronto) {
       return
@@ -1891,18 +2019,20 @@ export default function Dashboard() {
                   {linhaCameraSelecionada?.linhaproducao || 'Linha não definida'}
                 </DialogDescription>
               </div>
-              <div className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-red-500/60 bg-red-500/10 px-3 py-1">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-80" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-                </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
-                  Ao vivo
-                </span>
-              </div>
+              {cameraImagemCarregada && (
+                <div className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-red-500/60 bg-red-500/10 px-3 py-1">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-80" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                    Ao vivo
+                  </span>
+                </div>
+              )}
             </DialogHeader>
 
-            <div className="relative overflow-hidden rounded-lg border border-border bg-black">
+            <div ref={containerVideoRef} className="relative overflow-hidden rounded-lg border border-border bg-black">
               <video
                 ref={definirVideoCameraRef}
                 autoPlay
@@ -1960,6 +2090,44 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Botões de controle — overlay liquid glass no rodapé do vídeo (somente quando o stream carregar) */}
+              {cameraImagemCarregada && (
+                <div className="absolute inset-x-0 bottom-3 z-10 flex items-center justify-end gap-2 pr-3">
+                  <button
+                    type="button"
+                    onClick={handleAtualizarCamera}
+                    disabled={!linhaCameraSelecionada || !videoCameraPronto || carregandoCamera}
+                    className="inline-flex items-center justify-center sm:gap-1.5 rounded-lg border border-white/5 bg-black/5 p-2 sm:px-3 sm:py-1.5 text-xs font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-white/5 disabled:pointer-events-none disabled:opacity-40"
+                    title="Atualizar câmera"
+                    aria-label="Atualizar câmera"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${carregandoCamera ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Atualizar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleTelaCheia}
+                    className="inline-flex items-center justify-center sm:gap-1.5 rounded-lg border border-white/5 bg-black/5 p-2 sm:px-3 sm:py-1.5 text-xs font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-white/5"
+                    title={cameraTelaCheia ? 'Sair de tela cheia' : 'Entrar em tela cheia'}
+                    aria-label={cameraTelaCheia ? 'Sair de tela cheia' : 'Entrar em tela cheia'}
+                  >
+                    {cameraTelaCheia ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+                    <span className="hidden sm:inline">{cameraTelaCheia ? 'Sair' : 'Tela cheia'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleModalCameraChange(false)}
+                    className="inline-flex items-center justify-center sm:gap-1.5 rounded-lg border border-white/5 bg-black/5 p-2 sm:px-3 sm:py-1.5 text-xs font-medium text-white/90 backdrop-blur-sm transition-colors hover:bg-white/5"
+                    title="Fechar câmera"
+                    aria-label="Fechar câmera"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Fechar</span>
+                  </button>
+                </div>
+              )}
+
               {cameraEmProcessamento && (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-slate-950/85 via-slate-900/70 to-black/85 backdrop-blur-[1px]">
                   <div className="relative h-14 w-14">
@@ -1984,21 +2152,6 @@ export default function Dashboard() {
                 {erroCamera}
               </div>
             )}
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAtualizarCamera}
-                disabled={!linhaCameraSelecionada || !videoCameraPronto || carregandoCamera}
-              >
-                <RefreshCw className={`h-4 w-4 ${carregandoCamera ? 'animate-spin' : ''}`} />
-                Atualizar câmera
-              </Button>
-              <Button type="button" variant="outline" onClick={() => handleModalCameraChange(false)}>
-                Fechar
-              </Button>
-            </div>
           </DashboardDialogContent>
         </Dialog>
 
