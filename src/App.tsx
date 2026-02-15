@@ -6,6 +6,7 @@ import OperacaoPorEquipamento from './pages/OperacaoPorEquipamento'
 import OperacaoDetalheOP from './pages/OperacaoDetalheOP'
 import WhatsNewOEE from './pages/oee/whats-new/WhatsNewOEE'
 import ResumoOeeTurno from './pages/oee/resumoOeeTurno/ResumoOeeTurno'
+import AnaliseParadasOEE from './pages/oee/analiseParadas/AnaliseParadasOEE'
 import ArmazemSaldo from './pages/ArmazemSaldo'
 import ColaboradorPerfil from './pages/ColaboradorPerfil'
 import LinhaProducaoConsulta from './pages/LinhaProducaoConsulta'
@@ -70,6 +71,9 @@ function App() {
 
         {/* Página de Resumo Consolidado de OEE por Turno */}
         <Route path="/oee-resumo-turno" element={<ProtectedRoute><ResumoOeeTurno /></ProtectedRoute>} />
+
+        {/* Página de Análise de Paradas OEE */}
+        <Route path="/oee-analise-paradas" element={<ProtectedRoute><AnaliseParadasOEE /></ProtectedRoute>} />
 
         {/* Página de Cadastro de Velocidade Nominal por Linha e Produto */}
         <Route path="/oee-linha-velocidade" element={<ProtectedRoute requireAdmin><OeeLinhaVelocidade /></ProtectedRoute>} />

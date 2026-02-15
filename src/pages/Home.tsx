@@ -12,6 +12,7 @@ import {
   Package,
   Wrench,
   Shield,
+  BarChart3,
   ChevronDown,
   LogOut,
   Gauge
@@ -170,6 +171,12 @@ export default function Home() {
       icon: <LayoutDashboard className={iconClassName} />,
       path: '/dashboard',
       description: 'Visualização de OEE e gráficos principais'
+    },
+    {
+      title: 'Análise Paradas OEE',
+      icon: <BarChart3 className={iconClassName} />,
+      path: '/oee-analise-paradas',
+      description: 'Dashboard executivo com Pareto e priorização de tratativas'
     },
     {
       title: 'Ordem de Produção',
