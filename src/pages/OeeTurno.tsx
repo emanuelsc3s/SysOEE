@@ -62,7 +62,8 @@ import {
   Package,
   Activity,
   ClipboardList,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  X
 } from 'lucide-react'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { format } from 'date-fns'
@@ -462,6 +463,15 @@ export default function OeeTurno() {
     if (f.status) count++
     if (dataInicio) count++
     if (dataFim) count++
+    return count
+  })()
+
+  const draftCountBadge = (() => {
+    let count = 0
+    const f = draftFilters
+    if (f.turnoIds.length > 0) count++
+    if (f.produto.trim()) count++
+    if (f.status) count++
     return count
   })()
 
@@ -1192,150 +1202,277 @@ export default function OeeTurno() {
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="w-full sm:w-[95vw] max-w-[640px] max-h-[80vh] overflow-auto p-0">
-                      <div className="p-4 sm:p-6">
-                        <DialogHeader>
-                          <DialogTitle>Filtrar Apontamentos</DialogTitle>
-                          <DialogDescription>
-                            Selecione os critérios para filtrar os apontamentos de produção.
-                          </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="f-turno">Turno</Label>
-                            <DropdownMenu open={menuTurnoAberto} onOpenChange={setMenuTurnoAberto}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  id="f-turno"
-                                  variant="outline"
-                                  className="h-11 w-full justify-between font-normal sm:h-10"
+                    <DialogContent className="w-full max-w-[calc(100vw-1rem)] sm:max-w-[680px] md:max-w-[760px] lg:max-w-[820px] max-h-[90dvh] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_25px_60px_rgba(20,27,27,0.12),0_8px_24px_rgba(20,27,27,0.08),0_0_0_1px_rgba(15,23,42,0.05)] [&>button]:right-4 [&>button]:top-4 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-md [&>button]:text-slate-400 [&>button]:opacity-100 [&>button]:hover:bg-slate-100 [&>button]:hover:text-slate-600">
+                      <div className="flex max-h-[90dvh] flex-col">
+                        <div className="border-b border-slate-100 px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7">
+                          <DialogHeader className="text-left">
+                            <div className="flex items-center gap-3 pr-8 sm:pr-10">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                                <svg
+                                  width={18}
+                                  height={18}
+                                  viewBox="0 0 18 18"
+                                  fill="none"
+                                  aria-hidden="true"
+                                  className="shrink-0"
                                 >
-                                  <span className="truncate">{resumoTurnosSelecionados}</span>
-                                  <ChevronDown className="h-4 w-4 opacity-60" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="start"
-                                className="w-[var(--radix-dropdown-menu-trigger-width)]"
-                              >
-                                <div className="p-2">
-                                  <Input
-                                    ref={campoBuscaTurnoRef}
-                                    placeholder="Buscar turno"
-                                    value={buscaTurno}
-                                    onChange={(event) => setBuscaTurno(event.target.value)}
-                                    onKeyDown={(event) => {
-                                      if (event.key !== 'Escape') {
-                                        event.stopPropagation()
-                                      }
-                                    }}
+                                  <path
+                                    d="M2.25 4.5H15.75M4.5 9H13.5M6.75 13.5H11.25"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                   />
-                                </div>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuCheckboxItem
-                                  className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
-                                  checked={draftFilters.turnoIds.length === 0}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setDraftFilters((prev) => ({ ...prev, turnoIds: [] }))
-                                    }
-                                  }}
-                                  onSelect={(event) => event.preventDefault()}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
-                                        draftFilters.turnoIds.length === 0
-                                          ? 'border-brand-primary bg-brand-primary text-white'
-                                          : 'border-gray-400 bg-white text-transparent'
-                                      }`}
+                                </svg>
+                              </div>
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <DialogTitle className="text-[1.125rem] font-semibold leading-tight tracking-[-0.02em] text-slate-900">
+                                    Filtrar Apontamentos
+                                  </DialogTitle>
+                                  {draftCountBadge > 0 && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="mt-0.5 border border-brand-primary/20 bg-brand-primary/10 text-xs text-brand-primary"
                                     >
-                                      <Check className="h-3 w-3" />
-                                    </span>
-                                    <span>Todos os turnos</span>
-                                  </div>
-                                </DropdownMenuCheckboxItem>
-                                <DropdownMenuSeparator />
-                                <div className="max-h-64 overflow-y-auto">
-                                  {turnosFiltradosDropdown.length === 0 ? (
-                                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                      Nenhum turno encontrado.
-                                    </div>
-                                  ) : (
-                                    turnosFiltradosDropdown.map((turno) => {
-                                      const turnoId = String(turno.turno_id)
-                                      const selecionado = draftFilters.turnoIds.includes(turnoId)
-                                      return (
-                                        <DropdownMenuCheckboxItem
-                                          key={turno.turno_id}
-                                          className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
-                                          checked={selecionado}
-                                          onCheckedChange={() => alternarTurnoSelecionado(turnoId)}
-                                          onSelect={(event) => event.preventDefault()}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <span
-                                              className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
-                                                selecionado
-                                                  ? 'border-brand-primary bg-brand-primary text-white'
-                                                  : 'border-gray-400 bg-white text-transparent'
-                                              }`}
-                                            >
-                                              <Check className="h-3 w-3" />
-                                            </span>
-                                            <span>{formatarLabelTurno(turno)}</span>
-                                          </div>
-                                        </DropdownMenuCheckboxItem>
-                                      )
-                                    })
+                                      {draftCountBadge} ativos
+                                    </Badge>
                                   )}
                                 </div>
-                                <DropdownMenuSeparator />
-                                <div className="p-2">
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="w-full"
-                                    onClick={() => setMenuTurnoAberto(false)}
-                                  >
-                                    Fechar
-                                  </Button>
+                                <DialogDescription className="text-xs leading-normal tracking-[-0.01em] text-slate-500 sm:text-sm">
+                                  Refine seus resultados de busca com filtros específicos.
+                                </DialogDescription>
+                              </div>
+                            </div>
+                          </DialogHeader>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7">
+                          <div className="space-y-4 sm:space-y-5">
+                            <section className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5">
+                              <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
+                                <div className="space-y-1">
+                                  <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                    <Clock className="h-3.5 w-3.5 text-brand-primary" />
+                                    Turnos
+                                  </p>
+                                  <p className="text-xs text-slate-500 sm:text-sm">
+                                    Selecione um ou mais turnos para restringir os resultados.
+                                  </p>
                                 </div>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                                {draftFilters.turnoIds.length > 0 && (
+                                  <span className="mt-0.5 whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
+                                    {draftFilters.turnoIds.length}{' '}
+                                    selecionado{draftFilters.turnoIds.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="f-produto">Produto</Label>
-                            <Input
-                              id="f-produto"
-                              placeholder="Ex.: SOL. CLORETO"
-                              value={draftFilters.produto}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, produto: e.target.value }))}
-                            />
-                          </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="f-turno" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Turno</Label>
+                                <DropdownMenu open={menuTurnoAberto} onOpenChange={setMenuTurnoAberto}>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      id="f-turno"
+                                      variant="outline"
+                                      className="h-10 w-full justify-between rounded-xl border-slate-200 bg-white px-3.5 text-left font-normal text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
+                                    >
+                                      <span className="truncate">{resumoTurnosSelecionados}</span>
+                                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="start"
+                                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-slate-200 bg-white p-0 shadow-lg"
+                                  >
+                                    <div className="p-2">
+                                      <Input
+                                        ref={campoBuscaTurnoRef}
+                                        placeholder="Buscar turno"
+                                        className="h-10 rounded-lg border-slate-200 bg-slate-50/50"
+                                        value={buscaTurno}
+                                        onChange={(event) => setBuscaTurno(event.target.value)}
+                                        onKeyDown={(event) => {
+                                          if (event.key !== 'Escape') {
+                                            event.stopPropagation()
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem
+                                      className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                      checked={draftFilters.turnoIds.length === 0}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setDraftFilters((prev) => ({ ...prev, turnoIds: [] }))
+                                        }
+                                      }}
+                                      onSelect={(event) => event.preventDefault()}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                            draftFilters.turnoIds.length === 0
+                                              ? 'border-brand-primary bg-brand-primary text-white'
+                                              : 'border-input bg-background text-transparent'
+                                          }`}
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </span>
+                                        <span>Todos os turnos</span>
+                                      </div>
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuSeparator />
+                                    <div className="max-h-64 overflow-y-auto">
+                                      {turnosFiltradosDropdown.length === 0 ? (
+                                        <div className="px-2 py-2 text-sm text-muted-foreground">
+                                          Nenhum turno encontrado.
+                                        </div>
+                                      ) : (
+                                        turnosFiltradosDropdown.map((turno) => {
+                                          const turnoId = String(turno.turno_id)
+                                          const selecionado = draftFilters.turnoIds.includes(turnoId)
+                                          return (
+                                            <DropdownMenuCheckboxItem
+                                              key={turno.turno_id}
+                                              className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                              checked={selecionado}
+                                              onCheckedChange={() => alternarTurnoSelecionado(turnoId)}
+                                              onSelect={(event) => event.preventDefault()}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                    selecionado
+                                                      ? 'border-brand-primary bg-brand-primary text-white'
+                                                      : 'border-input bg-background text-transparent'
+                                                  }`}
+                                                >
+                                                  <Check className="h-3 w-3" />
+                                                </span>
+                                                <span>{formatarLabelTurno(turno)}</span>
+                                              </div>
+                                            </DropdownMenuCheckboxItem>
+                                          )
+                                        })
+                                      )}
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <div className="p-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="h-10 w-full rounded-lg"
+                                        onClick={() => setMenuTurnoAberto(false)}
+                                      >
+                                        Fechar
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </section>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="f-status">Status</Label>
-                            <select
-                              id="f-status"
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                              value={draftFilters.status}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, status: e.target.value as OeeTurnoStatus | '' }))}
-                            >
-                              <option value="">Todos</option>
-                              <option value="Aberto">Aberto</option>
-                              <option value="Fechado">Fechado</option>
-                              <option value="Cancelado">Cancelado</option>
-                            </select>
+                            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+
+                            <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                              <div className="mb-3 space-y-1 sm:mb-4">
+                                <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                  <Package className="h-3.5 w-3.5 text-brand-primary" />
+                                  Produto
+                                </p>
+                                <p className="text-xs text-slate-500 sm:text-sm">
+                                  Use o nome do item para refinar a busca por apontamentos.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2 sm:space-y-3">
+                                <Label htmlFor="f-produto" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Produto</Label>
+                                <div className="relative">
+                                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                  <Input
+                                    id="f-produto"
+                                    placeholder="Buscar produto... ex.: SOL. CLORETO"
+                                    className="h-10 rounded-xl border-slate-200 bg-slate-50/50 pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-brand-primary/25"
+                                    value={draftFilters.produto}
+                                    onChange={(e) => setDraftFilters((p) => ({ ...p, produto: e.target.value }))}
+                                  />
+                                  {draftFilters.produto && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                      onClick={() => setDraftFilters((p) => ({ ...p, produto: '' }))}
+                                      aria-label="Limpar produto"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+
+                              <div className="mt-5 space-y-2 sm:space-y-3">
+                                <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                  <Target className="h-3.5 w-3.5 text-brand-primary" />
+                                  Status
+                                </p>
+                                <Label htmlFor="f-status" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Situação do turno</Label>
+                                <select
+                                  id="f-status"
+                                  className="flex h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm text-slate-700 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={draftFilters.status}
+                                  onChange={(e) => setDraftFilters((p) => ({ ...p, status: e.target.value as OeeTurnoStatus | '' }))}
+                                >
+                                  <option value="">Todos</option>
+                                  <option value="Aberto">Aberto</option>
+                                  <option value="Fechado">Fechado</option>
+                                  <option value="Cancelado">Cancelado</option>
+                                </select>
+                              </div>
+                            </section>
                           </div>
                         </div>
+
+                        <DialogFooter className="border-t border-slate-100 bg-white/95 px-4 py-4 sm:px-5 md:px-6 lg:px-7">
+                          <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-between">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-10 justify-start px-0 text-sm font-medium text-slate-500 hover:bg-transparent hover:text-slate-700 disabled:text-slate-300 sm:w-auto"
+                              onClick={clearFilters}
+                              disabled={draftCountBadge === 0}
+                            >
+                              Limpar filtros
+                            </Button>
+                            <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:gap-2 md:gap-3">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-10 min-w-[132px] rounded-xl border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                                onClick={() => setOpenFilterDialog(false)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                type="button"
+                                className="h-10 min-w-[168px] rounded-xl bg-brand-primary text-white shadow-[0_4px_16px_rgba(6,98,195,0.24)] transition-colors hover:bg-brand-primary/90"
+                                onClick={applyFilters}
+                              >
+                                Aplicar filtros
+                                {draftCountBadge > 0 && (
+                                  <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-md bg-white/20 px-1.5 text-[11px] font-semibold">
+                                    {draftCountBadge}
+                                  </span>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogFooter>
                       </div>
-                      <DialogFooter className="sticky bottom-0 z-10 bg-white border-t px-4 sm:px-6 py-3 items-center justify-end sm:justify-end">
-                        <Button variant="outline" onClick={clearFilters}>Limpar Filtros</Button>
-                        <Button onClick={applyFilters}>Aplicar Filtros</Button>
-                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
 
