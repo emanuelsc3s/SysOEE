@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustado o rótulo "Status" no modal de filtros da página OeeTurno para tamanho de fonte 14px (text-sm/relativo).
+- Removido o ícone SVG (Target) do rótulo "Status" no modal de filtros da página OeeTurno.
+- Removido o modal de resumo (ModalResumoOeeTurno) da página OeeTurno; o botão "Resumo" agora navega para a página /oee-resumo-turno (ResumoOeeTurno).
 - Ajustada a cor do título "Filtrar Apontamentos" no modal de filtros (OeeTurno) de slate-900 para gray-700.
 - Dashboard (modal câmera): badge "AO VIVO" e barra de controles (Atualizar/Tela cheia/Fechar) exibidos somente após o stream da câmera carregar (estado `cameraImagemCarregada`).
 - Dashboard (modal câmera): barra de controles (Atualizar/Tela cheia/Fechar) alinhada à direita e efeito liquid glass dos botões mais transparente (bordas e fundo com menor opacidade, blur reduzido).

@@ -40,7 +40,6 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AppHeader } from '@/components/layout/AppHeader'
-import { ModalResumoOeeTurno } from '@/components/supervisao/ModalResumoOeeTurno'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
 import { SYSOEE_APP_ID, type Rotina } from '@/hooks/usePermissions'
@@ -77,6 +76,7 @@ const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para o
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 const TEMPO_DISPONIVEL_PADRAO = 12
 const TURNOS_VAZIOS: OeeTurnoFormData[] = []
+const STATUS_OEE_DISPONIVEIS: OeeTurnoStatus[] = ['Aberto', 'Fechado', 'Cancelado']
 
 type OeeTurnoRpc = {
   oee?: number | string | null
@@ -160,6 +160,11 @@ const formatarLabelTurno = (turno: TurnoFiltroOption): string => {
 const serializarIdsSelecionados = (ids: string[]): string =>
   [...ids]
     .sort((a, b) => Number(a) - Number(b))
+    .join(',')
+
+const serializarStatusSelecionados = (status: OeeTurnoStatus[]): string =>
+  [...status]
+    .sort((a, b) => a.localeCompare(b))
     .join(',')
 
 const normalizarNumeroRpc = (valor: number | string | null | undefined): number => {
@@ -361,7 +366,6 @@ export default function OeeTurno() {
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false)
   const [turnoToDelete, setTurnoToDelete] = useState<OeeTurnoFormData | null>(null)
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
-  const [isResumoDialogOpen, setIsResumoDialogOpen] = useState(false)
   const [usuarioIdAutenticado, setUsuarioIdAutenticado] = useState<number | null>(null)
 
   // Estados para modal de turno fechado
@@ -370,6 +374,7 @@ export default function OeeTurno() {
   const [oeePorTurno, setOeePorTurno] = useState<Record<string, number | null>>({})
   const [carregandoOeePorTurno, setCarregandoOeePorTurno] = useState<Record<string, boolean>>({})
   const [menuTurnoAberto, setMenuTurnoAberto] = useState(false)
+  const [menuStatusAberto, setMenuStatusAberto] = useState(false)
   const [buscaTurno, setBuscaTurno] = useState('')
 
   // Hook para operações com Supabase
@@ -412,14 +417,14 @@ export default function OeeTurno() {
   const [appliedFilters, setAppliedFilters] = useState({
     turnoIds: [] as string[],
     produto: '',
-    status: '' as OeeTurnoStatus | '',
+    statuses: [] as OeeTurnoStatus[],
   })
 
   // Estado de edição (no modal) - começa com os filtros aplicados
   const [draftFilters, setDraftFilters] = useState({
     turnoIds: [] as string[],
     produto: '',
-    status: '' as OeeTurnoStatus | '',
+    statuses: [] as OeeTurnoStatus[],
   })
   const prevFiltersRef = useRef(appliedFilters)
   const prevSearchTermRef = useRef(searchTerm)
@@ -429,28 +434,13 @@ export default function OeeTurno() {
   // Datas selecionadas como objetos Date (para o componente Calendar)
   const dataInicioSelecionada = useMemo(() => parseDataParaDate(dataInicio), [dataInicio])
   const dataFimSelecionada = useMemo(() => parseDataParaDate(dataFim), [dataFim])
-  const dataInicioIso = converterDataBrParaIso(dataInicio)
-  const dataFimIso = converterDataBrParaIso(dataFim)
-  const oeeturnoIdFiltro = useMemo(() => {
-    const termo = searchTerm.trim()
-    return /^\d+$/.test(termo) ? Number(termo) : null
-  }, [searchTerm])
-  const parametrosResumo = useMemo(() => ({
-    p_data_inicio: dataInicioIso,
-    p_data_fim: dataFimIso,
-    p_turno_id: null,
-    p_produto_id: null,
-    p_linhaproducao_id: null,
-    p_oeeturno_id: oeeturnoIdFiltro
-  }), [dataInicioIso, dataFimIso, oeeturnoIdFiltro])
-
   // Contagem de filtros aplicados no modal "Filtros" (não inclui período inline)
   const appliedCountBadge = (() => {
     let count = 0
     const f = appliedFilters
     if (f.turnoIds.length > 0) count++
     if (f.produto) count++
-    if (f.status) count++
+    if (f.statuses.length > 0) count++
     return count
   })()
 
@@ -460,7 +450,7 @@ export default function OeeTurno() {
     const f = appliedFilters
     if (f.turnoIds.length > 0) count++
     if (f.produto) count++
-    if (f.status) count++
+    if (f.statuses.length > 0) count++
     if (dataInicio) count++
     if (dataFim) count++
     return count
@@ -471,7 +461,7 @@ export default function OeeTurno() {
     const f = draftFilters
     if (f.turnoIds.length > 0) count++
     if (f.produto.trim()) count++
-    if (f.status) count++
+    if (f.statuses.length > 0) count++
     return count
   })()
 
@@ -534,6 +524,18 @@ export default function OeeTurno() {
     return `${draftFilters.turnoIds.length} turnos selecionados`
   }, [draftFilters.turnoIds, turnosDisponiveis])
 
+  const resumoStatusSelecionados = useMemo(() => {
+    if (draftFilters.statuses.length === 0) {
+      return 'Todos os status'
+    }
+
+    if (draftFilters.statuses.length === 1) {
+      return draftFilters.statuses[0]
+    }
+
+    return `${draftFilters.statuses.length} status selecionados`
+  }, [draftFilters.statuses])
+
   // Query para buscar dados do Supabase
   const {
     data: turnosData,
@@ -548,7 +550,7 @@ export default function OeeTurno() {
       searchTerm,
       serializarIdsSelecionados(appliedFilters.turnoIds),
       appliedFilters.produto,
-      appliedFilters.status,
+      serializarStatusSelecionados(appliedFilters.statuses),
       dataInicio,
       dataFim
     ],
@@ -563,7 +565,7 @@ export default function OeeTurno() {
         {
           searchTerm: searchFilter || undefined,
           turnoIds: turnoIdsAplicados.length > 0 ? turnoIdsAplicados : undefined,
-          status: appliedFilters.status || undefined,
+          statuses: appliedFilters.statuses.length > 0 ? appliedFilters.statuses : undefined,
           dataInicio: converterDataBrParaIso(dataInicio),
           dataFim: converterDataBrParaIso(dataFim)
         },
@@ -706,7 +708,7 @@ export default function OeeTurno() {
     const filtersChanged =
       turnosAlterados ||
       prevFilters.produto !== appliedFilters.produto ||
-      prevFilters.status !== appliedFilters.status
+      serializarStatusSelecionados(prevFilters.statuses) !== serializarStatusSelecionados(appliedFilters.statuses)
     const searchChanged = prevSearchTermRef.current !== searchTerm
     const dataInicioChanged = prevDataInicioRef.current !== dataInicio
     const dataFimChanged = prevDataFimRef.current !== dataFim
@@ -770,11 +772,28 @@ export default function OeeTurno() {
     })
   }
 
+  const alternarStatusSelecionado = (status: OeeTurnoStatus) => {
+    setDraftFilters((prev) => {
+      if (prev.statuses.includes(status)) {
+        return {
+          ...prev,
+          statuses: prev.statuses.filter((item) => item !== status)
+        }
+      }
+
+      return {
+        ...prev,
+        statuses: [...prev.statuses, status]
+      }
+    })
+  }
+
   // Aplicar e limpar filtros
   const applyFilters = () => {
     setAppliedFilters({
       ...draftFilters,
-      turnoIds: [...draftFilters.turnoIds]
+      turnoIds: [...draftFilters.turnoIds],
+      statuses: [...draftFilters.statuses]
     })
     setCurrentPage(1)
     try {
@@ -789,7 +808,7 @@ export default function OeeTurno() {
     const cleared = {
       turnoIds: [] as string[],
       produto: '',
-      status: '' as OeeTurnoStatus | '',
+      statuses: [] as OeeTurnoStatus[],
     }
     const dataAtual = obterDataAtualFormatada()
     setDraftFilters(cleared)
@@ -1035,7 +1054,7 @@ export default function OeeTurno() {
               <Button
                 variant="outline"
                 className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
-                onClick={() => setIsResumoDialogOpen(true)}
+                onClick={() => navigate('/oee-resumo-turno')}
               >
                 <ClipboardList className="h-4 w-4" />
                 Resumo
@@ -1182,11 +1201,13 @@ export default function OeeTurno() {
                     setOpenFilterDialog(o)
                     if (!o) {
                       setMenuTurnoAberto(false)
+                      setMenuStatusAberto(false)
                     }
                     if (o) {
                       setDraftFilters({
                         ...appliedFilters,
-                        turnoIds: [...appliedFilters.turnoIds]
+                        turnoIds: [...appliedFilters.turnoIds],
+                        statuses: [...appliedFilters.statuses]
                       })
                     }
                   }}>
@@ -1352,11 +1373,11 @@ export default function OeeTurno() {
                                       )}
                                     </div>
                                     <DropdownMenuSeparator />
-                                    <div className="p-2">
+                                    <div className="flex justify-end p-2">
                                       <Button
                                         type="button"
                                         variant="secondary"
-                                        className="h-10 w-full rounded-lg"
+                                        className="h-9 w-24 rounded-lg"
                                         onClick={() => setMenuTurnoAberto(false)}
                                       >
                                         Fechar
@@ -1404,37 +1425,101 @@ export default function OeeTurno() {
                               <div className="mt-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
 
                               <div className="mt-5 space-y-2 sm:space-y-3">
-                                <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
-                                  <Target className="h-3.5 w-3.5 text-brand-primary" />
-                                  Status
-                                </p>
-                                <select
-                                  id="f-status"
-                                  className="flex h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm text-slate-700 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
-                                  value={draftFilters.status}
-                                  onChange={(e) => setDraftFilters((p) => ({ ...p, status: e.target.value as OeeTurnoStatus | '' }))}
-                                >
-                                  <option value="">Todos</option>
-                                  <option value="Aberto">Aberto</option>
-                                  <option value="Fechado">Fechado</option>
-                                  <option value="Cancelado">Cancelado</option>
-                                </select>
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                    Status
+                                  </p>
+                                  {draftFilters.statuses.length > 0 && (
+                                    <span className="whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
+                                      {draftFilters.statuses.length}{' '}
+                                      selecionado{draftFilters.statuses.length > 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                <DropdownMenu open={menuStatusAberto} onOpenChange={setMenuStatusAberto}>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      id="f-status"
+                                      variant="outline"
+                                      className="h-10 w-full justify-between rounded-xl border-slate-200 bg-white px-3.5 text-left font-normal text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
+                                    >
+                                      <span className="truncate">{resumoStatusSelecionados}</span>
+                                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="start"
+                                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-slate-200 bg-white p-0 shadow-lg"
+                                  >
+                                    <DropdownMenuCheckboxItem
+                                      className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                      checked={draftFilters.statuses.length === 0}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setDraftFilters((prev) => ({ ...prev, statuses: [] }))
+                                        }
+                                      }}
+                                      onSelect={(event) => event.preventDefault()}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                            draftFilters.statuses.length === 0
+                                              ? 'border-brand-primary bg-brand-primary text-white'
+                                              : 'border-input bg-background text-transparent'
+                                          }`}
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </span>
+                                        <span>Todos os status</span>
+                                      </div>
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuSeparator />
+                                    {STATUS_OEE_DISPONIVEIS.map((status) => {
+                                      const selecionado = draftFilters.statuses.includes(status)
+                                      return (
+                                        <DropdownMenuCheckboxItem
+                                          key={status}
+                                          className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                          checked={selecionado}
+                                          onCheckedChange={() => alternarStatusSelecionado(status)}
+                                          onSelect={(event) => event.preventDefault()}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                selecionado
+                                                  ? 'border-brand-primary bg-brand-primary text-white'
+                                                  : 'border-input bg-background text-transparent'
+                                              }`}
+                                            >
+                                              <Check className="h-3 w-3" />
+                                            </span>
+                                            <span>{status}</span>
+                                          </div>
+                                        </DropdownMenuCheckboxItem>
+                                      )
+                                    })}
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end p-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="h-9 w-24 rounded-lg"
+                                        onClick={() => setMenuStatusAberto(false)}
+                                      >
+                                        Fechar
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </section>
                           </div>
                         </div>
 
                         <DialogFooter className="border-t border-slate-100 bg-white/95 px-4 py-4 sm:px-5 md:px-6 lg:px-7">
-                          <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-between">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              className="h-10 justify-start px-0 text-sm font-medium text-slate-500 hover:bg-transparent hover:text-slate-700 disabled:text-slate-300 sm:w-auto"
-                              onClick={clearFilters}
-                              disabled={draftCountBadge === 0}
-                            >
-                              Limpar filtros
-                            </Button>
+                          <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-end">
                             <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:gap-2 md:gap-3">
                               <Button
                                 type="button"
@@ -1884,14 +1969,6 @@ export default function OeeTurno() {
               />
             </div>
           </div>
-
-          <ModalResumoOeeTurno
-            open={isResumoDialogOpen}
-            onOpenChange={setIsResumoDialogOpen}
-            dataInicio={dataInicio}
-            dataFim={dataFim}
-            parametros={parametrosResumo}
-          />
 
           {/* Dialog de confirmação de exclusão */}
           <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

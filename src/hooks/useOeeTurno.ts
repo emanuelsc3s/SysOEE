@@ -156,7 +156,10 @@ export function useOeeTurno() {
         if (filters?.produtoId) {
           query = query.eq('produto_id', filters.produtoId)
         }
-        if (filters?.status) {
+        const statusSelecionados = (filters?.statuses || []).filter((status) => Boolean(status))
+        if (statusSelecionados.length > 0) {
+          query = query.in('status', statusSelecionados)
+        } else if (filters?.status) {
           query = query.eq('status', filters.status)
         }
 
