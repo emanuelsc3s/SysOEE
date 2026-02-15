@@ -1249,27 +1249,20 @@ export default function OeeTurno() {
 
                         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7">
                           <div className="space-y-4 sm:space-y-5">
-                            <section className="rounded-xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5">
-                              <div className="mb-3 flex items-start justify-between gap-3 sm:mb-4">
-                                <div className="space-y-1">
-                                  <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
-                                    <Clock className="h-3.5 w-3.5 text-brand-primary" />
-                                    Turnos
-                                  </p>
-                                  <p className="text-xs text-slate-500 sm:text-sm">
-                                    Selecione um ou mais turnos para restringir os resultados.
-                                  </p>
-                                </div>
+                            <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5">
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                  Turnos
+                                </p>
                                 {draftFilters.turnoIds.length > 0 && (
-                                  <span className="mt-0.5 whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
+                                  <span className="whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
                                     {draftFilters.turnoIds.length}{' '}
                                     selecionado{draftFilters.turnoIds.length > 1 ? 's' : ''}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="space-y-2">
-                                <Label htmlFor="f-turno" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Turno</Label>
+                              <div>
                                 <DropdownMenu open={menuTurnoAberto} onOpenChange={setMenuTurnoAberto}>
                                   <DropdownMenuTrigger asChild>
                                     <Button
@@ -1379,7 +1372,6 @@ export default function OeeTurno() {
                             <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                               <div className="mb-3 space-y-1 sm:mb-4">
                                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
-                                  <Package className="h-3.5 w-3.5 text-brand-primary" />
                                   Produto
                                 </p>
                                 <p className="text-xs text-slate-500 sm:text-sm">
