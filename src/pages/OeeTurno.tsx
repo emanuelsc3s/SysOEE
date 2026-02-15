@@ -1227,7 +1227,7 @@ export default function OeeTurno() {
                               </div>
                               <div className="min-w-0 flex-1 space-y-0.5">
                                 <div className="flex flex-wrap items-start justify-between gap-2">
-                                  <DialogTitle className="text-[1.125rem] font-semibold leading-tight tracking-[-0.02em] text-slate-900">
+                                  <DialogTitle className="text-[1.125rem] font-semibold leading-tight tracking-[-0.02em] text-gray-700">
                                     Filtrar Apontamentos
                                   </DialogTitle>
                                   {draftCountBadge > 0 && (
@@ -1371,16 +1371,12 @@ export default function OeeTurno() {
 
                             <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                               <div className="mb-3 space-y-1 sm:mb-4">
-                                <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                <p className="inline-flex items-center gap-2 text-[14px] font-semibold uppercase tracking-[0.08em] text-slate-700">
                                   Produto
-                                </p>
-                                <p className="text-xs text-slate-500 sm:text-sm">
-                                  Use o nome do item para refinar a busca por apontamentos.
                                 </p>
                               </div>
 
                               <div className="space-y-2 sm:space-y-3">
-                                <Label htmlFor="f-produto" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Produto</Label>
                                 <div className="relative">
                                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                   <Input
@@ -1412,7 +1408,6 @@ export default function OeeTurno() {
                                   <Target className="h-3.5 w-3.5 text-brand-primary" />
                                   Status
                                 </p>
-                                <Label htmlFor="f-status" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Situação do turno</Label>
                                 <select
                                   id="f-status"
                                   className="flex h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-sm text-slate-700 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 disabled:cursor-not-allowed disabled:opacity-50"

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ajustada a cor do título "Filtrar Apontamentos" no modal de filtros (OeeTurno) de slate-900 para gray-700.
 - Dashboard (modal câmera): badge "AO VIVO" e barra de controles (Atualizar/Tela cheia/Fechar) exibidos somente após o stream da câmera carregar (estado `cameraImagemCarregada`).
 - Dashboard (modal câmera): barra de controles (Atualizar/Tela cheia/Fechar) alinhada à direita e efeito liquid glass dos botões mais transparente (bordas e fundo com menor opacidade, blur reduzido).
 - Melhorada a visibilidade das inputs de login em tablets com altura crítica (~430px): aumentado o `scroll-padding-bottom` para 18rem e o `padding-bottom` do painel para 1.5rem, garantindo que os campos permaneçam visíveis acima do teclado virtual. Ajustado o posicionamento para usar `block: 'start'` em todas as inputs em altura crítica, com margem inferior de 140px para maior espaço acima do teclado.
