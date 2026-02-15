@@ -110,7 +110,7 @@ export default function Home() {
   }
 
   /**
-   * Abre o modal de seleção do apontamento OEE
+   * Abre o modal de seleção do apontamento OEE (Lista por turno / Resumo consolidado).
    */
   const handleAbrirModalApontamentoOee = () => {
     setModalApontamentoOeeAberto(true)
@@ -176,7 +176,8 @@ export default function Home() {
       title: 'Análise Paradas OEE',
       icon: <BarChart3 className={iconClassName} />,
       path: '/oee-analise-paradas',
-      description: 'Dashboard executivo com Pareto e priorização de tratativas'
+      description: 'Dashboard executivo com Pareto e priorização de tratativas',
+      adminOnly: true
     },
     {
       title: 'Ordem de Produção',

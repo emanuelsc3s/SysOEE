@@ -8,8 +8,8 @@ interface NavigationCardProps {
   icon: React.ReactNode
   /** Caminho de navegação */
   path: string
-  /** Função de callback opcional (sobrescreve navegação padrão) */
-  onClick?: () => void
+  /** Função de callback opcional (sobrescreve navegação padrão). Pode ser síncrona ou assíncrona. */
+  onClick?: (e?: React.MouseEvent) => void
   /** Tamanho visual do card */
   size?: 'default' | 'compact'
   /** Se true, bloqueia a navegação e o clique */
@@ -94,7 +94,11 @@ export function NavigationCard({
     return (
       <button
         type="button"
-        onClick={onClick}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onClick(e)
+        }}
         className={cardClasses}
         disabled={disabled}
         aria-disabled={disabled}
