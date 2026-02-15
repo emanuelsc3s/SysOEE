@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeTurno: botões "Resumo" e "Filtros" com o mesmo estilo do botão "Voltar" (fundo branco, texto e borda brand-primary, hover cinza claro).
 - Home: card "Análise Paradas OEE" restrito a Administrador (adminOnly: true), exibindo como botão desabilitado com mensagem de acesso negado quando o usuário não for admin, no mesmo padrão do card "Ordem de Produção".
 - Home: removida validação de perfil no card Apontamento OEE; qualquer usuário pode abrir o modal de seleção (Lista por turno / Resumo consolidado); a validação de Administrador permanece apenas no botão "Apontamento Rápido" na página OeeTurno.
 - OeeTurno: validação de perfil Administrador (tbusuario.perfil) no clique de Apontamento Rápido; usuário logado (auth.user_id) deve ter perfil Administrador; exibido modal de alerta (Permissão necessária) quando não autorizado; mensagem do modal informa que é rotina para apontamento mais simples e rápido e que será liberada aos demais usuários ao longo da semana (testes).

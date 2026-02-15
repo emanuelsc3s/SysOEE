@@ -1273,7 +1273,7 @@ export default function OeeTurno() {
               </Button>
               <Button
                 variant="outline"
-                className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
+                className="flex w-full items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
                 onClick={() => navigate('/oee-resumo-turno')}
               >
                 <ClipboardList className="h-4 w-4" />
@@ -1430,7 +1430,7 @@ export default function OeeTurno() {
                     <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
+                        className="flex w-full items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
                       >
                         <Filter className="h-4 w-4" />
                         Filtros
