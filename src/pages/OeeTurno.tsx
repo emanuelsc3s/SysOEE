@@ -42,9 +42,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useOeeTurno } from '@/hooks/useOeeTurno'
 import { useAuth } from '@/hooks/useAuth'
+import { useToast } from '@/hooks/use-toast'
 import { SYSOEE_APP_ID, type Rotina } from '@/hooks/usePermissions'
 import { supabase } from '@/lib/supabase'
+import { isPerfilAdministrador } from '@/utils/perfil.utils'
 import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
+import { ModalApontamentoRapidoOEE } from '@/pages/oee/apontamento-oee/components/ModalApontamentoRapidoOEE'
+import type { ContextoTurnoRapidoOEE } from '@/pages/oee/apontamento-oee/types/apontamentoRapidoOee.types'
 import {
   Search,
   Check,
@@ -62,7 +66,8 @@ import {
   Activity,
   ClipboardList,
   Calendar as CalendarIcon,
-  X
+  X,
+  Zap
 } from 'lucide-react'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { format } from 'date-fns'
@@ -73,6 +78,7 @@ const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
 const FILTERS_STORAGE_KEY = 'sysoee_oee_turno_filters'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
+const MENSAGEM_PERMISSAO_APONTAMENTO_RAPIDO = 'Apontamento rápido é uma rotina para lançamento de dados de forma mais simples e ainda mais rápida. No momento está permitido apenas para usuários com perfil Administrador. Será liberado para os demais usuários ao longo da semana — estamos em testes.'
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 const TEMPO_DISPONIVEL_PADRAO = 12
 const TURNOS_VAZIOS: OeeTurnoFormData[] = []
@@ -460,6 +466,7 @@ const obterDataAtualFormatada = (): string => {
 export default function OeeTurno() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { toast } = useToast()
   const dataAtualInicialRef = useRef(obterDataAtualFormatada())
   const filtrosPersistidosIniciaisRef = useRef<OeeTurnoPersistedFilters | null>(null)
   if (!filtrosPersistidosIniciaisRef.current) {
@@ -486,6 +493,7 @@ export default function OeeTurno() {
   // Estados de UI
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = useState(false)
+  const [isApontamentoRapidoPermissionDialogOpen, setIsApontamentoRapidoPermissionDialogOpen] = useState(false)
   const [turnoToDelete, setTurnoToDelete] = useState<OeeTurnoFormData | null>(null)
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
   const [usuarioIdAutenticado, setUsuarioIdAutenticado] = useState<number | null>(null)
@@ -498,6 +506,8 @@ export default function OeeTurno() {
   const [menuTurnoAberto, setMenuTurnoAberto] = useState(false)
   const [menuStatusAberto, setMenuStatusAberto] = useState(false)
   const [buscaTurno, setBuscaTurno] = useState('')
+  const [modalApontamentoRapidoAberto, setModalApontamentoRapidoAberto] = useState(false)
+  const [contextoApontamentoRapido, setContextoApontamentoRapido] = useState<ContextoTurnoRapidoOEE | null>(null)
 
   // Hook para operações com Supabase
   const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
@@ -928,6 +938,31 @@ export default function OeeTurno() {
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}`)
   }
 
+  const montarContextoApontamentoRapido = (turno: OeeTurnoFormData): ContextoTurnoRapidoOEE | null => {
+    const oeeturnoId = Number(turno.id)
+    if (!Number.isFinite(oeeturnoId)) {
+      return null
+    }
+
+    if (!Number.isFinite(turno.turnoId) || !Number.isFinite(turno.produtoId)) {
+      return null
+    }
+
+    return {
+      oeeturnoId,
+      data: turno.data,
+      turnoId: turno.turnoId,
+      turno: turno.turno,
+      horaInicio: turno.horaInicio,
+      horaFim: turno.horaFim,
+      linhaProducaoId: turno.linhaProducaoId,
+      linhaProducaoNome: formatarLinhaProducao(turno),
+      produtoId: turno.produtoId,
+      produto: turno.produto,
+      status: turno.status
+    }
+  }
+
   const validarPermissaoEdicaoTurnoFechado = async (): Promise<boolean> => {
     if (!authUser?.id) {
       return false
@@ -984,6 +1019,63 @@ export default function OeeTurno() {
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`)
   }
 
+  const handleAbrirApontamentoRapido = async (turno: OeeTurnoFormData) => {
+    const permitido = await validarPermissaoApontamentoRapido()
+    if (!permitido) {
+      setIsApontamentoRapidoPermissionDialogOpen(true)
+      return
+    }
+
+    if (turno.status === 'Cancelado') {
+      toast({
+        title: 'Turno cancelado',
+        description: 'Não é permitido lançar apontamento rápido para turnos cancelados.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (turno.status === 'Fechado') {
+      const permitido = await validarPermissaoEdicaoTurnoFechado()
+      if (!permitido) {
+        toast({
+          title: 'Permissão necessária',
+          description: 'Você não tem permissão para lançar apontamentos em turno fechado.',
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+
+    const contexto = montarContextoApontamentoRapido(turno)
+    if (!contexto) {
+      toast({
+        title: 'Dados incompletos',
+        description: 'Não foi possível preparar o contexto do apontamento rápido para este turno.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setContextoApontamentoRapido(contexto)
+    setModalApontamentoRapidoAberto(true)
+  }
+
+  const handleApontamentoRapidoRegistrado = async () => {
+    if (!contextoApontamentoRapido) {
+      return
+    }
+
+    await refetch()
+
+    const turnoId = String(contextoApontamentoRapido.oeeturnoId)
+    setCarregandoOeePorTurno((prev) => ({ ...prev, [turnoId]: true }))
+
+    const oeeAtualizado = await buscarOeePorTurno(contextoApontamentoRapido.oeeturnoId)
+    setOeePorTurno((prev) => ({ ...prev, [turnoId]: oeeAtualizado }))
+    setCarregandoOeePorTurno((prev) => ({ ...prev, [turnoId]: false }))
+  }
+
   const handleConfirmarVisualizacaoFechado = () => {
     if (turnoParaVisualizar) {
       // Redireciona para consulta (SEM edit=true)
@@ -1026,6 +1118,34 @@ export default function OeeTurno() {
       return permitido
     } catch (error) {
       console.error('Erro inesperado ao validar perfil:', error)
+      return false
+    }
+  }
+
+  /** Valida se o usuário logado (auth.user_id) tem perfil Administrador em tbusuario. */
+  const validarPermissaoApontamentoRapido = async (): Promise<boolean> => {
+    if (!authUser?.id) {
+      return false
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tbusuario')
+        .select('usuario_id, perfil')
+        .eq('user_id', authUser.id)
+        .eq('deletado', 'N')
+        .maybeSingle()
+
+      if (error || !data?.perfil) {
+        if (error) {
+          console.error('Erro ao validar perfil para apontamento rápido:', error)
+        }
+        return false
+      }
+
+      return isPerfilAdministrador(data.perfil)
+    } catch (error) {
+      console.error('Erro inesperado ao validar perfil para apontamento rápido:', error)
       return false
     }
   }
@@ -1791,6 +1911,18 @@ export default function OeeTurno() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="col-span-2 h-10 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void handleAbrirApontamentoRapido(turno)
+                            }}
+                          >
+                            <Zap className="h-4 w-4 mr-1" />
+                            Apontamento Rápido
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="h-10"
                             onClick={(e) => {
                               e.stopPropagation()
@@ -1873,6 +2005,19 @@ export default function OeeTurno() {
                           >
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                               <div className="flex justify-start gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-700 hover:text-emerald-800"
+                                  title="Apontamento Rápido"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    void handleAbrirApontamentoRapido(turno)
+                                  }}
+                                >
+                                  <Zap className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -2066,6 +2211,18 @@ export default function OeeTurno() {
             </div>
           </div>
 
+          <ModalApontamentoRapidoOEE
+            open={modalApontamentoRapidoAberto}
+            onOpenChange={(open) => {
+              setModalApontamentoRapidoAberto(open)
+              if (!open) {
+                setContextoApontamentoRapido(null)
+              }
+            }}
+            contexto={contextoApontamentoRapido}
+            onApontamentoRegistrado={handleApontamentoRapidoRegistrado}
+          />
+
           {/* Dialog de confirmação de exclusão */}
           <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
@@ -2097,6 +2254,22 @@ export default function OeeTurno() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogAction onClick={() => setIsPermissionDialogOpen(false)}>
+                  Entendi
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={isApontamentoRapidoPermissionDialogOpen} onOpenChange={setIsApontamentoRapidoPermissionDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Permissão necessária</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {MENSAGEM_PERMISSAO_APONTAMENTO_RAPIDO}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setIsApontamentoRapidoPermissionDialogOpen(false)}>
                   Entendi
                 </AlertDialogAction>
               </AlertDialogFooter>
