@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { AlertTriangle, Calendar as CalendarIcon, ChevronDown, Filter, Info, Loader2, Maximize, Minimize, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video, X } from 'lucide-react'
+import { AlertTriangle, Calendar as CalendarIcon, Check, ChevronDown, Filter, Info, Loader2, Maximize, Minimize, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
@@ -1614,6 +1614,7 @@ export default function Dashboard() {
                       </div>
                       <DropdownMenuSeparator />
                       <DropdownMenuCheckboxItem
+                        className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
                         checked={filtros.linhaIds.length === 0}
                         onCheckedChange={(checked) => {
                           if (checked) {
@@ -1622,7 +1623,18 @@ export default function Dashboard() {
                         }}
                         onSelect={(event) => event.preventDefault()}
                       >
-                        Todas as linhas
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                              filtros.linhaIds.length === 0
+                                ? 'border-brand-primary bg-brand-primary text-white'
+                                : 'border-gray-400 bg-white text-transparent'
+                            }`}
+                          >
+                            <Check className="h-3 w-3" />
+                          </span>
+                          <span>Todas as linhas</span>
+                        </div>
                       </DropdownMenuCheckboxItem>
                       <DropdownMenuSeparator />
                       <div className="max-h-64 overflow-y-auto">
@@ -1633,14 +1645,27 @@ export default function Dashboard() {
                         ) : (
                           linhasFiltradas.map((linha) => {
                             const linhaId = String(linha.linhaproducao_id)
+                            const selecionada = filtros.linhaIds.includes(linhaId)
                             return (
                               <DropdownMenuCheckboxItem
                                 key={linha.linhaproducao_id}
-                                checked={filtros.linhaIds.includes(linhaId)}
+                                className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                checked={selecionada}
                                 onCheckedChange={() => alternarLinhaSelecionada(linhaId)}
                                 onSelect={(event) => event.preventDefault()}
                               >
-                                {linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                      selecionada
+                                        ? 'border-brand-primary bg-brand-primary text-white'
+                                        : 'border-gray-400 bg-white text-transparent'
+                                    }`}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </span>
+                                  <span>{linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}</span>
+                                </div>
                               </DropdownMenuCheckboxItem>
                             )
                           })
