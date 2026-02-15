@@ -70,13 +70,134 @@ import { ptBR } from 'date-fns/locale'
 
 // Constantes estáveis no escopo do módulo para evitar warnings de dependências
 const PAGE_SIZE_STORAGE_KEY = 'sysoee_oee_turno_items_per_page'
-const SEARCH_TERM_STORAGE_KEY = 'sysoee_oee_turno_search_term'
+const FILTERS_STORAGE_KEY = 'sysoee_oee_turno_filters'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 const TEMPO_DISPONIVEL_PADRAO = 12
 const TURNOS_VAZIOS: OeeTurnoFormData[] = []
 const STATUS_OEE_DISPONIVEIS: OeeTurnoStatus[] = ['Aberto', 'Fechado', 'Cancelado']
+
+type OeeTurnoAppliedFilters = {
+  turnoIds: string[]
+  produto: string
+  statuses: OeeTurnoStatus[]
+}
+
+type OeeTurnoPersistedFilters = {
+  searchTerm: string
+  dataInicio: string
+  dataFim: string
+  appliedFilters: OeeTurnoAppliedFilters
+}
+
+const FILTROS_APLICADOS_PADRAO: OeeTurnoAppliedFilters = {
+  turnoIds: [],
+  produto: '',
+  statuses: [],
+}
+
+const clonarFiltrosAplicados = (filtros: OeeTurnoAppliedFilters): OeeTurnoAppliedFilters => ({
+  turnoIds: [...filtros.turnoIds],
+  produto: filtros.produto,
+  statuses: [...filtros.statuses]
+})
+
+const criarFiltrosPersistidosPadrao = (dataAtualPadrao: string): OeeTurnoPersistedFilters => ({
+  searchTerm: '',
+  dataInicio: dataAtualPadrao,
+  dataFim: dataAtualPadrao,
+  appliedFilters: clonarFiltrosAplicados(FILTROS_APLICADOS_PADRAO)
+})
+
+const ehObjeto = (valor: unknown): valor is Record<string, unknown> =>
+  typeof valor === 'object' && valor !== null && !Array.isArray(valor)
+
+const normalizarTurnoIds = (valor: unknown): string[] => {
+  if (!Array.isArray(valor)) {
+    return []
+  }
+
+  const ids = valor
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item.trim()
+      }
+      if (typeof item === 'number' && Number.isFinite(item)) {
+        return String(item)
+      }
+      return ''
+    })
+    .filter((item) => item.length > 0)
+
+  return Array.from(new Set(ids))
+}
+
+const normalizarStatuses = (valor: unknown): OeeTurnoStatus[] => {
+  if (!Array.isArray(valor)) {
+    return []
+  }
+
+  const statusValidos = valor
+    .filter((item): item is OeeTurnoStatus =>
+      typeof item === 'string' && STATUS_OEE_DISPONIVEIS.includes(item as OeeTurnoStatus)
+    )
+
+  return Array.from(new Set(statusValidos))
+}
+
+const normalizarFiltrosAplicados = (valor: unknown): OeeTurnoAppliedFilters => {
+  if (!ehObjeto(valor)) {
+    return clonarFiltrosAplicados(FILTROS_APLICADOS_PADRAO)
+  }
+
+  return {
+    turnoIds: normalizarTurnoIds(valor.turnoIds),
+    produto: typeof valor.produto === 'string' ? valor.produto : '',
+    statuses: normalizarStatuses(valor.statuses)
+  }
+}
+
+const lerFiltrosPersistidos = (dataAtualPadrao: string): OeeTurnoPersistedFilters => {
+  const padrao = criarFiltrosPersistidosPadrao(dataAtualPadrao)
+  if (typeof window === 'undefined') {
+    return padrao
+  }
+
+  try {
+    const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY)
+    if (!raw) {
+      return padrao
+    }
+
+    const parsed: unknown = JSON.parse(raw)
+    if (!ehObjeto(parsed)) {
+      return padrao
+    }
+
+    return {
+      searchTerm: typeof parsed.searchTerm === 'string' ? parsed.searchTerm : '',
+      dataInicio: typeof parsed.dataInicio === 'string' && parsed.dataInicio.trim() ? parsed.dataInicio : dataAtualPadrao,
+      dataFim: typeof parsed.dataFim === 'string' && parsed.dataFim.trim() ? parsed.dataFim : dataAtualPadrao,
+      appliedFilters: normalizarFiltrosAplicados(parsed.appliedFilters)
+    }
+  } catch (error) {
+    console.error('[OeeTurno] Erro ao ler filtros persistidos:', error)
+    return padrao
+  }
+}
+
+const salvarFiltrosPersistidos = (filtros: OeeTurnoPersistedFilters): void => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filtros))
+  } catch (error) {
+    console.error('[OeeTurno] Erro ao salvar filtros persistidos:', error)
+  }
+}
 
 type OeeTurnoRpc = {
   oee?: number | string | null
@@ -340,13 +461,14 @@ export default function OeeTurno() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const dataAtualInicialRef = useRef(obterDataAtualFormatada())
-  const [searchTerm, setSearchTerm] = useState(() => {
-    try {
-      return sessionStorage.getItem(SEARCH_TERM_STORAGE_KEY) ?? ''
-    } catch {
-      return ''
-    }
-  })
+  const filtrosPersistidosIniciaisRef = useRef<OeeTurnoPersistedFilters | null>(null)
+  if (!filtrosPersistidosIniciaisRef.current) {
+    filtrosPersistidosIniciaisRef.current = lerFiltrosPersistidos(dataAtualInicialRef.current)
+  }
+  const filtrosPersistidosIniciais =
+    filtrosPersistidosIniciaisRef.current ?? criarFiltrosPersistidosPadrao(dataAtualInicialRef.current)
+
+  const [searchTerm, setSearchTerm] = useState(() => filtrosPersistidosIniciais.searchTerm)
   const [currentPage, setCurrentPage] = useState(() => {
     const p = Number(searchParams.get('page'))
     return Number.isFinite(p) && p > 0 ? p : 1
@@ -356,8 +478,8 @@ export default function OeeTurno() {
   const [itemsPerPage, setItemsPerPage] = useState(25)
 
   // Estados dos date pickers de período
-  const [dataInicio, setDataInicio] = useState(dataAtualInicialRef.current)
-  const [dataFim, setDataFim] = useState(dataAtualInicialRef.current)
+  const [dataInicio, setDataInicio] = useState(() => filtrosPersistidosIniciais.dataInicio)
+  const [dataFim, setDataFim] = useState(() => filtrosPersistidosIniciais.dataFim)
   const [calendarioInicioAberto, setCalendarioInicioAberto] = useState(false)
   const [calendarioFimAberto, setCalendarioFimAberto] = useState(false)
 
@@ -407,25 +529,26 @@ export default function OeeTurno() {
     } catch { /* noop */ }
   }, [])
 
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(SEARCH_TERM_STORAGE_KEY, searchTerm)
-    } catch { /* noop */ }
-  }, [searchTerm])
-
   // Estado de filtros aplicados (usado para consulta)
-  const [appliedFilters, setAppliedFilters] = useState({
-    turnoIds: [] as string[],
-    produto: '',
-    statuses: [] as OeeTurnoStatus[],
-  })
+  const [appliedFilters, setAppliedFilters] = useState<OeeTurnoAppliedFilters>(() =>
+    clonarFiltrosAplicados(filtrosPersistidosIniciais.appliedFilters)
+  )
 
   // Estado de edição (no modal) - começa com os filtros aplicados
-  const [draftFilters, setDraftFilters] = useState({
-    turnoIds: [] as string[],
-    produto: '',
-    statuses: [] as OeeTurnoStatus[],
-  })
+  const [draftFilters, setDraftFilters] = useState<OeeTurnoAppliedFilters>(() =>
+    clonarFiltrosAplicados(filtrosPersistidosIniciais.appliedFilters)
+  )
+
+  // Persiste os filtros para sobreviver a recarregamentos e navegação.
+  useEffect(() => {
+    salvarFiltrosPersistidos({
+      searchTerm,
+      dataInicio,
+      dataFim,
+      appliedFilters: clonarFiltrosAplicados(appliedFilters)
+    })
+  }, [searchTerm, dataInicio, dataFim, appliedFilters])
+
   const prevFiltersRef = useRef(appliedFilters)
   const prevSearchTermRef = useRef(searchTerm)
   const prevDataInicioRef = useRef(dataInicio)
@@ -790,11 +913,7 @@ export default function OeeTurno() {
 
   // Aplicar e limpar filtros
   const applyFilters = () => {
-    setAppliedFilters({
-      ...draftFilters,
-      turnoIds: [...draftFilters.turnoIds],
-      statuses: [...draftFilters.statuses]
-    })
+    setAppliedFilters(clonarFiltrosAplicados(draftFilters))
     setCurrentPage(1)
     try {
       const params = new URLSearchParams(searchParams)
@@ -802,25 +921,6 @@ export default function OeeTurno() {
       setSearchParams(params, { replace: true })
     } catch { /* noop */ }
     setOpenFilterDialog(false)
-  }
-
-  const clearFilters = () => {
-    const cleared = {
-      turnoIds: [] as string[],
-      produto: '',
-      statuses: [] as OeeTurnoStatus[],
-    }
-    const dataAtual = obterDataAtualFormatada()
-    setDraftFilters(cleared)
-    setAppliedFilters(cleared)
-    setDataInicio(dataAtual)
-    setDataFim(dataAtual)
-    setCurrentPage(1)
-    try {
-      const params = new URLSearchParams(searchParams)
-      params.delete('page')
-      setSearchParams(params, { replace: true })
-    } catch { /* noop */ }
   }
 
   const handleVisualizar = (turno: OeeTurnoFormData) => {
@@ -1204,11 +1304,7 @@ export default function OeeTurno() {
                       setMenuStatusAberto(false)
                     }
                     if (o) {
-                      setDraftFilters({
-                        ...appliedFilters,
-                        turnoIds: [...appliedFilters.turnoIds],
-                        statuses: [...appliedFilters.statuses]
-                      })
+                      setDraftFilters(clonarFiltrosAplicados(appliedFilters))
                     }
                   }}>
                     <DialogTrigger asChild>
