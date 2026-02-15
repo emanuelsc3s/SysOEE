@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Dashboard: persistência dos filtros (linha, produto, turno, data início/fim) em localStorage para não redefinir ao recarregar a página.
 - Ajustado o rótulo "Status" no modal de filtros da página OeeTurno para tamanho de fonte 14px (text-sm/relativo).
 - Removido o ícone SVG (Target) do rótulo "Status" no modal de filtros da página OeeTurno.
 - Removido o modal de resumo (ModalResumoOeeTurno) da página OeeTurno; o botão "Resumo" agora navega para a página /oee-resumo-turno (ResumoOeeTurno).

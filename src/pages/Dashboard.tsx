@@ -161,6 +161,47 @@ const TOLERANCIA_BUFFER_CAMERA_MS = 1200
 const MENSAGEM_PERMISSAO_CAMERA = 'Usuário de Nível Operador sem permissão para visualizar cameras'
 const TOTAL_TENTATIVAS_CONEXAO_CAMERA = 10
 const INTERVALO_ENTRE_TENTATIVAS_CAMERA_MS = 1000
+const DASHBOARD_FILTROS_STORAGE_KEY = 'sicfar-dashboard-filtros'
+
+const FILTROS_DASHBOARD_PADRAO: FiltrosDashboard = {
+  linhaIds: [],
+  produtoId: 'todos',
+  turnoId: 'todos',
+  dataInicio: '',
+  dataFim: ''
+}
+
+const lerFiltrosDashboardPersistidos = (): FiltrosDashboard => {
+  if (typeof window === 'undefined') {
+    return FILTROS_DASHBOARD_PADRAO
+  }
+
+  try {
+    const raw = window.localStorage.getItem(DASHBOARD_FILTROS_STORAGE_KEY)
+    if (!raw) {
+      return FILTROS_DASHBOARD_PADRAO
+    }
+
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return FILTROS_DASHBOARD_PADRAO
+    }
+
+    const obj = parsed as Record<string, unknown>
+    return {
+      linhaIds: Array.isArray(obj.linhaIds)
+        ? (obj.linhaIds as unknown[]).filter((id): id is string => typeof id === 'string')
+        : [],
+      produtoId: typeof obj.produtoId === 'string' ? obj.produtoId : 'todos',
+      turnoId: typeof obj.turnoId === 'string' ? obj.turnoId : 'todos',
+      dataInicio: typeof obj.dataInicio === 'string' ? obj.dataInicio : '',
+      dataFim: typeof obj.dataFim === 'string' ? obj.dataFim : ''
+    }
+  } catch (error) {
+    console.error('[Dashboard] Erro ao ler filtros persistidos:', error)
+    return FILTROS_DASHBOARD_PADRAO
+  }
+}
 
 const aguardar = (tempoMs: number): Promise<void> => {
   return new Promise((resolve) => {
@@ -453,13 +494,7 @@ export default function Dashboard() {
   const periodoInicializadoRef = useRef(false)
   const campoBuscaLinhaRef = useRef<HTMLInputElement | null>(null)
 
-  const [filtros, setFiltros] = useState<FiltrosDashboard>({
-    linhaIds: [],
-    produtoId: 'todos',
-    turnoId: 'todos',
-    dataInicio: '',
-    dataFim: ''
-  })
+  const [filtros, setFiltros] = useState<FiltrosDashboard>(() => lerFiltrosDashboardPersistidos())
 
   const [carregandoListas, setCarregandoListas] = useState(true)
   const [carregandoDados, setCarregandoDados] = useState(false)
@@ -598,6 +633,18 @@ export default function Dashboard() {
     periodoInicializadoRef.current = true
     carregarPeriodoInicial()
   }, [carregarPeriodoInicial])
+
+  // Persiste filtros no localStorage quando o usuário alterar (linha, produto, turno, datas)
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    try {
+      window.localStorage.setItem(DASHBOARD_FILTROS_STORAGE_KEY, JSON.stringify(filtros))
+    } catch (error) {
+      console.error('[Dashboard] Erro ao salvar filtros no localStorage:', error)
+    }
+  }, [filtros])
 
   useEffect(() => {
     if (menuLinhaAberto) {
