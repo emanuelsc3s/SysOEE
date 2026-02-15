@@ -5,7 +5,7 @@ alwaysApply: true
 
 # AGENTS.md
 
-## Idioma e Comunicação
+## LANGUAGE
 
 **IMPORTANTE**: Sempre responda em português brasileiro, escreva comentários no código em português e gere toda documentação em português.
 
