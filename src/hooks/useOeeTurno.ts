@@ -147,7 +147,10 @@ export function useOeeTurno() {
         if (filters?.dataFim) {
           query = query.lte('data', filters.dataFim)
         }
-        if (filters?.turnoId) {
+        const turnoIds = (filters?.turnoIds || []).filter((id) => Number.isFinite(id))
+        if (turnoIds.length > 0) {
+          query = query.in('turno_id', turnoIds)
+        } else if (filters?.turnoId) {
           query = query.eq('turno_id', filters.turnoId)
         }
         if (filters?.produtoId) {

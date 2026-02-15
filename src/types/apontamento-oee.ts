@@ -217,6 +217,8 @@ export interface FetchOeeTurnoFilters {
   dataFim?: string
   /** Filtrar por ID do turno */
   turnoId?: number
+  /** Filtrar por múltiplos IDs de turno */
+  turnoIds?: number[]
   /** Filtrar por ID do produto */
   produtoId?: number
   /** Filtrar por status */

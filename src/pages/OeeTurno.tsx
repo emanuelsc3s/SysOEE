@@ -12,6 +12,13 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -41,8 +48,10 @@ import { supabase } from '@/lib/supabase'
 import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
 import {
   Search,
+  Check,
   Pencil,
   Trash2,
+  ChevronDown,
   Clock,
   Target,
   RefreshCw,
@@ -70,6 +79,12 @@ const TURNOS_VAZIOS: OeeTurnoFormData[] = []
 
 type OeeTurnoRpc = {
   oee?: number | string | null
+}
+
+type TurnoFiltroOption = {
+  turno_id: number
+  codigo: string | null
+  turno: string | null
 }
 
 const clamp = (valor: number, min: number, max: number): number => {
@@ -123,6 +138,28 @@ const calcularCorOee = (valor: number | null | undefined): string | null => {
   const fator = (oee - 65) / 35
   return interpolarCores('#2563EB', '#1E40AF', fator)
 }
+
+const normalizarTexto = (texto: string): string =>
+  texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+const formatarLabelTurno = (turno: TurnoFiltroOption): string => {
+  const codigo = (turno.codigo || '').trim()
+  const nome = (turno.turno || '').trim()
+
+  if (codigo && nome) {
+    return `${codigo} - ${nome}`
+  }
+
+  return codigo || nome || `Turno ${turno.turno_id}`
+}
+
+const serializarIdsSelecionados = (ids: string[]): string =>
+  [...ids]
+    .sort((a, b) => Number(a) - Number(b))
+    .join(',')
 
 const normalizarNumeroRpc = (valor: number | string | null | undefined): number => {
   if (typeof valor === 'number') {
@@ -331,6 +368,8 @@ export default function OeeTurno() {
   const [turnoParaVisualizar, setTurnoParaVisualizar] = useState<OeeTurnoFormData | null>(null)
   const [oeePorTurno, setOeePorTurno] = useState<Record<string, number | null>>({})
   const [carregandoOeePorTurno, setCarregandoOeePorTurno] = useState<Record<string, boolean>>({})
+  const [menuTurnoAberto, setMenuTurnoAberto] = useState(false)
+  const [buscaTurno, setBuscaTurno] = useState('')
 
   // Hook para operações com Supabase
   const { fetchOeeTurnos, deleteOeeTurno } = useOeeTurno()
@@ -348,6 +387,7 @@ export default function OeeTurno() {
   // Refs para calcular altura disponível do grid
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const paginationRef = useRef<HTMLDivElement | null>(null)
+  const campoBuscaTurnoRef = useRef<HTMLInputElement | null>(null)
 
   // Carrega preferência de "por página" do localStorage ao montar
   useEffect(() => {
@@ -369,14 +409,14 @@ export default function OeeTurno() {
 
   // Estado de filtros aplicados (usado para consulta)
   const [appliedFilters, setAppliedFilters] = useState({
-    turno: '',
+    turnoIds: [] as string[],
     produto: '',
     status: '' as OeeTurnoStatus | '',
   })
 
   // Estado de edição (no modal) - começa com os filtros aplicados
   const [draftFilters, setDraftFilters] = useState({
-    turno: '',
+    turnoIds: [] as string[],
     produto: '',
     status: '' as OeeTurnoStatus | '',
   })
@@ -407,7 +447,7 @@ export default function OeeTurno() {
   const appliedCountBadge = (() => {
     let count = 0
     const f = appliedFilters
-    if (f.turno) count++
+    if (f.turnoIds.length > 0) count++
     if (f.produto) count++
     if (f.status) count++
     return count
@@ -417,13 +457,72 @@ export default function OeeTurno() {
   const appliedCount = (() => {
     let count = 0
     const f = appliedFilters
-    if (f.turno) count++
+    if (f.turnoIds.length > 0) count++
     if (f.produto) count++
     if (f.status) count++
     if (dataInicio) count++
     if (dataFim) count++
     return count
   })()
+
+  const { data: turnosDisponiveis = [] } = useQuery({
+    queryKey: ['oee-turnos-filtro-opcoes'],
+    queryFn: async (): Promise<TurnoFiltroOption[]> => {
+      const { data, error } = await supabase
+        .from('tbturno')
+        .select('turno_id, codigo, turno')
+        .eq('deletado', 'N')
+        .order('codigo', { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      return (data || []) as TurnoFiltroOption[]
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000
+  })
+
+  const turnoIdsAplicados = useMemo(
+    () => appliedFilters.turnoIds
+      .map((turnoId) => Number(turnoId))
+      .filter((turnoId) => Number.isFinite(turnoId)),
+    [appliedFilters.turnoIds]
+  )
+
+  const turnosFiltradosDropdown = useMemo(() => {
+    const termo = normalizarTexto(buscaTurno.trim())
+    if (!termo) {
+      return turnosDisponiveis
+    }
+
+    return turnosDisponiveis.filter((turno) => {
+      const textoTurno = normalizarTexto(`${turno.codigo ?? ''} ${turno.turno ?? ''} ${turno.turno_id}`)
+      return textoTurno.includes(termo)
+    })
+  }, [buscaTurno, turnosDisponiveis])
+
+  const resumoTurnosSelecionados = useMemo(() => {
+    if (draftFilters.turnoIds.length === 0) {
+      return 'Todos os turnos'
+    }
+
+    if (draftFilters.turnoIds.length === 1) {
+      const turnoIdSelecionado = draftFilters.turnoIds[0]
+      const turnoSelecionado = turnosDisponiveis.find(
+        (turno) => String(turno.turno_id) === turnoIdSelecionado
+      )
+
+      if (!turnoSelecionado) {
+        return `Turno ${turnoIdSelecionado}`
+      }
+
+      return formatarLabelTurno(turnoSelecionado)
+    }
+
+    return `${draftFilters.turnoIds.length} turnos selecionados`
+  }, [draftFilters.turnoIds, turnosDisponiveis])
 
   // Query para buscar dados do Supabase
   const {
@@ -437,7 +536,7 @@ export default function OeeTurno() {
       currentPage,
       itemsPerPage,
       searchTerm,
-      appliedFilters.turno,
+      serializarIdsSelecionados(appliedFilters.turnoIds),
       appliedFilters.produto,
       appliedFilters.status,
       dataInicio,
@@ -447,13 +546,13 @@ export default function OeeTurno() {
       // Construir filtro de busca combinando texto
       const searchFilter = [
         searchTerm,
-        appliedFilters.turno,
         appliedFilters.produto
       ].filter(Boolean).join(' ')
 
       return await fetchOeeTurnos(
         {
           searchTerm: searchFilter || undefined,
+          turnoIds: turnoIdsAplicados.length > 0 ? turnoIdsAplicados : undefined,
           status: appliedFilters.status || undefined,
           dataInicio: converterDataBrParaIso(dataInicio),
           dataFim: converterDataBrParaIso(dataFim)
@@ -514,6 +613,18 @@ export default function OeeTurno() {
       return params
     }, { replace: true })
   }, [currentPage, totalPagesValidas, setSearchParams])
+
+  useEffect(() => {
+    if (menuTurnoAberto) {
+      campoBuscaTurnoRef.current?.focus()
+    }
+  }, [menuTurnoAberto])
+
+  useEffect(() => {
+    if (!menuTurnoAberto && buscaTurno) {
+      setBuscaTurno('')
+    }
+  }, [buscaTurno, menuTurnoAberto])
 
   useEffect(() => {
     if (turnosPaginados.length === 0) {
@@ -580,8 +691,10 @@ export default function OeeTurno() {
   // Resetar página para 1 quando searchTerm, filtros ou datas mudarem
   useEffect(() => {
     const prevFilters = prevFiltersRef.current
+    const turnosAlterados =
+      serializarIdsSelecionados(prevFilters.turnoIds) !== serializarIdsSelecionados(appliedFilters.turnoIds)
     const filtersChanged =
-      prevFilters.turno !== appliedFilters.turno ||
+      turnosAlterados ||
       prevFilters.produto !== appliedFilters.produto ||
       prevFilters.status !== appliedFilters.status
     const searchChanged = prevSearchTermRef.current !== searchTerm
@@ -631,9 +744,28 @@ export default function OeeTurno() {
     } catch { /* noop */ }
   }
 
+  const alternarTurnoSelecionado = (turnoId: string) => {
+    setDraftFilters((prev) => {
+      if (prev.turnoIds.includes(turnoId)) {
+        return {
+          ...prev,
+          turnoIds: prev.turnoIds.filter((id) => id !== turnoId)
+        }
+      }
+
+      return {
+        ...prev,
+        turnoIds: [...prev.turnoIds, turnoId]
+      }
+    })
+  }
+
   // Aplicar e limpar filtros
   const applyFilters = () => {
-    setAppliedFilters({ ...draftFilters })
+    setAppliedFilters({
+      ...draftFilters,
+      turnoIds: [...draftFilters.turnoIds]
+    })
     setCurrentPage(1)
     try {
       const params = new URLSearchParams(searchParams)
@@ -645,7 +777,7 @@ export default function OeeTurno() {
 
   const clearFilters = () => {
     const cleared = {
-      turno: '',
+      turnoIds: [] as string[],
       produto: '',
       status: '' as OeeTurnoStatus | '',
     }
@@ -1038,7 +1170,15 @@ export default function OeeTurno() {
                 <div className="flex flex-col gap-2 md:shrink-0 sm:flex-row">
                   <Dialog open={openFilterDialog} onOpenChange={(o) => {
                     setOpenFilterDialog(o)
-                    if (o) setDraftFilters({ ...appliedFilters })
+                    if (!o) {
+                      setMenuTurnoAberto(false)
+                    }
+                    if (o) {
+                      setDraftFilters({
+                        ...appliedFilters,
+                        turnoIds: [...appliedFilters.turnoIds]
+                      })
+                    }
                   }}>
                     <DialogTrigger asChild>
                       <Button
@@ -1064,12 +1204,106 @@ export default function OeeTurno() {
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="f-turno">Turno</Label>
-                            <Input
-                              id="f-turno"
-                              placeholder="Ex.: D1 - Diurno"
-                              value={draftFilters.turno}
-                              onChange={(e) => setDraftFilters((p) => ({ ...p, turno: e.target.value }))}
-                            />
+                            <DropdownMenu open={menuTurnoAberto} onOpenChange={setMenuTurnoAberto}>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  id="f-turno"
+                                  variant="outline"
+                                  className="h-11 w-full justify-between font-normal sm:h-10"
+                                >
+                                  <span className="truncate">{resumoTurnosSelecionados}</span>
+                                  <ChevronDown className="h-4 w-4 opacity-60" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="start"
+                                className="w-[var(--radix-dropdown-menu-trigger-width)]"
+                              >
+                                <div className="p-2">
+                                  <Input
+                                    ref={campoBuscaTurnoRef}
+                                    placeholder="Buscar turno"
+                                    value={buscaTurno}
+                                    onChange={(event) => setBuscaTurno(event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key !== 'Escape') {
+                                        event.stopPropagation()
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuCheckboxItem
+                                  className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                  checked={draftFilters.turnoIds.length === 0}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setDraftFilters((prev) => ({ ...prev, turnoIds: [] }))
+                                    }
+                                  }}
+                                  onSelect={(event) => event.preventDefault()}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                        draftFilters.turnoIds.length === 0
+                                          ? 'border-brand-primary bg-brand-primary text-white'
+                                          : 'border-gray-400 bg-white text-transparent'
+                                      }`}
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </span>
+                                    <span>Todos os turnos</span>
+                                  </div>
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuSeparator />
+                                <div className="max-h-64 overflow-y-auto">
+                                  {turnosFiltradosDropdown.length === 0 ? (
+                                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                      Nenhum turno encontrado.
+                                    </div>
+                                  ) : (
+                                    turnosFiltradosDropdown.map((turno) => {
+                                      const turnoId = String(turno.turno_id)
+                                      const selecionado = draftFilters.turnoIds.includes(turnoId)
+                                      return (
+                                        <DropdownMenuCheckboxItem
+                                          key={turno.turno_id}
+                                          className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                          checked={selecionado}
+                                          onCheckedChange={() => alternarTurnoSelecionado(turnoId)}
+                                          onSelect={(event) => event.preventDefault()}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                selecionado
+                                                  ? 'border-brand-primary bg-brand-primary text-white'
+                                                  : 'border-gray-400 bg-white text-transparent'
+                                              }`}
+                                            >
+                                              <Check className="h-3 w-3" />
+                                            </span>
+                                            <span>{formatarLabelTurno(turno)}</span>
+                                          </div>
+                                        </DropdownMenuCheckboxItem>
+                                      )
+                                    })
+                                  )}
+                                </div>
+                                <DropdownMenuSeparator />
+                                <div className="p-2">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={() => setMenuTurnoAberto(false)}
+                                  >
+                                    Fechar
+                                  </Button>
+                                </div>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
 
                           <div className="space-y-2">
