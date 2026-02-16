@@ -742,7 +742,10 @@ export default function OeeTurno() {
   }, [turnosData?.page, currentPage, setSearchParams])
 
   // Segurança adicional: mantém o estado da página dentro do total calculado.
+  // Só corrige quando já temos resposta do servidor (turnosData definido); durante loading
+  // turnosData fica undefined e totalItems=0, o que faria o efeito resetar para 1 indevidamente.
   useEffect(() => {
+    if (!turnosData) return
     if (currentPage <= totalPagesValidas) {
       return
     }
@@ -757,7 +760,7 @@ export default function OeeTurno() {
       }
       return params
     }, { replace: true })
-  }, [currentPage, totalPagesValidas, setSearchParams])
+  }, [currentPage, totalPagesValidas, setSearchParams, turnosData])
 
   useEffect(() => {
     if (menuTurnoAberto) {
