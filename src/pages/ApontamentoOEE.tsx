@@ -369,6 +369,12 @@ export default function ApontamentoOEE() {
   const [historicoParadas, setHistoricoParadas] = useState<RegistroParada[]>([])
   const [showConfirmExclusaoParada, setShowConfirmExclusaoParada] = useState(false)
   const [paradaParaExcluir, setParadaParaExcluir] = useState<string | null>(null)
+  /** Modal de erro quando o total de paradas excederia a duração do turno (dados em minutos para exibição) */
+  const [modalErroTotalParadas, setModalErroTotalParadas] = useState<{
+    totalExistentes: number
+    duracaoNova: number
+    duracaoTurno: number
+  } | null>(null)
 
   // ==================== Estado de Histórico de Qualidade ====================
   const [historicoQualidade, setHistoricoQualidade] = useState<RegistroQualidade[]>([])
@@ -3885,6 +3891,23 @@ export default function ApontamentoOEE() {
     return (minutosFim - minutosInicio) / 60
   }
 
+  /**
+   * Calcula duração do turno em minutos entre dois horários HH:MM (ou HH:MM:SS).
+   * Suporta passagem de meia-noite. Retorna null se alguma hora for vazia ou inválida.
+   */
+  const calcularDuracaoTurnoMinutos = (horaInicial: string, horaFinal: string): number | null => {
+    const hi = horaInicial?.trim().slice(0, 5)
+    const hf = horaFinal?.trim().slice(0, 5)
+    if (!hi || !hf || !hi.includes(':') || !hf.includes(':')) return null
+    const [hInicio, mInicio] = hi.split(':').map(Number)
+    const [hFim, mFim] = hf.split(':').map(Number)
+    if (Number.isNaN(hInicio) || Number.isNaN(mInicio) || Number.isNaN(hFim) || Number.isNaN(mFim)) return null
+    const minutosInicio = hInicio * 60 + mInicio
+    let minutosFim = hFim * 60 + mFim
+    if (minutosFim < minutosInicio) minutosFim += 24 * 60
+    return minutosFim - minutosInicio
+  }
+
   // ==================== Handlers ====================
 
   const iniciarEdicaoQualidade = async (registro: RegistroQualidade) => {
@@ -4170,6 +4193,56 @@ export default function ApontamentoOEE() {
           title: 'Erro de Validação',
           description: 'A hora final deve ser diferente da hora inicial',
           variant: 'destructive'
+        })
+        return
+      }
+
+      // Obter duração do turno (tboee_turno: turno_hi, turno_hf) para validar total de paradas
+      const { data: turnoData } = await supabase
+        .from('tboee_turno')
+        .select('turno_hi, turno_hf')
+        .eq('oeeturno_id', oeeTurnoId)
+        .maybeSingle()
+
+      const turnoHi = turnoData?.turno_hi != null ? String(turnoData.turno_hi).trim().slice(0, 5) : ''
+      const turnoHf = turnoData?.turno_hf != null ? String(turnoData.turno_hf).trim().slice(0, 5) : ''
+      const duracaoTurnoMinutos =
+        calcularDuracaoTurnoMinutos(turnoHi, turnoHf) ?? TEMPO_DISPONIVEL_PADRAO * 60
+
+      // Consultar paradas já salvas do turno e somar durações (mesma regra de virada de meia-noite)
+      const { data: paradasExistentes, error: erroParadas } = await supabase
+        .from('tboee_turno_parada')
+        .select('hora_inicio, hora_fim')
+        .eq('oeeturno_id', oeeTurnoId)
+        .eq('deletado', 'N')
+
+      if (erroParadas) {
+        toast({
+          title: 'Erro ao validar paradas',
+          description: 'Não foi possível verificar o total de paradas do turno. Tente novamente.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      let totalParadasExistentesMinutos = 0
+      for (const p of paradasExistentes ?? []) {
+        const hi = p.hora_inicio?.trim().slice(0, 5) ?? ''
+        const hf = p.hora_fim?.trim().slice(0, 5) ?? ''
+        if (!hi || !hf) continue
+        const [hIni, mIni] = hi.split(':').map(Number)
+        const [hFim, mFim] = hf.split(':').map(Number)
+        let dur = (hFim * 60 + mFim) - (hIni * 60 + mIni)
+        if (dur < 0) dur += 24 * 60
+        totalParadasExistentesMinutos += dur
+      }
+
+      const totalAposRegistro = totalParadasExistentesMinutos + duracaoMinutos
+      if (totalAposRegistro > duracaoTurnoMinutos) {
+        setModalErroTotalParadas({
+          totalExistentes: totalParadasExistentesMinutos,
+          duracaoNova: duracaoMinutos,
+          duracaoTurno: duracaoTurnoMinutos
         })
         return
       }
@@ -4847,6 +4920,54 @@ export default function ApontamentoOEE() {
                   className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                 >
                   Confirmar Exclusão
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Modal de erro: total de paradas excederia a duração do turno */}
+          <AlertDialog
+            open={modalErroTotalParadas !== null}
+            onOpenChange={(open) => !open && setModalErroTotalParadas(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive">
+                  Total de paradas excederia o turno
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  {modalErroTotalParadas && (
+                    <div className="space-y-2 text-left">
+                      <p>
+                        O total de paradas do turno (
+                        <strong>
+                          {Math.floor(modalErroTotalParadas.totalExistentes / 60)}h{' '}
+                          {modalErroTotalParadas.totalExistentes % 60}min
+                        </strong>
+                        ) mais esta parada (
+                        <strong>
+                          {Math.floor(modalErroTotalParadas.duracaoNova / 60)}h{' '}
+                          {modalErroTotalParadas.duracaoNova % 60}min
+                        </strong>
+                        ) excederia a duração do turno (
+                        <strong>
+                          {Math.floor(modalErroTotalParadas.duracaoTurno / 60)}h{' '}
+                          {modalErroTotalParadas.duracaoTurno % 60}min
+                        </strong>
+                        ).
+                      </p>
+                      <p>
+                        Verifique os horários ou se não trocou a hora inicial e a hora final da parada.
+                        Confira todas as paradas já registradas e a atual para que a soma não passe do
+                        horário total do turno.
+                      </p>
+                    </div>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setModalErroTotalParadas(null)}>
+                  Entendi
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
