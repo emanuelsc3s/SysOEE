@@ -1857,7 +1857,7 @@ export default function OeeTurno() {
                                     className="absolute text-[10px] font-bold"
                                     style={{ color: calcularCorOee(oeePorTurno[turno.id]) ?? undefined }}
                                   >
-                                    {Math.round(oeePorTurno[turno.id] ?? 0)}
+                                    {Math.floor(oeePorTurno[turno.id] ?? 0)}
                                   </span>
                                 </div>
                               )}
@@ -2106,7 +2106,7 @@ export default function OeeTurno() {
                                     className="absolute text-[9px] font-bold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mt-[1px]"
                                     style={{ color: calcularCorOee(oeePorTurno[turno.id]) ?? undefined }}
                                   >
-                                    {Math.round(oeePorTurno[turno.id] ?? 0)}%
+                                    {Math.floor(oeePorTurno[turno.id] ?? 0)}%
                                   </span>
                                 </div>
                               )}
