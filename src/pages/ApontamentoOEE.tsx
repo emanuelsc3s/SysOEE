@@ -6,7 +6,7 @@
  * Layout baseado em code_oee_apontar.html
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, Eye, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
@@ -363,6 +363,7 @@ export default function ApontamentoOEE() {
   const [registroParaExcluir, setRegistroParaExcluir] = useState<string | null>(null)
   const [exclusaoBloqueada, setExclusaoBloqueada] = useState(false)
   const [mensagemExclusaoBloqueada, setMensagemExclusaoBloqueada] = useState('')
+  const [salvandoLinhaId, setSalvandoLinhaId] = useState<string | null>(null)
 
   // ==================== Estado de Histórico de Paradas ====================
   const [historicoParadas, setHistoricoParadas] = useState<RegistroParada[]>([])
@@ -609,6 +610,23 @@ export default function ApontamentoOEE() {
   const turnoHoraFinalNormalizada = normalizarHoraDigitada(turnoHoraFinal)
   const horaInicialParadaNormalizada = normalizarHoraDigitada(horaInicialParada, true)
   const horaFinalParadaNormalizada = normalizarHoraDigitada(horaFinalParada, true)
+
+  /** Histórico de produção ordenado por horário inicial/final no fluxo do turno (ex.: 18h–06h → 18–19, 19–20, …, 23–00, 00–01, …, 05–06) */
+  const historicoProducaoOrdenado = useMemo<RegistroProducao[]>(() => {
+    const minutosDesdeMeiaNoite = (hora: string): number => {
+      if (!hora) return 0
+      const partes = hora.slice(0, 5).split(':').map(Number)
+      return (partes[0] ?? 0) * 60 + (partes[1] ?? 0)
+    }
+    const turnoInicioMin = minutosDesdeMeiaNoite(turnoHoraInicialNormalizada)
+    const turnoFimMin = minutosDesdeMeiaNoite(turnoHoraFinalNormalizada)
+    const ordemNoTurno = (r: RegistroProducao): number => {
+      const min = minutosDesdeMeiaNoite(r.horaInicio)
+      if (turnoFimMin > turnoInicioMin) return min - turnoInicioMin
+      return min >= turnoInicioMin ? min - turnoInicioMin : 1440 - turnoInicioMin + min
+    }
+    return [...historicoProducao].sort((a, b) => ordemNoTurno(a) - ordemNoTurno(b))
+  }, [historicoProducao, turnoHoraInicialNormalizada, turnoHoraFinalNormalizada])
 
 	/**
 	 * Formata um valor de hora para o padrão brasileiro 24h.
@@ -1393,7 +1411,7 @@ export default function ApontamentoOEE() {
    * Salva uma linha individual de apontamento de produção
    */
   const handleSalvarLinha = async (linhaApontamento: LinhaApontamentoProducao) => {
-    // Validações
+    // Validações iniciais (early return não precisa de finally)
     if (!data) {
       toast({
         title: 'Campo obrigatório',
@@ -1460,6 +1478,7 @@ export default function ApontamentoOEE() {
     }
 
     try {
+      setSalvandoLinhaId(linhaApontamento.id)
       const tempoOperacaoHoras = calcularDiferencaHoras(
         linhaApontamento.horaInicio,
         linhaApontamento.horaFim
@@ -1550,22 +1569,47 @@ export default function ApontamentoOEE() {
 
         registroSalvo = registroAtualizado as ProducaoSupabase
       } else {
-        const { data: registroCriado, error } = await supabase
+        // Upsert no front: evita duplicata verificando se já existe registro para mesma janela (oeeturno_id + hora_inicio)
+        const horaInicioNorm = normalizarHora(linhaApontamento.horaInicio)
+        const { data: existente } = await supabase
           .from('tboee_turno_producao')
-          .insert({
-            ...payload,
-            created_at: timestampAtual,
-            created_by: usuario.id,
-            deletado: 'N'
-          })
-          .select('*')
-          .single()
+          .select('oeeturnoproducao_id')
+          .eq('oeeturno_id', turnoAtualId)
+          .eq('hora_inicio', horaInicioNorm)
+          .or('deletado.is.null,deletado.eq.N')
+          .maybeSingle()
 
-        if (error) {
-          throw error
+        if (existente?.oeeturnoproducao_id) {
+          const { data: registroAtualizado, error } = await supabase
+            .from('tboee_turno_producao')
+            .update(payload)
+            .eq('oeeturnoproducao_id', existente.oeeturnoproducao_id)
+            .select('*')
+            .single()
+
+          if (error) {
+            throw error
+          }
+
+          registroSalvo = registroAtualizado as ProducaoSupabase
+        } else {
+          const { data: registroCriado, error } = await supabase
+            .from('tboee_turno_producao')
+            .insert({
+              ...payload,
+              created_at: timestampAtual,
+              created_by: usuario.id,
+              deletado: 'N'
+            })
+            .select('*')
+            .single()
+
+          if (error) {
+            throw error
+          }
+
+          registroSalvo = registroCriado as ProducaoSupabase
         }
-
-        registroSalvo = registroCriado as ProducaoSupabase
       }
 
       if (!registroSalvo) {
@@ -1573,9 +1617,11 @@ export default function ApontamentoOEE() {
       }
 
       const registroMapeado = mapearRegistroSupabase(registroSalvo)
-      const historicoAtualizado = linhaApontamento.apontamentoId
-        ? historicoProducao.map((registro) => registro.id === registroMapeado.id ? registroMapeado : registro)
-        : [registroMapeado, ...historicoProducao]
+      const idxHistorico = historicoProducao.findIndex((r) => r.id === registroMapeado.id)
+      const historicoAtualizado =
+        idxHistorico >= 0
+          ? historicoProducao.map((r, i) => (i === idxHistorico ? registroMapeado : r))
+          : [registroMapeado, ...historicoProducao]
 
       setHistoricoProducao(historicoAtualizado)
       setApontamentoProducaoId(registroMapeado.id)
@@ -1602,6 +1648,8 @@ export default function ApontamentoOEE() {
         description: obterMensagemErro(error, 'Não foi possível salvar o apontamento. Tente novamente.'),
         variant: 'destructive'
       })
+    } finally {
+      setSalvandoLinhaId(null)
     }
   }
 
@@ -4989,6 +5037,7 @@ export default function ApontamentoOEE() {
                               className="h-10 border-green-200 text-green-700 hover:bg-green-50"
                               title="Salvar linha"
                               disabled={
+                                salvandoLinhaId === linha.id ||
                                 !turnoPermiteEdicao ||
                                 quantidadeProduzidaInvalida(linha.quantidadeProduzida) ||
                                 Boolean(linha.apontamentoId && !linha.editavel)
@@ -5107,6 +5156,7 @@ export default function ApontamentoOEE() {
                                     className="h-8 px-3 text-green-600 hover:text-green-700 hover:bg-green-50"
                                     title="Salvar linha"
                                     disabled={
+                                      salvandoLinhaId === linha.id ||
                                       !turnoPermiteEdicao ||
                                       quantidadeProduzidaInvalida(linha.quantidadeProduzida) ||
                                       Boolean(linha.apontamentoId && !linha.editavel)
@@ -5160,12 +5210,12 @@ export default function ApontamentoOEE() {
                 <h2 className="font-display text-xl font-bold text-primary mb-4">Histórico de Registros de Produção</h2>
 
                 <div className="space-y-2 md:hidden">
-                  {historicoProducao.length === 0 ? (
+                  {historicoProducaoOrdenado.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-border-light p-4 text-center text-sm text-muted-foreground">
                       Nenhum registro de produção encontrado
                     </div>
                   ) : (
-                    historicoProducao.map((registro) => (
+                    historicoProducaoOrdenado.map((registro) => (
                       <div
                         key={registro.id}
                         className="rounded-xl border border-border-light bg-slate-50/50 p-3 shadow-sm"
@@ -5218,14 +5268,14 @@ export default function ApontamentoOEE() {
                       </tr>
                     </thead>
                     <tbody>
-                      {historicoProducao.length === 0 ? (
+                      {historicoProducaoOrdenado.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-1 py-4 text-center text-muted-foreground">
                             Nenhum registro de produção encontrado
                           </td>
                         </tr>
                       ) : (
-                        historicoProducao.map((registro) => (
+                        historicoProducaoOrdenado.map((registro) => (
                           <tr
                             key={registro.id}
                             className={`bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark`}
