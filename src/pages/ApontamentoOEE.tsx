@@ -180,8 +180,8 @@ interface ProducaoSupabase {
   departamento: string | null
   produto_id: number | null
   produto: string | null
-  velocidade: number | null
-  quantidade: number | null
+  velocidade: number | string | null
+  quantidade: number | string | null
   data: string | null
   hora_inicio: string | null
   hora_final: string | null
@@ -195,6 +195,121 @@ interface ProducaoSupabase {
 const TEMPO_DISPONIVEL_PADRAO = 12
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
+
+interface NormalizacaoNumeroPtBr {
+  formatado: string
+  valorNormalizado: string
+  valorNumero: number
+}
+
+const converterNumeroParaCalculo = (valor: number | string | null | undefined): number => {
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? valor : Number.NaN
+  }
+
+  if (typeof valor !== 'string') {
+    return Number.NaN
+  }
+
+  const texto = valor.trim().replace(/\s/g, '')
+  if (!texto) {
+    return Number.NaN
+  }
+
+  if (texto.includes(',')) {
+    const normalizadoPtBr = texto.replace(/\./g, '').replace(',', '.')
+    const numeroPtBr = Number(normalizadoPtBr)
+    return Number.isFinite(numeroPtBr) ? numeroPtBr : Number.NaN
+  }
+
+  const numero = Number(texto)
+  return Number.isFinite(numero) ? numero : Number.NaN
+}
+
+const converterNumeroParaCalculoOuZero = (valor: number | string | null | undefined): number => {
+  const numero = converterNumeroParaCalculo(valor)
+  return Number.isFinite(numero) ? numero : 0
+}
+
+const formatarNumeroInputPtBr = (
+  valor: number | string | null | undefined,
+  casasDecimaisMaximas = 4
+): string => {
+  const numero = converterNumeroParaCalculo(valor)
+  if (!Number.isFinite(numero)) {
+    return ''
+  }
+
+  return numero.toLocaleString('pt-BR', {
+    maximumFractionDigits: casasDecimaisMaximas
+  })
+}
+
+const normalizarNumeroPtBrInput = (
+  valor: string,
+  casasDecimaisMaximas = 4,
+  totalMaximoDigitos = 15
+): NormalizacaoNumeroPtBr => {
+  if (!valor) {
+    return {
+      formatado: '',
+      valorNormalizado: '',
+      valorNumero: Number.NaN
+    }
+  }
+
+  const textoSemEspacos = valor.replace(/\s/g, '')
+  let valorPadronizado = textoSemEspacos
+
+  // Aceita colagem com "." decimal (ex.: 5818.50) e converte para o padrão pt-BR.
+  if (!valorPadronizado.includes(',') && valorPadronizado.includes('.')) {
+    const ehFormatoMilharPtBr = /^\d{1,3}(\.\d{3})+$/.test(valorPadronizado)
+    if (!ehFormatoMilharPtBr) {
+      const ultimoPonto = valorPadronizado.lastIndexOf('.')
+      valorPadronizado = `${valorPadronizado.slice(0, ultimoPonto).replace(/\./g, '')},${valorPadronizado.slice(ultimoPonto + 1)}`
+    }
+  }
+
+  const somenteNumerosEVirgula = valorPadronizado.replace(/[^\d,]/g, '')
+  const partes = somenteNumerosEVirgula.split(',')
+  const temVirgula = partes.length > 1
+
+  const inteiroRaw = partes[0] ?? ''
+  let decimaisRaw = temVirgula ? partes.slice(1).join('') : ''
+
+  let inteiroNumeros = inteiroRaw.replace(/^0+(?=\d)/, '')
+  if (inteiroNumeros.length > totalMaximoDigitos) {
+    inteiroNumeros = inteiroNumeros.slice(0, totalMaximoDigitos)
+  }
+
+  const maxDecimaisDisponiveis = Math.max(totalMaximoDigitos - inteiroNumeros.length, 0)
+  const limiteDecimais = Math.min(casasDecimaisMaximas, maxDecimaisDisponiveis)
+  if (decimaisRaw.length > limiteDecimais) {
+    decimaisRaw = decimaisRaw.slice(0, limiteDecimais)
+  }
+
+  if (!inteiroNumeros && temVirgula) {
+    inteiroNumeros = '0'
+  }
+
+  const inteiroFormatado = inteiroNumeros
+    ? inteiroNumeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    : ''
+
+  const formatado = temVirgula ? `${inteiroFormatado},${decimaisRaw}` : inteiroFormatado
+  const valorNormalizado = inteiroNumeros
+    ? `${inteiroNumeros}${decimaisRaw ? `.${decimaisRaw}` : ''}`
+    : temVirgula
+      ? `0${decimaisRaw ? `.${decimaisRaw}` : ''}`
+      : ''
+  const valorNumero = valorNormalizado ? Number(valorNormalizado) : Number.NaN
+
+  return {
+    formatado,
+    valorNormalizado,
+    valorNumero
+  }
+}
 
 export default function ApontamentoOEE() {
   const { toast } = useToast()
@@ -536,7 +651,7 @@ export default function ApontamentoOEE() {
         apontamentoProducaoId: '',
         skuCodigo: skuCodigo,
         tipo: 'PERDAS' as const,
-        quantidade: registro.perda ? Number(registro.perda) : 0,
+        quantidade: converterNumeroParaCalculoOuZero(registro.perda),
         motivo: '',
         dataHoraRegistro: registro.created_at ? format(new Date(registro.created_at), 'dd/MM/yyyy HH:mm:ss') : '',
         deletado: registro.deletado as 'S' | 'N' | null
@@ -1131,10 +1246,12 @@ export default function ApontamentoOEE() {
       skuCodigo: registro.produto || skuCodigo,
       horaInicio,
       horaFim,
-      quantidadeProduzida: Number(registro.quantidade || 0),
+      quantidadeProduzida: converterNumeroParaCalculoOuZero(registro.quantidade),
       dataHoraRegistro: format(createdAt, 'dd/MM/yyyy HH:mm:ss'),
       createdAt: createdAt.toISOString(),
-      velocidade: registro.velocidade ? Number(registro.velocidade) : undefined
+      velocidade: registro.velocidade === null || registro.velocidade === undefined
+        ? undefined
+        : converterNumeroParaCalculoOuZero(registro.velocidade)
     }
   }, [formatarDataRegistro, linhaId, linhaSelecionada?.nome, skuCodigo, turno])
 
@@ -1153,7 +1270,7 @@ export default function ApontamentoOEE() {
         id: registro.id,
         horaInicio: registro.horaInicio,
         horaFim: registro.horaFim,
-        quantidadeProduzida: registro.quantidadeProduzida.toString(),
+        quantidadeProduzida: formatarNumeroInputPtBr(registro.quantidadeProduzida),
         apontamentoId: registro.id,
         editavel: false
       }))
@@ -1194,7 +1311,7 @@ export default function ApontamentoOEE() {
           id: registroHistorico.id,
           horaInicio: registroHistorico.horaInicio,
           horaFim: registroHistorico.horaFim,
-          quantidadeProduzida: registroHistorico.quantidadeProduzida.toString(),
+          quantidadeProduzida: formatarNumeroInputPtBr(registroHistorico.quantidadeProduzida),
           apontamentoId: registroHistorico.id,
           editavel: false
         })
@@ -1374,10 +1491,12 @@ export default function ApontamentoOEE() {
    * Atualiza a quantidade produzida de uma linha específica
    */
   const atualizarQuantidadeLinha = (linhaId: string, quantidade: string) => {
+    const quantidadeFormatada = normalizarNumeroPtBrInput(quantidade).formatado
+
     setLinhasApontamento(linhas =>
       linhas.map(linha =>
         linha.id === linhaId
-          ? { ...linha, quantidadeProduzida: quantidade }
+          ? { ...linha, quantidadeProduzida: quantidadeFormatada }
           : linha
       )
     )
@@ -1388,7 +1507,7 @@ export default function ApontamentoOEE() {
       return true
     }
 
-    const valor = Number(quantidade)
+    const { valorNumero: valor } = normalizarNumeroPtBrInput(quantidade)
     return !Number.isFinite(valor) || valor < 0
   }
 
@@ -1540,6 +1659,16 @@ export default function ApontamentoOEE() {
         return
       }
 
+      const { valorNumero: quantidadeProduzida } = normalizarNumeroPtBrInput(linhaApontamento.quantidadeProduzida)
+      if (!Number.isFinite(quantidadeProduzida) || quantidadeProduzida < 0) {
+        toast({
+          title: 'Campo obrigatório',
+          description: 'Informe uma Quantidade Produzida válida',
+          variant: 'destructive'
+        })
+        return
+      }
+
       const timestampAtual = gerarTimestampLocal()
       const payload = {
         linhaproducao_id: linhaProducaoSelecionada.linhaproducao_id,
@@ -1549,7 +1678,7 @@ export default function ApontamentoOEE() {
         produto_id: produtoAtualId,
         produto: skuCodigo,
         velocidade: velocidadeNominal,
-        quantidade: Number(linhaApontamento.quantidadeProduzida),
+        quantidade: quantidadeProduzida,
         data: format(data, 'yyyy-MM-dd'),
         hora_inicio: normalizarHora(linhaApontamento.horaInicio),
         hora_final: normalizarHora(linhaApontamento.horaFim),
@@ -1645,7 +1774,7 @@ export default function ApontamentoOEE() {
 
       toast({
         title: '✅ Linha Salva',
-        description: `Apontamento de ${Number(linhaApontamento.quantidadeProduzida).toLocaleString('pt-BR')} unidades registrado com sucesso`
+        description: `Apontamento de ${quantidadeProduzida.toLocaleString('pt-BR')} unidades registrado com sucesso`
       })
 
     } catch (error) {
@@ -1841,15 +1970,13 @@ export default function ApontamentoOEE() {
     return quantidade.toLocaleString('pt-BR')
   }
 
+  const converterNumeroInputPtBrOuZero = (valor: string): number => {
+    const { valorNumero } = normalizarNumeroPtBrInput(valor)
+    return Number.isFinite(valorNumero) ? valorNumero : 0
+  }
+
   const normalizarNumeroRpc = (valor: number | string | null | undefined): number => {
-    if (typeof valor === 'number') {
-      return Number.isFinite(valor) ? valor : 0
-    }
-    if (typeof valor === 'string') {
-      const numero = Number(valor.replace(',', '.'))
-      return Number.isFinite(numero) ? numero : 0
-    }
-    return 0
+    return converterNumeroParaCalculoOuZero(valor)
   }
 
   const formatarNumeroDecimal = (valor: number, casas = 2): string => {
@@ -1860,54 +1987,7 @@ export default function ApontamentoOEE() {
   }
 
   const normalizarPerdaPtBr = (valor: string) => {
-    if (!valor) {
-      return {
-        formatado: '',
-        valorNormalizado: '',
-        valorNumero: Number.NaN
-      }
-    }
-
-    const somenteNumerosEVirgula = valor.replace(/[^\d,]/g, '')
-    const partes = somenteNumerosEVirgula.split(',')
-    const temVirgula = partes.length > 1
-
-    const totalMaximoDigitos = 15
-    const inteiroRaw = partes[0] ?? ''
-    let decimaisRaw = temVirgula ? partes.slice(1).join('') : ''
-
-    let inteiroNumeros = inteiroRaw.replace(/^0+(?=\d)/, '')
-    if (inteiroNumeros.length > totalMaximoDigitos) {
-      inteiroNumeros = inteiroNumeros.slice(0, totalMaximoDigitos)
-    }
-
-    const maxDecimaisDisponiveis = Math.max(totalMaximoDigitos - inteiroNumeros.length, 0)
-    const limiteDecimais = Math.min(4, maxDecimaisDisponiveis)
-    if (decimaisRaw.length > limiteDecimais) {
-      decimaisRaw = decimaisRaw.slice(0, limiteDecimais)
-    }
-
-    if (!inteiroNumeros && temVirgula) {
-      inteiroNumeros = '0'
-    }
-
-    const inteiroFormatado = inteiroNumeros
-      ? inteiroNumeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-      : ''
-
-    const formatado = temVirgula ? `${inteiroFormatado},${decimaisRaw}` : inteiroFormatado
-    const valorNormalizado = inteiroNumeros
-      ? `${inteiroNumeros}${decimaisRaw ? `.${decimaisRaw}` : ''}`
-      : temVirgula
-        ? `0${decimaisRaw ? `.${decimaisRaw}` : ''}`
-        : ''
-    const valorNumero = valorNormalizado ? Number(valorNormalizado) : Number.NaN
-
-    return {
-      formatado,
-      valorNormalizado,
-      valorNumero
-    }
+    return normalizarNumeroPtBrInput(valor, 4, 15)
   }
 
   const formatarPerdaPtBr = (valor: string): string => {
@@ -5129,7 +5209,8 @@ export default function ApontamentoOEE() {
                             </Label>
                             <Input
                               id={`qtd-mobile-${linha.id}`}
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               value={linha.quantidadeProduzida}
                               onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
                               className={`mt-1 min-h-11 w-full ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -5248,7 +5329,8 @@ export default function ApontamentoOEE() {
                               </td>
                               <td className="px-4 py-3">
                                 <Input
-                                  type="number"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={linha.quantidadeProduzida}
                                   onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
                                   className={`w-48 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -6186,12 +6268,16 @@ export default function ApontamentoOEE() {
               </Label>
               <Input
                 id="intervalo-apontamento"
-                type="number"
-                min="1"
-                max="24"
-                value={intervaloApontamento}
+                type="text"
+                inputMode="numeric"
+                value={String(intervaloApontamento)}
                 onChange={(e) => {
-                  const valor = parseInt(e.target.value)
+                  const valorLimpo = e.target.value.replace(/\D/g, '').slice(0, 2)
+                  if (!valorLimpo) {
+                    return
+                  }
+
+                  const valor = Number(valorLimpo)
                   if (valor >= 1 && valor <= 24) {
                     setIntervaloApontamento(valor)
                   }
@@ -6688,7 +6774,7 @@ export default function ApontamentoOEE() {
                       <Package className="h-4 w-4 text-primary" />
                       <span className="text-sm font-medium">Quantidade:</span>
                       <span className="text-sm font-bold text-green-600">
-                        {formatarQuantidade(Number(linhaAnotacaoSelecionada.quantidadeProduzida))}
+                        {formatarQuantidade(converterNumeroInputPtBrOuZero(linhaAnotacaoSelecionada.quantidadeProduzida))}
                       </span>
                     </div>
                   </>

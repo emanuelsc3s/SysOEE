@@ -1,7 +1,0 @@
-{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":null,"currentPage":1},"timestamp":1771210421609,"hypothesisId":"H3"}
-{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":null,"currentPage":1},"timestamp":1771210421614,"hypothesisId":"H3"}
-{"location":"OeeTurno.tsx:handleEditar","message":"Saindo para edição","data":{"currentPage":79},"timestamp":1771210431554,"hypothesisId":"H1"}
-{"location":"ApontamentoOEE.tsx:handleVoltar","message":"Voltando para lista","data":{"returnPage":79,"path":"/oee-turno?page=79"},"timestamp":1771210436051,"hypothesisId":"H1"}
-{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":"79","currentPage":79},"timestamp":1771210436102,"hypothesisId":"H3"}
-{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":"79","currentPage":79},"timestamp":1771210436105,"hypothesisId":"H3"}
-{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":"79","currentPage":79},"timestamp":1771210460256,"hypothesisId":"H3"}
