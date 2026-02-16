@@ -937,8 +937,8 @@ export default function OeeTurno() {
   }
 
   const handleVisualizar = (turno: OeeTurnoFormData) => {
-    // Navega para a página de apontamento OEE com o ID do turno
-    navigate(`/apontamento-oee?oeeturno_id=${turno.id}`)
+    // Navega para a página de apontamento OEE com o ID do turno (preserva página para voltar)
+    navigate(`/apontamento-oee?oeeturno_id=${turno.id}`, { state: { returnPage: currentPage } })
   }
 
   const montarContextoApontamentoRapido = (turno: OeeTurnoFormData): ContextoTurnoRapidoOEE | null => {
@@ -1018,8 +1018,8 @@ export default function OeeTurno() {
         return
       }
     }
-    // Se está aberto, permitir edição normalmente
-    navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`)
+    // Se está aberto, permitir edição normalmente (preserva página para voltar no mesmo lugar)
+    navigate(`/apontamento-oee?oeeturno_id=${turno.id}&edit=true`, { state: { returnPage: currentPage } })
   }
 
   const handleAbrirApontamentoRapido = async (turno: OeeTurnoFormData) => {
@@ -1081,8 +1081,8 @@ export default function OeeTurno() {
 
   const handleConfirmarVisualizacaoFechado = () => {
     if (turnoParaVisualizar) {
-      // Redireciona para consulta (SEM edit=true)
-      navigate(`/apontamento-oee?oeeturno_id=${turnoParaVisualizar.id}`)
+      // Redireciona para consulta (SEM edit=true), preserva página para voltar
+      navigate(`/apontamento-oee?oeeturno_id=${turnoParaVisualizar.id}`, { state: { returnPage: currentPage } })
     }
     setIsStatusFechadoDialogOpen(false)
     setTurnoParaVisualizar(null)

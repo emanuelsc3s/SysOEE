@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, Eye, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
@@ -200,6 +200,7 @@ export default function ApontamentoOEE() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const oeeTurnoIdParam = searchParams.get('oeeturno_id') || searchParams.get('oeeTurnoId')
   const editModeParam = searchParams.get('edit') === 'true'
@@ -4347,12 +4348,14 @@ export default function ApontamentoOEE() {
 
   // ==================== Handlers do Header CRUD ====================
   const handleVoltar = async () => {
+    const returnPage = (location.state as { returnPage?: number } | null)?.returnPage
+    const path = returnPage != null && returnPage > 1 ? `/oee-turno?page=${returnPage}` : '/oee-turno'
     try {
       await queryClient.invalidateQueries({ queryKey: ['oee-turnos'] })
     } catch (error) {
       console.error('Erro ao invalidar cache do OeeTurno:', error)
     } finally {
-      navigate('/oee-turno')
+      navigate(path)
     }
   }
 
@@ -4408,7 +4411,9 @@ export default function ApontamentoOEE() {
     if (sucesso) {
       await queryClient.invalidateQueries({ queryKey: ['oee-turnos'] })
       setIsDeleteDialogOpen(false)
-      navigate('/oee-turno')
+      const returnPage = (location.state as { returnPage?: number } | null)?.returnPage
+      const path = returnPage != null && returnPage > 1 ? `/oee-turno?page=${returnPage}` : '/oee-turno'
+      navigate(path)
     }
   }
 

@@ -1,13 +1,7 @@
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":79,"next":79},"timestamp":1771210002391,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":78,"next":78},"timestamp":1771210006967,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:securityPage","message":"Efeito segurança: currentPage > totalPagesValidas, resetando","data":{"currentPage":78,"totalPagesValidas":1,"totalItems":0,"itemsPerPage":25},"timestamp":1771210011177,"hypothesisId":"H2"}
-{"location":"OeeTurno.tsx:securityPage","message":"Efeito segurança: currentPage > totalPagesValidas, resetando","data":{"currentPage":78,"totalPagesValidas":1,"totalItems":0,"itemsPerPage":25},"timestamp":1771210011180,"hypothesisId":"H2"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":79,"next":79},"timestamp":1771210024188,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:securityPage","message":"Efeito segurança: currentPage > totalPagesValidas, resetando","data":{"currentPage":79,"totalPagesValidas":1,"totalItems":0,"itemsPerPage":25},"timestamp":1771210024223,"hypothesisId":"H2"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":79,"next":79},"timestamp":1771210031769,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":78,"next":78},"timestamp":1771210032881,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":77,"next":77},"timestamp":1771210034059,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:securityPage","message":"Efeito segurança: currentPage > totalPagesValidas, resetando","data":{"currentPage":77,"totalPagesValidas":1,"totalItems":0,"itemsPerPage":25},"timestamp":1771210034078,"hypothesisId":"H2"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":79,"next":79},"timestamp":1771210087767,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":78,"next":78},"timestamp":1771210089719,"hypothesisId":"H4"}
-{"location":"OeeTurno.tsx:handlePageChange","message":"handlePageChange chamado","data":{"page":77,"next":77},"timestamp":1771210091597,"hypothesisId":"H4"}
+{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":null,"currentPage":1},"timestamp":1771210421609,"hypothesisId":"H3"}
+{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":null,"currentPage":1},"timestamp":1771210421614,"hypothesisId":"H3"}
+{"location":"OeeTurno.tsx:handleEditar","message":"Saindo para edição","data":{"currentPage":79},"timestamp":1771210431554,"hypothesisId":"H1"}
+{"location":"ApontamentoOEE.tsx:handleVoltar","message":"Voltando para lista","data":{"returnPage":79,"path":"/oee-turno?page=79"},"timestamp":1771210436051,"hypothesisId":"H1"}
+{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":"79","currentPage":79},"timestamp":1771210436102,"hypothesisId":"H3"}
+{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":"79","currentPage":79},"timestamp":1771210436105,"hypothesisId":"H3"}
+{"location":"OeeTurno.tsx:mount","message":"OeeTurno montado","data":{"pageFromUrl":"79","currentPage":79},"timestamp":1771210460256,"hypothesisId":"H3"}
