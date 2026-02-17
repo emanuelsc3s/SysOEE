@@ -1509,7 +1509,7 @@ export default function OeeTurno() {
 
                         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7">
                           <div className="space-y-4 sm:space-y-5">
-                            <section className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50/40 p-4 sm:p-5">
+                            <div className="flex flex-col gap-2">
                               <div className="flex items-start justify-between gap-3">
                                 <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
                                   Turnos
@@ -1625,9 +1625,7 @@ export default function OeeTurno() {
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
-                            </section>
-
-                            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+                            </div>
 
                             <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                               <div className="mb-3 space-y-1 sm:mb-4">
