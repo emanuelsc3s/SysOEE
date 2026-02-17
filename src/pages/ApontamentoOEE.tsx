@@ -248,7 +248,8 @@ const formatarNumeroInputPtBr = (
 const normalizarNumeroPtBrInput = (
   valor: string,
   casasDecimaisMaximas = 4,
-  totalMaximoDigitos = 15
+  totalMaximoDigitos = 15,
+  aceitarPontoComoDecimalSemVirgula = true
 ): NormalizacaoNumeroPtBr => {
   if (!valor) {
     return {
@@ -262,7 +263,11 @@ const normalizarNumeroPtBrInput = (
   let valorPadronizado = textoSemEspacos
 
   // Aceita colagem com "." decimal (ex.: 5818.50) e converte para o padrão pt-BR.
-  if (!valorPadronizado.includes(',') && valorPadronizado.includes('.')) {
+  if (
+    aceitarPontoComoDecimalSemVirgula &&
+    !valorPadronizado.includes(',') &&
+    valorPadronizado.includes('.')
+  ) {
     const ehFormatoMilharPtBr = /^\d{1,3}(\.\d{3})+$/.test(valorPadronizado)
     if (!ehFormatoMilharPtBr) {
       const ultimoPonto = valorPadronizado.lastIndexOf('.')
@@ -309,6 +314,11 @@ const normalizarNumeroPtBrInput = (
     valorNormalizado,
     valorNumero
   }
+}
+
+const normalizarQuantidadeProduzidaPtBr = (valor: string): NormalizacaoNumeroPtBr => {
+  // Na quantidade produzida, só entra em casas decimais quando o usuário digita vírgula.
+  return normalizarNumeroPtBrInput(valor, 4, 15, false)
 }
 
 export default function ApontamentoOEE() {
@@ -1491,7 +1501,7 @@ export default function ApontamentoOEE() {
    * Atualiza a quantidade produzida de uma linha específica
    */
   const atualizarQuantidadeLinha = (linhaId: string, quantidade: string) => {
-    const quantidadeFormatada = normalizarNumeroPtBrInput(quantidade).formatado
+    const quantidadeFormatada = normalizarQuantidadeProduzidaPtBr(quantidade).formatado
 
     setLinhasApontamento(linhas =>
       linhas.map(linha =>
@@ -1507,7 +1517,7 @@ export default function ApontamentoOEE() {
       return true
     }
 
-    const { valorNumero: valor } = normalizarNumeroPtBrInput(quantidade)
+    const { valorNumero: valor } = normalizarQuantidadeProduzidaPtBr(quantidade)
     return !Number.isFinite(valor) || valor < 0
   }
 
@@ -1659,7 +1669,7 @@ export default function ApontamentoOEE() {
         return
       }
 
-      const { valorNumero: quantidadeProduzida } = normalizarNumeroPtBrInput(linhaApontamento.quantidadeProduzida)
+      const { valorNumero: quantidadeProduzida } = normalizarQuantidadeProduzidaPtBr(linhaApontamento.quantidadeProduzida)
       if (!Number.isFinite(quantidadeProduzida) || quantidadeProduzida < 0) {
         toast({
           title: 'Campo obrigatório',
@@ -1971,7 +1981,7 @@ export default function ApontamentoOEE() {
   }
 
   const converterNumeroInputPtBrOuZero = (valor: string): number => {
-    const { valorNumero } = normalizarNumeroPtBrInput(valor)
+    const { valorNumero } = normalizarQuantidadeProduzidaPtBr(valor)
     return Number.isFinite(valorNumero) ? valorNumero : 0
   }
 
