@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeTurno (modal Filtros): botão de fechar do modal igual ao do modal de câmera do Dashboard (redondo, borda/fundo suave, backdrop-blur, ícone X).
 - ApontamentoOEE: validação ao registrar parada — consulta paradas já salvas do turno e duração do turno (tboee_turno: turno_hi/turno_hf); bloqueia o registro e exibe toast de erro quando a soma das paradas (existentes + nova) exceder a duração do turno, orientando a conferir horários e possível troca de início/fim (evita disponibilidade negativa por parada com horários invertidos).
 - ApontamentoOEE: "Histórico de Registros de Produção" ordenado por horário inicial/final no fluxo do turno (ex.: turno 18h–06h exibe 18–19, 19–20, …, 23–00, 00–01, …, 05–06; turno 06h–18h exibe 06–07, 07–08, …, 17–18).
 - ApontamentoOEE: ao salvar registro de produção, verificação de duplicata por oeeturno_id + hora_inicio; se já existir registro, faz UPDATE em vez de INSERT (upsert no front) para evitar múltiplos registros para a mesma janela. Botão "Salvar" desabilitado enquanto a linha está sendo salva (estado salvandoLinhaId) para evitar duplo clique.

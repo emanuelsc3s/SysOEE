@@ -32,6 +32,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogClose,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -1442,11 +1443,14 @@ export default function OeeTurno() {
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="w-full max-w-[calc(100vw-1rem)] sm:max-w-[680px] md:max-w-[760px] lg:max-w-[820px] max-h-[90dvh] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_25px_60px_rgba(20,27,27,0.12),0_8px_24px_rgba(20,27,27,0.08),0_0_0_1px_rgba(15,23,42,0.05)] [&>button]:right-4 [&>button]:top-4 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-md [&>button]:text-slate-400 [&>button]:opacity-100 [&>button]:hover:bg-slate-100 [&>button]:hover:text-slate-600">
+                    <DialogContent
+                      hideCloseButton
+                      className="w-full max-w-[calc(100vw-1rem)] sm:max-w-[680px] md:max-w-[760px] lg:max-w-[820px] max-h-[90dvh] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_25px_60px_rgba(20,27,27,0.12),0_8px_24px_rgba(20,27,27,0.08),0_0_0_1px_rgba(15,23,42,0.05)]"
+                    >
                       <div className="flex max-h-[90dvh] flex-col">
                         <div className="border-b border-slate-100 px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7">
-                          <DialogHeader className="text-left">
-                            <div className="flex items-center gap-3 pr-8 sm:pr-10">
+                          <DialogHeader className="flex flex-row items-center justify-between gap-4 text-left">
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
                               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
                                 <svg
                                   width={18}
@@ -1484,6 +1488,22 @@ export default function OeeTurno() {
                                 </DialogDescription>
                               </div>
                             </div>
+                            <DialogClose
+                              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground backdrop-blur-[2px] transition-all duration-150 ease-out hover:bg-accent/70 hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                              title="Fechar filtros"
+                              aria-label="Fechar filtros"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              >
+                                <path d="M7 7L17 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                <path d="M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                              </svg>
+                            </DialogClose>
                           </DialogHeader>
                         </div>
 
