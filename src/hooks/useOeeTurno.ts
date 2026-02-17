@@ -162,6 +162,9 @@ export function useOeeTurno() {
         } else if (filters?.status) {
           query = query.eq('status', filters.status)
         }
+        if (filters?.oeeturnoId != null && Number.isFinite(Number(filters.oeeturnoId))) {
+          query = query.eq('oeeturno_id', Number(filters.oeeturnoId))
+        }
 
         // Busca por termo (produto, turno ou observação). Para ID, usa igualdade quando o termo é numérico,
         // pois o PostgREST não aceita cast em filtros (evita erro 400).

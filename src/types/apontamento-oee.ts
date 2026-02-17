@@ -225,5 +225,7 @@ export interface FetchOeeTurnoFilters {
   status?: OeeTurnoStatus
   /** Filtrar por múltiplos status */
   statuses?: OeeTurnoStatus[]
+  /** Filtrar por ID do lançamento (tboee_turno.oeeturno_id) */
+  oeeturnoId?: number | null
 }
 

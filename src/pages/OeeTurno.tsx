@@ -89,6 +89,8 @@ type OeeTurnoAppliedFilters = {
   turnoIds: string[]
   produto: string
   statuses: OeeTurnoStatus[]
+  /** Filtro por ID do lançamento (tboee_turno.oeeturno_id) */
+  lancamento: string
 }
 
 type OeeTurnoPersistedFilters = {
@@ -102,12 +104,14 @@ const FILTROS_APLICADOS_PADRAO: OeeTurnoAppliedFilters = {
   turnoIds: [],
   produto: '',
   statuses: [],
+  lancamento: '',
 }
 
 const clonarFiltrosAplicados = (filtros: OeeTurnoAppliedFilters): OeeTurnoAppliedFilters => ({
   turnoIds: [...filtros.turnoIds],
   produto: filtros.produto,
-  statuses: [...filtros.statuses]
+  statuses: [...filtros.statuses],
+  lancamento: filtros.lancamento,
 })
 
 const criarFiltrosPersistidosPadrao = (dataAtualPadrao: string): OeeTurnoPersistedFilters => ({
@@ -161,7 +165,8 @@ const normalizarFiltrosAplicados = (valor: unknown): OeeTurnoAppliedFilters => {
   return {
     turnoIds: normalizarTurnoIds(valor.turnoIds),
     produto: typeof valor.produto === 'string' ? valor.produto : '',
-    statuses: normalizarStatuses(valor.statuses)
+    statuses: normalizarStatuses(valor.statuses),
+    lancamento: typeof valor.lancamento === 'string' ? valor.lancamento : '',
   }
 }
 
@@ -575,6 +580,7 @@ export default function OeeTurno() {
     if (f.turnoIds.length > 0) count++
     if (f.produto) count++
     if (f.statuses.length > 0) count++
+    if (f.lancamento.trim()) count++
     return count
   })()
 
@@ -585,6 +591,7 @@ export default function OeeTurno() {
     if (f.turnoIds.length > 0) count++
     if (f.produto) count++
     if (f.statuses.length > 0) count++
+    if (f.lancamento.trim()) count++
     if (dataInicio) count++
     if (dataFim) count++
     return count
@@ -596,6 +603,7 @@ export default function OeeTurno() {
     if (f.turnoIds.length > 0) count++
     if (f.produto.trim()) count++
     if (f.statuses.length > 0) count++
+    if (f.lancamento.trim()) count++
     return count
   })()
 
@@ -685,6 +693,7 @@ export default function OeeTurno() {
       serializarIdsSelecionados(appliedFilters.turnoIds),
       appliedFilters.produto,
       serializarStatusSelecionados(appliedFilters.statuses),
+      appliedFilters.lancamento,
       dataInicio,
       dataFim
     ],
@@ -695,11 +704,17 @@ export default function OeeTurno() {
         appliedFilters.produto
       ].filter(Boolean).join(' ')
 
+      const oeeturnoId =
+        appliedFilters.lancamento.trim() && /^\d+$/.test(appliedFilters.lancamento.trim())
+          ? Number(appliedFilters.lancamento.trim())
+          : undefined
+
       return await fetchOeeTurnos(
         {
           searchTerm: searchFilter || undefined,
           turnoIds: turnoIdsAplicados.length > 0 ? turnoIdsAplicados : undefined,
           statuses: appliedFilters.statuses.length > 0 ? appliedFilters.statuses : undefined,
+          oeeturnoId: oeeturnoId != null && Number.isFinite(oeeturnoId) ? oeeturnoId : undefined,
           dataInicio: converterDataBrParaIso(dataInicio),
           dataFim: converterDataBrParaIso(dataFim)
         },
@@ -845,7 +860,8 @@ export default function OeeTurno() {
     const filtersChanged =
       turnosAlterados ||
       prevFilters.produto !== appliedFilters.produto ||
-      serializarStatusSelecionados(prevFilters.statuses) !== serializarStatusSelecionados(appliedFilters.statuses)
+      serializarStatusSelecionados(prevFilters.statuses) !== serializarStatusSelecionados(appliedFilters.statuses) ||
+      prevFilters.lancamento !== appliedFilters.lancamento
     const searchChanged = prevSearchTermRef.current !== searchTerm
     const dataInicioChanged = prevDataInicioRef.current !== dataInicio
     const dataFimChanged = prevDataFimRef.current !== dataFim
@@ -1509,6 +1525,111 @@ export default function OeeTurno() {
 
                         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7">
                           <div className="space-y-4 sm:space-y-5">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
+                              <div className="flex flex-col gap-2 sm:w-1/2 sm:min-w-0">
+                                <Label htmlFor="f-lancamento" className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                  Lançamento
+                                </Label>
+                                <Input
+                                  id="f-lancamento"
+                                  placeholder="Nº Lançamento"
+                                  className="w-full h-10 rounded-xl border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
+                                  value={draftFilters.lancamento}
+                                  onChange={(e) => setDraftFilters((p) => ({ ...p, lancamento: e.target.value }))}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-2 sm:w-1/2 sm:min-w-0">
+                                <div className="flex items-start justify-between gap-3">
+                                  <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                    Status
+                                  </p>
+                                  {draftFilters.statuses.length > 0 && (
+                                    <span className="whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
+                                      {draftFilters.statuses.length}{' '}
+                                      selecionado{draftFilters.statuses.length > 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                <DropdownMenu open={menuStatusAberto} onOpenChange={setMenuStatusAberto}>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      id="f-status"
+                                      variant="outline"
+                                      className="h-10 w-full justify-between rounded-xl border-slate-200 bg-white px-3.5 text-left font-normal text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
+                                    >
+                                      <span className="truncate">{resumoStatusSelecionados}</span>
+                                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="start"
+                                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-slate-200 bg-white p-0 shadow-lg"
+                                  >
+                                    <DropdownMenuCheckboxItem
+                                      className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                      checked={draftFilters.statuses.length === 0}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setDraftFilters((prev) => ({ ...prev, statuses: [] }))
+                                        }
+                                      }}
+                                      onSelect={(event) => event.preventDefault()}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                            draftFilters.statuses.length === 0
+                                              ? 'border-brand-primary bg-brand-primary text-white'
+                                              : 'border-input bg-background text-transparent'
+                                          }`}
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </span>
+                                        <span>Todos os status</span>
+                                      </div>
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuSeparator />
+                                    {STATUS_OEE_DISPONIVEIS.map((status) => {
+                                      const selecionado = draftFilters.statuses.includes(status)
+                                      return (
+                                        <DropdownMenuCheckboxItem
+                                          key={status}
+                                          className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                          checked={selecionado}
+                                          onCheckedChange={() => alternarStatusSelecionado(status)}
+                                          onSelect={(event) => event.preventDefault()}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                selecionado
+                                                  ? 'border-brand-primary bg-brand-primary text-white'
+                                                  : 'border-input bg-background text-transparent'
+                                              }`}
+                                            >
+                                              <Check className="h-3 w-3" />
+                                            </span>
+                                            <span>{status}</span>
+                                          </div>
+                                        </DropdownMenuCheckboxItem>
+                                      )
+                                    })}
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end p-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="h-9 w-24 rounded-lg"
+                                        onClick={() => setMenuStatusAberto(false)}
+                                      >
+                                        Fechar
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+
                             <div className="flex flex-col gap-2">
                               <div className="flex items-start justify-between gap-3">
                                 <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
@@ -1657,99 +1778,6 @@ export default function OeeTurno() {
                                     </Button>
                                   )}
                                 </div>
-                              </div>
-
-                              <div className="mt-5 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-
-                              <div className="mt-5 space-y-2 sm:space-y-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
-                                    Status
-                                  </p>
-                                  {draftFilters.statuses.length > 0 && (
-                                    <span className="whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
-                                      {draftFilters.statuses.length}{' '}
-                                      selecionado{draftFilters.statuses.length > 1 ? 's' : ''}
-                                    </span>
-                                  )}
-                                </div>
-                                <DropdownMenu open={menuStatusAberto} onOpenChange={setMenuStatusAberto}>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      id="f-status"
-                                      variant="outline"
-                                      className="h-10 w-full justify-between rounded-xl border-slate-200 bg-white px-3.5 text-left font-normal text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
-                                    >
-                                      <span className="truncate">{resumoStatusSelecionados}</span>
-                                      <ChevronDown className="h-4 w-4 text-slate-400" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="start"
-                                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-slate-200 bg-white p-0 shadow-lg"
-                                  >
-                                    <DropdownMenuCheckboxItem
-                                      className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
-                                      checked={draftFilters.statuses.length === 0}
-                                      onCheckedChange={(checked) => {
-                                        if (checked) {
-                                          setDraftFilters((prev) => ({ ...prev, statuses: [] }))
-                                        }
-                                      }}
-                                      onSelect={(event) => event.preventDefault()}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span
-                                          className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
-                                            draftFilters.statuses.length === 0
-                                              ? 'border-brand-primary bg-brand-primary text-white'
-                                              : 'border-input bg-background text-transparent'
-                                          }`}
-                                        >
-                                          <Check className="h-3 w-3" />
-                                        </span>
-                                        <span>Todos os status</span>
-                                      </div>
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuSeparator />
-                                    {STATUS_OEE_DISPONIVEIS.map((status) => {
-                                      const selecionado = draftFilters.statuses.includes(status)
-                                      return (
-                                        <DropdownMenuCheckboxItem
-                                          key={status}
-                                          className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
-                                          checked={selecionado}
-                                          onCheckedChange={() => alternarStatusSelecionado(status)}
-                                          onSelect={(event) => event.preventDefault()}
-                                        >
-                                          <div className="flex items-center gap-2">
-                                            <span
-                                              className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
-                                                selecionado
-                                                  ? 'border-brand-primary bg-brand-primary text-white'
-                                                  : 'border-input bg-background text-transparent'
-                                              }`}
-                                            >
-                                              <Check className="h-3 w-3" />
-                                            </span>
-                                            <span>{status}</span>
-                                          </div>
-                                        </DropdownMenuCheckboxItem>
-                                      )
-                                    })}
-                                    <DropdownMenuSeparator />
-                                    <div className="flex justify-end p-2">
-                                      <Button
-                                        type="button"
-                                        variant="secondary"
-                                        className="h-9 w-24 rounded-lg"
-                                        onClick={() => setMenuStatusAberto(false)}
-                                      >
-                                        Fechar
-                                      </Button>
-                                    </div>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
                               </div>
                             </section>
                           </div>

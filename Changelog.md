@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeTurno (modal Filtros): novo filtro "Lançamento" (input simples, 25% da largura da linha) para filtrar por `tboee_turno.oeeturno_id`; valor persistido em localStorage com os demais filtros.
 - OeeTurno (modal Filtros): botão de fechar do modal igual ao do modal de câmera do Dashboard (redondo, borda/fundo suave, backdrop-blur, ícone X).
 - ApontamentoOEE: validação ao registrar parada — consulta paradas já salvas do turno e duração do turno (tboee_turno: turno_hi/turno_hf); bloqueia o registro e exibe toast de erro quando a soma das paradas (existentes + nova) exceder a duração do turno, orientando a conferir horários e possível troca de início/fim (evita disponibilidade negativa por parada com horários invertidos).
 - ApontamentoOEE: "Histórico de Registros de Produção" ordenado por horário inicial/final no fluxo do turno (ex.: turno 18h–06h exibe 18–19, 19–20, …, 23–00, 00–01, …, 05–06; turno 06h–18h exibe 06–07, 07–08, …, 17–18).
