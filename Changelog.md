@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Home: card "Análise Paradas OEE" com restrição apenas para perfil Operador (tbusuario.perfil); demais perfis (Administrador, Supervisor, etc.) podem acessar. Rota `/oee-analise-paradas` protegida com `blockOperador` no ProtectedRoute; utilitário `isPerfilOperador` em perfil.utils.
+- Rota `/oee-empresa`: redirecionamento com reload completo (window.location) para `public/oee-empresa.html`, para a página estática carregar corretamente em vez de cair no 404 do React Router.
 - Dashboard: ao clicar em "Voltar" com modo escuro ativo, a aplicação passa para modo claro antes de redirecionar para a Home, sem alterar a preferência persistida; ao reabrir o Dashboard (ou qualquer página), o tema da última escolha do usuário é aplicado.
 - OeeTurno (modal Filtros): novo filtro "Lançamento" (input simples, 25% da largura da linha) para filtrar por `tboee_turno.oeeturno_id`; valor persistido em localStorage com os demais filtros.
 - OeeTurno (modal Filtros): botão de fechar do modal igual ao do modal de câmera do Dashboard (redondo, borda/fundo suave, backdrop-blur, ícone X).

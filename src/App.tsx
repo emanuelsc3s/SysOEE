@@ -21,6 +21,7 @@ import DashboardOEE from './pages/dashboard/DashboardOEE'
 import Usuarios from './pages/Usuarios'
 import UsuariosCad from './pages/UsuariosCad'
 import Placeholder from './pages/Placeholder'
+import OeeEmpresaRedirect from './pages/OeeEmpresaRedirect'
 import Login from './pages/Login'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
@@ -53,6 +54,9 @@ function App() {
         {/* Dashboard OEE Premium - Monitoramento em tempo real */}
         <Route path="/dashboard-oee" element={<ProtectedRoute><DashboardOEE /></ProtectedRoute>} />
 
+        {/* Dashboard OEE Total Empresa (página estática; redirecionamento com reload para o HTML carregar) */}
+        <Route path="/oee-empresa" element={<ProtectedRoute><OeeEmpresaRedirect /></ProtectedRoute>} />
+
         {/* Página de Operação - Kanban de OPs */}
         <Route path="/operacao" element={<ProtectedRoute requireAdmin><Operacao /></ProtectedRoute>} />
 
@@ -74,8 +78,8 @@ function App() {
         {/* Página de Resumo Consolidado de OEE por Turno */}
         <Route path="/oee-resumo-turno" element={<ProtectedRoute><ResumoOeeTurno /></ProtectedRoute>} />
 
-        {/* Página de Análise de Paradas OEE */}
-        <Route path="/oee-analise-paradas" element={<ProtectedRoute><AnaliseParadasOEE /></ProtectedRoute>} />
+        {/* Página de Análise de Paradas OEE (acesso bloqueado apenas para perfil Operador) */}
+        <Route path="/oee-analise-paradas" element={<ProtectedRoute blockOperador><AnaliseParadasOEE /></ProtectedRoute>} />
 
         {/* Página de Cadastro de Velocidade Nominal por Linha e Produto */}
         <Route path="/oee-linha-velocidade" element={<ProtectedRoute requireAdmin><OeeLinhaVelocidade /></ProtectedRoute>} />

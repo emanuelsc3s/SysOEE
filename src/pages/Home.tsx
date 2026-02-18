@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
 import { ModalSelecaoApontamentoOee } from '@/components/apontamento/ModalSelecaoApontamentoOee'
-import { isPerfilAdministrador } from '@/utils/perfil.utils'
+import { isPerfilAdministrador, isPerfilOperador } from '@/utils/perfil.utils'
 
 /**
  * Retorna a saudação apropriada baseada no horário atual
@@ -177,7 +177,8 @@ export default function Home() {
       icon: <BarChart3 className={iconClassName} />,
       path: '/oee-analise-paradas',
       description: 'Dashboard executivo com Pareto e priorização de tratativas',
-      adminOnly: true
+      /** Restrito apenas para perfil Operador; demais perfis podem acessar */
+      operadorCannotAccess: true
     },
     {
       title: 'Ordem de Produção',
@@ -371,7 +372,14 @@ export default function Home() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-2 tab:grid-cols-3 tab-prod:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6 tab-prod:gap-2 auto-rows-fr">
                 {navigationItems.map((item) => {
-                  const semPermissao = Boolean(item.adminOnly && !isAdmin)
+                  const semPermissaoAdmin = Boolean(item.adminOnly && !isAdmin)
+                  const semPermissaoOperador = Boolean(
+                    'operadorCannotAccess' in item && item.operadorCannotAccess && isPerfilOperador(authUser?.perfil)
+                  )
+                  const semPermissao = semPermissaoAdmin || semPermissaoOperador
+                  const disabledMessage = semPermissaoOperador
+                    ? 'Acesso negado: módulo não disponível para perfil Operador.'
+                    : 'Acesso negado: módulo exclusivo para Administrador.'
 
                   return (
                     <NavigationCard
@@ -381,7 +389,7 @@ export default function Home() {
                       path={item.path}
                       onClick={semPermissao ? undefined : item.onClick}
                       disabled={semPermissao}
-                      disabledMessage="Acesso negado: módulo exclusivo para Administrador."
+                      disabledMessage={disabledMessage}
                       className="aspect-[5/4] rounded-2xl border-primary/10 bg-card/95 p-3.5 shadow-[0_12px_28px_-24px_hsl(var(--foreground)/0.6)] hover:border-primary/30 hover:shadow-[0_18px_36px_-24px_hsl(var(--primary)/0.45)] md:aspect-[4/3] md:rounded-xl md:bg-card md:p-4 md:shadow-sm"
                     />
                   )

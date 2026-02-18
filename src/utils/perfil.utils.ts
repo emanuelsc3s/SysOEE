@@ -8,3 +8,10 @@
 export function isPerfilAdministrador(perfil: string | null | undefined): boolean {
   return (perfil || '').trim().toLowerCase() === 'administrador'
 }
+
+/**
+ * Retorna true quando o perfil informado representa um Operador.
+ */
+export function isPerfilOperador(perfil: string | null | undefined): boolean {
+  return (perfil || '').trim().toLowerCase() === 'operador'
+}
