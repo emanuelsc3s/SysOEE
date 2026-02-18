@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Dashboard: ao clicar em "Voltar" com modo escuro ativo, a aplicação passa para modo claro antes de redirecionar para a Home, sem alterar a preferência persistida; ao reabrir o Dashboard (ou qualquer página), o tema da última escolha do usuário é aplicado.
 - OeeTurno (modal Filtros): novo filtro "Lançamento" (input simples, 25% da largura da linha) para filtrar por `tboee_turno.oeeturno_id`; valor persistido em localStorage com os demais filtros.
 - OeeTurno (modal Filtros): botão de fechar do modal igual ao do modal de câmera do Dashboard (redondo, borda/fundo suave, backdrop-blur, ícone X).
 - ApontamentoOEE: validação ao registrar parada — consulta paradas já salvas do turno e duração do turno (tboee_turno: turno_hi/turno_hf); bloqueia o registro e exibe toast de erro quando a soma das paradas (existentes + nova) exceder a duração do turno, orientando a conferir horários e possível troca de início/fim (evita disponibilidade negativa por parada com horários invertidos).

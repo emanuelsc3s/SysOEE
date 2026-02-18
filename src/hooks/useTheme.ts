@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 type Theme = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'sysoee-theme'
+const VOLTAR_FORCE_LIGHT_KEY = 'sysoee-voltar-force-light'
 
 /**
  * Hook para gerenciar o tema da aplicação (claro/escuro)
@@ -24,9 +25,14 @@ export function useTheme() {
     return 'light'
   })
 
-  // Aplicar a classe dark no documento
+  // Aplicar a classe dark no documento (respeitando flag "voltar = light sem persistir")
   useEffect(() => {
     const root = window.document.documentElement
+    if (sessionStorage.getItem(VOLTAR_FORCE_LIGHT_KEY)) {
+      root.classList.remove('dark')
+      sessionStorage.removeItem(VOLTAR_FORCE_LIGHT_KEY)
+      return
+    }
     if (theme === 'dark') {
       root.classList.add('dark')
     } else {
@@ -58,10 +64,18 @@ export function useTheme() {
     setThemeState((prev) => (prev === 'light' ? 'dark' : 'light'))
   }, [])
 
+  /** Força modo light apenas visualmente na próxima página, sem persistir (ex.: botão Voltar do Dashboard). */
+  const forceLightForNextPage = useCallback(() => {
+    if (typeof window === 'undefined') return
+    window.document.documentElement.classList.remove('dark')
+    sessionStorage.setItem(VOLTAR_FORCE_LIGHT_KEY, '1')
+  }, [])
+
   return {
     theme,
     setTheme,
     toggleTheme,
+    forceLightForNextPage,
     isDark: theme === 'dark'
   }
 }

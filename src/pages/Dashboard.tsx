@@ -483,7 +483,7 @@ const getColorByPercentage = (percentage: number): string => {
 export default function Dashboard() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
-  const { theme, toggleTheme } = useTheme()
+  const { theme, toggleTheme, forceLightForNextPage } = useTheme()
   const navigate = useNavigate()
 
   const [linhas, setLinhas] = useState<LinhaOption[]>([])
@@ -1578,7 +1578,14 @@ export default function Dashboard() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate('/')}
+                      onClick={() => {
+                        if (theme === 'dark') {
+                          forceLightForNextPage()
+                          requestAnimationFrame(() => navigate('/'))
+                        } else {
+                          navigate('/')
+                        }
+                      }}
                       className={`flex h-11 w-11 min-w-[44px] items-center justify-center gap-0 sm:h-9 sm:w-auto sm:min-w-[80px] sm:gap-2 ${
                         theme === 'light'
                           ? '!bg-white !text-brand-primary !border-brand-primary hover:!bg-brand-primary hover:!border-brand-primary hover:!text-white'
