@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
 import { ModalSelecaoApontamentoOee } from '@/components/apontamento/ModalSelecaoApontamentoOee'
+import { ModalPerfilUsuario } from '@/components/auth/ModalPerfilUsuario'
 import { isPerfilAdministrador, isPerfilOperador } from '@/utils/perfil.utils'
 
 /**
@@ -78,6 +79,9 @@ export default function Home() {
 
   // Estado para controlar o dialog de confirmação de logout
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+
+  // Estado para controlar o modal de perfil do usuário logado
+  const [modalPerfilAberto, setModalPerfilAberto] = useState(false)
 
   // Hook de autenticação
   const { user: authUser, isLoading, signOut } = useAuth()
@@ -345,7 +349,7 @@ export default function Home() {
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setModalPerfilAberto(true)}>
                         <Users className="mr-2 h-4 w-4" />
                         <span>Perfil</span>
                       </DropdownMenuItem>
@@ -422,6 +426,12 @@ export default function Home() {
       <ModalSelecaoApontamentoOee
         aberto={modalApontamentoOeeAberto}
         onFechar={handleFecharModalApontamentoOee}
+      />
+
+      {/* Modal de Perfil do Usuário Logado */}
+      <ModalPerfilUsuario
+        aberto={modalPerfilAberto}
+        onOpenChange={setModalPerfilAberto}
       />
 
       {/* Dialog de Confirmação de Logout */}
