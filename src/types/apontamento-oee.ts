@@ -223,6 +223,8 @@ export interface FetchOeeTurnoFilters {
   turnoIds?: number[]
   /** Filtrar por ID do produto */
   produtoId?: number
+  /** Filtrar por múltiplos IDs de produto */
+  produtoIds?: number[]
   /** Filtrar por status */
   status?: OeeTurnoStatus
   /** Filtrar por múltiplos status */

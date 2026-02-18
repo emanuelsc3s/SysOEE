@@ -161,7 +161,14 @@ export function useOeeTurno() {
         } else if (filters?.turnoId) {
           query = query.eq('turno_id', filters.turnoId)
         }
-        if (filters?.produtoId) {
+        const produtoIds = Array.from(new Set(
+          (filters?.produtoIds || [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id))
+        ))
+        if (produtoIds.length > 0) {
+          query = query.in('produto_id', produtoIds)
+        } else if (filters?.produtoId) {
           query = query.eq('produto_id', filters.produtoId)
         }
         const statusSelecionados = (filters?.statuses || []).filter((status) => Boolean(status))

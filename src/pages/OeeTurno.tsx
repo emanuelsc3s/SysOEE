@@ -67,7 +67,6 @@ import {
   Activity,
   ClipboardList,
   Calendar as CalendarIcon,
-  X,
   Zap
 } from 'lucide-react'
 import { DataPagination } from '@/components/ui/data-pagination'
@@ -88,7 +87,7 @@ const STATUS_OEE_DISPONIVEIS: OeeTurnoStatus[] = ['Aberto', 'Fechado', 'Cancelad
 type OeeTurnoAppliedFilters = {
   linhaIds: string[]
   turnoIds: string[]
-  produto: string
+  produtoIds: string[]
   statuses: OeeTurnoStatus[]
   /** Filtro por ID do lançamento (tboee_turno.oeeturno_id) */
   lancamento: string
@@ -104,7 +103,7 @@ type OeeTurnoPersistedFilters = {
 const FILTROS_APLICADOS_PADRAO: OeeTurnoAppliedFilters = {
   linhaIds: [],
   turnoIds: [],
-  produto: '',
+  produtoIds: [],
   statuses: [],
   lancamento: '',
 }
@@ -112,7 +111,7 @@ const FILTROS_APLICADOS_PADRAO: OeeTurnoAppliedFilters = {
 const clonarFiltrosAplicados = (filtros: OeeTurnoAppliedFilters): OeeTurnoAppliedFilters => ({
   linhaIds: [...filtros.linhaIds],
   turnoIds: [...filtros.turnoIds],
-  produto: filtros.produto,
+  produtoIds: [...filtros.produtoIds],
   statuses: [...filtros.statuses],
   lancamento: filtros.lancamento,
 })
@@ -167,6 +166,26 @@ const normalizarTurnoIds = (valor: unknown): string[] => {
   return Array.from(new Set(ids))
 }
 
+const normalizarProdutoIds = (valor: unknown): string[] => {
+  if (!Array.isArray(valor)) {
+    return []
+  }
+
+  const ids = valor
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item.trim()
+      }
+      if (typeof item === 'number' && Number.isFinite(item)) {
+        return String(item)
+      }
+      return ''
+    })
+    .filter((item) => item.length > 0)
+
+  return Array.from(new Set(ids))
+}
+
 const normalizarStatuses = (valor: unknown): OeeTurnoStatus[] => {
   if (!Array.isArray(valor)) {
     return []
@@ -188,7 +207,7 @@ const normalizarFiltrosAplicados = (valor: unknown): OeeTurnoAppliedFilters => {
   return {
     linhaIds: normalizarLinhaIds(valor.linhaIds),
     turnoIds: normalizarTurnoIds(valor.turnoIds),
-    produto: typeof valor.produto === 'string' ? valor.produto : '',
+    produtoIds: normalizarProdutoIds(valor.produtoIds),
     statuses: normalizarStatuses(valor.statuses),
     lancamento: typeof valor.lancamento === 'string' ? valor.lancamento : '',
   }
@@ -248,6 +267,12 @@ type TurnoFiltroOption = {
 type LinhaFiltroOption = {
   linhaproducao_id: number
   linhaproducao: string | null
+}
+
+type ProdutoFiltroOption = {
+  produto_id: number
+  referencia: string | null
+  descricao: string | null
 }
 
 const clamp = (valor: number, min: number, max: number): number => {
@@ -317,6 +342,17 @@ const formatarLabelTurno = (turno: TurnoFiltroOption): string => {
   }
 
   return codigo || nome || `Turno ${turno.turno_id}`
+}
+
+const formatarLabelProduto = (produto: ProdutoFiltroOption): string => {
+  const referencia = (produto.referencia || '').trim()
+  const descricao = (produto.descricao || '').trim()
+
+  if (referencia && descricao) {
+    return `${referencia} - ${descricao}`
+  }
+
+  return referencia || descricao || `Produto ${produto.produto_id}`
 }
 
 const serializarIdsSelecionados = (ids: string[]): string =>
@@ -540,9 +576,11 @@ export default function OeeTurno() {
   const [carregandoOeePorTurno, setCarregandoOeePorTurno] = useState<Record<string, boolean>>({})
   const [menuLinhaAberto, setMenuLinhaAberto] = useState(false)
   const [menuTurnoAberto, setMenuTurnoAberto] = useState(false)
+  const [menuProdutoAberto, setMenuProdutoAberto] = useState(false)
   const [menuStatusAberto, setMenuStatusAberto] = useState(false)
   const [buscaLinha, setBuscaLinha] = useState('')
   const [buscaTurno, setBuscaTurno] = useState('')
+  const [buscaProduto, setBuscaProduto] = useState('')
   const [modalApontamentoRapidoAberto, setModalApontamentoRapidoAberto] = useState(false)
   const [contextoApontamentoRapido, setContextoApontamentoRapido] = useState<ContextoTurnoRapidoOEE | null>(null)
 
@@ -564,6 +602,7 @@ export default function OeeTurno() {
   const paginationRef = useRef<HTMLDivElement | null>(null)
   const campoBuscaLinhaRef = useRef<HTMLInputElement | null>(null)
   const campoBuscaTurnoRef = useRef<HTMLInputElement | null>(null)
+  const campoBuscaProdutoRef = useRef<HTMLInputElement | null>(null)
 
   // Carrega preferência de "por página" do localStorage ao montar
   useEffect(() => {
@@ -611,7 +650,7 @@ export default function OeeTurno() {
     const f = appliedFilters
     if (f.linhaIds.length > 0) count++
     if (f.turnoIds.length > 0) count++
-    if (f.produto) count++
+    if (f.produtoIds.length > 0) count++
     if (f.statuses.length > 0) count++
     if (f.lancamento.trim()) count++
     return count
@@ -623,7 +662,7 @@ export default function OeeTurno() {
     const f = appliedFilters
     if (f.linhaIds.length > 0) count++
     if (f.turnoIds.length > 0) count++
-    if (f.produto) count++
+    if (f.produtoIds.length > 0) count++
     if (f.statuses.length > 0) count++
     if (f.lancamento.trim()) count++
     if (dataInicio) count++
@@ -636,7 +675,7 @@ export default function OeeTurno() {
     const f = draftFilters
     if (f.linhaIds.length > 0) count++
     if (f.turnoIds.length > 0) count++
-    if (f.produto.trim()) count++
+    if (f.produtoIds.length > 0) count++
     if (f.statuses.length > 0) count++
     if (f.lancamento.trim()) count++
     return count
@@ -681,6 +720,25 @@ export default function OeeTurno() {
     gcTime: 10 * 60 * 1000
   })
 
+  const { data: produtosDisponiveis = [] } = useQuery({
+    queryKey: ['oee-turnos-filtro-produtos'],
+    queryFn: async (): Promise<ProdutoFiltroOption[]> => {
+      const { data, error } = await supabase
+        .from('tbproduto')
+        .select('produto_id, referencia, descricao')
+        .eq('deletado', 'N')
+        .order('referencia', { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      return (data || []) as ProdutoFiltroOption[]
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000
+  })
+
   const linhaIdsAplicados = useMemo(
     () => appliedFilters.linhaIds
       .map((linhaId) => Number(linhaId))
@@ -693,6 +751,13 @@ export default function OeeTurno() {
       .map((turnoId) => Number(turnoId))
       .filter((turnoId) => Number.isFinite(turnoId)),
     [appliedFilters.turnoIds]
+  )
+
+  const produtoIdsAplicados = useMemo(
+    () => appliedFilters.produtoIds
+      .map((produtoId) => Number(produtoId))
+      .filter((produtoId) => Number.isFinite(produtoId)),
+    [appliedFilters.produtoIds]
   )
 
   const linhasFiltradasDropdown = useMemo(() => {
@@ -757,6 +822,41 @@ export default function OeeTurno() {
     return `${draftFilters.turnoIds.length} turnos selecionados`
   }, [draftFilters.turnoIds, turnosDisponiveis])
 
+  const produtosFiltradosDropdown = useMemo(() => {
+    const termo = normalizarTexto(buscaProduto.trim())
+    if (!termo) {
+      return produtosDisponiveis
+    }
+
+    return produtosDisponiveis.filter((produto) => {
+      const textoProduto = normalizarTexto(
+        `${produto.referencia ?? ''} ${produto.descricao ?? ''} ${produto.produto_id}`
+      )
+      return textoProduto.includes(termo)
+    })
+  }, [buscaProduto, produtosDisponiveis])
+
+  const resumoProdutosSelecionados = useMemo(() => {
+    if (draftFilters.produtoIds.length === 0) {
+      return 'Todos os produtos'
+    }
+
+    if (draftFilters.produtoIds.length === 1) {
+      const produtoIdSelecionado = draftFilters.produtoIds[0]
+      const produtoSelecionado = produtosDisponiveis.find(
+        (produto) => String(produto.produto_id) === produtoIdSelecionado
+      )
+
+      if (!produtoSelecionado) {
+        return `Produto ${produtoIdSelecionado}`
+      }
+
+      return formatarLabelProduto(produtoSelecionado)
+    }
+
+    return `${draftFilters.produtoIds.length} produtos selecionados`
+  }, [draftFilters.produtoIds, produtosDisponiveis])
+
   const resumoStatusSelecionados = useMemo(() => {
     if (draftFilters.statuses.length === 0) {
       return 'Todos os status'
@@ -783,18 +883,14 @@ export default function OeeTurno() {
       searchTerm,
       serializarIdsSelecionados(appliedFilters.linhaIds),
       serializarIdsSelecionados(appliedFilters.turnoIds),
-      appliedFilters.produto,
+      serializarIdsSelecionados(appliedFilters.produtoIds),
       serializarStatusSelecionados(appliedFilters.statuses),
       appliedFilters.lancamento,
       dataInicio,
       dataFim
     ],
     queryFn: async () => {
-      // Construir filtro de busca combinando texto
-      const searchFilter = [
-        searchTerm,
-        appliedFilters.produto
-      ].filter(Boolean).join(' ')
+      const termoBusca = searchTerm.trim()
 
       const oeeturnoId =
         appliedFilters.lancamento.trim() && /^\d+$/.test(appliedFilters.lancamento.trim())
@@ -803,9 +899,10 @@ export default function OeeTurno() {
 
       return await fetchOeeTurnos(
         {
-          searchTerm: searchFilter || undefined,
+          searchTerm: termoBusca || undefined,
           linhaIds: linhaIdsAplicados.length > 0 ? linhaIdsAplicados : undefined,
           turnoIds: turnoIdsAplicados.length > 0 ? turnoIdsAplicados : undefined,
+          produtoIds: produtoIdsAplicados.length > 0 ? produtoIdsAplicados : undefined,
           statuses: appliedFilters.statuses.length > 0 ? appliedFilters.statuses : undefined,
           oeeturnoId: oeeturnoId != null && Number.isFinite(oeeturnoId) ? oeeturnoId : undefined,
           dataInicio: converterDataBrParaIso(dataInicio),
@@ -896,6 +993,18 @@ export default function OeeTurno() {
   }, [buscaTurno, menuTurnoAberto])
 
   useEffect(() => {
+    if (menuProdutoAberto) {
+      campoBuscaProdutoRef.current?.focus()
+    }
+  }, [menuProdutoAberto])
+
+  useEffect(() => {
+    if (!menuProdutoAberto && buscaProduto) {
+      setBuscaProduto('')
+    }
+  }, [buscaProduto, menuProdutoAberto])
+
+  useEffect(() => {
     if (turnosPaginados.length === 0) {
       return
     }
@@ -964,10 +1073,12 @@ export default function OeeTurno() {
       serializarIdsSelecionados(prevFilters.linhaIds) !== serializarIdsSelecionados(appliedFilters.linhaIds)
     const turnosAlterados =
       serializarIdsSelecionados(prevFilters.turnoIds) !== serializarIdsSelecionados(appliedFilters.turnoIds)
+    const produtosAlterados =
+      serializarIdsSelecionados(prevFilters.produtoIds) !== serializarIdsSelecionados(appliedFilters.produtoIds)
     const filtersChanged =
       linhasAlteradas ||
       turnosAlterados ||
-      prevFilters.produto !== appliedFilters.produto ||
+      produtosAlterados ||
       serializarStatusSelecionados(prevFilters.statuses) !== serializarStatusSelecionados(appliedFilters.statuses) ||
       prevFilters.lancamento !== appliedFilters.lancamento
     const searchChanged = prevSearchTermRef.current !== searchTerm
@@ -1045,6 +1156,22 @@ export default function OeeTurno() {
       return {
         ...prev,
         turnoIds: [...prev.turnoIds, turnoId]
+      }
+    })
+  }
+
+  const alternarProdutoSelecionado = (produtoId: string) => {
+    setDraftFilters((prev) => {
+      if (prev.produtoIds.includes(produtoId)) {
+        return {
+          ...prev,
+          produtoIds: prev.produtoIds.filter((id) => id !== produtoId)
+        }
+      }
+
+      return {
+        ...prev,
+        produtoIds: [...prev.produtoIds, produtoId]
       }
     })
   }
@@ -1566,6 +1693,7 @@ export default function OeeTurno() {
                     if (!o) {
                       setMenuLinhaAberto(false)
                       setMenuTurnoAberto(false)
+                      setMenuProdutoAberto(false)
                       setMenuStatusAberto(false)
                     }
                     if (o) {
@@ -1978,35 +2106,120 @@ export default function OeeTurno() {
                             </div>
 
                             <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-                              <div className="mb-3 space-y-1 sm:mb-4">
-                                <p className="inline-flex items-center gap-2 text-[14px] font-semibold uppercase tracking-[0.08em] text-slate-700">
-                                  Produto
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="inline-flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                  Produtos
                                 </p>
+                                {draftFilters.produtoIds.length > 0 && (
+                                  <span className="whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
+                                    {draftFilters.produtoIds.length}{' '}
+                                    selecionado{draftFilters.produtoIds.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
                               </div>
 
-                              <div className="space-y-2 sm:space-y-3">
-                                <div className="relative">
-                                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                  <Input
-                                    id="f-produto"
-                                    placeholder="Buscar produto... ex.: SOL. CLORETO"
-                                    className="h-10 rounded-xl border-slate-200 bg-slate-50/50 pl-9 pr-9 text-sm text-slate-700 placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-brand-primary/25"
-                                    value={draftFilters.produto}
-                                    onChange={(e) => setDraftFilters((p) => ({ ...p, produto: e.target.value }))}
-                                  />
-                                  {draftFilters.produto && (
+                              <div className="mt-3">
+                                <DropdownMenu open={menuProdutoAberto} onOpenChange={setMenuProdutoAberto}>
+                                  <DropdownMenuTrigger asChild>
                                     <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                                      onClick={() => setDraftFilters((p) => ({ ...p, produto: '' }))}
-                                      aria-label="Limpar produto"
+                                      id="f-produto"
+                                      variant="outline"
+                                      className="h-10 w-full justify-between rounded-xl border-slate-200 bg-white px-3.5 text-left font-normal text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
                                     >
-                                      <X className="h-3.5 w-3.5" />
+                                      <span className="truncate">{resumoProdutosSelecionados}</span>
+                                      <ChevronDown className="h-4 w-4 text-slate-400" />
                                     </Button>
-                                  )}
-                                </div>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="start"
+                                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-slate-200 bg-white p-0 shadow-lg"
+                                  >
+                                    <div className="p-2">
+                                      <Input
+                                        ref={campoBuscaProdutoRef}
+                                        placeholder="Buscar produto"
+                                        className="h-10 rounded-lg border-slate-200 bg-slate-50/50"
+                                        value={buscaProduto}
+                                        onChange={(event) => setBuscaProduto(event.target.value)}
+                                        onKeyDown={(event) => {
+                                          if (event.key !== 'Escape') {
+                                            event.stopPropagation()
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem
+                                      className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                      checked={draftFilters.produtoIds.length === 0}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setDraftFilters((prev) => ({ ...prev, produtoIds: [] }))
+                                        }
+                                      }}
+                                      onSelect={(event) => event.preventDefault()}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                            draftFilters.produtoIds.length === 0
+                                              ? 'border-brand-primary bg-brand-primary text-white'
+                                              : 'border-input bg-background text-transparent'
+                                          }`}
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </span>
+                                        <span>Todos os produtos</span>
+                                      </div>
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuSeparator />
+                                    <div className="max-h-64 overflow-y-auto">
+                                      {produtosFiltradosDropdown.length === 0 ? (
+                                        <div className="px-2 py-2 text-sm text-muted-foreground">
+                                          Nenhum produto encontrado.
+                                        </div>
+                                      ) : (
+                                        produtosFiltradosDropdown.map((produto) => {
+                                          const produtoId = String(produto.produto_id)
+                                          const selecionado = draftFilters.produtoIds.includes(produtoId)
+                                          return (
+                                            <DropdownMenuCheckboxItem
+                                              key={produto.produto_id}
+                                              className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                              checked={selecionado}
+                                              onCheckedChange={() => alternarProdutoSelecionado(produtoId)}
+                                              onSelect={(event) => event.preventDefault()}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                    selecionado
+                                                      ? 'border-brand-primary bg-brand-primary text-white'
+                                                      : 'border-input bg-background text-transparent'
+                                                  }`}
+                                                >
+                                                  <Check className="h-3 w-3" />
+                                                </span>
+                                                <span>{formatarLabelProduto(produto)}</span>
+                                              </div>
+                                            </DropdownMenuCheckboxItem>
+                                          )
+                                        })
+                                      )}
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end p-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="h-9 w-24 rounded-lg"
+                                        onClick={() => setMenuProdutoAberto(false)}
+                                      >
+                                        Fechar
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </section>
                           </div>
