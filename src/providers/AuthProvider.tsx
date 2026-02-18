@@ -44,7 +44,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const updateSequenceRef = useRef(0)
-  const isMountedRef = useRef(true)
   const { toast } = useToast()
 
   /**
@@ -81,7 +80,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const updateId = ++updateSequenceRef.current
 
     if (!authUser) {
-      if (!isMountedRef.current) return
       setUser(null)
       setIsLoading(false)
       return
@@ -105,7 +103,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Descarta resultado se uma chamada mais recente foi iniciada durante fetchUserData.
     if (updateId !== updateSequenceRef.current) return
-    if (!isMountedRef.current) return
 
     setUser({
       id: authUser.id,
@@ -149,13 +146,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [updateUserState])
 
   useEffect(() => {
-    isMountedRef.current = true
+    // Variável local ao closure desta execução do effect.
+    // Cada remontagem (inclusive StrictMode em dev) tem sua própria cópia isolada,
+    // garantindo que callbacks de execuções anteriores não vejam o estado de montagem
+    // de execuções posteriores — ao contrário de um useRef no nível do componente.
+    let isMounted = true
 
     // Timeout de segurança: se o evento INITIAL_SESSION não chegar em tempo hábil
     // (ex.: Supabase SDK pendurado no refresh de token expirado), libera o loading
     // para não bloquear o usuário indefinidamente.
     const bootstrapTimeoutId = window.setTimeout(() => {
-      if (!isMountedRef.current) return
+      if (!isMounted) return
       console.warn(`[AUTH_TIMEOUT] bootstrap de sessão excedeu ${AUTH_BOOTSTRAP_TIMEOUT_MS}ms`)
       void limparSessaoLocal()
       setUser(null)
@@ -165,13 +166,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Fila para serializar eventos de auth e evitar concorrência em consultas de perfil.
     let authEventChain = Promise.resolve()
     let recebeuPrimeiroEvento = false
+    const invalidarUpdatesPendentes = () => {
+      updateSequenceRef.current++
+    }
 
     // onAuthStateChange é a ÚNICA fonte de verdade do estado de autenticação.
     // O SDK dispara INITIAL_SESSION automaticamente na subscrição com a sessão atual
     // (ou null se o refresh falhar), eliminando a necessidade de chamar getSession()
     // separadamente e evitando chamadas paralelas a updateUserState no mount.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMountedRef.current) return
+      if (!isMounted) return
 
       // Cancela o timeout de segurança assim que qualquer evento de auth chegar.
       if (!recebeuPrimeiroEvento) {
@@ -182,11 +186,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // IMPORTANTE: callback síncrono. Processamento assíncrono fora do lock interno do SDK.
       authEventChain = authEventChain
         .then(async () => {
-          if (!isMountedRef.current) return
+          if (!isMounted) return
           await processarSessaoAuth(session)
         })
         .catch((error) => {
-          if (!isMountedRef.current) return
+          if (!isMounted) return
           console.error('Erro ao processar evento de autenticação:', error)
           setUser(null)
           setIsLoading(false)
@@ -194,7 +198,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     })
 
     return () => {
-      isMountedRef.current = false
+      isMounted = false
+      // Invalida updates assíncronos pendentes desta execução do effect.
+      invalidarUpdatesPendentes()
       window.clearTimeout(bootstrapTimeoutId)
       subscription.unsubscribe()
     }
