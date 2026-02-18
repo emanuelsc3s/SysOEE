@@ -163,13 +163,6 @@ export default function AnaliseParadasOEE() {
                   <h2 className="max-w-[26ch] text-xl font-semibold leading-tight text-gray-800 sm:text-2xl">
                     Dashboard executivo de paradas OEE
                   </h2>
-                  <p className="max-w-[72ch] text-sm leading-6 text-gray-600">
-                    Visão analítica baseada na RPC{' '}
-                    <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-gray-600">fn_resumo_oee_turno</code>{' '}
-                    e nos apontamentos de{' '}
-                    <code className="rounded bg-slate-100 px-1 py-0.5 text-xs text-gray-600">tboee_turno_parada</code>.
-                    O objetivo é identificar impacto, recorrência e prioridade de tratativas por linha, turno e SKU.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
