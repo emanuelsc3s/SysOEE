@@ -215,6 +215,8 @@ export interface FetchOeeTurnoFilters {
   dataInicio?: string
   /** Filtrar por data final do período (formato yyyy-mm-dd) */
   dataFim?: string
+  /** Filtrar por múltiplos IDs de linha de produção */
+  linhaIds?: number[]
   /** Filtrar por ID do turno */
   turnoId?: number
   /** Filtrar por múltiplos IDs de turno */

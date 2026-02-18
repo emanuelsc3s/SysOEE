@@ -86,6 +86,7 @@ const TURNOS_VAZIOS: OeeTurnoFormData[] = []
 const STATUS_OEE_DISPONIVEIS: OeeTurnoStatus[] = ['Aberto', 'Fechado', 'Cancelado']
 
 type OeeTurnoAppliedFilters = {
+  linhaIds: string[]
   turnoIds: string[]
   produto: string
   statuses: OeeTurnoStatus[]
@@ -101,6 +102,7 @@ type OeeTurnoPersistedFilters = {
 }
 
 const FILTROS_APLICADOS_PADRAO: OeeTurnoAppliedFilters = {
+  linhaIds: [],
   turnoIds: [],
   produto: '',
   statuses: [],
@@ -108,6 +110,7 @@ const FILTROS_APLICADOS_PADRAO: OeeTurnoAppliedFilters = {
 }
 
 const clonarFiltrosAplicados = (filtros: OeeTurnoAppliedFilters): OeeTurnoAppliedFilters => ({
+  linhaIds: [...filtros.linhaIds],
   turnoIds: [...filtros.turnoIds],
   produto: filtros.produto,
   statuses: [...filtros.statuses],
@@ -123,6 +126,26 @@ const criarFiltrosPersistidosPadrao = (dataAtualPadrao: string): OeeTurnoPersist
 
 const ehObjeto = (valor: unknown): valor is Record<string, unknown> =>
   typeof valor === 'object' && valor !== null && !Array.isArray(valor)
+
+const normalizarLinhaIds = (valor: unknown): string[] => {
+  if (!Array.isArray(valor)) {
+    return []
+  }
+
+  const ids = valor
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item.trim()
+      }
+      if (typeof item === 'number' && Number.isFinite(item)) {
+        return String(item)
+      }
+      return ''
+    })
+    .filter((item) => item.length > 0)
+
+  return Array.from(new Set(ids))
+}
 
 const normalizarTurnoIds = (valor: unknown): string[] => {
   if (!Array.isArray(valor)) {
@@ -163,6 +186,7 @@ const normalizarFiltrosAplicados = (valor: unknown): OeeTurnoAppliedFilters => {
   }
 
   return {
+    linhaIds: normalizarLinhaIds(valor.linhaIds),
     turnoIds: normalizarTurnoIds(valor.turnoIds),
     produto: typeof valor.produto === 'string' ? valor.produto : '',
     statuses: normalizarStatuses(valor.statuses),
@@ -219,6 +243,11 @@ type TurnoFiltroOption = {
   turno_id: number
   codigo: string | null
   turno: string | null
+}
+
+type LinhaFiltroOption = {
+  linhaproducao_id: number
+  linhaproducao: string | null
 }
 
 const clamp = (valor: number, min: number, max: number): number => {
@@ -509,8 +538,10 @@ export default function OeeTurno() {
   const [turnoParaVisualizar, setTurnoParaVisualizar] = useState<OeeTurnoFormData | null>(null)
   const [oeePorTurno, setOeePorTurno] = useState<Record<string, number | null>>({})
   const [carregandoOeePorTurno, setCarregandoOeePorTurno] = useState<Record<string, boolean>>({})
+  const [menuLinhaAberto, setMenuLinhaAberto] = useState(false)
   const [menuTurnoAberto, setMenuTurnoAberto] = useState(false)
   const [menuStatusAberto, setMenuStatusAberto] = useState(false)
+  const [buscaLinha, setBuscaLinha] = useState('')
   const [buscaTurno, setBuscaTurno] = useState('')
   const [modalApontamentoRapidoAberto, setModalApontamentoRapidoAberto] = useState(false)
   const [contextoApontamentoRapido, setContextoApontamentoRapido] = useState<ContextoTurnoRapidoOEE | null>(null)
@@ -531,6 +562,7 @@ export default function OeeTurno() {
   // Refs para calcular altura disponível do grid
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const paginationRef = useRef<HTMLDivElement | null>(null)
+  const campoBuscaLinhaRef = useRef<HTMLInputElement | null>(null)
   const campoBuscaTurnoRef = useRef<HTMLInputElement | null>(null)
 
   // Carrega preferência de "por página" do localStorage ao montar
@@ -577,6 +609,7 @@ export default function OeeTurno() {
   const appliedCountBadge = (() => {
     let count = 0
     const f = appliedFilters
+    if (f.linhaIds.length > 0) count++
     if (f.turnoIds.length > 0) count++
     if (f.produto) count++
     if (f.statuses.length > 0) count++
@@ -588,6 +621,7 @@ export default function OeeTurno() {
   const appliedCount = (() => {
     let count = 0
     const f = appliedFilters
+    if (f.linhaIds.length > 0) count++
     if (f.turnoIds.length > 0) count++
     if (f.produto) count++
     if (f.statuses.length > 0) count++
@@ -600,6 +634,7 @@ export default function OeeTurno() {
   const draftCountBadge = (() => {
     let count = 0
     const f = draftFilters
+    if (f.linhaIds.length > 0) count++
     if (f.turnoIds.length > 0) count++
     if (f.produto.trim()) count++
     if (f.statuses.length > 0) count++
@@ -626,12 +661,68 @@ export default function OeeTurno() {
     gcTime: 10 * 60 * 1000
   })
 
+  const { data: linhasDisponiveis = [] } = useQuery({
+    queryKey: ['oee-turnos-filtro-linhas'],
+    queryFn: async (): Promise<LinhaFiltroOption[]> => {
+      const { data, error } = await supabase
+        .from('tblinhaproducao')
+        .select('linhaproducao_id, linhaproducao, bloqueado, deleted_at')
+        .is('deleted_at', null)
+        .or('bloqueado.eq.Não,bloqueado.is.null')
+        .order('linhaproducao', { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      return (data || []) as LinhaFiltroOption[]
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000
+  })
+
+  const linhaIdsAplicados = useMemo(
+    () => appliedFilters.linhaIds
+      .map((linhaId) => Number(linhaId))
+      .filter((linhaId) => Number.isFinite(linhaId)),
+    [appliedFilters.linhaIds]
+  )
+
   const turnoIdsAplicados = useMemo(
     () => appliedFilters.turnoIds
       .map((turnoId) => Number(turnoId))
       .filter((turnoId) => Number.isFinite(turnoId)),
     [appliedFilters.turnoIds]
   )
+
+  const linhasFiltradasDropdown = useMemo(() => {
+    const termo = normalizarTexto(buscaLinha.trim())
+    if (!termo) {
+      return linhasDisponiveis
+    }
+
+    return linhasDisponiveis.filter((linha) => {
+      const textoLinha = normalizarTexto(`${linha.linhaproducao ?? ''} ${linha.linhaproducao_id}`)
+      return textoLinha.includes(termo)
+    })
+  }, [buscaLinha, linhasDisponiveis])
+
+  const resumoLinhasSelecionadas = useMemo(() => {
+    if (draftFilters.linhaIds.length === 0) {
+      return 'Todas as linhas'
+    }
+
+    if (draftFilters.linhaIds.length === 1) {
+      const linhaIdSelecionada = draftFilters.linhaIds[0]
+      const linhaSelecionada = linhasDisponiveis.find(
+        (linha) => String(linha.linhaproducao_id) === linhaIdSelecionada
+      )
+
+      return linhaSelecionada?.linhaproducao || `Linha ${linhaIdSelecionada}`
+    }
+
+    return `${draftFilters.linhaIds.length} linhas selecionadas`
+  }, [draftFilters.linhaIds, linhasDisponiveis])
 
   const turnosFiltradosDropdown = useMemo(() => {
     const termo = normalizarTexto(buscaTurno.trim())
@@ -690,6 +781,7 @@ export default function OeeTurno() {
       currentPage,
       itemsPerPage,
       searchTerm,
+      serializarIdsSelecionados(appliedFilters.linhaIds),
       serializarIdsSelecionados(appliedFilters.turnoIds),
       appliedFilters.produto,
       serializarStatusSelecionados(appliedFilters.statuses),
@@ -712,6 +804,7 @@ export default function OeeTurno() {
       return await fetchOeeTurnos(
         {
           searchTerm: searchFilter || undefined,
+          linhaIds: linhaIdsAplicados.length > 0 ? linhaIdsAplicados : undefined,
           turnoIds: turnoIdsAplicados.length > 0 ? turnoIdsAplicados : undefined,
           statuses: appliedFilters.statuses.length > 0 ? appliedFilters.statuses : undefined,
           oeeturnoId: oeeturnoId != null && Number.isFinite(oeeturnoId) ? oeeturnoId : undefined,
@@ -777,6 +870,18 @@ export default function OeeTurno() {
       return params
     }, { replace: true })
   }, [currentPage, totalPagesValidas, setSearchParams, turnosData])
+
+  useEffect(() => {
+    if (menuLinhaAberto) {
+      campoBuscaLinhaRef.current?.focus()
+    }
+  }, [menuLinhaAberto])
+
+  useEffect(() => {
+    if (!menuLinhaAberto && buscaLinha) {
+      setBuscaLinha('')
+    }
+  }, [buscaLinha, menuLinhaAberto])
 
   useEffect(() => {
     if (menuTurnoAberto) {
@@ -855,9 +960,12 @@ export default function OeeTurno() {
   // Resetar página para 1 quando searchTerm, filtros ou datas mudarem
   useEffect(() => {
     const prevFilters = prevFiltersRef.current
+    const linhasAlteradas =
+      serializarIdsSelecionados(prevFilters.linhaIds) !== serializarIdsSelecionados(appliedFilters.linhaIds)
     const turnosAlterados =
       serializarIdsSelecionados(prevFilters.turnoIds) !== serializarIdsSelecionados(appliedFilters.turnoIds)
     const filtersChanged =
+      linhasAlteradas ||
       turnosAlterados ||
       prevFilters.produto !== appliedFilters.produto ||
       serializarStatusSelecionados(prevFilters.statuses) !== serializarStatusSelecionados(appliedFilters.statuses) ||
@@ -907,6 +1015,22 @@ export default function OeeTurno() {
     try {
       localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size))
     } catch { /* noop */ }
+  }
+
+  const alternarLinhaSelecionada = (linhaId: string) => {
+    setDraftFilters((prev) => {
+      if (prev.linhaIds.includes(linhaId)) {
+        return {
+          ...prev,
+          linhaIds: prev.linhaIds.filter((id) => id !== linhaId)
+        }
+      }
+
+      return {
+        ...prev,
+        linhaIds: [...prev.linhaIds, linhaId]
+      }
+    })
   }
 
   const alternarTurnoSelecionado = (turnoId: string) => {
@@ -1440,6 +1564,7 @@ export default function OeeTurno() {
                   <Dialog open={openFilterDialog} onOpenChange={(o) => {
                     setOpenFilterDialog(o)
                     if (!o) {
+                      setMenuLinhaAberto(false)
                       setMenuTurnoAberto(false)
                       setMenuStatusAberto(false)
                     }
@@ -1527,7 +1652,7 @@ export default function OeeTurno() {
                           <div className="space-y-4 sm:space-y-5">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
                               <div className="flex flex-col gap-2 sm:w-1/2 sm:min-w-0">
-                                <Label htmlFor="f-lancamento" className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                <Label htmlFor="f-lancamento" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                   Lançamento
                                 </Label>
                                 <Input
@@ -1540,7 +1665,7 @@ export default function OeeTurno() {
                               </div>
                               <div className="flex flex-col gap-2 sm:w-1/2 sm:min-w-0">
                                 <div className="flex items-start justify-between gap-3">
-                                  <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                  <p className="inline-flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     Status
                                   </p>
                                   {draftFilters.statuses.length > 0 && (
@@ -1630,9 +1755,113 @@ export default function OeeTurno() {
                               </div>
                             </div>
 
+                            <div className="space-y-2">
+                              <Label htmlFor="filtro-linha">Linha de Produção</Label>
+                              <DropdownMenu open={menuLinhaAberto} onOpenChange={setMenuLinhaAberto}>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    id="filtro-linha"
+                                    variant="outline"
+                                    className="h-11 w-full justify-between bg-white font-normal hover:bg-white sm:h-10"
+                                  >
+                                    <span className="truncate">{resumoLinhasSelecionadas}</span>
+                                    <ChevronDown className="h-4 w-4 opacity-60" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="start"
+                                  className="w-[var(--radix-dropdown-menu-trigger-width)]"
+                                >
+                                  <div className="p-2">
+                                    <Input
+                                      ref={campoBuscaLinhaRef}
+                                      placeholder="Buscar linha"
+                                      value={buscaLinha}
+                                      onChange={(event) => setBuscaLinha(event.target.value)}
+                                      onKeyDown={(event) => {
+                                        if (event.key !== 'Escape') {
+                                          event.stopPropagation()
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuCheckboxItem
+                                    className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                    checked={draftFilters.linhaIds.length === 0}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setDraftFilters((prev) => ({ ...prev, linhaIds: [] }))
+                                      }
+                                    }}
+                                    onSelect={(event) => event.preventDefault()}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                          draftFilters.linhaIds.length === 0
+                                            ? 'border-brand-primary bg-brand-primary text-white'
+                                            : 'border-gray-400 bg-white text-transparent'
+                                        }`}
+                                      >
+                                        <Check className="h-3 w-3" />
+                                      </span>
+                                      <span>Todas as linhas</span>
+                                    </div>
+                                  </DropdownMenuCheckboxItem>
+                                  <DropdownMenuSeparator />
+                                  <div className="max-h-64 overflow-y-auto">
+                                    {linhasFiltradasDropdown.length === 0 ? (
+                                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                        Nenhuma linha encontrada.
+                                      </div>
+                                    ) : (
+                                      linhasFiltradasDropdown.map((linha) => {
+                                        const linhaId = String(linha.linhaproducao_id)
+                                        const selecionada = draftFilters.linhaIds.includes(linhaId)
+                                        return (
+                                          <DropdownMenuCheckboxItem
+                                            key={linha.linhaproducao_id}
+                                            className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                            checked={selecionada}
+                                            onCheckedChange={() => alternarLinhaSelecionada(linhaId)}
+                                            onSelect={(event) => event.preventDefault()}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <span
+                                                className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                  selecionada
+                                                    ? 'border-brand-primary bg-brand-primary text-white'
+                                                    : 'border-gray-400 bg-white text-transparent'
+                                                }`}
+                                              >
+                                                <Check className="h-3 w-3" />
+                                              </span>
+                                              <span>{linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}</span>
+                                            </div>
+                                          </DropdownMenuCheckboxItem>
+                                        )
+                                      })
+                                    )}
+                                  </div>
+                                  <DropdownMenuSeparator />
+                                  <div className="flex justify-end p-2">
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      className="h-9 w-24 rounded-lg"
+                                      onClick={() => setMenuLinhaAberto(false)}
+                                    >
+                                      Fechar
+                                    </Button>
+                                  </div>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+
                             <div className="flex flex-col gap-2">
                               <div className="flex items-start justify-between gap-3">
-                                <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                <p className="inline-flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                   Turnos
                                 </p>
                                 {draftFilters.turnoIds.length > 0 && (

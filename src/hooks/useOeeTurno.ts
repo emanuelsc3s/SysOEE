@@ -147,6 +147,14 @@ export function useOeeTurno() {
         if (filters?.dataFim) {
           query = query.lte('data', filters.dataFim)
         }
+        const linhaIds = Array.from(new Set(
+          (filters?.linhaIds || [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id))
+        ))
+        if (linhaIds.length > 0) {
+          query = query.in('linhaproducao_id', linhaIds)
+        }
         const turnoIds = (filters?.turnoIds || []).filter((id) => Number.isFinite(id))
         if (turnoIds.length > 0) {
           query = query.in('turno_id', turnoIds)
