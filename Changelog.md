@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Home: removido o item "Configurações" do menu dropdown do usuário (Minha Conta); mantidos Perfil e Sair.
 - Home: card "Análise Paradas OEE" com restrição apenas para perfil Operador (tbusuario.perfil); demais perfis (Administrador, Supervisor, etc.) podem acessar. Rota `/oee-analise-paradas` protegida com `blockOperador` no ProtectedRoute; utilitário `isPerfilOperador` em perfil.utils.
 - Rota `/oee-empresa`: redirecionamento com reload completo (window.location) para `public/oee-empresa.html`, para a página estática carregar corretamente em vez de cair no 404 do React Router.
 - Dashboard: ao clicar em "Voltar" com modo escuro ativo, a aplicação passa para modo claro antes de redirecionar para a Home, sem alterar a preferência persistida; ao reabrir o Dashboard (ou qualquer página), o tema da última escolha do usuário é aplicado.
