@@ -7,6 +7,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { sanitizePersistedSupabaseSession } from '@/lib/auth-storage'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'placeholder-key'
@@ -25,6 +26,12 @@ if (!isSupabaseConfigured) {
     '  VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_aqui'
   )
 }
+
+/**
+ * Sanitiza sessão persistida antes da criação do client.
+ * Isso evita tentativa de refresh de token claramente obsoleto no bootstrap.
+ */
+sanitizePersistedSupabaseSession(supabaseUrl)
 
 /**
  * Cliente Supabase padrão (com publishable key)

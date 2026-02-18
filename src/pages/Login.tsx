@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 
 // Supabase
 import { supabase, handleSupabaseError } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -276,6 +277,8 @@ function BrandingSection() {
  * Tratamento de erros via Dialog/Modal
  */
 export default function Login() {
+  const { user: authUser, isLoading: isAuthLoading } = useAuth()
+
   // Estados do formulário
   const [formData, setFormData] = useState<LoginFormData>({
     credential: '',
@@ -301,16 +304,13 @@ export default function Login() {
   const textoCopyright = `© ${anoAtual} FARMACE. Todos os direitos reservados.`
 
   /**
-   * Verificar se o usuário já está autenticado ao carregar a página
-   * Se sim, redirecionar para home
+   * Redireciona quando já existe usuário autenticado no contexto global.
    */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate('/', { replace: true })
-      }
-    })
-  }, [navigate])
+    if (!isAuthLoading && authUser) {
+      navigate('/', { replace: true })
+    }
+  }, [authUser, isAuthLoading, navigate])
 
   /**
    * Detecta quando o layout atual é touch + tablet/mobile.

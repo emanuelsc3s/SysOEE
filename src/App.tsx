@@ -24,6 +24,7 @@ import Placeholder from './pages/Placeholder'
 import Login from './pages/Login'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
+import { AuthProvider } from '@/providers/AuthProvider'
 
 /**
  * Componente principal da aplicação
@@ -37,8 +38,9 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <Toaster />
-      <Routes>
+      <AuthProvider>
+        <Toaster />
+        <Routes>
         {/* Rota pública de Login */}
         <Route path="/login" element={<Login />} />
 
@@ -177,7 +179,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </Router>
   )
 }

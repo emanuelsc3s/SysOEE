@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
 import { Loader2 } from 'lucide-react'
 import { isPerfilAdministrador } from '@/utils/perfil.utils'
+import { useAuth } from '@/hooks/useAuth'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -27,64 +26,10 @@ interface ProtectedRouteProps {
  * <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
  */
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const [accessState, setAccessState] = useState<'checking' | 'authorized' | 'unauthenticated' | 'unauthorized'>('checking')
-
-  useEffect(() => {
-    let isMounted = true
-
-    const validarAcesso = async (session: { user: { id: string } } | null) => {
-      if (!isMounted) return
-
-      if (!session) {
-        setAccessState('unauthenticated')
-        return
-      }
-
-      if (!requireAdmin) {
-        setAccessState('authorized')
-        return
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('tbusuario')
-          .select('perfil')
-          .eq('user_id', session.user.id)
-          .eq('deletado', 'N')
-          .single()
-
-        if (!isMounted) return
-
-        if (error || !isPerfilAdministrador(data?.perfil)) {
-          setAccessState('unauthorized')
-          return
-        }
-
-        setAccessState('authorized')
-      } catch {
-        if (!isMounted) return
-        setAccessState('unauthorized')
-      }
-    }
-
-    // Verificar sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      void validarAcesso(session)
-    })
-
-    // Listener para mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      void validarAcesso(session)
-    })
-
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
-  }, [requireAdmin])
+  const { user, isLoading } = useAuth()
 
   // Loading state durante verificação de autenticação/perfil
-  if (accessState === 'checking') {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-bg-primary">
         <div className="text-center space-y-4">
@@ -98,12 +43,12 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }
 
   // Redirecionar para login se não autenticado
-  if (accessState === 'unauthenticated') {
+  if (!user) {
     return <Navigate to="/login" replace />
   }
 
   // Bloquear rota se não for Administrador
-  if (accessState === 'unauthorized') {
+  if (requireAdmin && !isPerfilAdministrador(user.perfil)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-bg-primary px-4">
         <div className="w-full max-w-md rounded-xl border border-destructive/20 bg-card p-6 text-center shadow-sm">
