@@ -23,7 +23,8 @@
       "Bash(gh issue create:*)",
       "Bash(if not exist \"C:\\\\Dev\\\\SysOEE\\\\database\\\\rbac\" mkdir \"C:\\\\Dev\\\\SysOEE\\\\database\\\\rbac\")",
       "Bash(tree:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

@@ -19,6 +19,7 @@ const MAX_INACTIVITY_MS = MAX_INACTIVITY_HOURS * 60 * 60 * 1000
 interface PersistedSessionShape {
   access_token?: unknown
   refresh_token?: unknown
+  expires_at?: unknown
 }
 
 function getProjectRefFromUrl(supabaseUrl: string): string | null {
@@ -73,12 +74,28 @@ function shouldClearSession(session: PersistedSessionShape, nowMs: number): bool
   }
 
   const lastActivityAt = readLastActivityTimestamp()
-  if (!lastActivityAt) {
-    // Se não há histórico local de atividade, não inferimos expiração por timestamp de token.
+
+  if (lastActivityAt) {
+    // Fonte primária: última atividade registrada pela aplicação.
+    return nowMs - lastActivityAt > MAX_INACTIVITY_MS
+  }
+
+  // Sem histórico local — cenário de primeira carga após deploy com o novo código
+  // (usuários que nunca tiveram sysoee_auth_last_activity_at gravado).
+  // Fallback: usa expires_at do access token. Se o token expirou há mais de
+  // MAX_INACTIVITY_MS, o refresh token por inatividade do Supabase também
+  // estará inválido, pois os dois limites são configurados com o mesmo valor.
+  const expiresAtRaw =
+    typeof session.expires_at === 'number'
+      ? session.expires_at
+      : Number(session.expires_at)
+
+  if (!Number.isFinite(expiresAtRaw) || expiresAtRaw <= 0) {
+    // Não conseguimos determinar expiração — deixa o Supabase tentar.
     return false
   }
 
-  return nowMs - lastActivityAt > MAX_INACTIVITY_MS
+  return nowMs - expiresAtRaw * 1000 > MAX_INACTIVITY_MS
 }
 
 export function registrarAtividadeAuth(): void {

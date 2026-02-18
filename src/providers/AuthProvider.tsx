@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
 import { AuthContext, type AuthUser, type UseAuthReturn } from '@/contexts/auth.context'
@@ -20,7 +20,7 @@ class AuthTimeoutError extends Error {
 }
 
 /**
- * Garante que chamadas críticas de autenticação não mantenham loading infinito.
+ * Garante que a busca de dados do usuário não mantenha loading infinito.
  */
 function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number, etapa: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -38,26 +38,13 @@ function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number, etapa: string
 }
 
 /**
- * Verifica se o erro retornado pelo Supabase é de sessão expirada.
- */
-function isErroSessaoExpirada(error: unknown): boolean {
-  if (!error || typeof error !== 'object' || !('message' in error)) {
-    return false
-  }
-
-  const mensagem = String((error as { message?: string }).message ?? '').toLowerCase()
-
-  return mensagem.includes('invalid refresh token') || mensagem.includes('session expired')
-}
-
-/**
  * Provider global de autenticação.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const updateSequenceRef = useRef(0)
-  const navigate = useNavigate()
+  const isMountedRef = useRef(true)
   const { toast } = useToast()
 
   /**
@@ -83,24 +70,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   /**
-   * Limpa somente a sessão local inválida.
-   */
-  const limparSessaoLocalInvalida = useCallback(async () => {
-    const { error } = await supabase.auth.signOut({ scope: 'local' })
-    if (error) {
-      console.warn('Falha ao limpar sessão local inválida:', error)
-    }
-    limparAtividadeAuth()
-  }, [])
-
-  /**
    * Atualiza estado de usuário autenticado.
+   *
+   * updateSequenceRef descarta resultados stale de chamadas concorrentes:
+   * só aplica o estado se esta chamada ainda for a mais recente.
+   * A checagem é feita APÓS a operação assíncrona (fetchUserData), que é o
+   * único ponto onde uma chamada posterior pode ter sido iniciada.
    */
   const updateUserState = useCallback(async (authUser: { id: string; email: string | null } | null) => {
     const updateId = ++updateSequenceRef.current
 
     if (!authUser) {
-      if (updateId !== updateSequenceRef.current) return
+      if (!isMountedRef.current) return
       setUser(null)
       setIsLoading(false)
       return
@@ -122,7 +103,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       userData = { usuario: null, perfil: null }
     }
 
+    // Descarta resultado se uma chamada mais recente foi iniciada durante fetchUserData.
     if (updateId !== updateSequenceRef.current) return
+    if (!isMountedRef.current) return
 
     setUser({
       id: authUser.id,
@@ -134,73 +117,88 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(false)
   }, [fetchUserData])
 
-  useEffect(() => {
-    let isMounted = true
-
-    const inicializarSessao = async () => {
-      try {
-        const { data, error } = await runWithTimeout(
-          supabase.auth.getSession(),
-          AUTH_BOOTSTRAP_TIMEOUT_MS,
-          'bootstrap de sessão'
-        )
-
-        if (!isMounted) return
-
-        if (error) {
-          if (isErroSessaoExpirada(error)) {
-            await limparSessaoLocalInvalida()
-          } else {
-            console.error('Erro ao recuperar sessão inicial:', error)
-          }
-
-          setUser(null)
-          setIsLoading(false)
-          return
-        }
-
-        await updateUserState(
-          data.session?.user
-            ? { id: data.session.user.id, email: data.session.user.email ?? null }
-            : null
-        )
-      } catch (error) {
-        if (!isMounted) return
-
-        if (error instanceof AuthTimeoutError) {
-          console.warn(error.message)
-          await limparSessaoLocalInvalida()
-        } else {
-          console.error('Erro inesperado ao inicializar sessão:', error)
-        }
-
-        if (!isMounted) return
-        setUser(null)
-        setIsLoading(false)
+  /**
+   * Limpeza local segura para cenários de token inválido/estado de auth inconsistente.
+   */
+  const limparSessaoLocal = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      if (error) {
+        console.warn('Falha ao limpar sessão local:', error)
       }
+    } catch (error) {
+      console.warn('Erro inesperado ao limpar sessão local:', error)
+    } finally {
+      limparAtividadeAuth()
+    }
+  }, [])
+
+  /**
+   * Processa uma sessão de auth fora do lock interno do Supabase.
+   */
+  const processarSessaoAuth = useCallback(async (session: Session | null) => {
+    if (session) {
+      registrarAtividadeAuth()
+    } else {
+      limparAtividadeAuth()
     }
 
-    void inicializarSessao()
+    await updateUserState(
+      session?.user ? { id: session.user.id, email: session.user.email ?? null } : null
+    )
+  }, [updateUserState])
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!isMounted) return
+  useEffect(() => {
+    isMountedRef.current = true
 
-      if (session) {
-        registrarAtividadeAuth()
-      } else {
-        limparAtividadeAuth()
+    // Timeout de segurança: se o evento INITIAL_SESSION não chegar em tempo hábil
+    // (ex.: Supabase SDK pendurado no refresh de token expirado), libera o loading
+    // para não bloquear o usuário indefinidamente.
+    const bootstrapTimeoutId = window.setTimeout(() => {
+      if (!isMountedRef.current) return
+      console.warn(`[AUTH_TIMEOUT] bootstrap de sessão excedeu ${AUTH_BOOTSTRAP_TIMEOUT_MS}ms`)
+      void limparSessaoLocal()
+      setUser(null)
+      setIsLoading(false)
+    }, AUTH_BOOTSTRAP_TIMEOUT_MS)
+
+    // Fila para serializar eventos de auth e evitar concorrência em consultas de perfil.
+    let authEventChain = Promise.resolve()
+    let recebeuPrimeiroEvento = false
+
+    // onAuthStateChange é a ÚNICA fonte de verdade do estado de autenticação.
+    // O SDK dispara INITIAL_SESSION automaticamente na subscrição com a sessão atual
+    // (ou null se o refresh falhar), eliminando a necessidade de chamar getSession()
+    // separadamente e evitando chamadas paralelas a updateUserState no mount.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMountedRef.current) return
+
+      // Cancela o timeout de segurança assim que qualquer evento de auth chegar.
+      if (!recebeuPrimeiroEvento) {
+        recebeuPrimeiroEvento = true
+        window.clearTimeout(bootstrapTimeoutId)
       }
 
-      await updateUserState(
-        session?.user ? { id: session.user.id, email: session.user.email ?? null } : null
-      )
+      // IMPORTANTE: callback síncrono. Processamento assíncrono fora do lock interno do SDK.
+      authEventChain = authEventChain
+        .then(async () => {
+          if (!isMountedRef.current) return
+          await processarSessaoAuth(session)
+        })
+        .catch((error) => {
+          if (!isMountedRef.current) return
+          console.error('Erro ao processar evento de autenticação:', error)
+          setUser(null)
+          setIsLoading(false)
+        })
     })
 
     return () => {
-      isMounted = false
+      isMountedRef.current = false
+      window.clearTimeout(bootstrapTimeoutId)
       subscription.unsubscribe()
     }
-  }, [limparSessaoLocalInvalida, updateUserState])
+  }, [limparSessaoLocal, processarSessaoAuth])
 
   /**
    * Logout do sistema.
@@ -225,7 +223,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       limparAtividadeAuth()
-      navigate('/login')
     } catch (err) {
       console.error('Erro inesperado no logout:', err)
       toast({
@@ -234,7 +231,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         description: 'Ocorreu um erro ao sair. Recarregue a página.',
       })
     }
-  }, [navigate, toast])
+  }, [toast])
 
   const value = useMemo<UseAuthReturn>(
     () => ({ user, isLoading, signOut }),
