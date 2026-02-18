@@ -1204,6 +1204,17 @@ export default function OeeTurno() {
     setOpenFilterDialog(false)
   }
 
+  const limparFiltrosModal = () => {
+    setDraftFilters(clonarFiltrosAplicados(FILTROS_APLICADOS_PADRAO))
+    setBuscaLinha('')
+    setBuscaTurno('')
+    setBuscaProduto('')
+    setMenuLinhaAberto(false)
+    setMenuTurnoAberto(false)
+    setMenuProdutoAberto(false)
+    setMenuStatusAberto(false)
+  }
+
   const handleVisualizar = (turno: OeeTurnoFormData) => {
     // Navega para a página de apontamento OEE com o ID do turno (preserva página para voltar)
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}`, { state: { returnPage: currentPage } })
@@ -1883,111 +1894,125 @@ export default function OeeTurno() {
                               </div>
                             </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="filtro-linha">Linha de Produção</Label>
-                              <DropdownMenu open={menuLinhaAberto} onOpenChange={setMenuLinhaAberto}>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    id="filtro-linha"
-                                    variant="outline"
-                                    className="h-11 w-full justify-between bg-white font-normal hover:bg-white sm:h-10"
+                            <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="inline-flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                  Linha de Produção
+                                </p>
+                                {draftFilters.linhaIds.length > 0 && (
+                                  <span className="whitespace-nowrap text-[11px] font-medium text-brand-primary sm:text-xs">
+                                    {draftFilters.linhaIds.length}{' '}
+                                    selecionado{draftFilters.linhaIds.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-3">
+                                <DropdownMenu open={menuLinhaAberto} onOpenChange={setMenuLinhaAberto}>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      id="filtro-linha"
+                                      variant="outline"
+                                      className="h-10 w-full justify-between rounded-xl border-slate-200 bg-white px-3.5 text-left font-normal text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-brand-primary/25"
+                                    >
+                                      <span className="truncate">{resumoLinhasSelecionadas}</span>
+                                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="start"
+                                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-slate-200 bg-white p-0 shadow-lg"
                                   >
-                                    <span className="truncate">{resumoLinhasSelecionadas}</span>
-                                    <ChevronDown className="h-4 w-4 opacity-60" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                  align="start"
-                                  className="w-[var(--radix-dropdown-menu-trigger-width)]"
-                                >
-                                  <div className="p-2">
-                                    <Input
-                                      ref={campoBuscaLinhaRef}
-                                      placeholder="Buscar linha"
-                                      value={buscaLinha}
-                                      onChange={(event) => setBuscaLinha(event.target.value)}
-                                      onKeyDown={(event) => {
-                                        if (event.key !== 'Escape') {
-                                          event.stopPropagation()
+                                    <div className="p-2">
+                                      <Input
+                                        ref={campoBuscaLinhaRef}
+                                        placeholder="Buscar linha"
+                                        className="h-10 rounded-lg border-slate-200 bg-slate-50/50"
+                                        value={buscaLinha}
+                                        onChange={(event) => setBuscaLinha(event.target.value)}
+                                        onKeyDown={(event) => {
+                                          if (event.key !== 'Escape') {
+                                            event.stopPropagation()
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem
+                                      className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                      checked={draftFilters.linhaIds.length === 0}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          setDraftFilters((prev) => ({ ...prev, linhaIds: [] }))
                                         }
                                       }}
-                                    />
-                                  </div>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuCheckboxItem
-                                    className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
-                                    checked={draftFilters.linhaIds.length === 0}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setDraftFilters((prev) => ({ ...prev, linhaIds: [] }))
-                                      }
-                                    }}
-                                    onSelect={(event) => event.preventDefault()}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
-                                          draftFilters.linhaIds.length === 0
-                                            ? 'border-brand-primary bg-brand-primary text-white'
-                                            : 'border-gray-400 bg-white text-transparent'
-                                        }`}
-                                      >
-                                        <Check className="h-3 w-3" />
-                                      </span>
-                                      <span>Todas as linhas</span>
-                                    </div>
-                                  </DropdownMenuCheckboxItem>
-                                  <DropdownMenuSeparator />
-                                  <div className="max-h-64 overflow-y-auto">
-                                    {linhasFiltradasDropdown.length === 0 ? (
-                                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                        Nenhuma linha encontrada.
-                                      </div>
-                                    ) : (
-                                      linhasFiltradasDropdown.map((linha) => {
-                                        const linhaId = String(linha.linhaproducao_id)
-                                        const selecionada = draftFilters.linhaIds.includes(linhaId)
-                                        return (
-                                          <DropdownMenuCheckboxItem
-                                            key={linha.linhaproducao_id}
-                                            className="pl-2 pr-2 data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
-                                            checked={selecionada}
-                                            onCheckedChange={() => alternarLinhaSelecionada(linhaId)}
-                                            onSelect={(event) => event.preventDefault()}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <span
-                                                className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
-                                                  selecionada
-                                                    ? 'border-brand-primary bg-brand-primary text-white'
-                                                    : 'border-gray-400 bg-white text-transparent'
-                                                }`}
-                                              >
-                                                <Check className="h-3 w-3" />
-                                              </span>
-                                              <span>{linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}</span>
-                                            </div>
-                                          </DropdownMenuCheckboxItem>
-                                        )
-                                      })
-                                    )}
-                                  </div>
-                                  <DropdownMenuSeparator />
-                                  <div className="flex justify-end p-2">
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      className="h-9 w-24 rounded-lg"
-                                      onClick={() => setMenuLinhaAberto(false)}
+                                      onSelect={(event) => event.preventDefault()}
                                     >
-                                      Fechar
-                                    </Button>
-                                  </div>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                            draftFilters.linhaIds.length === 0
+                                              ? 'border-brand-primary bg-brand-primary text-white'
+                                              : 'border-input bg-background text-transparent'
+                                          }`}
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </span>
+                                        <span>Todas as linhas</span>
+                                      </div>
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuSeparator />
+                                    <div className="max-h-64 overflow-y-auto">
+                                      {linhasFiltradasDropdown.length === 0 ? (
+                                        <div className="px-2 py-2 text-sm text-muted-foreground">
+                                          Nenhuma linha encontrada.
+                                        </div>
+                                      ) : (
+                                        linhasFiltradasDropdown.map((linha) => {
+                                          const linhaId = String(linha.linhaproducao_id)
+                                          const selecionada = draftFilters.linhaIds.includes(linhaId)
+                                          return (
+                                            <DropdownMenuCheckboxItem
+                                              key={linha.linhaproducao_id}
+                                              className="min-h-10 rounded-sm px-2 py-2 text-sm data-[state=checked]:bg-brand-primary/10 [&>span]:hidden"
+                                              checked={selecionada}
+                                              onCheckedChange={() => alternarLinhaSelecionada(linhaId)}
+                                              onSelect={(event) => event.preventDefault()}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <span
+                                                  className={`flex h-4 w-4 items-center justify-center rounded-[3px] border transition-colors ${
+                                                    selecionada
+                                                      ? 'border-brand-primary bg-brand-primary text-white'
+                                                      : 'border-input bg-background text-transparent'
+                                                  }`}
+                                                >
+                                                  <Check className="h-3 w-3" />
+                                                </span>
+                                                <span>{linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}</span>
+                                              </div>
+                                            </DropdownMenuCheckboxItem>
+                                          )
+                                        })
+                                      )}
+                                    </div>
+                                    <DropdownMenuSeparator />
+                                    <div className="flex justify-end p-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="h-9 w-24 rounded-lg"
+                                        onClick={() => setMenuLinhaAberto(false)}
+                                      >
+                                        Fechar
+                                      </Button>
+                                    </div>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </section>
 
-                            <div className="flex flex-col gap-2">
+                            <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                               <div className="flex items-start justify-between gap-3">
                                 <p className="inline-flex items-center gap-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                   Turnos
@@ -2000,7 +2025,7 @@ export default function OeeTurno() {
                                 )}
                               </div>
 
-                              <div>
+                              <div className="mt-3">
                                 <DropdownMenu open={menuTurnoAberto} onOpenChange={setMenuTurnoAberto}>
                                   <DropdownMenuTrigger asChild>
                                     <Button
@@ -2103,7 +2128,7 @@ export default function OeeTurno() {
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
-                            </div>
+                            </section>
 
                             <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
                               <div className="flex items-start justify-between gap-3">
@@ -2226,19 +2251,28 @@ export default function OeeTurno() {
                         </div>
 
                         <DialogFooter className="border-t border-slate-100 bg-white/95 px-4 py-4 sm:px-5 md:px-6 lg:px-7">
-                          <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-end">
+                          <div className="grid w-full grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-between">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="flex min-w-[148px] items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
+                              onClick={limparFiltrosModal}
+                            >
+                              Limpar Filtros
+                            </Button>
                             <div className="grid grid-cols-1 gap-2 sm:flex sm:items-center sm:gap-2 md:gap-3">
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="h-10 min-w-[132px] rounded-xl border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                                className="flex min-w-[132px] items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
                                 onClick={() => setOpenFilterDialog(false)}
                               >
                                 Cancelar
                               </Button>
                               <Button
                                 type="button"
-                                className="h-10 min-w-[168px] rounded-xl bg-brand-primary text-white shadow-[0_4px_16px_rgba(6,98,195,0.24)] transition-colors hover:bg-brand-primary/90"
+                                variant="outline"
+                                className="flex min-w-[168px] items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
                                 onClick={applyFilters}
                               >
                                 Aplicar filtros
