@@ -66,6 +66,12 @@ import { ModalBuscaLinhaProducao, type LinhaProducaoSelecionada } from "@/compon
 import { TipoParada } from '@/types/parada'
 import { ModalTurnoBloqueado } from '@/pages/oee/apontamento-oee/ModalTurnoBloqueado'
 import { ModalControleLotes } from '@/pages/oee/apontamento-oee/components/ModalControleLotes'
+import {
+  OEE_REALTIME_PRESENCE_ENABLED,
+  OeeTurnoPresencePanel,
+  buildPresenceActivityState,
+  useOeeTurnoPresence,
+} from '@/pages/oee/apontamento-oee/realtime-presence'
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -519,6 +525,36 @@ export default function ApontamentoOEE() {
   const [linhaAnotacaoSelecionada, setLinhaAnotacaoSelecionada] = useState<LinhaApontamentoProducao | null>(null)
   const [textoAnotacao, setTextoAnotacao] = useState<string>('')
   const [salvandoAnotacao, setSalvandoAnotacao] = useState(false)
+
+  const estadoAtividadePresence = useMemo(
+    () =>
+      buildPresenceActivityState({
+        modoConsulta,
+        editandoCabecalho,
+        modalAnotacoesAberto,
+        formularioAtivo,
+        modoOperacao
+      }),
+    [editandoCabecalho, formularioAtivo, modalAnotacoesAberto, modoConsulta, modoOperacao]
+  )
+
+  const {
+    connectionStatus: presenceConnectionStatus,
+    others: presenceOthers,
+    othersCount: presenceOthersCount,
+    error: presenceError
+  } = useOeeTurnoPresence({
+    enabled: OEE_REALTIME_PRESENCE_ENABLED,
+    oeeTurnoId,
+    currentUser: user
+      ? {
+          id: user.id,
+          usuario: user.usuario,
+          perfil: user.perfil
+        }
+      : null,
+    activityState: estadoAtividadePresence
+  })
 
   // ==================== Constantes para chaves do localStorage ====================
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
@@ -4545,6 +4581,14 @@ export default function ApontamentoOEE() {
                 <p className="mt-1 truncate text-sm text-brand-text-secondary md:text-base">
                   Registro de produção, qualidade e paradas
                 </p>
+                <OeeTurnoPresencePanel
+                  enabled={OEE_REALTIME_PRESENCE_ENABLED}
+                  oeeTurnoId={oeeTurnoId}
+                  connectionStatus={presenceConnectionStatus}
+                  others={presenceOthers}
+                  othersCount={presenceOthersCount}
+                  error={presenceError}
+                />
               </div>
 
               {/* Seção Direita - Botões de Ação */}
