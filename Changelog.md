@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Modal de perfil do usuário: rótulo "ID do Usuário" na seção Identificação renomeado para "Identificador / SicFar".
+- Modal de perfil do usuário: removido o campo "UUID de autenticação" da seção Dados Principais.
 - Home: removido o item "Configurações" do menu dropdown do usuário (Minha Conta); mantidos Perfil e Sair.
 - Home: card "Análise Paradas OEE" com restrição apenas para perfil Operador (tbusuario.perfil); demais perfis (Administrador, Supervisor, etc.) podem acessar. Rota `/oee-analise-paradas` protegida com `blockOperador` no ProtectedRoute; utilitário `isPerfilOperador` em perfil.utils.
 - Rota `/oee-empresa`: redirecionamento com reload completo (window.location) para `public/oee-empresa.html`, para a página estática carregar corretamente em vez de cair no 404 do React Router.

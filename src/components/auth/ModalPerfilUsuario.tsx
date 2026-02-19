@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
-  BadgeCheck,
   Clock3,
   Hash,
-  IdCard,
-  Mail,
   Phone,
   UserRound,
 } from 'lucide-react'
@@ -66,9 +63,11 @@ function CampoInfo({ rotulo, valor, icone }: CampoInfoProps) {
   return (
     <div className="group flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors duration-200 group-hover:bg-primary/15">
-          {icone}
-        </span>
+        {icone != null && (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors duration-200 group-hover:bg-primary/15">
+            {icone}
+          </span>
+        )}
         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
           {rotulo}
         </p>
@@ -278,36 +277,6 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
           ) : (
             <div className="space-y-6">
 
-              {/* Dados Principais */}
-              <section className="space-y-3">
-                <SecaoHeader
-                  titulo="Dados Principais"
-                  icone={<UserRound className="h-3 w-3" />}
-                />
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  <CampoInfo
-                    rotulo="Nome"
-                    valor={nomeExibicao}
-                    icone={<UserRound className="h-3.5 w-3.5" />}
-                  />
-                  <CampoInfo
-                    rotulo="E-mail"
-                    valor={emailExibicao}
-                    icone={<Mail className="h-3.5 w-3.5" />}
-                  />
-                  <CampoInfo
-                    rotulo="Perfil"
-                    valor={perfilExibicao}
-                    icone={<BadgeCheck className="h-3.5 w-3.5" />}
-                  />
-                  <CampoInfo
-                    rotulo="UUID de autenticação"
-                    valor={dadosPerfil?.user_id || user?.id || 'Não informado'}
-                    icone={<IdCard className="h-3.5 w-3.5" />}
-                  />
-                </div>
-              </section>
-
               {/* Identificação */}
               <section className="space-y-3">
                 <SecaoHeader
@@ -318,17 +287,42 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
                   <CampoInfo
                     rotulo="Login"
                     valor={dadosPerfil?.login || emailExibicao.split('@')[0] || 'Não informado'}
-                    icone={<IdCard className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                   <CampoInfo
                     rotulo="Matrícula"
                     valor={dadosPerfil?.matricula || 'Não informado'}
-                    icone={<Hash className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                   <CampoInfo
-                    rotulo="ID do Usuário"
+                    rotulo="Identificador / SicFar"
                     valor={formatarNumeroPtBr(dadosPerfil?.usuario_id)}
-                    icone={<Hash className="h-3.5 w-3.5" />}
+                    icone={null}
+                  />
+                </div>
+              </section>
+
+              {/* Dados Principais */}
+              <section className="space-y-3">
+                <SecaoHeader
+                  titulo="Dados Principais"
+                  icone={<UserRound className="h-3 w-3" />}
+                />
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <CampoInfo
+                    rotulo="Nome"
+                    valor={nomeExibicao}
+                    icone={null}
+                  />
+                  <CampoInfo
+                    rotulo="E-mail"
+                    valor={emailExibicao}
+                    icone={null}
+                  />
+                  <CampoInfo
+                    rotulo="Perfil"
+                    valor={perfilExibicao}
+                    icone={null}
                   />
                 </div>
               </section>
@@ -343,12 +337,12 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
                   <CampoInfo
                     rotulo="Ramal"
                     valor={dadosPerfil?.ramal || 'Não informado'}
-                    icone={<Phone className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                   <CampoInfo
                     rotulo="WhatsApp / Telefone"
                     valor={dadosPerfil?.whatsapp || dadosAuth.phone || 'Não informado'}
-                    icone={<Phone className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                 </div>
               </section>
@@ -363,17 +357,17 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
                   <CampoInfo
                     rotulo="Criado em"
                     valor={formatarDataHoraPtBr(dadosPerfil?.created_at || dadosAuth.created_at)}
-                    icone={<Clock3 className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                   <CampoInfo
                     rotulo="Atualizado em"
                     valor={formatarDataHoraPtBr(dadosPerfil?.updated_at)}
-                    icone={<Clock3 className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                   <CampoInfo
                     rotulo="Último acesso"
                     valor={formatarDataHoraPtBr(dadosAuth.last_sign_in_at)}
-                    icone={<Clock3 className="h-3.5 w-3.5" />}
+                    icone={null}
                   />
                 </div>
               </section>
