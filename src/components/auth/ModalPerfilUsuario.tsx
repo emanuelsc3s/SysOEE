@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -205,7 +206,7 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
 
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[780px] rounded-t-lg border border-b-border/50 border-l-primary border-r-primary border-t-primary bg-primary shadow-[0_25px_60px_-15px_hsl(var(--foreground)/0.30)] sm:rounded-b-lg sm:rounded-t-lg">
+      <DialogContent hideCloseButton className="gap-0 overflow-hidden p-0 sm:max-w-[780px] rounded-t-lg border border-b-border/50 border-l-primary border-r-primary border-t-primary bg-primary shadow-[0_25px_60px_-15px_hsl(var(--foreground)/0.30)] sm:rounded-b-lg sm:rounded-t-lg">
 
         {/* Hero: cabeçalho com identidade do usuário — único elemento com canto superior para evitar artefato branco */}
         <div className="relative overflow-hidden border-b border-primary/80 bg-primary px-8 pb-7 pt-8">
@@ -218,6 +219,25 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
             aria-hidden
             className="pointer-events-none absolute -left-8 bottom-0 h-36 w-36 rounded-full bg-primary-foreground/5 blur-2xl"
           />
+
+          {/* Botão de fechar */}
+          <DialogClose
+            className="absolute right-8 top-1/2 z-10 -translate-y-1/2 hidden sm:inline-flex shrink-0 appearance-none items-center justify-center rounded-full border border-white/30 bg-white p-0 text-primary shadow-sm transition-all duration-150 ease-out hover:bg-white/90 hover:text-primary/80 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, borderRadius: '50%', boxSizing: 'border-box' }}
+            title="Fechar perfil"
+            aria-label="Fechar perfil"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M7 7L17 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M17 7L7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </DialogClose>
 
           <div className="relative flex items-center gap-5">
             {/* Avatar com indicador de sessão ativa */}
@@ -375,7 +395,7 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
           >
             Fechar
           </Button>
