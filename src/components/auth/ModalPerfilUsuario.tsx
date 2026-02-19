@@ -12,7 +12,6 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -206,63 +205,50 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
 
   return (
     <Dialog open={aberto} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[780px] border-border/50 bg-background shadow-[0_25px_60px_-15px_hsl(var(--foreground)/0.30)]">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[780px] rounded-t-lg border border-b-border/50 border-l-primary border-r-primary border-t-primary bg-primary shadow-[0_25px_60px_-15px_hsl(var(--foreground)/0.30)] sm:rounded-b-lg sm:rounded-t-lg">
 
-        {/* Hero: cabeçalho com identidade do usuário */}
-        <div className="relative overflow-hidden border-b border-border/50 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-8 pb-7 pt-8">
+        {/* Hero: cabeçalho com identidade do usuário — único elemento com canto superior para evitar artefato branco */}
+        <div className="relative overflow-hidden border-b border-primary/80 bg-primary px-8 pb-7 pt-8">
           {/* Elementos decorativos de fundo */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary/5 blur-3xl"
+            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-primary-foreground/5 blur-3xl"
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute -left-8 bottom-0 h-36 w-36 rounded-full bg-primary/5 blur-2xl"
+            className="pointer-events-none absolute -left-8 bottom-0 h-36 w-36 rounded-full bg-primary-foreground/5 blur-2xl"
           />
 
-          <div className="relative flex items-start gap-5 sm:items-center">
+          <div className="relative flex items-center gap-5">
             {/* Avatar com indicador de sessão ativa */}
             <div className="relative shrink-0">
-              <Avatar className="h-[72px] w-[72px] border-[3px] border-background shadow-lg ring-2 ring-primary/20">
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+              <Avatar className="h-[72px] w-[72px] border-[3px] border-primary-foreground/20 shadow-lg ring-2 ring-primary-foreground/20">
+                <AvatarFallback className="bg-primary-foreground text-primary text-2xl font-bold">
                   {iniciais}
                 </AvatarFallback>
               </Avatar>
               <span
                 aria-label="Sessão ativa"
-                className="absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-green-500 shadow-sm"
+                className="absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-primary bg-green-400 shadow-sm"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-white" />
               </span>
             </div>
 
-            {/* Nome, e-mail e badges */}
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-xl font-bold text-foreground">
+            {/* Nome e e-mail */}
+            <div className="min-w-0 flex-1 space-y-1">
+              <DialogTitle className="truncate text-xl font-bold text-primary-foreground">
                 {nomeExibicao}
               </DialogTitle>
-              <DialogDescription className="mt-0.5 truncate text-sm text-muted-foreground">
+              <DialogDescription className="truncate text-sm text-primary-foreground/70">
                 {emailExibicao}
               </DialogDescription>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <Badge variant="info" className="gap-1.5">
-                  <BadgeCheck className="h-3 w-3" />
-                  {perfilExibicao}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="gap-1.5 border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                >
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-                  Usuário logado
-                </Badge>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Conteúdo principal com scroll */}
-        <div className="max-h-[56vh] overflow-y-auto overscroll-contain px-8 py-6">
+        <div className="max-h-[56vh] overflow-y-auto overscroll-contain bg-background px-8 py-6">
           {carregando ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 9 }).map((_, i) => (
@@ -384,7 +370,7 @@ export function ModalPerfilUsuario({ aberto, onOpenChange }: ModalPerfilUsuarioP
         </div>
 
         {/* Rodapé */}
-        <DialogFooter className="border-t border-border/50 bg-muted/30 px-8 py-4">
+        <DialogFooter className="border-t border-border/50 bg-background px-8 py-4">
           <Button
             type="button"
             variant="outline"
