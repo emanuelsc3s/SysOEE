@@ -22,6 +22,14 @@ export function buildPresenceActivityState({
 }: BuildPresenceActivityStateInput): OeePresenceActivityState {
   const formulario = normalizarFormulario(formularioAtivo)
 
+  if (editandoCabecalho) {
+    return {
+      atividade: 'editando_cabecalho',
+      formulario,
+      modoOperacao,
+    }
+  }
+
   if (modoConsulta) {
     return {
       atividade: 'visualizando',
@@ -33,14 +41,6 @@ export function buildPresenceActivityState({
   if (modalAnotacoesAberto) {
     return {
       atividade: 'editando_anotacao',
-      formulario,
-      modoOperacao,
-    }
-  }
-
-  if (editandoCabecalho) {
-    return {
-      atividade: 'editando_cabecalho',
       formulario,
       modoOperacao,
     }

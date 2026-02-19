@@ -3,14 +3,18 @@ import type { PresenceActivity, PresenceConnectionStatus } from '@/pages/oee/apo
 export const OEE_PRESENCE_CHANNEL_PREFIX = 'oee-turno'
 export const OEE_PRESENCE_HEARTBEAT_MS = 25_000
 export const OEE_PRESENCE_MAX_VISIBLE_AVATARS = 5
+export const OEE_PRESENCE_CURSOR_THROTTLE_MS = 80
+export const OEE_PRESENCE_CURSOR_STALE_MS = 10_000
 
-const VALORES_FLAG_ATIVA = new Set(['1', 'true', 'yes', 'on', 'sim', 's'])
+const VALORES_FLAG_INATIVA = new Set(['0', 'false', 'no', 'off', 'nao', 'n'])
 
-export const OEE_REALTIME_PRESENCE_ENABLED = VALORES_FLAG_ATIVA.has(
-  String(import.meta.env.VITE_ENABLE_OEE_PRESENCE ?? '')
-    .trim()
-    .toLowerCase()
-)
+const valorFlagPresence = String(import.meta.env.VITE_ENABLE_OEE_PRESENCE ?? '')
+  .trim()
+  .toLowerCase()
+
+export const OEE_REALTIME_PRESENCE_ENABLED = valorFlagPresence
+  ? !VALORES_FLAG_INATIVA.has(valorFlagPresence)
+  : true
 
 export const OEE_PRESENCE_ACTIVITY_LABELS: Record<PresenceActivity, string> = {
   visualizando: 'Visualizando',

@@ -41,7 +41,7 @@ function getDotStyles(connectionStatus: PresenceConnectionStatus): string {
 export function OeeTurnoPresenceBadge({ connectionStatus, othersCount }: OeeTurnoPresenceBadgeProps) {
   const statusLabel = OEE_PRESENCE_CONNECTION_LABELS[connectionStatus]
   const counterLabel = connectionStatus === 'connected'
-    ? `${othersCount} outro(s) online`
+    ? `${othersCount} conexão(ões) online`
     : statusLabel
 
   return (

@@ -1,4 +1,8 @@
-import type { OeePresenceParticipant, PresenceActivity } from '@/pages/oee/apontamento-oee/realtime-presence/types/realtimePresence.types'
+import type {
+  OeePresenceFieldLock,
+  OeePresenceParticipant,
+  PresenceActivity,
+} from '@/pages/oee/apontamento-oee/realtime-presence/types/realtimePresence.types'
 
 const ATIVIDADES_VALIDAS = new Set<PresenceActivity>([
   'visualizando',
@@ -15,15 +19,25 @@ interface MapPresenceStateArgs {
   currentTabId?: string | null
 }
 
-interface AggregatedParticipant {
+type MapPresenceFieldLocksArgs = MapPresenceStateArgs
+
+interface NormalizedParticipant {
+  connectionId: string
   userId: string
+  tabId: string
   nome: string
   perfil: string | null
   atividade: PresenceActivity
   formulario: string | null
+  modoOperacao: string | null
   updatedAt: string | null
   updatedAtMs: number
-  tabIds: Set<string>
+  sameUser: boolean
+}
+
+interface NormalizedFieldLock {
+  lock: OeePresenceFieldLock
+  updatedAtMs: number
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -76,6 +90,19 @@ function normalizeNomeUsuario(userId: string, usuario: string | null): string {
   return `Usuário ${userId.slice(0, 8)}`
 }
 
+function buildConnectionId(userId: string, tabId: string): string {
+  return `${userId}:${tabId}`
+}
+
+function buildTimestampMs(value: string | null): number {
+  if (!value) {
+    return 0
+  }
+
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export function mapPresenceStateToParticipants({
   state,
   currentUserId,
@@ -85,7 +112,7 @@ export function mapPresenceStateToParticipants({
     return []
   }
 
-  const participantesPorUsuario = new Map<string, AggregatedParticipant>()
+  const participantesPorConexao = new Map<string, NormalizedParticipant>()
 
   for (const [presenceKey, rawPresenceEntries] of Object.entries(state)) {
     if (!Array.isArray(rawPresenceEntries)) {
@@ -107,82 +134,129 @@ export function mapPresenceStateToParticipants({
       const perfil = asString(entry.perfil)
       const atividade = asActivity(entry.atividade)
       const formulario = asString(entry.formulario)
+      const modoOperacao = asString(entry.modo_operacao)
       const updatedAt = asString(entry.updated_at)
       const updatedAtMs = parseUpdatedAtMs(updatedAt)
       const tabId = asString(entry.tab_id) ?? presenceKey
+      const sameUser = userId === currentUserId
 
-      const existente = participantesPorUsuario.get(userId)
-
-      if (!existente) {
-        participantesPorUsuario.set(userId, {
-          userId,
-          nome: normalizeNomeUsuario(userId, usuario),
-          perfil,
-          atividade,
-          formulario,
-          updatedAt,
-          updatedAtMs,
-          tabIds: new Set([tabId]),
-        })
+      if (sameUser && currentTabId && tabId === currentTabId) {
         continue
       }
 
-      existente.tabIds.add(tabId)
+      const connectionId = buildConnectionId(userId, tabId)
+      const existente = participantesPorConexao.get(connectionId)
 
-      // Mantém os dados mais recentes para exibição.
-      if (updatedAtMs >= existente.updatedAtMs) {
-        existente.nome = normalizeNomeUsuario(userId, usuario)
-        existente.perfil = perfil
-        existente.atividade = atividade
-        existente.formulario = formulario
-        existente.updatedAt = updatedAt
-        existente.updatedAtMs = updatedAtMs
+      if (existente && existente.updatedAtMs > updatedAtMs) {
+        continue
       }
+
+      participantesPorConexao.set(connectionId, {
+        connectionId,
+        userId,
+        tabId,
+        nome: normalizeNomeUsuario(userId, usuario),
+        perfil,
+        atividade,
+        formulario,
+        modoOperacao,
+        updatedAt,
+        updatedAtMs,
+        sameUser,
+      })
     }
   }
 
-  return Array.from(participantesPorUsuario.values())
-    .flatMap<OeePresenceParticipant>((item) => {
-      const isCurrentUser = item.userId === currentUserId
-      const totalTabs = item.tabIds.size
-
-      if (!isCurrentUser) {
-        return [{
-          userId: item.userId,
-          nome: item.nome,
-          perfil: item.perfil,
-          atividade: item.atividade,
-          formulario: item.formulario,
-          updatedAt: item.updatedAt,
-          tabCount: totalTabs,
-        }]
-      }
-
-      const ownSessionCount = currentTabId
-        ? (item.tabIds.has(currentTabId) ? 1 : 0)
-        : 1
-      const outrasSessoes = Math.max(totalTabs - ownSessionCount, 0)
-
-      if (outrasSessoes <= 0) {
-        return []
-      }
-
-      return [{
-        userId: item.userId,
-        nome: `${item.nome} (outras sessões)`,
-        perfil: item.perfil,
-        atividade: item.atividade,
-        formulario: item.formulario,
-        updatedAt: item.updatedAt,
-        tabCount: outrasSessoes,
-      }]
-    })
+  return Array.from(participantesPorConexao.values())
     .sort((a, b) => {
-      const aMs = parseUpdatedAtMs(a.updatedAt)
-      const bMs = parseUpdatedAtMs(b.updatedAt)
-      if (aMs !== bMs) {
-        return bMs - aMs
+      if (a.updatedAtMs !== b.updatedAtMs) {
+        return b.updatedAtMs - a.updatedAtMs
       }
       return a.nome.localeCompare(b.nome, 'pt-BR')
     })
+    .map<OeePresenceParticipant>((item) => ({
+      connectionId: item.connectionId,
+      userId: item.userId,
+      tabId: item.tabId,
+      nome: item.nome,
+      perfil: item.perfil,
+      atividade: item.atividade,
+      formulario: item.formulario,
+      modoOperacao: item.modoOperacao,
+      updatedAt: item.updatedAt,
+      sameUser: item.sameUser,
+    }))
+}
+
+export function mapPresenceStateToFieldLocksByConnection({
+  state,
+  currentUserId,
+  currentTabId,
+}: MapPresenceFieldLocksArgs): Record<string, OeePresenceFieldLock> {
+  if (!state) {
+    return {}
+  }
+
+  const locksPorConexao = new Map<string, NormalizedFieldLock>()
+
+  for (const [presenceKey, rawPresenceEntries] of Object.entries(state)) {
+    if (!Array.isArray(rawPresenceEntries)) {
+      continue
+    }
+
+    for (const rawEntry of rawPresenceEntries) {
+      const entry = asRecord(rawEntry)
+      if (!entry) {
+        continue
+      }
+
+      const userId = asString(entry.user_id) ?? extractUserIdFromPresenceKey(presenceKey)
+      if (!userId) {
+        continue
+      }
+
+      const tabId = asString(entry.tab_id) ?? presenceKey
+      const sameUser = userId === currentUserId
+      if (sameUser && currentTabId && tabId === currentTabId) {
+        continue
+      }
+
+      const fieldKey = asString(entry.lock_field_key)
+      if (!fieldKey) {
+        continue
+      }
+
+      const fieldLabel = asString(entry.lock_field_label) ?? fieldKey
+      const usuario = asString(entry.usuario)
+      const updatedAt = asString(entry.lock_updated_at) ?? asString(entry.updated_at) ?? new Date().toISOString()
+      const updatedAtMs = buildTimestampMs(updatedAt)
+      const connectionId = buildConnectionId(userId, tabId)
+      const existente = locksPorConexao.get(connectionId)
+
+      if (existente && existente.updatedAtMs > updatedAtMs) {
+        continue
+      }
+
+      locksPorConexao.set(connectionId, {
+        updatedAtMs,
+        lock: {
+          connectionId,
+          userId,
+          tabId,
+          usuario,
+          fieldKey,
+          fieldLabel,
+          updatedAt,
+        },
+      })
+    }
+  }
+
+  return Array.from(locksPorConexao.entries()).reduce<Record<string, OeePresenceFieldLock>>(
+    (acumulador, [connectionId, item]) => {
+      acumulador[connectionId] = item.lock
+      return acumulador
+    },
+    {}
+  )
 }

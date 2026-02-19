@@ -7,6 +7,67 @@ interface OeeTurnoPresenceAvatarStackProps {
   maxVisible?: number
 }
 
+function formatFormulario(formulario: string | null): string | null {
+  if (!formulario) {
+    return null
+  }
+
+  if (formulario === 'production-form') {
+    return 'Formulário de produção'
+  }
+
+  if (formulario === 'quality-form') {
+    return 'Formulário de qualidade'
+  }
+
+  if (formulario === 'downtime-form') {
+    return 'Formulário de parada'
+  }
+
+  return formulario
+}
+
+function formatModoOperacao(modoOperacao: string | null): string | null {
+  if (!modoOperacao) {
+    return null
+  }
+
+  if (modoOperacao === 'consulta') {
+    return 'Modo consulta'
+  }
+
+  if (modoOperacao === 'edicao') {
+    return 'Modo edição'
+  }
+
+  if (modoOperacao === 'inclusao') {
+    return 'Modo inclusão'
+  }
+
+  return `Modo ${modoOperacao}`
+}
+
+function buildParticipantTooltip(participant: OeePresenceParticipant): string {
+  const partes = [
+    participant.sameUser
+      ? `${participant.nome} (outra sessão sua)`
+      : participant.nome,
+    OEE_PRESENCE_ACTIVITY_LABELS[participant.atividade],
+  ]
+
+  const formulario = formatFormulario(participant.formulario)
+  if (formulario) {
+    partes.push(formulario)
+  }
+
+  const modoOperacao = formatModoOperacao(participant.modoOperacao)
+  if (modoOperacao) {
+    partes.push(modoOperacao)
+  }
+
+  return partes.join(' • ')
+}
+
 function gerarIniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean)
   if (partes.length === 0) {
@@ -36,11 +97,15 @@ export function OeeTurnoPresenceAvatarStack({
       <div className="flex -space-x-2">
         {visible.map((participant) => (
           <Avatar
-            key={participant.userId}
+            key={participant.connectionId}
             className="h-7 w-7 border border-white ring-1 ring-slate-200"
-            title={`${participant.nome} • ${OEE_PRESENCE_ACTIVITY_LABELS[participant.atividade]}`}
+            title={buildParticipantTooltip(participant)}
           >
-            <AvatarFallback className="bg-slate-100 text-[11px] font-semibold text-slate-700">
+            <AvatarFallback className={`text-[11px] font-semibold ${
+              participant.sameUser
+                ? 'bg-blue-50 text-blue-700'
+                : 'bg-slate-100 text-slate-700'
+            }`}>
               {gerarIniciais(participant.nome)}
             </AvatarFallback>
           </Avatar>

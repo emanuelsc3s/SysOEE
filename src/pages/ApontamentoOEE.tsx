@@ -68,6 +68,7 @@ import { ModalTurnoBloqueado } from '@/pages/oee/apontamento-oee/ModalTurnoBloqu
 import { ModalControleLotes } from '@/pages/oee/apontamento-oee/components/ModalControleLotes'
 import {
   OEE_REALTIME_PRESENCE_ENABLED,
+  OeeTurnoPresenceCursorLayer,
   OeeTurnoPresencePanel,
   buildPresenceActivityState,
   useOeeTurnoPresence,
@@ -75,6 +76,43 @@ import {
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
+const FORMULARIOS_ATIVOS = new Set<FormularioAtivo>([
+  'production-form',
+  'quality-form',
+  'downtime-form',
+])
+
+function isFormularioAtivo(value: string): value is FormularioAtivo {
+  return FORMULARIOS_ATIVOS.has(value as FormularioAtivo)
+}
+
+const LOCK_CAMPOS = {
+  cabecalhoEdicao: 'cabecalho:edicao-turno',
+  cabecalhoHoraInicial: 'cabecalho:hora-inicial',
+  cabecalhoHoraFinal: 'cabecalho:hora-final',
+  qualidadeQuantidade: 'qualidade:quantidade-perdas',
+  paradaCodigo: 'parada:codigo',
+  paradaHoraInicial: 'parada:hora-inicial',
+  paradaHoraFinal: 'parada:hora-final',
+  paradaObservacoes: 'parada:observacoes',
+  configuracaoIntervalo: 'config:intervalo-apontamento',
+} as const
+
+function buildCampoLockProducaoQuantidade(horaInicio: string, horaFim: string): string {
+  return `producao:quantidade:${horaInicio}-${horaFim}`
+}
+
+function buildRotuloLockProducaoQuantidade(horaInicio: string, horaFim: string): string {
+  return `Quantidade produzida (${horaInicio} às ${horaFim})`
+}
+
+function buildCampoLockAnotacaoRegistro(linhaId: string): string {
+  return `producao:anotacao:${linhaId}`
+}
+
+function buildRotuloLockAnotacaoRegistro(horaInicio: string, horaFim: string): string {
+  return `Anotação da produção (${horaInicio} às ${horaFim})`
+}
 
 // Tipo para os modos de operação
 type ModoOperacao = 'consulta' | 'edicao' | 'inclusao'
@@ -201,6 +239,14 @@ interface ProducaoSupabase {
 const TEMPO_DISPONIVEL_PADRAO = 12
 const ROTINA_PERMISSAO_OEE_TURNO: Rotina = 'OEE_TURNO_A'
 const MENSAGEM_PERMISSAO_EXCLUSAO = 'Rotina de exclusão permitida apenas para os perfis Administrador e Supervisor'
+
+function extrairCodigoSku(sku: string): string {
+  return sku.includes(' - ') ? sku.split(' - ')[0].trim() : sku.trim()
+}
+
+function extrairDescricaoSku(sku: string): string {
+  return sku.includes(' - ') ? sku.split(' - ').slice(1).join(' - ').trim() : sku.trim()
+}
 
 interface NormalizacaoNumeroPtBr {
   formatado: string
@@ -343,6 +389,9 @@ export default function ApontamentoOEE() {
   // ==================== Refs para controle de carregamento ====================
   const turnoOeeCarregadoRef = useRef<string | null>(null) // Evita loop infinito no useEffect de carregamento
   const producaoCarregadaRef = useRef<number | null>(null) // Evita recargas repetidas da produção
+  const aplicandoPatchUiRemotoRef = useRef(false)
+  const ultimoPatchUiEnviadoRef = useRef('')
+  const ultimoPatchUiRecebidoRef = useRef('')
 
   // ==================== Estado de Navegação ====================
   const [formularioAtivo, setFormularioAtivo] = useState<FormularioAtivo>('production-form')
@@ -406,6 +455,7 @@ export default function ApontamentoOEE() {
   const [mensagemPermissaoNegada, setMensagemPermissaoNegada] = useState('')
   const [temPermissaoEditarTurnoFechado, setTemPermissaoEditarTurnoFechado] = useState(false)
   const [showAlertaDataFutura, setShowAlertaDataFutura] = useState(false)
+  const [showAlertaEdicaoConcorrente, setShowAlertaEdicaoConcorrente] = useState(false)
 
   // ==================== Estado de Configurações ====================
   const [modalConfiguracoesAberto, setModalConfiguracoesAberto] = useState(false)
@@ -541,7 +591,14 @@ export default function ApontamentoOEE() {
   const {
     connectionStatus: presenceConnectionStatus,
     others: presenceOthers,
+    cursors: presenceCursors,
+    fieldLocks: presenceFieldLocks,
+    uiStateEvent: presenceUiStateEvent,
+    broadcastUiState: broadcastPresenceUiState,
+    acquireFieldLock: acquirePresenceFieldLock,
+    releaseFieldLock: releasePresenceFieldLock,
     othersCount: presenceOthersCount,
+    connected: presenceConnected,
     error: presenceError
   } = useOeeTurnoPresence({
     enabled: OEE_REALTIME_PRESENCE_ENABLED,
@@ -555,6 +612,290 @@ export default function ApontamentoOEE() {
       : null,
     activityState: estadoAtividadePresence
   })
+
+  const locksPorCampo = useMemo(() => {
+    const mapa = new Map<string, (typeof presenceFieldLocks)[number]>()
+    presenceFieldLocks.forEach((lock) => {
+      if (!mapa.has(lock.fieldKey)) {
+        mapa.set(lock.fieldKey, lock)
+      }
+    })
+    return mapa
+  }, [presenceFieldLocks])
+
+  const obterLockCampo = useCallback((fieldKey: string) => {
+    return locksPorCampo.get(fieldKey) ?? null
+  }, [locksPorCampo])
+
+  const nomeUsuarioLock = useCallback((fieldKey: string): string | null => {
+    const lock = obterLockCampo(fieldKey)
+    if (!lock) {
+      return null
+    }
+
+    const usuario = lock.usuario?.trim()
+    return usuario || `Usuário ${lock.userId.slice(0, 8)}`
+  }, [obterLockCampo])
+
+  const campoTravado = useCallback((fieldKey: string): boolean => {
+    return Boolean(obterLockCampo(fieldKey))
+  }, [obterLockCampo])
+
+  const mensagemLockCampo = useCallback((fieldKey: string): string | null => {
+    const lock = obterLockCampo(fieldKey)
+    const nome = nomeUsuarioLock(fieldKey)
+    if (!lock || !nome) {
+      return null
+    }
+
+    return `${lock.fieldLabel} em edição por ${nome}.`
+  }, [nomeUsuarioLock, obterLockCampo])
+
+  const iniciarLockCampo = useCallback((fieldKey: string, fieldLabel: string) => {
+    if (campoTravado(fieldKey)) {
+      return
+    }
+    acquirePresenceFieldLock(fieldKey, fieldLabel)
+  }, [acquirePresenceFieldLock, campoTravado])
+
+  const finalizarLockCampo = useCallback((fieldKey?: string) => {
+    releasePresenceFieldLock(fieldKey)
+  }, [releasePresenceFieldLock])
+
+  const lockParadaCodigoTravado = campoTravado(LOCK_CAMPOS.paradaCodigo)
+  const lockParadaHoraInicialTravado = campoTravado(LOCK_CAMPOS.paradaHoraInicial)
+  const lockParadaHoraFinalTravado = campoTravado(LOCK_CAMPOS.paradaHoraFinal)
+  const lockParadaObservacoesTravado = campoTravado(LOCK_CAMPOS.paradaObservacoes)
+  const lockParadaCamposTravados =
+    lockParadaCodigoTravado ||
+    lockParadaHoraInicialTravado ||
+    lockParadaHoraFinalTravado ||
+    lockParadaObservacoesTravado
+  const lockConfiguracaoIntervaloTravado = campoTravado(LOCK_CAMPOS.configuracaoIntervalo)
+
+  const campoLockAnotacaoSelecionada = useMemo(() => {
+    if (!linhaAnotacaoSelecionada) {
+      return null
+    }
+
+    const idLinha = linhaAnotacaoSelecionada.apontamentoId ?? linhaAnotacaoSelecionada.id
+    return buildCampoLockAnotacaoRegistro(String(idLinha))
+  }, [linhaAnotacaoSelecionada])
+
+  const anotacaoSelecionadaTravada = campoLockAnotacaoSelecionada
+    ? campoTravado(campoLockAnotacaoSelecionada)
+    : false
+  const usuarioLockAnotacaoSelecionada = campoLockAnotacaoSelecionada
+    ? nomeUsuarioLock(campoLockAnotacaoSelecionada)
+    : null
+  const mensagemLockAnotacaoSelecionada = campoLockAnotacaoSelecionada
+    ? mensagemLockCampo(campoLockAnotacaoSelecionada)
+    : null
+
+  const participanteEditandoCabecalho = useMemo(
+    () => presenceOthers.find((participante) => participante.atividade === 'editando_cabecalho') ?? null,
+    [presenceOthers]
+  )
+  const lockCabecalhoHoraInicial = useMemo(
+    () => obterLockCampo(LOCK_CAMPOS.cabecalhoHoraInicial),
+    [obterLockCampo]
+  )
+  const lockCabecalhoHoraFinal = useMemo(
+    () => obterLockCampo(LOCK_CAMPOS.cabecalhoHoraFinal),
+    [obterLockCampo]
+  )
+  const lockCabecalhoEdicao = useMemo(
+    () => obterLockCampo(LOCK_CAMPOS.cabecalhoEdicao),
+    [obterLockCampo]
+  )
+  const lockCabecalhoConcorrente = lockCabecalhoEdicao ?? lockCabecalhoHoraInicial ?? lockCabecalhoHoraFinal
+  const bloqueioConcorrenciaCabecalhoAtivo = Boolean(participanteEditandoCabecalho || lockCabecalhoConcorrente)
+  const nomeConexaoEditandoCabecalho = useMemo(() => {
+    if (participanteEditandoCabecalho) {
+      const perfil = participanteEditandoCabecalho.perfil?.trim()
+      return perfil ? `${participanteEditandoCabecalho.nome} (${perfil})` : participanteEditandoCabecalho.nome
+    }
+
+    if (lockCabecalhoConcorrente) {
+      const usuario = lockCabecalhoConcorrente.usuario?.trim()
+      return usuario || `Usuário ${lockCabecalhoConcorrente.userId.slice(0, 8)}`
+    }
+
+    return 'outra conexão'
+  }, [lockCabecalhoConcorrente, participanteEditandoCabecalho])
+
+  const estadoUiCompartilhadoPresence = useMemo(() => ({
+    formularioAtivo,
+    dataIso: data ? format(data, 'yyyy-MM-dd') : null,
+    turno,
+    turnoCodigo,
+    turnoNome,
+    turnoHoraInicial,
+    turnoHoraFinal,
+    linhaId,
+    linhaNome,
+    skuCodigo,
+    quantidadePerdas,
+    codigoParadaBusca,
+    horaInicialParada,
+    horaFinalParada,
+    observacoesParada,
+    linhasQuantidade: linhasApontamento.map((linha) => ({
+      horaInicio: linha.horaInicio,
+      horaFim: linha.horaFim,
+      quantidadeProduzida: linha.quantidadeProduzida,
+    })),
+  }), [
+    codigoParadaBusca,
+    data,
+    formularioAtivo,
+    horaFinalParada,
+    horaInicialParada,
+    linhaId,
+    linhaNome,
+    linhasApontamento,
+    observacoesParada,
+    quantidadePerdas,
+    skuCodigo,
+    turno,
+    turnoCodigo,
+    turnoNome,
+    turnoHoraFinal,
+    turnoHoraInicial,
+  ])
+
+  const estadoUiCompartilhadoPresenceSerializado = useMemo(
+    () => JSON.stringify(estadoUiCompartilhadoPresence),
+    [estadoUiCompartilhadoPresence]
+  )
+
+  useEffect(() => {
+    if (!OEE_REALTIME_PRESENCE_ENABLED || !presenceConnected || !oeeTurnoId) {
+      return
+    }
+
+    if (aplicandoPatchUiRemotoRef.current) {
+      return
+    }
+
+    if (ultimoPatchUiEnviadoRef.current === estadoUiCompartilhadoPresenceSerializado) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (aplicandoPatchUiRemotoRef.current) {
+        return
+      }
+
+      broadcastPresenceUiState(estadoUiCompartilhadoPresence)
+      ultimoPatchUiEnviadoRef.current = estadoUiCompartilhadoPresenceSerializado
+    }, 180)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [
+    broadcastPresenceUiState,
+    estadoUiCompartilhadoPresence,
+    estadoUiCompartilhadoPresenceSerializado,
+    oeeTurnoId,
+    presenceConnected,
+  ])
+
+  useEffect(() => {
+    const snapshot = presenceUiStateEvent?.state
+    if (!snapshot) {
+      return
+    }
+
+    const snapshotSerializado = JSON.stringify(snapshot)
+    if (ultimoPatchUiRecebidoRef.current === snapshotSerializado) {
+      return
+    }
+
+    ultimoPatchUiRecebidoRef.current = snapshotSerializado
+    aplicandoPatchUiRemotoRef.current = true
+
+    const aplicarCampoTexto = (valor: unknown, setter: (value: string) => void) => {
+      if (typeof valor === 'string') {
+        setter(valor)
+        return
+      }
+      if (valor === null) {
+        setter('')
+      }
+    }
+
+    try {
+      if (typeof snapshot.formularioAtivo === 'string' && isFormularioAtivo(snapshot.formularioAtivo)) {
+        setFormularioAtivo(snapshot.formularioAtivo)
+      }
+
+      if (typeof snapshot.dataIso === 'string' && snapshot.dataIso.trim()) {
+        const dataSnapshot = parseISO(snapshot.dataIso)
+        if (!Number.isNaN(dataSnapshot.getTime())) {
+          setData(dataSnapshot)
+        }
+      }
+
+      aplicarCampoTexto(snapshot.turnoHoraInicial, setTurnoHoraInicial)
+      aplicarCampoTexto(snapshot.turnoHoraFinal, setTurnoHoraFinal)
+      aplicarCampoTexto(snapshot.turno, (valor) => setTurno(valor as Turno))
+      aplicarCampoTexto(snapshot.turnoCodigo, setTurnoCodigo)
+      aplicarCampoTexto(snapshot.turnoNome, setTurnoNome)
+      aplicarCampoTexto(snapshot.linhaId, setLinhaId)
+      aplicarCampoTexto(snapshot.linhaNome, setLinhaNome)
+      aplicarCampoTexto(snapshot.skuCodigo, setSkuCodigo)
+      aplicarCampoTexto(snapshot.quantidadePerdas, setQuantidadePerdas)
+      aplicarCampoTexto(snapshot.codigoParadaBusca, setCodigoParadaBusca)
+      aplicarCampoTexto(snapshot.horaInicialParada, setHoraInicialParada)
+      aplicarCampoTexto(snapshot.horaFinalParada, setHoraFinalParada)
+      aplicarCampoTexto(snapshot.observacoesParada, setObservacoesParada)
+
+      if (Array.isArray(snapshot.linhasQuantidade)) {
+        const mapaQuantidade = new Map<string, string>()
+        snapshot.linhasQuantidade.forEach((linha) => {
+          if (!linha || typeof linha !== 'object') {
+            return
+          }
+
+          const linhaRegistro = linha as { horaInicio?: unknown; horaFim?: unknown; quantidadeProduzida?: unknown }
+          if (typeof linhaRegistro.horaInicio !== 'string' || typeof linhaRegistro.horaFim !== 'string') {
+            return
+          }
+
+          const chave = `${linhaRegistro.horaInicio}|${linhaRegistro.horaFim}`
+          mapaQuantidade.set(
+            chave,
+            typeof linhaRegistro.quantidadeProduzida === 'string' ? linhaRegistro.quantidadeProduzida : ''
+          )
+        })
+
+        setLinhasApontamento((linhasAtuais) => {
+          let houveMudanca = false
+          const proximasLinhas = linhasAtuais.map((linha) => {
+            const chave = `${linha.horaInicio}|${linha.horaFim}`
+            const quantidadeRemota = mapaQuantidade.get(chave)
+            if (quantidadeRemota === undefined || quantidadeRemota === linha.quantidadeProduzida) {
+              return linha
+            }
+
+            houveMudanca = true
+            return {
+              ...linha,
+              quantidadeProduzida: quantidadeRemota,
+            }
+          })
+
+          return houveMudanca ? proximasLinhas : linhasAtuais
+        })
+      }
+    } finally {
+      window.setTimeout(() => {
+        aplicandoPatchUiRemotoRef.current = false
+      }, 0)
+    }
+  }, [presenceUiStateEvent])
 
   // ==================== Constantes para chaves do localStorage ====================
   const STORAGE_KEY_CONFIGURACOES = 'oee_configuracoes_apontamento'
@@ -1063,14 +1404,6 @@ export default function ApontamentoOEE() {
     buscarDataServidor()
   }, [])
 
-  const extrairCodigoSku = (sku: string): string => {
-    return sku.includes(' - ') ? sku.split(' - ')[0].trim() : sku.trim()
-  }
-
-  const extrairDescricaoSku = (sku: string): string => {
-    return sku.includes(' - ') ? sku.split(' - ').slice(1).join(' - ').trim() : sku.trim()
-  }
-
   const converterBloqueadoParaBooleano = (valor: string | boolean | null): boolean => {
     if (typeof valor === 'boolean') {
       return valor
@@ -1458,6 +1791,7 @@ export default function ApontamentoOEE() {
         title: '✅ Configurações Salvas',
         description: `Intervalo de apontamento definido para ${intervaloApontamento} ${intervaloApontamento === 1 ? 'hora' : 'horas'}`,
       })
+      finalizarLockCampo(LOCK_CAMPOS.configuracaoIntervalo)
       setModalConfiguracoesAberto(false)
 
       // Regenerar linhas de apontamento se o turno já estiver selecionado
@@ -1922,6 +2256,23 @@ export default function ApontamentoOEE() {
       return
     }
 
+    const campoLockAnotacao = buildCampoLockAnotacaoRegistro(
+      String(linhaApontamento.apontamentoId ?? linhaApontamento.id)
+    )
+    if (campoTravado(campoLockAnotacao)) {
+      toast({
+        title: 'Campo em edição',
+        description: mensagemLockCampo(campoLockAnotacao) ?? 'Anotação em edição por outra conexão.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    iniciarLockCampo(
+      campoLockAnotacao,
+      buildRotuloLockAnotacaoRegistro(linhaApontamento.horaInicio, linhaApontamento.horaFim)
+    )
+
     setLinhaAnotacaoSelecionada(linhaApontamento)
     setTextoAnotacao('')
 
@@ -1959,6 +2310,10 @@ export default function ApontamentoOEE() {
       return
     }
 
+    const campoLockAnotacao = buildCampoLockAnotacaoRegistro(
+      String(linhaAnotacaoSelecionada.apontamentoId ?? linhaAnotacaoSelecionada.id)
+    )
+
     setSalvandoAnotacao(true)
 
     try {
@@ -1987,6 +2342,7 @@ export default function ApontamentoOEE() {
         description: 'Anotação registrada com sucesso'
       })
 
+      finalizarLockCampo(campoLockAnotacao)
       setModalAnotacoesAberto(false)
       setLinhaAnotacaoSelecionada(null)
       setTextoAnotacao('')
@@ -2007,6 +2363,13 @@ export default function ApontamentoOEE() {
    * Fecha o modal de anotações e limpa os estados
    */
   const handleFecharModalAnotacoes = () => {
+    if (linhaAnotacaoSelecionada) {
+      const campoLockAnotacao = buildCampoLockAnotacaoRegistro(
+        String(linhaAnotacaoSelecionada.apontamentoId ?? linhaAnotacaoSelecionada.id)
+      )
+      finalizarLockCampo(campoLockAnotacao)
+    }
+
     setModalAnotacoesAberto(false)
     setLinhaAnotacaoSelecionada(null)
     setTextoAnotacao('')
@@ -2910,10 +3273,27 @@ export default function ApontamentoOEE() {
    * Abre o modal de busca de paradas
    */
   const abrirModalBuscaParadas = () => {
+    if (campoTravado(LOCK_CAMPOS.paradaCodigo)) {
+      return
+    }
+
+    iniciarLockCampo(LOCK_CAMPOS.paradaCodigo, 'Tipo de parada')
     setModalBuscaParadasAberto(true)
     if (paradasGerais.length === 0 || erroParadas) {
       buscarParadasSupabase()
     }
+  }
+
+  const handleModalConfiguracoesOpenChange = (open: boolean) => {
+    setModalConfiguracoesAberto(open)
+    if (!open) {
+      finalizarLockCampo(LOCK_CAMPOS.configuracaoIntervalo)
+    }
+  }
+
+  const fecharModalBuscaParadas = () => {
+    setModalBuscaParadasAberto(false)
+    finalizarLockCampo(LOCK_CAMPOS.paradaCodigo)
   }
 
   /**
@@ -2922,6 +3302,7 @@ export default function ApontamentoOEE() {
   const handleSelecionarParadaModal = (parada: ParadaGeral) => {
     setParadaSelecionada(parada)
     setCodigoParadaBusca(parada.codigo || '')
+    finalizarLockCampo(LOCK_CAMPOS.paradaCodigo)
 
     toast({
       title: 'Parada selecionada',
@@ -3089,6 +3470,109 @@ export default function ApontamentoOEE() {
 
     return Math.max(0, tempoDisponivel - horasApontadas)
   }, [calcularTempoDisponivelTurno, data, historicoProducao, linhaId, skuCodigo, turno])
+
+  const sincronizarCabecalhoTurnoRealtime = useCallback(async (oeeturnoIdAtual: number) => {
+    if (!Number.isFinite(oeeturnoIdAtual)) {
+      return
+    }
+
+    try {
+      const turnoData = await fetchOeeTurno(String(oeeturnoIdAtual))
+      if (!turnoData) {
+        return
+      }
+
+      if (turnoData.data) {
+        const dataParseada = parseISO(turnoData.data)
+        if (!Number.isNaN(dataParseada.getTime())) {
+          setData(dataParseada)
+        }
+      }
+
+      if (turnoData.turnoId) {
+        setTurnoId(turnoData.turnoId.toString())
+        const turnoPartes = turnoData.turno.split(' - ')
+        if (turnoPartes.length >= 2) {
+          setTurnoCodigo(turnoPartes[0])
+          setTurnoNome(turnoPartes.slice(1).join(' - '))
+        } else {
+          setTurnoNome(turnoData.turno)
+        }
+        setTurno(turnoData.turno as Turno)
+      }
+
+      setTurnoHoraInicial(turnoData.horaInicio ? formatarHoraPtBr(turnoData.horaInicio, false) : '')
+      setTurnoHoraFinal(turnoData.horaFim ? formatarHoraPtBr(turnoData.horaFim, false) : '')
+
+      if (turnoData.produto) {
+        setSkuCodigo(turnoData.produto)
+        setProdutoDescricao(extrairDescricaoSku(turnoData.produto))
+      } else {
+        setSkuCodigo('')
+        setProdutoDescricao('')
+      }
+      setProdutoId(turnoData.produtoId ?? null)
+
+      const linhaIdDireta = typeof turnoData.linhaProducaoId === 'number'
+        ? turnoData.linhaProducaoId
+        : null
+      const linhaNomeDireto = turnoData.linhaProducaoNome?.trim() || ''
+
+      if (linhaIdDireta || linhaNomeDireto) {
+        if (linhaIdDireta) {
+          setLinhaId(linhaIdDireta.toString())
+        }
+
+        const linhaNomeExibicao = linhaIdDireta && linhaNomeDireto
+          ? `${linhaIdDireta} - ${linhaNomeDireto}`
+          : (linhaNomeDireto || (linhaIdDireta ? linhaIdDireta.toString() : ''))
+
+        setLinhaNome(linhaNomeExibicao)
+
+        if (linhaIdDireta) {
+          setLinhaProducaoSelecionada({
+            linhaproducao_id: linhaIdDireta,
+            linhaproducao: linhaNomeDireto || linhaNomeExibicao,
+            departamento_id: null,
+            departamento: null,
+            tipo: null,
+            ativo: 'S',
+          })
+        }
+      } else if (turnoData.observacao) {
+        const matchLinha = turnoData.observacao.match(/Linha:\s*(\d+)\s*-\s*(.+)/i)
+        if (matchLinha) {
+          const linhaIdExtraido = matchLinha[1]
+          const linhaNomeExtraido = matchLinha[2]
+          const linhaIdNumero = Number(linhaIdExtraido)
+          const linhaIdValido = Number.isFinite(linhaIdNumero) ? linhaIdNumero : null
+
+          setLinhaId(linhaIdExtraido)
+          setLinhaNome(linhaNomeExtraido)
+
+          if (linhaIdValido) {
+            setLinhaProducaoSelecionada({
+              linhaproducao_id: linhaIdValido,
+              linhaproducao: linhaNomeExtraido,
+              departamento_id: null,
+              departamento: null,
+              tipo: null,
+              ativo: 'S',
+            })
+          }
+        }
+      }
+
+      setStatusTurnoBD(turnoData.status || null)
+      if (turnoData.status === 'Fechado') {
+        setStatusTurno('ENCERRADO')
+      } else if (turnoData.status === 'Aberto') {
+        setStatusTurno('INICIADO')
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar cabeçalho em tempo real:', error)
+    }
+  }, [fetchOeeTurno])
 
   // ==================== Carregar histórico ao montar o componente ====================
   useEffect(() => {
@@ -3319,6 +3803,113 @@ export default function ApontamentoOEE() {
     carregarDadosTurnoOEE()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
+
+  useEffect(() => {
+    if (!oeeTurnoId) {
+      return
+    }
+
+    let ativo = true
+    let timeoutProducao: number | null = null
+    let timeoutParadas: number | null = null
+    let timeoutQualidade: number | null = null
+    let timeoutCabecalho: number | null = null
+
+    const limparTimeout = (timeoutId: number | null) => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+
+    const recarregarProducaoRealtime = async () => {
+      const registros = await carregarProducoesSupabase(oeeTurnoId)
+      if (!ativo) {
+        return
+      }
+      setHorasRestantes(calcularHorasRestantes(registros))
+    }
+
+    const recarregarParadasRealtime = async () => {
+      const paradas = await carregarHistoricoParadasSupabase(oeeTurnoId)
+      if (!ativo) {
+        return
+      }
+      setHistoricoParadas(paradas)
+      setTotalHorasParadas(paradas.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
+    }
+
+    const recarregarQualidadeRealtime = async () => {
+      const qualidade = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
+      if (!ativo) {
+        return
+      }
+      setHistoricoQualidade(qualidade)
+    }
+
+    const canalSincronizacao = supabase.channel(`oee-turno-db-sync:${oeeTurnoId}`)
+
+    canalSincronizacao.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tboee_turno', filter: `oeeturno_id=eq.${oeeTurnoId}` },
+      () => {
+        limparTimeout(timeoutCabecalho)
+        timeoutCabecalho = window.setTimeout(() => {
+          void sincronizarCabecalhoTurnoRealtime(oeeTurnoId)
+        }, 120)
+      }
+    )
+
+    canalSincronizacao.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tboee_turno_producao', filter: `oeeturno_id=eq.${oeeTurnoId}` },
+      () => {
+        limparTimeout(timeoutProducao)
+        timeoutProducao = window.setTimeout(() => {
+          void recarregarProducaoRealtime()
+        }, 120)
+      }
+    )
+
+    canalSincronizacao.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tboee_turno_parada', filter: `oeeturno_id=eq.${oeeTurnoId}` },
+      () => {
+        limparTimeout(timeoutParadas)
+        timeoutParadas = window.setTimeout(() => {
+          void recarregarParadasRealtime()
+        }, 120)
+      }
+    )
+
+    canalSincronizacao.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'tboee_turno_perda', filter: `oeeturno_id=eq.${oeeTurnoId}` },
+      () => {
+        limparTimeout(timeoutQualidade)
+        timeoutQualidade = window.setTimeout(() => {
+          void recarregarQualidadeRealtime()
+        }, 120)
+      }
+    )
+
+    canalSincronizacao.subscribe()
+
+    return () => {
+      ativo = false
+      limparTimeout(timeoutProducao)
+      limparTimeout(timeoutParadas)
+      limparTimeout(timeoutQualidade)
+      limparTimeout(timeoutCabecalho)
+      void supabase.removeChannel(canalSincronizacao)
+    }
+  }, [
+    calcularHorasRestantes,
+    carregarHistoricoParadasSupabase,
+    carregarHistoricoQualidadeSupabase,
+    carregarProducoesSupabase,
+    oeeTurnoId,
+    sincronizarCabecalhoTurnoRealtime,
+  ])
 
   // ==================== Regenerar linhas de apontamento quando turno ou intervalo mudar ====================
   // IMPORTANTE: Só regenera se o turno NÃO estiver iniciado (evita sobrescrever dados durante o turno)
@@ -3809,6 +4400,13 @@ export default function ApontamentoOEE() {
    * Entrar em modo de edição do cabeçalho após o turno já ter sido iniciado
    */
   const handleEditarCabecalho = () => {
+    if (bloqueioConcorrenciaCabecalhoAtivo) {
+      setShowAlertaEdicaoConcorrente(true)
+      return
+    }
+
+    iniciarLockCampo(LOCK_CAMPOS.cabecalhoEdicao, 'Alteração do cabeçalho do turno')
+
     setCabecalhoOriginal({
       data,
       turno,
@@ -3850,6 +4448,7 @@ export default function ApontamentoOEE() {
       setProdutoId(cabecalhoOriginal.produtoId)
       setProdutoDescricao(cabecalhoOriginal.produtoDescricao)
     }
+    finalizarLockCampo()
     setEditandoCabecalho(false)
     setCabecalhoOriginal(null)
     toast({
@@ -3976,6 +4575,7 @@ export default function ApontamentoOEE() {
       setTotalHorasParadas(historicoParadasAtualizado.reduce((total, parada) => total + (parada.duracao || 0), 0) / 60)
       recalcularOeeComHistorico(producoesAtualizadas, historicoQualidadeAtualizado, historicoParadasAtualizado)
 
+      finalizarLockCampo()
       setEditandoCabecalho(false)
       setCabecalhoOriginal(null)
 
@@ -4545,6 +5145,13 @@ export default function ApontamentoOEE() {
 
   return (
     <>
+      <OeeTurnoPresenceCursorLayer
+        enabled={OEE_REALTIME_PRESENCE_ENABLED}
+        connectionStatus={presenceConnectionStatus}
+        participants={presenceOthers}
+        cursors={presenceCursors}
+      />
+
       {/* Cabeçalho da Aplicação */}
       <AppHeader
         title="SysOEE - Sistema de Monitoramento OEE"
@@ -4763,16 +5370,28 @@ export default function ApontamentoOEE() {
                       type="text"
                       value={turnoHoraInicial}
                       onChange={(e) => setTurnoHoraInicial(limparHoraDigitada(e.target.value))}
-                      onBlur={(e) => setTurnoHoraInicial(normalizarHoraDigitada(e.target.value, true))}
-                      disabled={cabecalhoBloqueado}
+                      onFocus={() => iniciarLockCampo(LOCK_CAMPOS.cabecalhoHoraInicial, 'Hora inicial do turno')}
+                      onBlur={(e) => {
+                        setTurnoHoraInicial(normalizarHoraDigitada(e.target.value, true))
+                        finalizarLockCampo(LOCK_CAMPOS.cabecalhoHoraInicial)
+                      }}
+                      disabled={cabecalhoBloqueado || campoTravado(LOCK_CAMPOS.cabecalhoHoraInicial)}
+                      title={nomeUsuarioLock(LOCK_CAMPOS.cabecalhoHoraInicial) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.cabecalhoHoraInicial)}` : undefined}
                       placeholder="00:00"
                       inputMode="numeric"
                       autoComplete="off"
                       maxLength={5}
-                      className="bg-background-light dark:bg-background-dark min-h-11 md:min-h-10 pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                      className={`bg-background-light dark:bg-background-dark min-h-11 md:min-h-10 pr-9 [&::-webkit-calendar-picker-indicator]:hidden ${
+                        campoTravado(LOCK_CAMPOS.cabecalhoHoraInicial) ? 'border-amber-400 bg-amber-50' : ''
+                      }`}
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
+                  {mensagemLockCampo(LOCK_CAMPOS.cabecalhoHoraInicial) && (
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      {mensagemLockCampo(LOCK_CAMPOS.cabecalhoHoraInicial)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Hora Final do Turno */}
@@ -4783,16 +5402,28 @@ export default function ApontamentoOEE() {
                       type="text"
                       value={turnoHoraFinal}
                       onChange={(e) => setTurnoHoraFinal(limparHoraDigitada(e.target.value))}
-                      onBlur={(e) => setTurnoHoraFinal(normalizarHoraDigitada(e.target.value, true))}
-                      disabled={cabecalhoBloqueado}
+                      onFocus={() => iniciarLockCampo(LOCK_CAMPOS.cabecalhoHoraFinal, 'Hora final do turno')}
+                      onBlur={(e) => {
+                        setTurnoHoraFinal(normalizarHoraDigitada(e.target.value, true))
+                        finalizarLockCampo(LOCK_CAMPOS.cabecalhoHoraFinal)
+                      }}
+                      disabled={cabecalhoBloqueado || campoTravado(LOCK_CAMPOS.cabecalhoHoraFinal)}
+                      title={nomeUsuarioLock(LOCK_CAMPOS.cabecalhoHoraFinal) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.cabecalhoHoraFinal)}` : undefined}
                       placeholder="00:00"
                       inputMode="numeric"
                       autoComplete="off"
                       maxLength={5}
-                      className="bg-background-light dark:bg-background-dark min-h-11 md:min-h-10 pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                      className={`bg-background-light dark:bg-background-dark min-h-11 md:min-h-10 pr-9 [&::-webkit-calendar-picker-indicator]:hidden ${
+                        campoTravado(LOCK_CAMPOS.cabecalhoHoraFinal) ? 'border-amber-400 bg-amber-50' : ''
+                      }`}
                     />
                     <Clock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   </div>
+                  {mensagemLockCampo(LOCK_CAMPOS.cabecalhoHoraFinal) && (
+                    <p className="mt-1 text-[11px] text-amber-700">
+                      {mensagemLockCampo(LOCK_CAMPOS.cabecalhoHoraFinal)}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -4865,6 +5496,7 @@ export default function ApontamentoOEE() {
                         <Button
                           variant="outline"
                           onClick={handleEditarCabecalho}
+                          title={bloqueioConcorrenciaCabecalhoAtivo ? `Em edição por ${nomeConexaoEditandoCabecalho}` : undefined}
                           className="w-full sm:w-auto min-h-11 md:min-h-10 border-orange-200 text-orange-700 hover:bg-orange-50"
                         >
                           <Pencil className="mr-2 h-4 w-4" />
@@ -5234,7 +5866,15 @@ export default function ApontamentoOEE() {
                   <div className="space-y-4">
                     {/* Cards de linhas de apontamento (mobile) */}
                     <div className="space-y-3 md:hidden">
-                      {linhasApontamento.map((linha, index) => (
+                      {linhasApontamento.map((linha, index) => {
+                        const campoLockQuantidade = buildCampoLockProducaoQuantidade(linha.horaInicio, linha.horaFim)
+                        const campoLockAnotacao = buildCampoLockAnotacaoRegistro(String(linha.apontamentoId ?? linha.id))
+                        const quantidadeTravada = campoTravado(campoLockQuantidade)
+                        const anotacaoTravada = campoTravado(campoLockAnotacao)
+                        const mensagemLockQuantidade = mensagemLockCampo(campoLockQuantidade)
+                        const usuarioLockAnotacao = nomeUsuarioLock(campoLockAnotacao)
+
+                        return (
                         <div
                           key={linha.id}
                           className="rounded-2xl border border-border-light bg-slate-50/60 p-3.5 shadow-sm"
@@ -5267,9 +5907,19 @@ export default function ApontamentoOEE() {
                               inputMode="decimal"
                               value={linha.quantidadeProduzida}
                               onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
-                              className={`mt-1 min-h-11 w-full ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                              disabled={!turnoPermiteEdicao || linha.editavel === false}
+                              onFocus={() => iniciarLockCampo(campoLockQuantidade, buildRotuloLockProducaoQuantidade(linha.horaInicio, linha.horaFim))}
+                              onBlur={() => finalizarLockCampo(campoLockQuantidade)}
+                              className={`mt-1 min-h-11 w-full ${
+                                linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''
+                              } ${quantidadeTravada ? 'border-amber-400 bg-amber-50' : ''}`}
+                              disabled={!turnoPermiteEdicao || linha.editavel === false || quantidadeTravada}
+                              title={nomeUsuarioLock(campoLockQuantidade) ? `Em edição por ${nomeUsuarioLock(campoLockQuantidade)}` : undefined}
                             />
+                            {mensagemLockQuantidade && (
+                              <p className="mt-1 text-[11px] text-amber-700">
+                                {mensagemLockQuantidade}
+                              </p>
+                            )}
                           </div>
 
                           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -5328,8 +5978,9 @@ export default function ApontamentoOEE() {
                               size="sm"
                               onClick={() => handleAbrirAnotacoes(linha)}
                               className="col-span-2 h-10 border-blue-200 text-blue-700 hover:bg-blue-50"
-                              title="Anotações"
+                              title={usuarioLockAnotacao ? `Em edição por ${usuarioLockAnotacao}` : 'Anotações'}
                               disabled={
+                                anotacaoTravada ||
                                 !linha.apontamentoId ||
                                 quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                               }
@@ -5339,7 +5990,8 @@ export default function ApontamentoOEE() {
                             </Button>
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
 
                     {/* Tabela de linhas de apontamento (desktop) */}
@@ -5354,7 +6006,14 @@ export default function ApontamentoOEE() {
                           </tr>
                         </thead>
                         <tbody>
-                          {linhasApontamento.map((linha, index) => (
+                          {linhasApontamento.map((linha, index) => {
+                            const campoLockQuantidade = buildCampoLockProducaoQuantidade(linha.horaInicio, linha.horaFim)
+                            const campoLockAnotacao = buildCampoLockAnotacaoRegistro(String(linha.apontamentoId ?? linha.id))
+                            const quantidadeTravada = campoTravado(campoLockQuantidade)
+                            const anotacaoTravada = campoTravado(campoLockAnotacao)
+                            const usuarioLockAnotacao = nomeUsuarioLock(campoLockAnotacao)
+
+                            return (
                             <tr
                               key={linha.id}
                               className={`border-b border-border-light dark:border-border-dark ${
@@ -5387,8 +6046,13 @@ export default function ApontamentoOEE() {
                                   inputMode="decimal"
                                   value={linha.quantidadeProduzida}
                                   onChange={(e) => atualizarQuantidadeLinha(linha.id, e.target.value)}
-                                  className={`w-48 ${linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                  disabled={!turnoPermiteEdicao || linha.editavel === false}
+                                  onFocus={() => iniciarLockCampo(campoLockQuantidade, buildRotuloLockProducaoQuantidade(linha.horaInicio, linha.horaFim))}
+                                  onBlur={() => finalizarLockCampo(campoLockQuantidade)}
+                                  className={`w-48 ${
+                                    linha.editavel === false ? 'bg-gray-100 cursor-not-allowed' : ''
+                                  } ${quantidadeTravada ? 'border-amber-400 bg-amber-50' : ''}`}
+                                  disabled={!turnoPermiteEdicao || linha.editavel === false || quantidadeTravada}
+                                  title={nomeUsuarioLock(campoLockQuantidade) ? `Em edição por ${nomeUsuarioLock(campoLockQuantidade)}` : undefined}
                                 />
                               </td>
                               <td className="px-4 py-3">
@@ -5448,8 +6112,9 @@ export default function ApontamentoOEE() {
                                     size="sm"
                                     onClick={() => handleAbrirAnotacoes(linha)}
                                     className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    title="Anotações"
+                                    title={usuarioLockAnotacao ? `Em edição por ${usuarioLockAnotacao}` : 'Anotações'}
                                     disabled={
+                                      anotacaoTravada ||
                                       !linha.apontamentoId ||
                                       quantidadeProduzidaInvalida(linha.quantidadeProduzida)
                                     }
@@ -5460,7 +6125,8 @@ export default function ApontamentoOEE() {
                                 </div>
                               </td>
                             </tr>
-                          ))}
+                            )
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -5584,15 +6250,25 @@ export default function ApontamentoOEE() {
                           Quantidade
                         </label>
                         <input
-                          className="flex h-11 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full sm:w-48"
+                          className={`flex h-11 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm w-full sm:w-48 ${
+                            campoTravado(LOCK_CAMPOS.qualidadeQuantidade) ? 'border-amber-400 bg-amber-50' : ''
+                          }`}
                           id="loss-quantity"
                           type="text"
                           inputMode="decimal"
                           placeholder="ex: 1.234,56"
                           value={quantidadePerdas}
                           onChange={(e) => setQuantidadePerdas(formatarPerdaPtBr(e.target.value))}
-                          disabled={turnoBloqueadoParaEdicao}
+                          onFocus={() => iniciarLockCampo(LOCK_CAMPOS.qualidadeQuantidade, 'Quantidade de perdas')}
+                          onBlur={() => finalizarLockCampo(LOCK_CAMPOS.qualidadeQuantidade)}
+                          disabled={turnoBloqueadoParaEdicao || campoTravado(LOCK_CAMPOS.qualidadeQuantidade)}
+                          title={nomeUsuarioLock(LOCK_CAMPOS.qualidadeQuantidade) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.qualidadeQuantidade)}` : undefined}
                         />
+                        {mensagemLockCampo(LOCK_CAMPOS.qualidadeQuantidade) && (
+                          <p className="mt-1 text-[11px] text-amber-700">
+                            {mensagemLockCampo(LOCK_CAMPOS.qualidadeQuantidade)}
+                          </p>
+                        )}
                       </div>
 
                       <button
@@ -5611,7 +6287,7 @@ export default function ApontamentoOEE() {
                             handleAdicionarQualidade()
                           }
                         }}
-                        disabled={!turnoPermiteEdicao || salvandoQualidade || turnoBloqueadoParaEdicao}
+                        disabled={!turnoPermiteEdicao || salvandoQualidade || turnoBloqueadoParaEdicao || campoTravado(LOCK_CAMPOS.qualidadeQuantidade)}
                       >
                         {salvandoQualidade ? (
                           <Timer className="h-5 w-5 animate-spin" />
@@ -5836,26 +6512,48 @@ export default function ApontamentoOEE() {
                       </label>
                       <div className="flex gap-2">
                         <input
-                          className="flex flex-1 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          className={`flex flex-1 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            lockParadaCodigoTravado ? 'border-amber-400 bg-amber-50' : ''
+                          }`}
                           id="codigo-parada"
                           type="text"
                           value={codigoParadaBusca}
                           onChange={(e) => setCodigoParadaBusca(e.target.value)}
                           placeholder="Digite o código da parada ou clique na lupa para buscar"
                           readOnly
-                          onClick={turnoBloqueadoParaEdicao ? undefined : abrirModalBuscaParadas}
-                          disabled={turnoBloqueadoParaEdicao}
+                          onFocus={() => iniciarLockCampo(LOCK_CAMPOS.paradaCodigo, 'Tipo de parada')}
+                          onBlur={() => {
+                            if (!modalBuscaParadasAberto) {
+                              finalizarLockCampo(LOCK_CAMPOS.paradaCodigo)
+                            }
+                          }}
+                          onClick={turnoBloqueadoParaEdicao || lockParadaCodigoTravado ? undefined : abrirModalBuscaParadas}
+                          disabled={turnoBloqueadoParaEdicao || lockParadaCodigoTravado}
+                          title={nomeUsuarioLock(LOCK_CAMPOS.paradaCodigo) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.paradaCodigo)}` : undefined}
                         />
                         <button
                           type="button"
-                          onClick={turnoBloqueadoParaEdicao ? undefined : abrirModalBuscaParadas}
-                          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
-                          title="Buscar tipo de parada"
-                          disabled={turnoBloqueadoParaEdicao}
+                          onFocus={() => iniciarLockCampo(LOCK_CAMPOS.paradaCodigo, 'Tipo de parada')}
+                          onBlur={() => {
+                            if (!modalBuscaParadasAberto) {
+                              finalizarLockCampo(LOCK_CAMPOS.paradaCodigo)
+                            }
+                          }}
+                          onClick={turnoBloqueadoParaEdicao || lockParadaCodigoTravado ? undefined : abrirModalBuscaParadas}
+                          className={`inline-flex h-11 w-11 items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground ${
+                            lockParadaCodigoTravado ? 'border-amber-400 bg-amber-50' : ''
+                          }`}
+                          title={nomeUsuarioLock(LOCK_CAMPOS.paradaCodigo) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.paradaCodigo)}` : 'Buscar tipo de parada'}
+                          disabled={turnoBloqueadoParaEdicao || lockParadaCodigoTravado}
                         >
                           <Search className="h-4 w-4" />
                         </button>
                       </div>
+                      {mensagemLockCampo(LOCK_CAMPOS.paradaCodigo) && (
+                        <p className="mt-1 text-[11px] text-amber-700">
+                          {mensagemLockCampo(LOCK_CAMPOS.paradaCodigo)}
+                        </p>
+                      )}
                     </div>
 
                     {/* Hora Inicial */}
@@ -5864,17 +6562,29 @@ export default function ApontamentoOEE() {
                         Hora Inicial
                       </label>
                       <input
-                        className="w-full sm:w-20 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={`w-full sm:w-20 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                          lockParadaHoraInicialTravado ? 'border-amber-400 bg-amber-50' : ''
+                        }`}
                         id="hora-inicial-parada"
                         type="text"
                         value={horaInicialParada}
                         onChange={(e) => setHoraInicialParada(limparHoraDigitada(e.target.value))}
-                        onBlur={(e) => setHoraInicialParada(normalizarHoraDigitada(e.target.value, true))}
+                        onFocus={() => iniciarLockCampo(LOCK_CAMPOS.paradaHoraInicial, 'Hora inicial da parada')}
+                        onBlur={(e) => {
+                          setHoraInicialParada(normalizarHoraDigitada(e.target.value, true))
+                          finalizarLockCampo(LOCK_CAMPOS.paradaHoraInicial)
+                        }}
                         inputMode="numeric"
                         autoComplete="off"
                         maxLength={5}
-                        disabled={turnoBloqueadoParaEdicao}
+                        disabled={turnoBloqueadoParaEdicao || lockParadaHoraInicialTravado}
+                        title={nomeUsuarioLock(LOCK_CAMPOS.paradaHoraInicial) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.paradaHoraInicial)}` : undefined}
                       />
+                      {mensagemLockCampo(LOCK_CAMPOS.paradaHoraInicial) && (
+                        <p className="mt-1 text-[11px] text-amber-700">
+                          {mensagemLockCampo(LOCK_CAMPOS.paradaHoraInicial)}
+                        </p>
+                      )}
                     </div>
 
                     {/* Hora Final */}
@@ -5884,16 +6594,23 @@ export default function ApontamentoOEE() {
                       </label>
                       <div className="flex items-center gap-2">
                         <input
-                          className="w-full sm:w-20 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          className={`w-full sm:w-20 min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            lockParadaHoraFinalTravado ? 'border-amber-400 bg-amber-50' : ''
+                          }`}
                           id="hora-final-parada"
                           type="text"
                           value={horaFinalParada}
                           onChange={(e) => setHoraFinalParada(limparHoraDigitada(e.target.value))}
-                          onBlur={(e) => setHoraFinalParada(normalizarHoraDigitada(e.target.value, true))}
+                          onFocus={() => iniciarLockCampo(LOCK_CAMPOS.paradaHoraFinal, 'Hora final da parada')}
+                          onBlur={(e) => {
+                            setHoraFinalParada(normalizarHoraDigitada(e.target.value, true))
+                            finalizarLockCampo(LOCK_CAMPOS.paradaHoraFinal)
+                          }}
                           inputMode="numeric"
                           autoComplete="off"
                           maxLength={5}
-                          disabled={turnoBloqueadoParaEdicao}
+                          disabled={turnoBloqueadoParaEdicao || lockParadaHoraFinalTravado}
+                          title={nomeUsuarioLock(LOCK_CAMPOS.paradaHoraFinal) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.paradaHoraFinal)}` : undefined}
                         />
                         <button
                           type="button"
@@ -5905,6 +6622,11 @@ export default function ApontamentoOEE() {
                           <Info className="w-5 h-5 text-blue-500 dark:text-blue-400" />
                         </button>
                       </div>
+                      {mensagemLockCampo(LOCK_CAMPOS.paradaHoraFinal) && (
+                        <p className="mt-1 text-[11px] text-amber-700">
+                          {mensagemLockCampo(LOCK_CAMPOS.paradaHoraFinal)}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex flex-col justify-end sm:flex-1">
@@ -5918,7 +6640,7 @@ export default function ApontamentoOEE() {
                           }
                           handleRegistrarParada()
                         }}
-                        disabled={turnoBloqueadoParaEdicao || salvandoParada}
+                        disabled={turnoBloqueadoParaEdicao || salvandoParada || lockParadaCamposTravados}
                       >
                         <Timer className="h-5 w-5" />
                         Registrar Parada
@@ -5971,13 +6693,23 @@ export default function ApontamentoOEE() {
                       Observações da Parada
                     </label>
                     <textarea
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px] md:min-h-[100px]"
+                      className={`flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px] md:min-h-[100px] ${
+                        lockParadaObservacoesTravado ? 'border-amber-400 bg-amber-50' : ''
+                      }`}
                       id="observacoes-parada"
                       value={observacoesParada}
                       onChange={(e) => setObservacoesParada(e.target.value)}
+                      onFocus={() => iniciarLockCampo(LOCK_CAMPOS.paradaObservacoes, 'Observações da parada')}
+                      onBlur={() => finalizarLockCampo(LOCK_CAMPOS.paradaObservacoes)}
                       placeholder="Digite observações adicionais sobre a parada..."
-                      disabled={turnoBloqueadoParaEdicao}
+                      disabled={turnoBloqueadoParaEdicao || lockParadaObservacoesTravado}
+                      title={nomeUsuarioLock(LOCK_CAMPOS.paradaObservacoes) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.paradaObservacoes)}` : undefined}
                     />
+                    {mensagemLockCampo(LOCK_CAMPOS.paradaObservacoes) && (
+                      <p className="mt-1 text-[11px] text-amber-700">
+                        {mensagemLockCampo(LOCK_CAMPOS.paradaObservacoes)}
+                      </p>
+                    )}
                   </div>
 
                 </div>
@@ -6291,7 +7023,7 @@ export default function ApontamentoOEE() {
       {/* Modal de Busca de Paradas */}
       <ModalBuscaParadas
         aberto={modalBuscaParadasAberto}
-        onFechar={() => setModalBuscaParadasAberto(false)}
+        onFechar={fecharModalBuscaParadas}
         onSelecionarParada={handleSelecionarParadaModal}
         paradasGerais={paradasGerais}
         carregando={carregandoParadas}
@@ -6306,7 +7038,7 @@ export default function ApontamentoOEE() {
       />
 
       {/* Modal de Configurações */}
-      <Dialog open={modalConfiguracoesAberto} onOpenChange={setModalConfiguracoesAberto}>
+      <Dialog open={modalConfiguracoesAberto} onOpenChange={handleModalConfiguracoesOpenChange}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Configurações de Apontamento</DialogTitle>
@@ -6325,6 +7057,8 @@ export default function ApontamentoOEE() {
                 type="text"
                 inputMode="numeric"
                 value={String(intervaloApontamento)}
+                onFocus={() => iniciarLockCampo(LOCK_CAMPOS.configuracaoIntervalo, 'Intervalo de apontamento')}
+                onBlur={() => finalizarLockCampo(LOCK_CAMPOS.configuracaoIntervalo)}
                 onChange={(e) => {
                   const valorLimpo = e.target.value.replace(/\D/g, '').slice(0, 2)
                   if (!valorLimpo) {
@@ -6337,8 +7071,15 @@ export default function ApontamentoOEE() {
                   }
                 }}
                 placeholder="Ex: 1"
-                className="w-full"
+                className={`w-full ${lockConfiguracaoIntervaloTravado ? 'border-amber-400 bg-amber-50' : ''}`}
+                disabled={lockConfiguracaoIntervaloTravado}
+                title={nomeUsuarioLock(LOCK_CAMPOS.configuracaoIntervalo) ? `Em edição por ${nomeUsuarioLock(LOCK_CAMPOS.configuracaoIntervalo)}` : undefined}
               />
+              {mensagemLockCampo(LOCK_CAMPOS.configuracaoIntervalo) && (
+                <p className="text-[11px] text-amber-700">
+                  {mensagemLockCampo(LOCK_CAMPOS.configuracaoIntervalo)}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Define a cada quantas horas o apontamento de produção deve ser realizado.
                 Valor entre 1 e 24 horas (1 dia).
@@ -6349,13 +7090,14 @@ export default function ApontamentoOEE() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setModalConfiguracoesAberto(false)}
+              onClick={() => handleModalConfiguracoesOpenChange(false)}
             >
               Cancelar
             </Button>
             <Button
               onClick={salvarConfiguracoes}
               className="bg-brand-primary hover:bg-brand-primary/90"
+              disabled={lockConfiguracaoIntervaloTravado}
             >
               <Save className="mr-2 h-4 w-4" />
               Salvar
@@ -6745,6 +7487,21 @@ export default function ApontamentoOEE() {
         descricao={mensagemPermissaoNegada}
       />
 
+      {/* Modal de Alerta - Edição concorrente do cabeçalho */}
+      <ModalTurnoBloqueado
+        open={showAlertaEdicaoConcorrente}
+        onOpenChange={setShowAlertaEdicaoConcorrente}
+        statusTurno={null}
+        titulo="Cabeçalho em edição"
+        descricao={
+          <>
+            O cabeçalho deste turno já está sendo alterado por <strong>{nomeConexaoEditandoCabecalho}</strong>.
+            <br /><br />
+            Aguarde a finalização da edição para clicar em <strong>Alterar Turno</strong>.
+          </>
+        }
+      />
+
       {/* Modal de Alerta - Data Futura Não Permitida */}
       <ModalTurnoBloqueado
         open={showAlertaDataFutura}
@@ -6848,9 +7605,35 @@ export default function ApontamentoOEE() {
                   placeholder="Digite aqui suas anotações ou observações sobre este registro de produção..."
                   value={textoAnotacao}
                   onChange={(e) => setTextoAnotacao(e.target.value)}
-                  className="w-full min-h-[200px] p-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                  disabled={salvandoAnotacao}
+                  onFocus={() => {
+                    if (!campoLockAnotacaoSelecionada || !linhaAnotacaoSelecionada) {
+                      return
+                    }
+                    iniciarLockCampo(
+                      campoLockAnotacaoSelecionada,
+                      buildRotuloLockAnotacaoRegistro(
+                        linhaAnotacaoSelecionada.horaInicio,
+                        linhaAnotacaoSelecionada.horaFim
+                      )
+                    )
+                  }}
+                  onBlur={() => {
+                    if (!campoLockAnotacaoSelecionada) {
+                      return
+                    }
+                    finalizarLockCampo(campoLockAnotacaoSelecionada)
+                  }}
+                  className={`w-full min-h-[200px] p-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
+                    anotacaoSelecionadaTravada ? 'border-amber-400 bg-amber-50' : ''
+                  }`}
+                  disabled={salvandoAnotacao || anotacaoSelecionadaTravada}
+                  title={usuarioLockAnotacaoSelecionada ? `Em edição por ${usuarioLockAnotacaoSelecionada}` : undefined}
                 />
+                {mensagemLockAnotacaoSelecionada && (
+                  <p className="text-[11px] text-amber-700">
+                    {mensagemLockAnotacaoSelecionada}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {textoAnotacao.length} caracteres
                 </p>
@@ -6868,7 +7651,7 @@ export default function ApontamentoOEE() {
             </Button>
             <Button
               onClick={handleSalvarAnotacao}
-              disabled={salvandoAnotacao}
+              disabled={salvandoAnotacao || anotacaoSelecionadaTravada}
               className="bg-primary hover:bg-primary/90"
             >
               {salvandoAnotacao ? (
