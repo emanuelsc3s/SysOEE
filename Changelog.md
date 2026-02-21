@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Manutenção: nova funcionalidade de Ordem de Serviço de Manutenção com página de lista (`Manutencao.tsx`) e formulário de cadastro/edição (`ManutencaoCad.tsx`); campos: Linha de Produção e SKU (preenchidos automaticamente do turno), Data, Descrição, Observação, Centro de Custo, Departamento, Prioridade (Baixa/Média/Alta/Crítica) e Anexos com upload em base64; persistência em localStorage (`sysoee_manutencao_ordens`); rotas `/manutencao`, `/manutencao-cad` e `/manutencao-cad/:id`; menu Complemento > Manutenção do ApontamentoOEE navega diretamente para o formulário de cadastro com Linha de Produção e SKU do turno atual preenchidos; ao salvar/voltar, retorna ao ApontamentoOEE no turno correto; card "Manutenção" na Home substituindo o placeholder "Ordem de Serviço", acessível a todos os usuários autenticados.
 - Modal de perfil do usuário: rótulo "ID do Usuário" na seção Identificação renomeado para "Identificador / SicFar".
 - Modal de perfil do usuário: removido o campo "UUID de autenticação" da seção Dados Principais.
 - Home: removido o item "Configurações" do menu dropdown do usuário (Minha Conta); mantidos Perfil e Sair.

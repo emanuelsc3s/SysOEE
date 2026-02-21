@@ -17,6 +17,8 @@ import OeeTurno from './pages/OeeTurno'
 import OeeLinhaVelocidade from './pages/OeeLinhaVelocidade'
 import OeeParada from './pages/OeeParada'
 import OeeParadaCad from './pages/OeeParadaCad'
+import Manutencao from './pages/Manutencao'
+import ManutencaoCad from './pages/ManutencaoCad'
 import DashboardOEE from './pages/dashboard/DashboardOEE'
 import Usuarios from './pages/Usuarios'
 import UsuariosCad from './pages/UsuariosCad'
@@ -88,6 +90,11 @@ function App() {
         <Route path="/oee-parada" element={<ProtectedRoute requireAdmin><OeeParada /></ProtectedRoute>} />
         <Route path="/oee-parada-cad" element={<ProtectedRoute requireAdmin><OeeParadaCad /></ProtectedRoute>} />
         <Route path="/oee-parada-cad/:id" element={<ProtectedRoute requireAdmin><OeeParadaCad /></ProtectedRoute>} />
+
+        {/* Páginas de Ordens de Serviço de Manutenção */}
+        <Route path="/manutencao" element={<ProtectedRoute><Manutencao /></ProtectedRoute>} />
+        <Route path="/manutencao-cad" element={<ProtectedRoute><ManutencaoCad /></ProtectedRoute>} />
+        <Route path="/manutencao-cad/:id" element={<ProtectedRoute><ManutencaoCad /></ProtectedRoute>} />
 
         {/* Página de Perfil do Colaborador */}
         <Route path="/colaborador/:id" element={<ProtectedRoute><ColaboradorPerfil /></ProtectedRoute>} />

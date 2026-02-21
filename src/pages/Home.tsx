@@ -251,11 +251,10 @@ export default function Home() {
       adminOnly: true
     },
     {
-      title: 'Ordem de Serviço',
+      title: 'Manutenção',
       icon: <Wrench className={iconClassName} />,
-      path: '/ordem-servico',
-      description: 'Manutenção e ordens de serviço',
-      adminOnly: true
+      path: '/manutencao',
+      description: 'Ordens de serviço de manutenção'
     },
     {
       title: 'Auditoria',

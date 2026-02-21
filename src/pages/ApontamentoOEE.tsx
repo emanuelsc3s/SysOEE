@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
-import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, Eye, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2 } from 'lucide-react'
+import { Save, Timer, CheckCircle, ChevronDownIcon, Trash, ArrowLeft, FileText, Play, StopCircle, Search, CircleCheck, Plus, Pencil, Eye, X, Settings, Info, Package, Clock, HelpCircle, AlertTriangle, StickyNote, Loader2, Wrench } from 'lucide-react'
 import { ptBR } from 'date-fns/locale'
 import { format, parse, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
@@ -5237,7 +5237,17 @@ export default function ApontamentoOEE() {
                     <DropdownMenuItem onClick={() => console.log('Desvio')}>
                       Desvio
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => console.log('Manutenção')}>
+                    <DropdownMenuItem onClick={() => navigate('/manutencao-cad', {
+                      state: {
+                        fromApontamento: true,
+                        oeeTurnoId: oeeTurnoIdParamNumero,
+                        linhaId,
+                        linhaNome,
+                        skuCodigo,
+                        produtoDescricao,
+                      }
+                    })}>
+                      <Wrench className="mr-2 h-4 w-4" />
                       Manutenção
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => console.log('Tecnologia da Informação')}>
