@@ -25,6 +25,7 @@ import UsuariosCad from './pages/UsuariosCad'
 import Placeholder from './pages/Placeholder'
 import OeeEmpresaRedirect from './pages/OeeEmpresaRedirect'
 import Login from './pages/Login'
+import DashboardLinha from './pages/dashboardLinhaProducao/DashboardLinha'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/providers/AuthProvider'
@@ -52,6 +53,9 @@ function App() {
 
         {/* Dashboard com gráficos OEE */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+        {/* Dashboard de Linha de Produção */}
+        <Route path="/dashboard-linha" element={<ProtectedRoute><DashboardLinha /></ProtectedRoute>} />
 
         {/* Dashboard OEE Premium - Monitoramento em tempo real */}
         <Route path="/dashboard-oee" element={<ProtectedRoute><DashboardOEE /></ProtectedRoute>} />

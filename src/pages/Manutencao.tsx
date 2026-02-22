@@ -112,7 +112,6 @@ export default function Manutencao() {
   }, [])
 
   const { data: ordensPaginadas, count: totalItems } = (() => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- dependência explícita no dataVersion para recarregar dados
     void dataVersion
     return buscarOrdensPaginadas(
       searchTerm,

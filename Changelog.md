@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+- Implementado o novo `Dashboard de Linha` (`/dashboard-linha`), uma réplica visual do sistema anterior da Cogtive, componentizado e co-localizado em `src/pages/dashboardLinhaProducao`.
+- Componentização do `DashboardLinha` em 10 subcomponentes (Header, OeeRealCard, OeeHistoryCard, ParetoCard, ManutencaoCard, FifoCard, VelocidadeCard, StatusCard, SetupCard e TimelineFooter).
+- Criado o arquivo `DashboardLinha.css` com estilos encapsulados sob a classe `.dashboard-linha-wrapper` para manter a fidelidade visual responsiva em `cqi` (container queries) sem causar vazamento de estilos globais.
+- Adicionado card de acesso rápido "Dashboard de Linha" (com ícone Monitor) na página Home.
 - Manutenção: nova funcionalidade de Ordem de Serviço de Manutenção com página de lista (`Manutencao.tsx`) e formulário de cadastro/edição (`ManutencaoCad.tsx`); campos: Linha de Produção e SKU (preenchidos automaticamente do turno), Data, Descrição, Observação, Centro de Custo, Departamento, Prioridade (Baixa/Média/Alta/Crítica) e Anexos com upload em base64; persistência em localStorage (`sysoee_manutencao_ordens`); rotas `/manutencao`, `/manutencao-cad` e `/manutencao-cad/:id`; menu Complemento > Manutenção do ApontamentoOEE navega diretamente para o formulário de cadastro com Linha de Produção e SKU do turno atual preenchidos; ao salvar/voltar, retorna ao ApontamentoOEE no turno correto; card "Manutenção" na Home substituindo o placeholder "Ordem de Serviço", acessível a todos os usuários autenticados.
 - Modal de perfil do usuário: rótulo "ID do Usuário" na seção Identificação renomeado para "Identificador / SicFar".
 - Modal de perfil do usuário: removido o campo "UUID de autenticação" da seção Dados Principais.
