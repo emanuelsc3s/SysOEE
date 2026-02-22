@@ -15,6 +15,10 @@ import { TimelineFooter } from './components/TimelineFooter';
 type DashboardLinhaRouteState = {
   linhaId?: string;
   linhaNome?: string;
+  oee?: number;
+  disponibilidade?: number;
+  performance?: number;
+  qualidade?: number;
 };
 
 export default function DashboardLinha() {
@@ -27,6 +31,12 @@ export default function DashboardLinha() {
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
       ? routeState.linhaNome
       : 'EQUIPAMENTO';
+  const dadosOeeLinha = {
+    oee: routeState?.oee,
+    disponibilidade: routeState?.disponibilidade,
+    performance: routeState?.performance,
+    qualidade: routeState?.qualidade,
+  };
 
   return (
     <div className="dashboard-linha-fullscreen" data-theme={theme}>
@@ -44,7 +54,7 @@ export default function DashboardLinha() {
         <main className="main-grid">
           {/* COLUMN 1 */}
           <div className="col col-1">
-            <OeeRealCard />
+            <OeeRealCard {...dadosOeeLinha} />
             <OeeHistoryCard />
           </div>
 

@@ -1945,7 +1945,11 @@ export default function Dashboard() {
                             navigate('/dashboard-linha', {
                               state: {
                                 linhaId: String(linha.linhaproducao_id),
-                                linhaNome: linha.linhaproducao || ''
+                                linhaNome: linha.linhaproducao || '',
+                                oee: linha.oee,
+                                disponibilidade: linha.disponibilidade,
+                                performance: linha.performance,
+                                qualidade: linha.qualidade
                               }
                             })
                           }}
