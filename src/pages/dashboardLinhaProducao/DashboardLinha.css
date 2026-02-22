@@ -825,7 +825,7 @@
   gap: 2cqi;
   margin-top: 0.8cqi;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .dashboard-linha-wrapper .lg-item {
@@ -833,7 +833,7 @@
   align-items: center;
   gap: 0.5cqi;
   font-size: 0.8cqi;
-  font-weight: 600;
+  font-weight: 800;
   text-transform: uppercase;
   color: var(--lg-item-color);
 }

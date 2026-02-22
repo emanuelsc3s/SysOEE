@@ -45,9 +45,8 @@ export function TimelineFooter() {
       <div className="timeline-legend">
         <div className="lg-item"><span className="lg-dot green-fill"></span> PRODUZINDO</div>
         <div className="lg-item"><span className="lg-dot red-fill"></span> PARADA</div>
-        <div className="lg-item"><span className="lg-dot blue-fill"></span> SETUP</div>
         <div className="lg-item"><span className="lg-dot yellow-fill"></span> MANUTENÇÃO</div>
-        <div className="lg-item"><span className="lg-dot gray-fill"></span> INDISPONÍVEL</div>
+        <div className="lg-item"><span className="lg-dot gray-fill"></span> PARADA ESTRATÉGICA</div>
         <div className="lg-item"><span className="lg-dot white-fill"></span> SEM APONTAMENTO</div>
       </div>
     </footer>

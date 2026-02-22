@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- Inter: adicionado peso 800 ao carregamento da fonte para suportar legendas em extra bold.
+- TimelineFooter: peso da fonte das legendas alterado para 800 (extra bold).
+- TimelineFooter: legendas centralizadas horizontalmente (justify-content: center).
+- TimelineFooter: removido item "SETUP" da legenda (não utilizado).
+- TimelineFooter: alterado texto da legenda de "INDISPONÍVEL" para "PARADA ESTRATÉGICA".
 - FifoCard: adicionado item PRODUTO 4 (456789 | 004, 45.2h) na lista FIFO do Dashboard de Linha.
 - Removido o card Setup (SetupCard) do `DashboardLinha`.
 - Ajustado o tamanho da logomarca no `DashboardLinha` para usar unidades relativas (`cqi`), permitindo o dimensionamento proporcional à resolução da tela.
