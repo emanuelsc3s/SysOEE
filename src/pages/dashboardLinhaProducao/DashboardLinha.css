@@ -450,48 +450,46 @@
 .dashboard-linha-wrapper .pareto-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6cqi;
+  gap: 0.3cqi;
   flex: 1;
 }
 
 .dashboard-linha-wrapper .pareto-item {
   display: flex;
   align-items: center;
-  font-size: 0.75cqi;
+  font-size: 1cqi;
   background-color: transparent;
-  padding: 0.2cqi 0;
+  padding: 0.1cqi 0;
 }
 
 .dashboard-linha-wrapper .p-label {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 0.5cqi;
   font-weight: 700;
-  color: var(--c-blue);
-  background-color: var(--p-label-bg);
-  padding: 0.3cqi 0.5cqi;
+  color: var(--text-main);
+  padding: 0.4cqi 0.6cqi;
   border-radius: 0.2cqi;
 }
 
 .dashboard-linha-wrapper .bluedot {
-  width: 0.4cqi;
-  height: 0.4cqi;
-  background-color: var(--c-blue);
+  display: none;
 }
 
 .dashboard-linha-wrapper .p-val1 {
-  width: 3.5cqi;
+  width: 4cqi;
   text-align: right;
-  font-weight: 600;
-  font-size: 0.8cqi;
+  font-weight: 700;
+  font-size: 1.1cqi;
+  color: var(--text-main);
 }
 
 .dashboard-linha-wrapper .p-val2 {
-  width: 3.5cqi;
+  width: 4cqi;
   text-align: right;
-  color: var(--text-muted);
-  font-size: 0.8cqi;
+  font-weight: 700;
+  font-size: 1.1cqi;
+  color: var(--c-blue);
 }
 
 /* Manutenção */
