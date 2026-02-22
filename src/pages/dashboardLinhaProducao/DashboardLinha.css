@@ -100,7 +100,13 @@
 
 .dashboard-linha-wrapper .logo-icon {
   width: 149.95px;
-  height: 62px;
+  height: 60px;
+  filter: grayscale(100%) opacity(60%);
+  transition: filter 0.3s ease;
+}
+
+.dashboard-linha-wrapper .logo-icon:hover {
+  filter: grayscale(0%) opacity(100%);
 }
 
 .dashboard-linha-wrapper .logo-text {
