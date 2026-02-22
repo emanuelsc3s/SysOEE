@@ -330,45 +330,78 @@
 
 .dashboard-linha-wrapper .circle-col {
   width: 9cqi;
+  flex: 0 0 auto;
   margin-left: 1cqi;
-  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+}
+
+.dashboard-linha-wrapper .circular-chart {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .dashboard-linha-wrapper .circular-svg {
   width: 100%;
   height: auto;
+  display: block;
+  transform: rotate(-90deg);
 }
 
-.dashboard-linha-wrapper .circle-bg {
+.dashboard-linha-wrapper .circular-track {
   fill: none;
   stroke: var(--circle-bg);
-  stroke-width: 2.5;
 }
 
-.dashboard-linha-wrapper .circle-val {
-  fill: none;
-  stroke: var(--c-blue);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-}
-
-.dashboard-linha-wrapper .circle-text {
-  fill: var(--circle-text);
-  font-size: 8px;
-  font-weight: 700;
-  text-anchor: middle;
-  alignment-baseline: middle;
-}
-
-.dashboard-linha-wrapper .circle-sub {
+.dashboard-linha-wrapper .circular-chart-overlay {
   position: absolute;
-  bottom: -1cqi;
-  font-size: 1cqi;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dashboard-linha-wrapper .circular-chart-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-linha-wrapper .circular-chart-value {
   font-weight: 700;
-  color: var(--text-muted);
+  font-size: 1.45cqi;
+  line-height: 1;
+  color: var(--text-main);
+}
+
+.dashboard-linha-wrapper .circular-chart-icon {
+  width: 1.1cqi;
+  height: 1.1cqi;
+  min-width: 14px;
+  min-height: 14px;
+  margin-top: 0.25cqi;
+  color: rgb(59 130 246 / 0.8);
+}
+
+.dashboard-linha-wrapper[data-theme='light'] .circular-chart-icon {
+  color: rgb(37 99 235 / 0.8);
+}
+
+@container dashboard (max-width: 1200px) {
+  .dashboard-linha-wrapper .circular-chart-value {
+    font-size: 1.8cqi;
+  }
+
+  .dashboard-linha-wrapper .circular-chart-icon {
+    width: 1.5cqi;
+    height: 1.5cqi;
+  }
 }
 
 /* Chart General */
