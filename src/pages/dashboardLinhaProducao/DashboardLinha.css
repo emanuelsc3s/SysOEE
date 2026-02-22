@@ -656,6 +656,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   padding: 0.45cqi 0.5cqi;
   border-radius: 0.45cqi;
   border: 1px solid var(--border-color);
@@ -689,7 +690,7 @@
 
 .dashboard-linha-wrapper .vel-mini-value {
   margin-top: 0.16cqi;
-  font-size: 0.93cqi;
+  font-size: 1.1cqi;
   line-height: 1.05;
   font-weight: 700;
   white-space: nowrap;

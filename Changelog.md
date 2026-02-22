@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- VelocidadeCard: conteúdo dos mini-cards centralizado verticalmente (justify-content: center).
+- DashboardLinha: invertida ordem dos cards na coluna 3 — Dados Produtivos (VelocidadeCard) acima de ÚLTIMOS LOTES (FifoCard).
+- VelocidadeCard: removidas divs de detalhe (vel-mini-detail) no card Dados Produtivos; tamanho da fonte dos valores (vel-mini-value) dobrado.
 - VelocidadeCard: cards Grandes Paradas e Paradas Estratégicas com 50% da largura da linha cada um.
 - VelocidadeCard: reduzido espaço de altura do título (vel-mini-title) — line-height 1 e min-height auto.
 - DashboardLinha: alterado rótulo "Total Produzido" para "Total" no card de Dados Produtivos (VelocidadeCard).

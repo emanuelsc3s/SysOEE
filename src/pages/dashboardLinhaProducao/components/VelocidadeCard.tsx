@@ -39,7 +39,6 @@ export function VelocidadeCard({ miniCards, statusTexto }: VelocidadeCardProps) 
               <span className={`vel-mini-accent ${classeVariante}-fill`} aria-hidden="true" />
               <div className="vel-mini-title">{card.titulo}</div>
               <div className={`vel-mini-value ${classeVariante}-text`}>{card.valor}</div>
-              <div className="vel-mini-detail">{card.detalhe}</div>
             </article>
           );
         })}

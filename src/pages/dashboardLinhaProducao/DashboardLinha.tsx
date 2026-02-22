@@ -407,8 +407,8 @@ export default function DashboardLinha() {
 
             {/* COLUMN 3 */}
             <div className="col col-3">
-              <FifoCard />
               <VelocidadeCard miniCards={miniCardsProdutivos} statusTexto={statusMiniCards} />
+              <FifoCard />
             </div>
 
             {/* COLUMN 4 */}
