@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- StatusCard: removida seção LEAD TIME (s-label-bold, Start, Current Status, Lead Time e Holding Time).
 - VelocidadeCard: conteúdo dos mini-cards centralizado verticalmente (justify-content: center).
 - DashboardLinha: invertida ordem dos cards na coluna 3 — Dados Produtivos (VelocidadeCard) acima de ÚLTIMOS LOTES (FifoCard).
 - VelocidadeCard: removidas divs de detalhe (vel-mini-detail) no card Dados Produtivos; tamanho da fonte dos valores (vel-mini-value) dobrado.

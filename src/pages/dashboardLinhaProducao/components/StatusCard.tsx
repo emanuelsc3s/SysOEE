@@ -14,13 +14,6 @@ export function StatusCard() {
           <div className="s-small s-batch">Lote: <span className="white">123456</span></div>
           <div className="s-small SKU_Status">SKU: <span className="white">000001</span></div>
         </div>
-        <div className="s-block mt-auto">
-          <div className="s-label-bold">LEAD TIME</div>
-          <div className="s-small">Start 02/08/2022 13:35:37</div>
-          <div className="s-small">Current Status 02h 07m / 02h 00m</div>
-          <div className="s-small">Lead Time <b>0h 12m</b></div>
-          <div className="s-small">Holding Time -/-</div>
-        </div>
       </div>
     </div>
   );
