@@ -1,7 +1,7 @@
 export function OeeRealCard() {
   return (
     <div className="card card-oee-real">
-      <h2>OEE Real <span className="subtitle">Últimos 30 dias</span></h2>
+      <h2>OEE REAL <span className="subtitle">Últimos 30 dias</span></h2>
       <div className="oee-real-content">
         <div className="bars-col">
           <div className="bar-item">

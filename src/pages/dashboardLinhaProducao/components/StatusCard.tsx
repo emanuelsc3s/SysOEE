@@ -1,7 +1,7 @@
 export function StatusCard() {
   return (
     <div className="card card-status">
-      <h2>Status</h2>
+      <h2>STATUS</h2>
       <div className="status-content">
         <div className="s-block">
           <div className="s-highlight blue-text">01 - PRODUCING</div>

@@ -5,11 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { AlertTriangle, Calendar as CalendarIcon, Check, ChevronDown, Filter, Info, Loader2, Maximize, Minimize, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video, X } from 'lucide-react'
+import { AlertTriangle, Calendar as CalendarIcon, Check, ChevronDown, Filter, Info, Loader2, Maximize, Minimize, RefreshCw, Pause, Play, Sun, Moon, ArrowLeft, Video, X, LayoutDashboard } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 import { useTheme } from '@/hooks/useTheme'
+import { isPerfilAdministrador } from '@/utils/perfil.utils'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { ParetoParadasChart, type ParetoParadaChartItem } from '@/components/charts/ParetoParadasChart'
 import { DashboardDialogContent } from '@/pages/dashboard/components/DashboardDialogContent'
@@ -485,6 +486,7 @@ export default function Dashboard() {
   const { toast } = useToast()
   const { theme, toggleTheme, forceLightForNextPage } = useTheme()
   const navigate = useNavigate()
+  const usuarioPodeAbrirDashboardLinha = isPerfilAdministrador(user?.perfil)
 
   const [linhas, setLinhas] = useState<LinhaOption[]>([])
   const [produtos, setProdutos] = useState<ProdutoOption[]>([])
@@ -1919,27 +1921,74 @@ export default function Dashboard() {
                       <CardTitle className="min-h-[3rem] flex-1 break-words text-base sm:min-h-[3.5rem] sm:text-lg">
                         {linha.linhaproducao || 'Linha sem nome'}
                       </CardTitle>
-                      {cameraDisponivel && (
+                      <div className="flex items-center gap-1 shrink-0">
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          className={`h-8 w-8 text-muted-foreground hover:text-foreground ${
+                            usuarioPodeAbrirDashboardLinha ? '' : 'cursor-not-allowed opacity-60'
+                          }`}
                           onClick={(event) => {
                             event.preventDefault()
                             event.stopPropagation()
-                            void handleAbrirCameraComPermissao(linha)
+
+                            if (!usuarioPodeAbrirDashboardLinha) {
+                              toast({
+                                title: 'Acesso restrito',
+                                description: 'O dashboard por linha está disponível apenas para usuários Administradores.',
+                                variant: 'destructive'
+                              })
+                              return
+                            }
+
+                            navigate('/dashboard-linha', {
+                              state: {
+                                linhaId: String(linha.linhaproducao_id),
+                                linhaNome: linha.linhaproducao || ''
+                              }
+                            })
                           }}
                           onKeyDown={(event) => {
                             event.stopPropagation()
                           }}
-                          disabled={validandoPermissaoCamera}
-                          title={`Abrir câmera da linha ${linha.linhaproducao || ''}`}
-                          aria-label={`Abrir câmera da linha ${linha.linhaproducao || 'selecionada'}`}
+                          aria-disabled={!usuarioPodeAbrirDashboardLinha}
+                          title={
+                            usuarioPodeAbrirDashboardLinha
+                              ? `Abrir dashboard da linha ${linha.linhaproducao || ''}`
+                              : 'Acesso restrito a usuários Administradores'
+                          }
+                          aria-label={
+                            usuarioPodeAbrirDashboardLinha
+                              ? `Abrir dashboard da linha ${linha.linhaproducao || 'selecionada'}`
+                              : 'Dashboard por linha restrito a usuários Administradores'
+                          }
                         >
-                          <Video className="h-4 w-4" />
+                          <LayoutDashboard className="h-4 w-4" />
                         </Button>
-                      )}
+
+                        {cameraDisponivel && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            onClick={(event) => {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              void handleAbrirCameraComPermissao(linha)
+                            }}
+                            onKeyDown={(event) => {
+                              event.stopPropagation()
+                            }}
+                            disabled={validandoPermissaoCamera}
+                            title={`Abrir câmera da linha ${linha.linhaproducao || ''}`}
+                            aria-label={`Abrir câmera da linha ${linha.linhaproducao || 'selecionada'}`}
+                          >
+                            <Video className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center gap-6">

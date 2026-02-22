@@ -140,9 +140,9 @@
 }
 
 .dashboard-linha-wrapper .main-title {
-  font-size: 2.2cqi;
+  font-size: 26px;
   font-weight: 700;
-  color: var(--c-yellow);
+  color: var(--text-main);
   margin: 0;
   flex: 1;
   text-align: center;
@@ -844,6 +844,29 @@
   border-radius: 50%;
 }
 
+/* === BOTÃO VOLTAR === */
+.dashboard-linha-wrapper .header-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.4cqi;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 2.2cqi;
+  width: 2.2cqi;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  margin-left: 0.5cqi;
+}
+
+.dashboard-linha-wrapper .header-back-btn:hover {
+  background-color: var(--progress-bg);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
 /* === THEME TOGGLE (SHADCN Ghost Button Style) === */
 .dashboard-linha-wrapper .theme-toggle-btn {
   display: inline-flex;
@@ -858,7 +881,7 @@
   border: 1px solid transparent;
   color: var(--text-main);
   cursor: pointer;
-  margin-left: 0.5cqi;
+  margin-left: 0.1cqi;
 }
 
 .dashboard-linha-wrapper .theme-toggle-btn:hover {

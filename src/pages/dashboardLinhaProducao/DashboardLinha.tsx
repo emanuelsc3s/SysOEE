@@ -1,4 +1,5 @@
 import { useTheme } from '@/hooks/useTheme';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './DashboardLinha.css';
 
 import { DashboardHeader } from './components/DashboardHeader';
@@ -11,15 +12,28 @@ import { VelocidadeCard } from './components/VelocidadeCard';
 import { StatusCard } from './components/StatusCard';
 import { TimelineFooter } from './components/TimelineFooter';
 
+type DashboardLinhaRouteState = {
+  linhaId?: string;
+  linhaNome?: string;
+};
+
 export default function DashboardLinha() {
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const routeState = (location.state as DashboardLinhaRouteState | null) ?? null;
+  const tituloLinha =
+    typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
+      ? routeState.linhaNome
+      : 'EQUIPAMENTO';
 
   return (
     <div className="dashboard-linha-fullscreen">
       <div className="dashboard-linha-wrapper" data-theme={theme}>
         <div className="dashboard-container">
         {/* HEADER */}
-        <DashboardHeader theme={theme} toggleTheme={toggleTheme} />
+        <DashboardHeader theme={theme} toggleTheme={toggleTheme} titulo={tituloLinha} onBack={() => navigate(-1)} />
 
         {/* MAIN GRID */}
         <main className="main-grid">

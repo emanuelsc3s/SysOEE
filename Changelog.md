@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardHeader: adicionado botão "Voltar" (ícone ArrowLeft) ao lado do theme toggle no Dashboard de Linha; retorna à página anterior via `navigate(-1)`.
+- OeeRealCard: alterado título "OEE Real" para "OEE REAL" no h2.
+- StatusCard: alterado título "Status" para "STATUS" no h2.
+- ParetoCard: alterado título "Pareto" para "PARETO" no h2.
+- FifoCard: alterado título do h2 de "FIFO" para "ÚLTIMOS LOTES".
+- DashboardHeader (main-title): font-size ajustado para 26px no Dashboard de Linha.
 - ManutencaoCard: espaçamento entre linhas (m-item) melhorado com gap de 2cqi em m-content.
 - ManutencaoCard: valores MTTR, MTBF e MWT exibidos em 0h para dados de manutenção.
 - Inter: adicionado peso 800 ao carregamento da fonte para suportar legendas em extra bold.
