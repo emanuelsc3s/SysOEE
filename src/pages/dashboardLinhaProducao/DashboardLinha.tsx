@@ -9,15 +9,14 @@ import { ManutencaoCard } from './components/ManutencaoCard';
 import { FifoCard } from './components/FifoCard';
 import { VelocidadeCard } from './components/VelocidadeCard';
 import { StatusCard } from './components/StatusCard';
-import { SetupCard } from './components/SetupCard';
 import { TimelineFooter } from './components/TimelineFooter';
 
 export default function DashboardLinha() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="dashboard-linha-fullscreen" data-theme={theme}>
-      <div className="dashboard-linha-wrapper">
+    <div className="dashboard-linha-fullscreen">
+      <div className="dashboard-linha-wrapper" data-theme={theme}>
         <div className="dashboard-container">
         {/* HEADER */}
         <DashboardHeader theme={theme} toggleTheme={toggleTheme} />
@@ -45,7 +44,6 @@ export default function DashboardLinha() {
           {/* COLUMN 4 */}
           <div className="col col-4">
             <StatusCard />
-            <SetupCard />
           </div>
         </main>
 
