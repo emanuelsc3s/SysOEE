@@ -102,24 +102,38 @@ export default function ManutencaoCad() {
     ? locationState.returnSearchTerm || ''
     : ''
   const fromApontamento = Boolean(locationState?.fromApontamento)
+  const oeeTurnoId = locationState?.oeeTurnoId
+  const linhaId = locationState?.linhaId
+  const linhaNome = locationState?.linhaNome
+  const skuCodigo = locationState?.skuCodigo
+  const produtoDescricao = locationState?.produtoDescricao
 
-  const navegarRetorno = (extras?: Record<string, unknown>) => {
-    if (fromApontamento && locationState?.oeeTurnoId) {
-      navigate(`/apontamento-oee?oeeturno_id=${locationState.oeeTurnoId}`, extras)
+  const navegarRetorno = useCallback((extras?: Record<string, unknown>) => {
+    if (fromApontamento && oeeTurnoId) {
+      navigate(`/apontamento-oee?oeeturno_id=${oeeTurnoId}`, extras)
     } else {
       navigate('/manutencao', {
         state: {
           restoreSearchTerm: returnSearchTerm,
-          oeeTurnoId: locationState?.oeeTurnoId,
-          linhaId: locationState?.linhaId,
-          linhaNome: locationState?.linhaNome,
-          skuCodigo: locationState?.skuCodigo,
-          produtoDescricao: locationState?.produtoDescricao,
+          oeeTurnoId,
+          linhaId,
+          linhaNome,
+          skuCodigo,
+          produtoDescricao,
           ...extras?.state as Record<string, unknown>,
         }
       })
     }
-  }
+  }, [
+    fromApontamento,
+    linhaId,
+    linhaNome,
+    navigate,
+    oeeTurnoId,
+    produtoDescricao,
+    returnSearchTerm,
+    skuCodigo,
+  ])
 
   const { user: authUser } = useAuth()
 
@@ -172,7 +186,7 @@ export default function ManutencaoCad() {
     } finally {
       setIsFetchingData(false)
     }
-  }, [id, navigate])
+  }, [id, navegarRetorno])
 
   useEffect(() => {
     if (id) {
@@ -370,11 +384,11 @@ export default function ManutencaoCad() {
     navigate('/manutencao', {
       state: {
         restoreSearchTerm: returnSearchTerm,
-        oeeTurnoId: locationState?.oeeTurnoId,
-        linhaId: locationState?.linhaId,
-        linhaNome: locationState?.linhaNome,
-        skuCodigo: locationState?.skuCodigo,
-        produtoDescricao: locationState?.produtoDescricao,
+        oeeTurnoId,
+        linhaId,
+        linhaNome,
+        skuCodigo,
+        produtoDescricao,
       }
     })
   }
