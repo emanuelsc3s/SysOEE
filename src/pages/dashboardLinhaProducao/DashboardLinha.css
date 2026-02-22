@@ -287,16 +287,19 @@
 /* OEE Real */
 .dashboard-linha-wrapper .oee-real-content {
   display: flex;
-  height: 100%;
-  align-items: center;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
 .dashboard-linha-wrapper .bars-col {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   gap: 1.25cqi;
   justify-content: center;
+  min-width: 0;
+  align-self: stretch;
 }
 
 .dashboard-linha-wrapper .bar-item {
@@ -342,18 +345,22 @@
 }
 
 .dashboard-linha-wrapper .circle-col {
-  width: 9cqi;
-  flex: 0 0 auto;
+  width: 10.8cqi;
+  flex: 0 0 10.8cqi;
   margin-left: 1cqi;
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: stretch;
 }
 
 .dashboard-linha-wrapper .circular-chart {
   position: relative;
   display: inline-flex;
   width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 100%;
+  margin: auto 0;
   align-items: center;
   justify-content: center;
 }
