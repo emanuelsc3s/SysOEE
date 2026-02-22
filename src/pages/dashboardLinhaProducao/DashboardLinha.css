@@ -177,6 +177,10 @@
   color: var(--c-red) !important;
 }
 
+.dashboard-linha-wrapper .gray-text {
+  color: var(--c-gray) !important;
+}
+
 .dashboard-linha-wrapper .white {
   color: var(--c-white) !important;
 }
@@ -630,58 +634,71 @@
 }
 
 /* Velocidade */
-.dashboard-linha-wrapper .vel-chart-container {
+.dashboard-linha-wrapper .vel-mini-grid {
   flex: 1;
-  position: relative;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.55cqi;
 }
 
-.dashboard-linha-wrapper .vel-chart {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  height: 100%;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 1cqi;
-  margin-left: 2.5cqi;
-  width: calc(100% - 2.5cqi);
-}
-
-.dashboard-linha-wrapper .vel-y-axis {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 1cqi;
+.dashboard-linha-wrapper .vel-mini-card {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  font-size: 0.6cqi;
+  padding: 0.45cqi 0.5cqi;
+  border-radius: 0.45cqi;
+  border: 1px solid var(--border-color);
+  background-color: var(--fifo-bg);
+  overflow: hidden;
+}
+
+.dashboard-linha-wrapper .vel-mini-card--gray .vel-mini-value {
+  color: var(--text-main) !important;
+}
+
+.dashboard-linha-wrapper .vel-mini-accent {
+  display: block;
+  width: 2cqi;
+  max-width: 100%;
+  height: 0.17cqi;
+  border-radius: 999px;
+  margin-bottom: 0.35cqi;
+  flex-shrink: 0;
+}
+
+.dashboard-linha-wrapper .vel-mini-title {
+  font-size: 0.56cqi;
+  line-height: 1.15;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04cqi;
   color: var(--text-muted);
-  width: 2.5cqi;
-  align-items: flex-end;
-  padding-right: 0.5cqi;
-  border-right: 1px dashed var(--border-color);
+  min-height: 1.25cqi;
 }
 
-.dashboard-linha-wrapper .vel-bar-wrapper {
-  width: 5%;
-  height: 80%;
-  display: flex;
-  align-items: flex-end;
-  position: relative;
+.dashboard-linha-wrapper .vel-mini-value {
+  margin-top: 0.16cqi;
+  font-size: 0.93cqi;
+  line-height: 1.05;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dashboard-linha-wrapper .vel-bar {
-  width: 100%;
-  border-radius: 0.1cqi 0.1cqi 0 0;
-}
-
-.dashboard-linha-wrapper .vel-date {
-  position: absolute;
-  bottom: -1.2cqi;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.6cqi;
+.dashboard-linha-wrapper .vel-mini-detail {
+  margin-top: 0.16cqi;
+  font-size: 0.54cqi;
+  line-height: 1.15;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* Status */

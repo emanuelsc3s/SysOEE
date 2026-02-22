@@ -1,28 +1,48 @@
-export function VelocidadeCard() {
+export type MiniCardProdutivo = {
+  id: string;
+  titulo: string;
+  valor: string;
+  detalhe: string;
+  variante: 'blue' | 'red' | 'orange' | 'gray';
+};
+
+type VelocidadeCardProps = {
+  miniCards: MiniCardProdutivo[];
+  statusTexto?: string;
+};
+
+const MAPA_CLASSES_VARIANTE: Record<MiniCardProdutivo['variante'], string> = {
+  blue: 'blue',
+  red: 'red',
+  orange: 'orange',
+  gray: 'gray',
+};
+
+export function VelocidadeCard({ miniCards, statusTexto }: VelocidadeCardProps) {
   return (
     <div className="card card-velocidade">
-      <h2>Velocidade <span className="subtitle">Últimos 30 dias</span></h2>
-      <div className="vel-chart-container">
-        <div className="vel-y-axis">
-          <span>3.000</span>
-          <span>2.500</span>
-          <span>2.000</span>
-          <span>1.500</span>
-          <span>1.000</span>
-          <span>500</span>
-          <span>0</span>
-        </div>
-        <div className="vel-chart">
-          {Array.from({ length: 15 }).map((_, i) => {
-            const h = Math.random() * 60 + 20;
-            return (
-              <div key={i} className="vel-bar-wrapper">
-                <div className="vel-bar blue-fill" style={{ height: `${h}%` }}></div>
-                <div className="vel-date">{21 + i}</div>
-              </div>
-            )
-          })}
-        </div>
+      <h2>
+        Dados Produtivos
+        {statusTexto ? <span className="subtitle subtitle-right">{statusTexto}</span> : null}
+      </h2>
+
+      <div className="vel-mini-grid">
+        {miniCards.map((card) => {
+          const classeVariante = MAPA_CLASSES_VARIANTE[card.variante];
+
+          return (
+            <article
+              key={card.id}
+              className={`vel-mini-card vel-mini-card--${classeVariante}`}
+              title={`${card.titulo}: ${card.valor} (${card.detalhe})`}
+            >
+              <span className={`vel-mini-accent ${classeVariante}-fill`} aria-hidden="true" />
+              <div className="vel-mini-title">{card.titulo}</div>
+              <div className={`vel-mini-value ${classeVariante}-text`}>{card.valor}</div>
+              <div className="vel-mini-detail">{card.detalhe}</div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );

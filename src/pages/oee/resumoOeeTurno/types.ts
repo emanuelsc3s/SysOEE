@@ -13,6 +13,7 @@ export type ResumoOeeTurnoRow = {
   linhaproducao?: string | null
   oeeturno_id?: number | null
   turno?: string | null
+  turno_id?: number | null
   qtde_turnos?: number | null
   status_linha?: string | null
   status_turno_registrado?: string | null

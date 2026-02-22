@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardLinha: alterado rótulo "Total Produzido" para "Total" no card de Dados Produtivos (VelocidadeCard).
 - DashboardHeader: linha separadora entre item "Voltar" e demais itens (Filtrar, Modo Claro) no menu burger.
 - DashboardHeader: adicionado item "Filtrar" com ícone Filter ao menu burger; callback opcional `onFilter` para conectar lógica de filtros.
 - OeeRealCard: removido subtítulo "Últimos 30 dias" do h2.

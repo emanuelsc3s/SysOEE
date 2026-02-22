@@ -14,6 +14,11 @@ import { normalizarNumero } from '../utils/formatters'
 type UseResumoOeeTurnoParams = {
   dataInicioIso?: string
   dataFimIso?: string
+  linhaId?: number | null
+  turnoId?: number | null
+  produtoId?: number | null
+  oeeturnoId?: number | null
+  incluirComparativo?: boolean
 }
 
 type UseResumoOeeTurnoRetorno = {
@@ -68,7 +73,9 @@ const normalizarLinhas = (linhas: ResumoOeeTurnoRow[]): ResumoOeeTurnoLinhaNorma
   })
 }
 
-const somarTotais = (linhas: ResumoOeeTurnoLinhaNormalizada[]): ResumoTotais => {
+export const somarTotaisResumoOeeTurno = (
+  linhas: ResumoOeeTurnoLinhaNormalizada[]
+): ResumoTotais => {
   const totais: ResumoTotais = {
     skuProduzidos: 0,
     turnosDistintos: 0,
@@ -122,20 +129,26 @@ const somarTotais = (linhas: ResumoOeeTurnoLinhaNormalizada[]): ResumoTotais => 
 export const useResumoOeeTurno = ({
   dataInicioIso,
   dataFimIso,
+  linhaId,
+  turnoId,
+  produtoId,
+  oeeturnoId,
+  incluirComparativo = true,
 }: UseResumoOeeTurnoParams): UseResumoOeeTurnoRetorno => {
   const periodoInvalido = Boolean(dataInicioIso && dataFimIso && dataInicioIso > dataFimIso)
   const parametrosValidos = Boolean(dataInicioIso && dataFimIso && !periodoInvalido)
+  const comparativoHabilitado = incluirComparativo
 
   const parametrosBase = useMemo<ResumoOeeTurnoParametros>(
     () => ({
       p_data_inicio: dataInicioIso ?? null,
       p_data_fim: dataFimIso ?? null,
-      p_turno_id: null,
-      p_produto_id: null,
-      p_linhaproducao_id: null,
-      p_oeeturno_id: null,
+      p_turno_id: turnoId ?? null,
+      p_produto_id: produtoId ?? null,
+      p_linhaproducao_id: linhaId ?? null,
+      p_oeeturno_id: oeeturnoId ?? null,
     }),
-    [dataInicioIso, dataFimIso]
+    [dataInicioIso, dataFimIso, linhaId, turnoId, produtoId, oeeturnoId]
   )
 
   const resumoQuery = useQuery({
@@ -154,11 +167,12 @@ export const useResumoOeeTurno = ({
         )
       )
       const turnoPorOee = new Map<number, string>()
+      const turnoIdPorOee = new Map<number, number>()
 
       if (oeeturnoIds.length > 0) {
         const { data: turnosData, error: turnosError } = await supabase
           .from('tboee_turno')
-          .select('oeeturno_id, turno')
+          .select('oeeturno_id, turno, turno_id')
           .in('oeeturno_id', oeeturnoIds)
           .eq('deletado', 'N')
 
@@ -171,6 +185,9 @@ export const useResumoOeeTurno = ({
             if (nomeTurno) {
               turnoPorOee.set(registro.oeeturno_id, nomeTurno)
             }
+            if (typeof registro.turno_id === 'number') {
+              turnoIdPorOee.set(registro.oeeturno_id, registro.turno_id)
+            }
           })
         }
       }
@@ -179,9 +196,13 @@ export const useResumoOeeTurno = ({
         const turnoNome =
           linha.turno ??
           (linha.oeeturno_id != null ? turnoPorOee.get(linha.oeeturno_id) ?? null : null)
+        const turnoIdLinha =
+          linha.turno_id ??
+          (linha.oeeturno_id != null ? turnoIdPorOee.get(linha.oeeturno_id) ?? null : null)
         return {
           ...linha,
           turno: turnoNome,
+          turno_id: turnoIdLinha,
         }
       })
     },
@@ -204,7 +225,7 @@ export const useResumoOeeTurno = ({
           }
 
           const linhasTurno = normalizarLinhas((data || []) as ResumoOeeTurnoRow[])
-          const totaisTurno = somarTotais(linhasTurno)
+          const totaisTurno = somarTotaisResumoOeeTurno(linhasTurno)
 
           return {
             id: turno.id,
@@ -217,21 +238,29 @@ export const useResumoOeeTurno = ({
 
       return comparativo
     },
-    enabled: parametrosValidos,
+    enabled: parametrosValidos && comparativoHabilitado,
     staleTime: 60_000,
   })
 
   const linhas = useMemo(() => resumoQuery.data || [], [resumoQuery.data])
-  const totais = useMemo(() => somarTotais(linhas), [linhas])
+  const totais = useMemo(() => somarTotaisResumoOeeTurno(linhas), [linhas])
   const comparativoTurnos = useMemo(
-    () => comparativoQuery.data || TURNOS_COMPARATIVO_PADRAO,
-    [comparativoQuery.data]
+    () =>
+      comparativoHabilitado
+        ? comparativoQuery.data || TURNOS_COMPARATIVO_PADRAO
+        : TURNOS_COMPARATIVO_PADRAO,
+    [comparativoHabilitado, comparativoQuery.data]
   )
 
-  const erroBruto = resumoQuery.error || comparativoQuery.error
+  const erroBruto = resumoQuery.error || (comparativoHabilitado ? comparativoQuery.error : null)
   const erroConsulta = erroBruto ? 'Não foi possível carregar o resumo do período informado.' : null
 
   const refetch = async () => {
+    if (!comparativoHabilitado) {
+      await resumoQuery.refetch()
+      return
+    }
+
     await Promise.all([resumoQuery.refetch(), comparativoQuery.refetch()])
   }
 
@@ -242,8 +271,8 @@ export const useResumoOeeTurno = ({
     parametrosValidos,
     periodoInvalido,
     resumoAtualizadoEm: resumoQuery.dataUpdatedAt,
-    isLoading: resumoQuery.isLoading || comparativoQuery.isLoading,
-    isFetching: resumoQuery.isFetching || comparativoQuery.isFetching,
+    isLoading: resumoQuery.isLoading || (comparativoHabilitado && comparativoQuery.isLoading),
+    isFetching: resumoQuery.isFetching || (comparativoHabilitado && comparativoQuery.isFetching),
     erroConsulta,
     refetch,
   }
