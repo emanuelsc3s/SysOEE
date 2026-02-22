@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- VelocidadeCard: mini-cards (Produzido, Perdas, Total, Grandes Paradas, Paradas Estratégicas) com mesmo design do fifo-item — padding 0.8cqi, border-radius 0.4cqi, sem borda explícita; fundo var(--fifo-bg) preservado.
+- StatusCard: reduzido espaçamento entre linhas (status-content, s-block, s-small, s-timer).
 - StatusCard: removida seção LEAD TIME (s-label-bold, Start, Current Status, Lead Time e Holding Time).
 - VelocidadeCard: conteúdo dos mini-cards centralizado verticalmente (justify-content: center).
 - DashboardLinha: invertida ordem dos cards na coluna 3 — Dados Produtivos (VelocidadeCard) acima de ÚLTIMOS LOTES (FifoCard).
