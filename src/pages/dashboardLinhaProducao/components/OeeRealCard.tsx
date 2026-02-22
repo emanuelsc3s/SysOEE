@@ -66,24 +66,34 @@ export function OeeRealCard({
   const performanceNormalizada = clampPercentual(performance);
   const qualidadeNormalizada = clampPercentual(qualidade);
   const corOee = getColorByPercentage(oeeNormalizado);
+  const indicadores = [
+    { id: 'disponibilidade', rotulo: 'Disponibilidade', valor: disponibilidadeNormalizada },
+    { id: 'performance', rotulo: 'Performance', valor: performanceNormalizada },
+    { id: 'qualidade', rotulo: 'Qualidade', valor: qualidadeNormalizada },
+  ];
 
   return (
     <div className="card card-oee-real">
       <h2>OEE REAL <span className="subtitle">Últimos 30 dias</span></h2>
       <div className="oee-real-content">
         <div className="bars-col">
-          <div className="bar-item">
-            <div className="bar-label"><span className="val blue-text">{formatarPercentual(disponibilidadeNormalizada)}%</span> Disponibilidade</div>
-            <div className="progress-bg"><div className="progress-fill blue-fill" style={{ width: `${disponibilidadeNormalizada}%` }}></div></div>
-          </div>
-          <div className="bar-item">
-            <div className="bar-label"><span className="val orange-text">{formatarPercentual(performanceNormalizada)}%</span> Performance</div>
-            <div className="progress-bg"><div className="progress-fill orange-fill" style={{ width: `${performanceNormalizada}%` }}></div></div>
-          </div>
-          <div className="bar-item">
-            <div className="bar-label"><span className="val green-text">{formatarPercentual(qualidadeNormalizada)}%</span> Qualidade</div>
-            <div className="progress-bg"><div className="progress-fill green-fill" style={{ width: `${qualidadeNormalizada}%` }}></div></div>
-          </div>
+          {indicadores.map((indicador) => (
+            <div className="bar-item" key={indicador.id}>
+              <div className="bar-header">
+                <span className="bar-value">{formatarPercentual(indicador.valor)}%</span>
+                <span className="bar-name">{indicador.rotulo}</span>
+              </div>
+              <div className="progress-bg">
+                <div
+                  className="progress-fill"
+                  style={{
+                    width: `${indicador.valor}%`,
+                    backgroundColor: getColorByPercentage(indicador.valor),
+                  }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
         <div className="circle-col">
           <div className="circular-chart">
