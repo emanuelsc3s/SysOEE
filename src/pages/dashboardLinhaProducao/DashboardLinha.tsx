@@ -11,8 +11,9 @@ import type { ResumoOeeTurnoLinhaNormalizada } from '@/pages/oee/resumoOeeTurno/
 import './DashboardLinha.css';
 
 import { DashboardHeader } from './components/DashboardHeader';
-import { FiltrarDashboardLinha, FILTROS_DASHBOARD_PADRAO } from './FiltrarDashboardLinha';
-import type { FiltrosDashboardLinha } from './FiltrarDashboardLinha';
+import { FiltrarDashboardLinha } from './FiltrarDashboardLinha';
+import { FILTROS_DASHBOARD_PADRAO } from './filtrosDashboardLinha';
+import type { FiltrosDashboardLinha } from './filtrosDashboardLinha';
 import { OeeRealCard } from './components/OeeRealCard';
 import { OeeHistoryCard } from './components/OeeHistoryCard';
 import { ParetoCard } from './components/ParetoCard';

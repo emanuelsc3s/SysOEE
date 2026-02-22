@@ -27,6 +27,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { OeeTurnoStatus } from '@/types/apontamento-oee'
+import { FILTROS_DASHBOARD_PADRAO } from './filtrosDashboardLinha'
+import type { FiltrosDashboardLinha } from './filtrosDashboardLinha'
 
 // ---------------------------------------------------------------------------
 // Tipos locais
@@ -49,35 +51,7 @@ type ProdutoOpcao = {
   descricao: string | null
 }
 
-// ---------------------------------------------------------------------------
-// Tipo exportado (reutilizado em DashboardLinha.tsx)
-// ---------------------------------------------------------------------------
-
-export type FiltrosDashboardLinha = {
-  dataInicio: string   // dd/mm/aaaa
-  dataFim: string      // dd/mm/aaaa
-  linhaIds: string[]
-  turnoIds: string[]
-  produtoIds: string[]
-  statuses: OeeTurnoStatus[]
-  lancamento: string
-}
-
-// ---------------------------------------------------------------------------
-// Constantes
-// ---------------------------------------------------------------------------
-
 const STATUS_DISPONIVEIS: OeeTurnoStatus[] = ['Aberto', 'Fechado', 'Cancelado']
-
-export const FILTROS_DASHBOARD_PADRAO: FiltrosDashboardLinha = {
-  dataInicio: '',
-  dataFim: '',
-  linhaIds: [],
-  turnoIds: [],
-  produtoIds: [],
-  statuses: [],
-  lancamento: '',
-}
 
 // ---------------------------------------------------------------------------
 // Utilitários (mesma lógica de OeeTurno.tsx)
