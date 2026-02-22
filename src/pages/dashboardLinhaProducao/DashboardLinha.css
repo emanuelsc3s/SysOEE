@@ -98,15 +98,37 @@
   width: 25cqi;
 }
 
+@keyframes logoColorCycle {
+  0%, 45% {
+    filter: grayscale(100%);
+    opacity: 0.6;
+  }
+  50%, 95% {
+    filter: grayscale(0%);
+    opacity: 1;
+  }
+  100% {
+    filter: grayscale(100%);
+    opacity: 0.6;
+  }
+}
+
 .dashboard-linha-wrapper .logo-icon {
   width: 149.95px;
   height: 60px;
-  filter: grayscale(100%) opacity(60%);
-  transition: filter 0.3s ease;
+  filter: grayscale(100%);
+  opacity: 0.6;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+  cursor: pointer;
+}
+
+.dashboard-linha-wrapper .logo-icon:not(:hover) {
+  animation: logoColorCycle 120s ease-in-out infinite;
 }
 
 .dashboard-linha-wrapper .logo-icon:hover {
-  filter: grayscale(0%) opacity(100%);
+  filter: grayscale(0%);
+  opacity: 1;
 }
 
 .dashboard-linha-wrapper .logo-text {
