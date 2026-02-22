@@ -4,10 +4,12 @@ export function VelocidadeCard() {
       <h2>Velocidade <span className="subtitle">Últimos 30 dias</span></h2>
       <div className="vel-chart-container">
         <div className="vel-y-axis">
-          <span>100</span>
-          <span>75</span>
-          <span>50</span>
-          <span>25</span>
+          <span>3.000</span>
+          <span>2.500</span>
+          <span>2.000</span>
+          <span>1.500</span>
+          <span>1.000</span>
+          <span>500</span>
           <span>0</span>
         </div>
         <div className="vel-chart">

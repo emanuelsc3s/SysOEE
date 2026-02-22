@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Removidas as linhas de meta de velocidade (`.vel-line`) do gráfico do card de Velocidade no `DashboardLinha`.
 - Implementada escala numérica (100 a 0) de unidades por hora no eixo Y esquerdo do card de Velocidade no `DashboardLinha`.
 - Implementado o novo `Dashboard de Linha` (`/dashboard-linha`), uma réplica visual do sistema anterior da Cogtive, componentizado e co-localizado em `src/pages/dashboardLinhaProducao`.
 - Componentização do `DashboardLinha` em 10 subcomponentes (Header, OeeRealCard, OeeHistoryCard, ParetoCard, ManutencaoCard, FifoCard, VelocidadeCard, StatusCard, SetupCard e TimelineFooter).
