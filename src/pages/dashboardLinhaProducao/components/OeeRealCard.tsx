@@ -74,14 +74,13 @@ export function OeeRealCard({
 
   return (
     <div className="card card-oee-real">
-      <h2>OEE REAL <span className="subtitle">Últimos 30 dias</span></h2>
+      <h2>OEE REAL</h2>
       <div className="oee-real-content">
         <div className="bars-col">
           {indicadores.map((indicador) => (
             <div className="bar-item" key={indicador.id}>
               <div className="bar-header">
                 <span className="bar-value">{formatarPercentual(indicador.valor)}%</span>
-                <span className="bar-name">{indicador.rotulo}</span>
               </div>
               <div className="progress-bg">
                 <div
@@ -92,6 +91,7 @@ export function OeeRealCard({
                   }}
                 />
               </div>
+              <span className="bar-name">{indicador.rotulo}</span>
             </div>
           ))}
         </div>

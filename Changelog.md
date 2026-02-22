@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeRealCard: removido subtítulo "Últimos 30 dias" do h2.
 - DashboardHeader (main-title): font-size responsivo com clamp(1rem, 3.9cqi, 26px), preservando o valor atual (~26px) no viewport de referência e escalando com o container; font-weight 700 mantido.
 - DashboardLinha: background da página (dashboard-linha-fullscreen) igualado ao do container interno (var(--bg-color): #1a1a1a dark / #f1f5f9 light); removido contraste entre borda e conteúdo.
 - DashboardHeader: adicionado botão "Voltar" (ícone ArrowLeft) ao lado do theme toggle no Dashboard de Linha; retorna à página anterior via `navigate(-1)`.
