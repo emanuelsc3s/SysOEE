@@ -1,5 +1,15 @@
 /* CSS escopado para o Dashboard Linha de Produção para não vazar globalmente */
 
+.dashboard-linha-fullscreen {
+  min-height: 100vh;
+  min-width: 100vw;
+  background-color: #1a1a1a;
+}
+
+.dashboard-linha-fullscreen[data-theme='light'] {
+  background-color: #f1f5f9;
+}
+
 .dashboard-linha-wrapper {
   --body-bg: #000;
   --bg-color: #1a1a1a;
@@ -98,39 +108,12 @@
   width: 25cqi;
 }
 
-@keyframes logoColorCycle {
-  0%, 45% {
-    filter: grayscale(100%);
-    opacity: 0.6;
-  }
-  50%, 95% {
-    filter: grayscale(0%);
-    opacity: 1;
-  }
-  100% {
-    filter: grayscale(100%);
-    opacity: 0.6;
-  }
-}
-
 .dashboard-linha-wrapper .logo-icon {
   height: 3.5cqi;
   width: auto;
   max-width: 100%;
   object-fit: contain;
-  filter: grayscale(100%);
-  opacity: 0.6;
-  transition: filter 0.3s ease, opacity 0.3s ease;
   cursor: pointer;
-}
-
-.dashboard-linha-wrapper .logo-icon:not(:hover) {
-  animation: logoColorCycle 120s ease-in-out infinite;
-}
-
-.dashboard-linha-wrapper .logo-icon:hover {
-  filter: grayscale(0%);
-  opacity: 1;
 }
 
 .dashboard-linha-wrapper .logo-text {
@@ -140,7 +123,7 @@
 }
 
 .dashboard-linha-wrapper .main-title {
-  font-size: 26px;
+  font-size: 1.95cqi;
   font-weight: 700;
   color: var(--text-main);
   margin: 0;
@@ -852,8 +835,9 @@
   border-radius: 0.4cqi;
   font-weight: 500;
   transition: all 0.2s ease;
-  height: 2.2cqi;
-  width: 2.2cqi;
+  height: 2cqi;
+  width: 2cqi;
+  padding: 0;
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-main);
@@ -875,8 +859,9 @@
   border-radius: 0.4cqi;
   font-weight: 500;
   transition: all 0.2s ease;
-  height: 2.2cqi;
-  width: 2.2cqi;
+  height: 2cqi;
+  width: 2cqi;
+  padding: 0;
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-main);
@@ -888,4 +873,10 @@
   background-color: var(--progress-bg);
   border-color: var(--border-color);
   color: var(--text-main);
+}
+
+.dashboard-linha-wrapper .header-back-btn svg,
+.dashboard-linha-wrapper .theme-toggle-btn svg {
+  width: 1.4cqi;
+  height: 1.4cqi;
 }

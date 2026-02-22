@@ -7,7 +7,12 @@ interface DashboardHeaderProps {
   onBack?: () => void;
 }
 
-export function DashboardHeader({ theme, toggleTheme, titulo = 'EQUIPAMENTO', onBack }: DashboardHeaderProps) {
+export function DashboardHeader({
+  theme,
+  toggleTheme,
+  titulo = 'EQUIPAMENTO',
+  onBack,
+}: DashboardHeaderProps) {
   return (
     <header className="header">
       <div className="logo-container">
@@ -24,11 +29,11 @@ export function DashboardHeader({ theme, toggleTheme, titulo = 'EQUIPAMENTO', on
         <div className="auto-badge">AUTO</div>
         {onBack && (
           <button className="header-back-btn" onClick={onBack} aria-label="Voltar">
-            <ArrowLeft size={20} />
+            <ArrowLeft />
           </button>
         )}
         <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Alternar tema">
-          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          {theme === 'light' ? <Moon /> : <Sun />}
         </button>
       </div>
     </header>

@@ -29,11 +29,16 @@ export default function DashboardLinha() {
       : 'EQUIPAMENTO';
 
   return (
-    <div className="dashboard-linha-fullscreen">
+    <div className="dashboard-linha-fullscreen" data-theme={theme}>
       <div className="dashboard-linha-wrapper" data-theme={theme}>
         <div className="dashboard-container">
         {/* HEADER */}
-        <DashboardHeader theme={theme} toggleTheme={toggleTheme} titulo={tituloLinha} onBack={() => navigate(-1)} />
+        <DashboardHeader
+          theme={theme}
+          toggleTheme={toggleTheme}
+          titulo={tituloLinha}
+          onBack={() => navigate(-1)}
+        />
 
         {/* MAIN GRID */}
         <main className="main-grid">

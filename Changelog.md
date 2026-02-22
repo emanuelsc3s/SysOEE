@@ -1,12 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardHeader (main-title): font-size responsivo com clamp(1rem, 3.9cqi, 26px), preservando o valor atual (~26px) no viewport de referência e escalando com o container; font-weight 700 mantido.
+- DashboardLinha: background da página (dashboard-linha-fullscreen) igualado ao do container interno (var(--bg-color): #1a1a1a dark / #f1f5f9 light); removido contraste entre borda e conteúdo.
 - DashboardHeader: adicionado botão "Voltar" (ícone ArrowLeft) ao lado do theme toggle no Dashboard de Linha; retorna à página anterior via `navigate(-1)`.
 - OeeRealCard: alterado título "OEE Real" para "OEE REAL" no h2.
 - StatusCard: alterado título "Status" para "STATUS" no h2.
 - ParetoCard: alterado título "Pareto" para "PARETO" no h2.
 - FifoCard: alterado título do h2 de "FIFO" para "ÚLTIMOS LOTES".
-- DashboardHeader (main-title): font-size ajustado para 26px no Dashboard de Linha.
 - ManutencaoCard: espaçamento entre linhas (m-item) melhorado com gap de 2cqi em m-content.
 - ManutencaoCard: valores MTTR, MTBF e MWT exibidos em 0h para dados de manutenção.
 - Inter: adicionado peso 800 ao carregamento da fonte para suportar legendas em extra bold.
