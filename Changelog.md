@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- ManutencaoCard: espaçamento entre linhas (m-item) melhorado com gap de 2cqi em m-content.
+- ManutencaoCard: valores MTTR, MTBF e MWT exibidos em 0h para dados de manutenção.
 - Inter: adicionado peso 800 ao carregamento da fonte para suportar legendas em extra bold.
 - TimelineFooter: peso da fonte das legendas alterado para 800 (extra bold).
 - TimelineFooter: legendas centralizadas horizontalmente (justify-content: center).
