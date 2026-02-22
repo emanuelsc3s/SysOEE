@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './DashboardLinha.css';
 
 import { DashboardHeader } from './components/DashboardHeader';
+import { FiltrarDashboardLinha, FILTROS_DASHBOARD_PADRAO } from './FiltrarDashboardLinha';
+import type { FiltrosDashboardLinha } from './FiltrarDashboardLinha';
 import { OeeRealCard } from './components/OeeRealCard';
 import { OeeHistoryCard } from './components/OeeHistoryCard';
 import { ParetoCard } from './components/ParetoCard';
@@ -26,6 +29,9 @@ export default function DashboardLinha() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(FILTROS_DASHBOARD_PADRAO);
+
   const routeState = (location.state as DashboardLinhaRouteState | null) ?? null;
   const tituloLinha =
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
@@ -48,9 +54,7 @@ export default function DashboardLinha() {
           toggleTheme={toggleTheme}
           titulo={tituloLinha}
           onBack={() => navigate(-1)}
-          onFilter={() => {
-            /* TODO: abrir painel/modal de filtros */
-          }}
+          onFilter={() => setFiltrosAbertos(true)}
         />
 
         {/* MAIN GRID */}
@@ -82,6 +86,17 @@ export default function DashboardLinha() {
         {/* TIMELINE */}
         <TimelineFooter />
       </div>
+
+      {/* MODAL DE FILTROS */}
+      <FiltrarDashboardLinha
+        aberto={filtrosAbertos}
+        onFechar={() => setFiltrosAbertos(false)}
+        filtrosAplicados={filtrosAplicados}
+        onAplicar={(novosFiltros) => {
+          setFiltrosAplicados(novosFiltros);
+          setFiltrosAbertos(false);
+        }}
+      />
     </div>
     </div>
   );
