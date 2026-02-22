@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- VelocidadeCard: cards Grandes Paradas e Paradas Estratégicas com 50% da largura da linha cada um.
+- VelocidadeCard: reduzido espaço de altura do título (vel-mini-title) — line-height 1 e min-height auto.
 - DashboardLinha: alterado rótulo "Total Produzido" para "Total" no card de Dados Produtivos (VelocidadeCard).
 - DashboardHeader: linha separadora entre item "Voltar" e demais itens (Filtrar, Modo Claro) no menu burger.
 - DashboardHeader: adicionado item "Filtrar" com ícone Filter ao menu burger; callback opcional `onFilter` para conectar lógica de filtros.

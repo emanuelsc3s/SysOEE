@@ -638,10 +638,18 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 0.55cqi;
 }
+
+/* Primeira linha: 3 cards (Produzido, Perdas, Total) — cada um ~33% */
+.dashboard-linha-wrapper .vel-mini-card:nth-child(1) { grid-column: 1 / span 2; }
+.dashboard-linha-wrapper .vel-mini-card:nth-child(2) { grid-column: 3 / span 2; }
+.dashboard-linha-wrapper .vel-mini-card:nth-child(3) { grid-column: 5 / span 2; }
+/* Segunda linha: 2 cards (Grandes Paradas, Paradas Estratégicas) — cada um 50% */
+.dashboard-linha-wrapper .vel-mini-card:nth-child(4) { grid-column: 1 / span 3; }
+.dashboard-linha-wrapper .vel-mini-card:nth-child(5) { grid-column: 4 / span 3; }
 
 .dashboard-linha-wrapper .vel-mini-card {
   min-width: 0;
@@ -671,12 +679,12 @@
 
 .dashboard-linha-wrapper .vel-mini-title {
   font-size: 0.56cqi;
-  line-height: 1.15;
+  line-height: 1;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04cqi;
   color: var(--text-muted);
-  min-height: 1.25cqi;
+  min-height: auto;
 }
 
 .dashboard-linha-wrapper .vel-mini-value {
