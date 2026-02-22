@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './DashboardLinha.css';
@@ -22,17 +22,84 @@ type DashboardLinhaRouteState = {
   disponibilidade?: number;
   performance?: number;
   qualidade?: number;
+  filtrosDashboardOrigem?: {
+    linhaIds?: string[];
+    produtoId?: string;
+    turnoId?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  };
+};
+
+const clonarFiltrosDashboardLinha = (filtros: FiltrosDashboardLinha): FiltrosDashboardLinha => ({
+  dataInicio: filtros.dataInicio,
+  dataFim: filtros.dataFim,
+  linhaIds: [...filtros.linhaIds],
+  turnoIds: [...filtros.turnoIds],
+  produtoIds: [...filtros.produtoIds],
+  statuses: [...filtros.statuses],
+  lancamento: filtros.lancamento,
+});
+
+const mapearFiltrosDashboardPrincipalParaLinha = (
+  routeState: DashboardLinhaRouteState | null,
+): FiltrosDashboardLinha => {
+  const filtrosOrigem = routeState?.filtrosDashboardOrigem;
+  const linhaIdRota = typeof routeState?.linhaId === 'string' ? routeState.linhaId.trim() : '';
+
+  const linhaIdsOrigem = Array.isArray(filtrosOrigem?.linhaIds)
+    ? filtrosOrigem.linhaIds.filter(
+        (id): id is string => typeof id === 'string' && id.trim().length > 0,
+      )
+    : [];
+
+  return {
+    ...FILTROS_DASHBOARD_PADRAO,
+    dataInicio:
+      typeof filtrosOrigem?.dataInicio === 'string'
+        ? filtrosOrigem.dataInicio
+        : FILTROS_DASHBOARD_PADRAO.dataInicio,
+    dataFim:
+      typeof filtrosOrigem?.dataFim === 'string'
+        ? filtrosOrigem.dataFim
+        : FILTROS_DASHBOARD_PADRAO.dataFim,
+    // O dashboard de linha sempre representa a linha clicada; os demais filtros são preservados.
+    linhaIds: linhaIdRota ? [linhaIdRota] : linhaIdsOrigem,
+    turnoIds:
+      typeof filtrosOrigem?.turnoId === 'string' &&
+      filtrosOrigem.turnoId.trim().length > 0 &&
+      filtrosOrigem.turnoId !== 'todos'
+        ? [filtrosOrigem.turnoId]
+        : FILTROS_DASHBOARD_PADRAO.turnoIds,
+    produtoIds:
+      typeof filtrosOrigem?.produtoId === 'string' &&
+      filtrosOrigem.produtoId.trim().length > 0 &&
+      filtrosOrigem.produtoId !== 'todos'
+        ? [filtrosOrigem.produtoId]
+        : FILTROS_DASHBOARD_PADRAO.produtoIds,
+  };
 };
 
 export default function DashboardLinha() {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const routeState = (location.state as DashboardLinhaRouteState | null) ?? null;
+
+  const filtrosRecebidosDoDashboard = useMemo(
+    () => mapearFiltrosDashboardPrincipalParaLinha(routeState),
+    [routeState],
+  );
 
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(FILTROS_DASHBOARD_PADRAO);
+  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(() =>
+    clonarFiltrosDashboardLinha(filtrosRecebidosDoDashboard),
+  );
 
-  const routeState = (location.state as DashboardLinhaRouteState | null) ?? null;
+  useEffect(() => {
+    setFiltrosAplicados(clonarFiltrosDashboardLinha(filtrosRecebidosDoDashboard));
+  }, [filtrosRecebidosDoDashboard]);
+
   const tituloLinha =
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
       ? routeState.linhaNome

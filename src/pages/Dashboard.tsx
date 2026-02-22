@@ -1949,7 +1949,14 @@ export default function Dashboard() {
                                 oee: linha.oee,
                                 disponibilidade: linha.disponibilidade,
                                 performance: linha.performance,
-                                qualidade: linha.qualidade
+                                qualidade: linha.qualidade,
+                                filtrosDashboardOrigem: {
+                                  linhaIds: [...filtros.linhaIds],
+                                  produtoId: filtros.produtoId,
+                                  turnoId: filtros.turnoId,
+                                  dataInicio: filtros.dataInicio,
+                                  dataFim: filtros.dataFim
+                                }
                               }
                             })
                           }}
