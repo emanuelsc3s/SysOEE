@@ -256,6 +256,11 @@
   flex: 1;
 }
 
+.dashboard-linha-wrapper .card-oee-real h2 {
+  justify-content: center;
+  text-align: center;
+}
+
 .dashboard-linha-wrapper .card-oee-history {
   flex: 1;
 }
@@ -293,8 +298,8 @@
 }
 
 .dashboard-linha-wrapper .bars-col {
-  flex: 0 1 9.9cqi;
-  width: 9.9cqi;
+  flex: 0 1 10.8cqi;
+  width: 10.8cqi;
   max-width: 100%;
   display: flex;
   flex-direction: column;

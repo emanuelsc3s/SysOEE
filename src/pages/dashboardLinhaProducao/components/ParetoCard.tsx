@@ -1,7 +1,7 @@
 export function ParetoCard() {
   return (
     <div className="card card-pareto">
-      <h2>PARETO <span className="subtitle">Últimos 30 dias</span></h2>
+      <h2>PARETO</h2>
       <div className="pareto-list">
         <div className="pareto-item">
           <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 100%, transparent 100%)' }}>
