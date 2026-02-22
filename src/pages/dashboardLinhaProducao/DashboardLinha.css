@@ -269,6 +269,11 @@
   flex: 1.4;
 }
 
+.dashboard-linha-wrapper .card-pareto h2 {
+  justify-content: center;
+  text-align: center;
+}
+
 .dashboard-linha-wrapper .card-manutencao {
   flex: 0.8;
 }
@@ -936,6 +941,12 @@
 
 .dashboard-linha-wrapper[data-theme='light'] .header-menu-dropdown {
   box-shadow: 0 0.7cqi 1.6cqi rgba(15, 23, 42, 0.12);
+}
+
+.dashboard-linha-wrapper .header-menu-separator {
+  height: 1px;
+  margin: 0.25cqi 0;
+  background-color: var(--border-color);
 }
 
 .dashboard-linha-wrapper .header-menu-item {

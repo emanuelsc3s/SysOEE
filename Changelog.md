@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardHeader: linha separadora entre item "Voltar" e demais itens (Filtrar, Modo Claro) no menu burger.
+- DashboardHeader: adicionado item "Filtrar" com ícone Filter ao menu burger; callback opcional `onFilter` para conectar lógica de filtros.
 - OeeRealCard: removido subtítulo "Últimos 30 dias" do h2.
 - DashboardHeader (main-title): font-size responsivo com clamp(1rem, 3.9cqi, 26px), preservando o valor atual (~26px) no viewport de referência e escalando com o container; font-weight 700 mantido.
 - DashboardLinha: background da página (dashboard-linha-fullscreen) igualado ao do container interno (var(--bg-color): #1a1a1a dark / #f1f5f9 light); removido contraste entre borda e conteúdo.

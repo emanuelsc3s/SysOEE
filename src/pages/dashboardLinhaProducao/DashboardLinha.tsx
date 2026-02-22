@@ -48,6 +48,9 @@ export default function DashboardLinha() {
           toggleTheme={toggleTheme}
           titulo={tituloLinha}
           onBack={() => navigate(-1)}
+          onFilter={() => {
+            /* TODO: abrir painel/modal de filtros */
+          }}
         />
 
         {/* MAIN GRID */}

@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Sun, Moon, ArrowLeft, Menu } from 'lucide-react';
+import { Sun, Moon, ArrowLeft, Menu, Filter } from 'lucide-react';
 
 interface DashboardHeaderProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   titulo?: string;
   onBack?: () => void;
+  onFilter?: () => void;
 }
 
 export function DashboardHeader({
@@ -13,6 +14,7 @@ export function DashboardHeader({
   toggleTheme,
   titulo = 'EQUIPAMENTO',
   onBack,
+  onFilter,
 }: DashboardHeaderProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,11 @@ export function DashboardHeader({
     onBack?.();
   };
 
+  const handleFiltrar = () => {
+    setMenuAberto(false);
+    onFilter?.();
+  };
+
   return (
     <header className="header">
       <div className="logo-container">
@@ -83,6 +90,16 @@ export function DashboardHeader({
                   <span>Voltar</span>
                 </button>
               )}
+              {onBack && <div className="header-menu-separator" role="separator" />}
+              <button
+                type="button"
+                className="header-menu-item"
+                role="menuitem"
+                onClick={handleFiltrar}
+              >
+                <Filter />
+                <span>Filtrar</span>
+              </button>
               <button
                 type="button"
                 className="header-menu-item"
