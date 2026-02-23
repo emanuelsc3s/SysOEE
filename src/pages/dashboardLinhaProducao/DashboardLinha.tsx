@@ -18,6 +18,7 @@ import { FILTROS_DASHBOARD_PADRAO } from './filtrosDashboardLinha';
 import type { FiltrosDashboardLinha } from './filtrosDashboardLinha';
 import { OeeRealCard } from './components/OeeRealCard';
 import { OeeHistoryCard } from './components/OeeHistoryCard';
+import type { OeeHistoryCardItem } from './components/OeeHistoryCard';
 import { ParetoCard } from './components/ParetoCard';
 import type { ParetoCardItem } from './components/ParetoCard';
 import { ManutencaoCard } from './components/ManutencaoCard';
@@ -58,7 +59,41 @@ type ParetoLinhaRpcRow = {
   percentual_acumulado?: number | string | null;
 };
 
+type OeeDiarioRpcRow = {
+  data?: string | Date | null;
+  linhaproducao_id?: number | string | null;
+  linhaproducao?: string | null;
+  qtde_turnos?: number | string | null;
+  unidades_produzidas?: number | string | null;
+  unidades_perdas?: number | string | null;
+  unidades_boas?: number | string | null;
+  tempo_operacional_liquido?: number | string | null;
+  tempo_valioso?: number | string | null;
+  tempo_disponivel_horas?: number | string | null;
+  tempo_estrategico_horas?: number | string | null;
+  tempo_paradas_grandes_horas?: number | string | null;
+  tempo_operacao_horas?: number | string | null;
+  disponibilidade?: number | string | null;
+  performance?: number | string | null;
+  qualidade?: number | string | null;
+  oee?: number | string | null;
+};
+
+type OeeDiarioNormalizado = {
+  dataIso: string;
+  linhaproducaoId: number | null;
+  qtdeTurnos: number;
+  unidadesProduzidas: number;
+  unidadesPerdas: number;
+  unidadesBoas: number;
+  tempoOperacionalLiquido: number;
+  tempoDisponivelHoras: number;
+  tempoEstrategicoHoras: number;
+  tempoParadasGrandesHoras: number;
+};
+
 const LIMITE_PARETO_CARD = 7;
+const LIMITE_OEE_HISTORICO_CARD = 20;
 const TEMPO_DISPONIVEL_PADRAO = 12;
 
 const CONFIG_MINI_CARDS_PRODUTIVOS: ConfigMiniCardProdutivo[] = [
@@ -206,6 +241,92 @@ const formatarTempoParadaHorasMinutos = (horasDecimais: number): string => {
   return `${horas.toLocaleString('pt-BR')}:${String(minutos).padStart(2, '0')}`;
 };
 
+const extrairDataIso = (valor: unknown): string | null => {
+  if (typeof valor === 'string') {
+    const match = valor.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : null;
+  }
+
+  if (valor instanceof Date && Number.isFinite(valor.getTime())) {
+    const ano = valor.getFullYear();
+    const mes = String(valor.getMonth() + 1).padStart(2, '0');
+    const dia = String(valor.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  return null;
+};
+
+const formatarRotuloDataHistorico = (dataIso: string): string => {
+  const partes = dataIso.split('-');
+  if (partes.length !== 3) {
+    return dataIso;
+  }
+
+  return partes[2];
+};
+
+const formatarTooltipDataHistorico = (dataIso: string): string => {
+  const partes = dataIso.split('-');
+  if (partes.length !== 3) {
+    return dataIso;
+  }
+
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+};
+
+const deslocarDataIso = (dataIso: string, deslocamentoDias: number): string | null => {
+  const partes = dataIso.split('-');
+  if (partes.length !== 3) {
+    return null;
+  }
+
+  const ano = Number.parseInt(partes[0], 10);
+  const mes = Number.parseInt(partes[1], 10);
+  const dia = Number.parseInt(partes[2], 10);
+
+  if (!Number.isFinite(ano) || !Number.isFinite(mes) || !Number.isFinite(dia)) {
+    return null;
+  }
+
+  const dataUtc = new Date(Date.UTC(ano, mes - 1, dia));
+  if (!Number.isFinite(dataUtc.getTime())) {
+    return null;
+  }
+
+  dataUtc.setUTCDate(dataUtc.getUTCDate() + deslocamentoDias);
+
+  const novoAno = dataUtc.getUTCFullYear();
+  const novoMes = String(dataUtc.getUTCMonth() + 1).padStart(2, '0');
+  const novoDia = String(dataUtc.getUTCDate()).padStart(2, '0');
+
+  return `${novoAno}-${novoMes}-${novoDia}`;
+};
+
+const calcularOeePorComponentes = (item: {
+  unidadesProduzidas: number;
+  unidadesBoas: number;
+  tempoOperacionalLiquido: number;
+  tempoDisponivelHoras: number;
+  tempoEstrategicoHoras: number;
+  tempoParadasGrandesHoras: number;
+}): number => {
+  const tempoDisponivelAjustado = Math.max(item.tempoDisponivelHoras - item.tempoEstrategicoHoras, 0);
+  const tempoOperacao = Math.max(tempoDisponivelAjustado - item.tempoParadasGrandesHoras, 0);
+
+  const disponibilidade =
+    tempoDisponivelAjustado > 0 ? tempoOperacao / tempoDisponivelAjustado : 0;
+
+  const performance =
+    tempoOperacao > 0 ? Math.min(item.tempoOperacionalLiquido / tempoOperacao, 1) : 0;
+
+  const qualidade =
+    item.unidadesProduzidas > 0 ? item.unidadesBoas / item.unidadesProduzidas : 1;
+
+  const oee = disponibilidade * performance * qualidade * 100;
+  return Number.isFinite(oee) ? Math.min(Math.max(oee, 0), 100) : 0;
+};
+
 const filtrarLinhasResumo = (
   linhas: ResumoOeeTurnoLinhaNormalizada[],
   linhaIdsSelecionados: number[],
@@ -297,6 +418,11 @@ export default function DashboardLinha() {
     () => converterDataBrParaIso(filtrosAplicados.dataFim),
     [filtrosAplicados.dataFim],
   );
+  const dataFimHistoricoIso = dataFimIso;
+  const dataInicioHistoricoIso = useMemo(
+    () => (dataFimIso ? deslocarDataIso(dataFimIso, -LIMITE_OEE_HISTORICO_CARD) : null),
+    [dataFimIso],
+  );
 
   const linhaIdsSelecionados = useMemo(
     () => parseIdsNumericos(filtrosAplicados.linhaIds),
@@ -386,6 +512,154 @@ export default function DashboardLinha() {
     enabled: Boolean(dataInicioIso && dataFimIso && !periodoFiltrosInvalido),
     staleTime: 60_000,
   });
+
+  const {
+    data: oeeHistoricoLinhas = [],
+    isLoading: oeeHistoricoLoading,
+    isFetching: oeeHistoricoFetching,
+    error: oeeHistoricoError,
+  } = useQuery({
+    queryKey: [
+      'dashboard-linha-oee-historico',
+      {
+        dataInicioIso: dataInicioHistoricoIso ?? null,
+        dataFimIso: dataFimHistoricoIso ?? null,
+        linhaIdRpc,
+        turnoIdRpc,
+        produtoIdRpc,
+        lancamentoId,
+        limiteDias: LIMITE_OEE_HISTORICO_CARD,
+      },
+    ],
+    queryFn: async (): Promise<OeeDiarioNormalizado[]> => {
+      if (!dataInicioHistoricoIso || !dataFimHistoricoIso) {
+        return [];
+      }
+
+      const { data, error } = await supabase.rpc('fn_calcular_oee_diario', {
+        p_data_inicio: dataInicioHistoricoIso,
+        p_data_fim: dataFimHistoricoIso,
+        p_turno_id: turnoIdRpc,
+        p_produto_id: produtoIdRpc,
+        p_linhaproducao_id: linhaIdRpc,
+        p_oeeturno_id: lancamentoId,
+        p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+        p_limite_dias: LIMITE_OEE_HISTORICO_CARD,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return ((data || []) as OeeDiarioRpcRow[])
+        .map((item) => {
+          const dataIso = extrairDataIso(item.data);
+          if (!dataIso) {
+            return null;
+          }
+
+          const linhaId =
+            item.linhaproducao_id === null || item.linhaproducao_id === undefined
+              ? null
+              : Number.parseInt(String(item.linhaproducao_id), 10);
+
+          return {
+            dataIso,
+            linhaproducaoId: Number.isFinite(linhaId ?? Number.NaN) ? linhaId : null,
+            qtdeTurnos: Math.max(0, Math.round(parseNumero(item.qtde_turnos))),
+            unidadesProduzidas: Math.max(0, parseNumero(item.unidades_produzidas)),
+            unidadesPerdas: Math.max(0, parseNumero(item.unidades_perdas)),
+            unidadesBoas: Math.max(0, parseNumero(item.unidades_boas)),
+            tempoOperacionalLiquido: Math.max(0, parseNumero(item.tempo_operacional_liquido)),
+            tempoDisponivelHoras: Math.max(0, parseNumero(item.tempo_disponivel_horas)),
+            tempoEstrategicoHoras: Math.max(0, parseNumero(item.tempo_estrategico_horas)),
+            tempoParadasGrandesHoras: Math.max(0, parseNumero(item.tempo_paradas_grandes_horas)),
+          } satisfies OeeDiarioNormalizado;
+        })
+        .filter((item): item is OeeDiarioNormalizado => item !== null);
+    },
+    enabled: Boolean(dataInicioHistoricoIso && dataFimHistoricoIso),
+    staleTime: 60_000,
+  });
+
+  const oeeHistoricoItens = useMemo<OeeHistoryCardItem[]>(() => {
+    if (oeeHistoricoLinhas.length === 0) {
+      return [];
+    }
+
+    const linhaIdsSet = linhaIdsSelecionados.length > 0 ? new Set(linhaIdsSelecionados) : null;
+    const linhasFiltradas = linhaIdsSet
+      ? oeeHistoricoLinhas.filter((linha) =>
+          linha.linhaproducaoId !== null ? linhaIdsSet.has(linha.linhaproducaoId) : false,
+        )
+      : oeeHistoricoLinhas;
+
+    if (linhasFiltradas.length === 0) {
+      return [];
+    }
+
+    const agregadoPorData = new Map<
+      string,
+      {
+        dataIso: string;
+        qtdeTurnos: number;
+        unidadesProduzidas: number;
+        unidadesPerdas: number;
+        unidadesBoas: number;
+        tempoOperacionalLiquido: number;
+        tempoDisponivelHoras: number;
+        tempoEstrategicoHoras: number;
+        tempoParadasGrandesHoras: number;
+      }
+    >();
+
+    for (const linha of linhasFiltradas) {
+      const acumulado = agregadoPorData.get(linha.dataIso) ?? {
+        dataIso: linha.dataIso,
+        qtdeTurnos: 0,
+        unidadesProduzidas: 0,
+        unidadesPerdas: 0,
+        unidadesBoas: 0,
+        tempoOperacionalLiquido: 0,
+        tempoDisponivelHoras: 0,
+        tempoEstrategicoHoras: 0,
+        tempoParadasGrandesHoras: 0,
+      };
+
+      acumulado.qtdeTurnos += linha.qtdeTurnos;
+      acumulado.unidadesProduzidas += linha.unidadesProduzidas;
+      acumulado.unidadesPerdas += linha.unidadesPerdas;
+      acumulado.unidadesBoas += linha.unidadesBoas;
+      acumulado.tempoOperacionalLiquido += linha.tempoOperacionalLiquido;
+      acumulado.tempoDisponivelHoras += linha.tempoDisponivelHoras;
+      acumulado.tempoEstrategicoHoras += linha.tempoEstrategicoHoras;
+      acumulado.tempoParadasGrandesHoras += linha.tempoParadasGrandesHoras;
+
+      agregadoPorData.set(linha.dataIso, acumulado);
+    }
+
+    const itens = Array.from(agregadoPorData.values())
+      .sort((a, b) => a.dataIso.localeCompare(b.dataIso))
+      .slice(-LIMITE_OEE_HISTORICO_CARD)
+      .map((item) => {
+        const oee = calcularOeePorComponentes({
+          unidadesProduzidas: item.unidadesProduzidas,
+          unidadesBoas: item.unidadesBoas,
+          tempoOperacionalLiquido: item.tempoOperacionalLiquido,
+          tempoDisponivelHoras: item.tempoDisponivelHoras,
+          tempoEstrategicoHoras: item.tempoEstrategicoHoras,
+          tempoParadasGrandesHoras: item.tempoParadasGrandesHoras,
+        });
+
+        return {
+          dataLabel: formatarRotuloDataHistorico(item.dataIso),
+          dataTooltip: formatarTooltipDataHistorico(item.dataIso),
+          oee,
+        } satisfies OeeHistoryCardItem;
+      });
+
+    return itens;
+  }, [linhaIdsSelecionados, oeeHistoricoLinhas]);
 
   const {
     linhas: linhasResumoBase,
@@ -523,6 +797,37 @@ export default function DashboardLinha() {
     periodoFiltrosInvalido,
   ]);
 
+  const statusOeeHistorico = useMemo(() => {
+    if (!dataFimHistoricoIso || !dataInicioHistoricoIso) {
+      return 'Selecione período';
+    }
+
+    if (oeeHistoricoError) {
+      return 'Erro ao carregar';
+    }
+
+    if (oeeHistoricoLoading) {
+      return 'Carregando...';
+    }
+
+    if (oeeHistoricoItens.length === 0) {
+      return 'Sem dados';
+    }
+
+    if (oeeHistoricoFetching) {
+      return 'Atualizando...';
+    }
+
+    return undefined;
+  }, [
+    dataFimHistoricoIso,
+    dataInicioHistoricoIso,
+    oeeHistoricoError,
+    oeeHistoricoFetching,
+    oeeHistoricoItens.length,
+    oeeHistoricoLoading,
+  ]);
+
   const mensagemParetoVazio = useMemo(() => {
     if (periodoFiltrosInvalido) {
       return 'Período inválido para consulta.';
@@ -542,6 +847,22 @@ export default function DashboardLinha() {
 
     return 'Sem paradas grandes no período.';
   }, [dataFimIso, dataInicioIso, paretoError, paretoLoading, periodoFiltrosInvalido]);
+
+  const mensagemOeeHistoricoVazio = useMemo(() => {
+    if (!dataFimHistoricoIso || !dataInicioHistoricoIso) {
+      return 'Selecione um período válido.';
+    }
+
+    if (oeeHistoricoError) {
+      return 'Não foi possível carregar o histórico de OEE.';
+    }
+
+    if (oeeHistoricoLoading) {
+      return 'Carregando histórico de OEE...';
+    }
+
+    return 'Sem histórico de OEE no período.';
+  }, [dataFimHistoricoIso, dataInicioHistoricoIso, oeeHistoricoError, oeeHistoricoLoading]);
 
   const tituloLinha =
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
@@ -573,7 +894,12 @@ export default function DashboardLinha() {
             {/* COLUMN 1 */}
             <div className="col col-1">
               <OeeRealCard {...dadosOeeLinha} />
-              <OeeHistoryCard />
+              <OeeHistoryCard
+                itens={oeeHistoricoItens}
+                statusTexto={statusOeeHistorico}
+                mensagemVazia={mensagemOeeHistoricoVazio}
+                limiteDias={LIMITE_OEE_HISTORICO_CARD}
+              />
             </div>
 
             {/* COLUMN 2 */}
