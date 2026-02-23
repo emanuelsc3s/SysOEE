@@ -786,7 +786,7 @@
 .dashboard-linha-wrapper .s-block {
   display: flex;
   flex-direction: column;
-  gap: 0.12cqi;
+  gap: 0.5cqi;
 }
 
 .dashboard-linha-wrapper .s-light-label {

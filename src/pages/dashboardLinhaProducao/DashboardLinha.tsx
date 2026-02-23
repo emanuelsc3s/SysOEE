@@ -112,6 +112,31 @@ type OeeTimelineNormalizado = {
   lotes: TimelineFooterLote[];
 };
 
+type UltimoLoteLinhaJoin = {
+  oeeturno_id?: number | string | null;
+  produto?: string | null;
+  produto_id?: number | string | null;
+  linhaproducao_id?: number | string | null;
+  turno_id?: number | string | null;
+  data?: string | Date | null;
+  deletado?: string | null;
+} | null;
+
+type UltimoLoteLinhaRow = {
+  oeeturnolote_id?: number | string | null;
+  lote?: string | null;
+  data?: string | Date | null;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
+  oeeturno_id?: number | string | null;
+  turno?: UltimoLoteLinhaJoin | UltimoLoteLinhaJoin[] | null;
+};
+
+type StatusCardProdutoLote = {
+  produto: string | null;
+  lote: string | null;
+};
+
 const LIMITE_PARETO_CARD = 7;
 const LIMITE_OEE_HISTORICO_CARD = 20;
 const TEMPO_DISPONIVEL_PADRAO = 12;
@@ -123,6 +148,11 @@ const TIMELINE_VAZIA: OeeTimelineNormalizado = {
   timelineTimes: [],
   segmentos: [],
   lotes: [],
+};
+
+const STATUS_CARD_PRODUTO_LOTE_VAZIO: StatusCardProdutoLote = {
+  produto: null,
+  lote: null,
 };
 
 const CONFIG_MINI_CARDS_PRODUTIVOS: ConfigMiniCardProdutivo[] = [
@@ -753,6 +783,106 @@ export default function DashboardLinha() {
     staleTime: 60_000,
   });
 
+  const { data: statusCardProdutoLoteBanco = STATUS_CARD_PRODUTO_LOTE_VAZIO } = useQuery({
+    queryKey: [
+      'dashboard-linha-status-produto-lote',
+      {
+        linhaIdRpc,
+        turnoIdRpc,
+        produtoIdRpc,
+        lancamentoId,
+        dataInicioIso: dataInicioIso ?? null,
+        dataFimIso: dataFimIso ?? null,
+      },
+    ],
+    queryFn: async (): Promise<StatusCardProdutoLote> => {
+      if (!linhaIdRpc && !lancamentoId) {
+        return STATUS_CARD_PRODUTO_LOTE_VAZIO;
+      }
+
+      let query = supabase
+        .from('tboee_turno_lote')
+        .select(
+          `
+            oeeturnolote_id,
+            lote,
+            data,
+            hora_inicio,
+            hora_fim,
+            oeeturno_id,
+            turno:tboee_turno!inner(
+              oeeturno_id,
+              produto,
+              produto_id,
+              linhaproducao_id,
+              turno_id,
+              data,
+              deletado
+            )
+          `,
+        )
+        .eq('deletado', 'N')
+        .eq('turno.deletado', 'N')
+        .order('data', { ascending: false })
+        .order('hora_fim', { ascending: false })
+        .order('hora_inicio', { ascending: false })
+        .order('oeeturnolote_id', { ascending: false })
+        .limit(1);
+
+      if (linhaIdRpc) {
+        query = query.eq('turno.linhaproducao_id', linhaIdRpc);
+      }
+
+      if (turnoIdRpc) {
+        query = query.eq('turno.turno_id', turnoIdRpc);
+      }
+
+      if (produtoIdRpc) {
+        query = query.eq('turno.produto_id', produtoIdRpc);
+      }
+
+      if (lancamentoId) {
+        query = query.eq('oeeturno_id', lancamentoId);
+      }
+
+      if (dataInicioIso && !periodoFiltrosInvalido) {
+        query = query.gte('data', dataInicioIso);
+      }
+
+      if (dataFimIso && !periodoFiltrosInvalido) {
+        query = query.lte('data', dataFimIso);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      const registro = ((data || []) as UltimoLoteLinhaRow[])[0];
+      if (!registro) {
+        return STATUS_CARD_PRODUTO_LOTE_VAZIO;
+      }
+
+      const turnoRelacionado = Array.isArray(registro.turno) ? registro.turno[0] ?? null : registro.turno;
+      const produto =
+        typeof turnoRelacionado?.produto === 'string' && turnoRelacionado.produto.trim().length > 0
+          ? turnoRelacionado.produto.trim()
+          : null;
+      const lote =
+        typeof registro.lote === 'string' && registro.lote.trim().length > 0
+          ? registro.lote.trim()
+          : null;
+
+      return {
+        produto,
+        lote,
+      } satisfies StatusCardProdutoLote;
+    },
+    enabled: Boolean((linhaIdRpc || lancamentoId) && !periodoFiltrosInvalido),
+    staleTime: 60_000,
+  });
+
   const oeeHistoricoItens = useMemo<OeeHistoryCardItem[]>(() => {
     if (oeeHistoricoLinhas.length === 0) {
       return [];
@@ -933,6 +1063,37 @@ export default function DashboardLinha() {
       criadoEm: linhasOrdenadas[0]?.turno_created_at?.trim() || null,
     };
   }, [linhasResumoFiltradas]);
+
+  const statusCardProdutoLote = useMemo<StatusCardProdutoLote>(() => {
+    const produtoBanco = statusCardProdutoLoteBanco.produto?.trim();
+    const loteBanco = statusCardProdutoLoteBanco.lote?.trim();
+
+    if (produtoBanco || loteBanco) {
+      return {
+        produto: produtoBanco || null,
+        lote: loteBanco || null,
+      };
+    }
+
+    const ultimoLoteTimeline = [...timelineDados.lotes]
+      .filter((item) => item && (item.produto?.trim() || item.lote?.trim()))
+      .sort((a, b) => {
+        if (a.fim && b.fim && a.fim !== b.fim) {
+          return b.fim.localeCompare(a.fim);
+        }
+
+        if (a.inicio && b.inicio && a.inicio !== b.inicio) {
+          return b.inicio.localeCompare(a.inicio);
+        }
+
+        return 0;
+      })[0];
+
+    return {
+      produto: ultimoLoteTimeline?.produto?.trim() || null,
+      lote: ultimoLoteTimeline?.lote?.trim() || null,
+    };
+  }, [statusCardProdutoLoteBanco, timelineDados.lotes]);
 
   const statusMiniCards = useMemo(() => {
     if (resumoPeriodoInvalido) {
@@ -1191,6 +1352,8 @@ export default function DashboardLinha() {
                   <StatusCard
                     status={statusCardDados.status}
                     criadoEm={statusCardDados.criadoEm}
+                    produto={statusCardProdutoLote.produto}
+                    lote={statusCardProdutoLote.lote}
                   />
                 </div>
               </div>
