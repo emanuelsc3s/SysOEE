@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- ManutencaoCard (DashboardLinha): removido subtítulo "Últimos 30 dias" (.subtitle) do h2.
 - OeeHistoryCard (DashboardLinha): subtítulo "Últimos 30 dias" (.subtitle) com font-size fixo em 11px para melhor legibilidade.
 - OeeHistoryCard (DashboardLinha): removido subtítulo "Meta X% Média X%" (subtitle-right) do h2.
 - ParetoCard (DashboardLinha): aumentado o espaçamento horizontal entre os valores `p-val1` (horas) e `p-val2` (percentual) para melhorar legibilidade no card.
