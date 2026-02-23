@@ -1,58 +1,69 @@
-export function ParetoCard() {
+export type ParetoCardItem = {
+  parada: string;
+  quantidade: number;
+  tempoParadaHoras: string;
+  percentual: number;
+  percentualAcumulado: number;
+};
+
+type ParetoCardProps = {
+  itens: ParetoCardItem[];
+  statusTexto?: string;
+  mensagemVazia?: string;
+};
+
+const formatadorPercentual = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const limitarPercentual = (valor: number): number => {
+  if (!Number.isFinite(valor)) {
+    return 0;
+  }
+
+  return Math.min(Math.max(valor, 0), 100);
+};
+
+export function ParetoCard({ itens, statusTexto, mensagemVazia }: ParetoCardProps) {
   return (
     <div className="card card-pareto">
-      <h2>{'PARETO'}</h2>
-      <div className="pareto-list">
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 100%, transparent 100%)' }}>
-            SETUP TOTAL
-          </div>
-          <div className="p-val1">84.5h</div>
-          <div className="p-val2">38.5%</div>
+      <h2>
+        PARETO
+        {statusTexto ? <span className="subtitle subtitle-right">{statusTexto}</span> : null}
+      </h2>
+
+      {itens.length === 0 ? (
+        <div className="pareto-empty">{mensagemVazia || 'Sem paradas grandes no período.'}</div>
+      ) : (
+        <div className="pareto-list">
+          {itens.map((item, indice) => {
+            const percentualBarra = limitarPercentual(item.percentual);
+            const percentualFormatado = formatadorPercentual.format(limitarPercentual(item.percentual));
+            const horasFormatadas = (item.tempoParadaHoras || '').trim() || '0:00';
+            const parada = (item.parada || '').trim() || 'Parada não informada';
+
+            return (
+              <div
+                key={`${parada}-${indice}`}
+                className="pareto-item"
+                title={`${parada}: ${horasFormatadas}h (${percentualFormatado}%)`}
+              >
+                <div
+                  className="p-label"
+                  style={{
+                    background: `linear-gradient(90deg, var(--p-label-bg) ${percentualBarra}%, transparent ${percentualBarra}%)`,
+                  }}
+                >
+                  {parada.toLocaleUpperCase('pt-BR')}
+                </div>
+                <div className="p-val1">{horasFormatadas}h</div>
+                <div className="p-val2">{percentualFormatado}%</div>
+              </div>
+            );
+          })}
         </div>
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 60%, transparent 60%)' }}>
-            MICROPARADA
-          </div>
-          <div className="p-val1">50.7h</div>
-          <div className="p-val2">23.1%</div>
-        </div>
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 34%, transparent 34%)' }}>
-            SETUP PARCIAL
-          </div>
-          <div className="p-val1">28.8h</div>
-          <div className="p-val2">13.1%</div>
-        </div>
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 30%, transparent 30%)' }}>
-            REPROCESSO
-          </div>
-          <div className="p-val1">25.1h</div>
-          <div className="p-val2">11.4%</div>
-        </div>
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 17%, transparent 17%)' }}>
-            REFEIÇÃO
-          </div>
-          <div className="p-val1">14.6h</div>
-          <div className="p-val2">6.6%</div>
-        </div>
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 11%, transparent 11%)' }}>
-            AGUARDANDO TAREFA
-          </div>
-          <div className="p-val1">9.7h</div>
-          <div className="p-val2">4.4%</div>
-        </div>
-        <div className="pareto-item">
-          <div className="p-label" style={{ background: 'linear-gradient(90deg, var(--p-label-bg) 7%, transparent 7%)' }}>
-            LIMPEZA
-          </div>
-          <div className="p-val1">6.2h</div>
-          <div className="p-val2">2.8%</div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

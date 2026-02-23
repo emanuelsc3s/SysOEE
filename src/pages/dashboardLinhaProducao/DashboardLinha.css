@@ -527,6 +527,17 @@
   flex: 1;
 }
 
+.dashboard-linha-wrapper .pareto-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.82cqi;
+  color: var(--text-muted);
+  padding: 0.6cqi;
+}
+
 .dashboard-linha-wrapper .pareto-item {
   display: flex;
   align-items: center;
@@ -543,6 +554,9 @@
   color: var(--text-main);
   padding: 0.4cqi 0.6cqi;
   border-radius: 0.2cqi;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dashboard-linha-wrapper .bluedot {
@@ -559,6 +573,7 @@
 
 .dashboard-linha-wrapper .p-val2 {
   width: 4cqi;
+  margin-left: 0.45cqi;
   text-align: right;
   font-weight: 700;
   font-size: 1.1cqi;

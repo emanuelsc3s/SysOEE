@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/hooks/useTheme';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import {
   somarTotaisResumoOeeTurno,
   useResumoOeeTurno,
@@ -17,6 +19,7 @@ import type { FiltrosDashboardLinha } from './filtrosDashboardLinha';
 import { OeeRealCard } from './components/OeeRealCard';
 import { OeeHistoryCard } from './components/OeeHistoryCard';
 import { ParetoCard } from './components/ParetoCard';
+import type { ParetoCardItem } from './components/ParetoCard';
 import { ManutencaoCard } from './components/ManutencaoCard';
 import { FifoCard } from './components/FifoCard';
 import { VelocidadeCard } from './components/VelocidadeCard';
@@ -46,6 +49,17 @@ type ConfigMiniCardProdutivo = {
   detalhePadrao: string;
   variante: MiniCardProdutivo['variante'];
 };
+
+type ParetoLinhaRpcRow = {
+  parada?: string | null;
+  quantidade?: number | string | null;
+  tempo_parada_horas?: number | string | null;
+  percentual?: number | string | null;
+  percentual_acumulado?: number | string | null;
+};
+
+const LIMITE_PARETO_CARD = 7;
+const TEMPO_DISPONIVEL_PADRAO = 12;
 
 const CONFIG_MINI_CARDS_PRODUTIVOS: ConfigMiniCardProdutivo[] = [
   {
@@ -149,6 +163,48 @@ const parseLancamentoNumerico = (lancamento: string): number | null => {
 
 const normalizarStatus = (status?: string | null): string =>
   (status || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const parseNumero = (valor: unknown): number => {
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? valor : 0;
+  }
+
+  if (valor === null || valor === undefined) {
+    return 0;
+  }
+
+  if (typeof valor === 'string') {
+    const limpo = valor.trim().replace('%', '').replace(/\s+/g, '');
+    if (!limpo) {
+      return 0;
+    }
+
+    if (limpo.includes(',') && limpo.includes('.')) {
+      const normalizado = limpo.replace(/\./g, '').replace(',', '.');
+      const parsed = Number.parseFloat(normalizado);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    if (limpo.includes(',')) {
+      const parsed = Number.parseFloat(limpo.replace(',', '.'));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    const parsed = Number.parseFloat(limpo);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  const parsed = Number(valor);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatarTempoParadaHorasMinutos = (horasDecimais: number): string => {
+  const totalMinutos = Math.max(0, Math.round(horasDecimais * 60));
+  const horas = Math.floor(totalMinutos / 60);
+  const minutos = totalMinutos % 60;
+
+  return `${horas.toLocaleString('pt-BR')}:${String(minutos).padStart(2, '0')}`;
+};
 
 const filtrarLinhasResumo = (
   linhas: ResumoOeeTurnoLinhaNormalizada[],
@@ -266,6 +322,70 @@ export default function DashboardLinha() {
   const linhaIdRpc = linhaIdsSelecionados.length === 1 ? linhaIdsSelecionados[0] : null;
   const turnoIdRpc = turnoIdsSelecionados.length === 1 ? turnoIdsSelecionados[0] : null;
   const produtoIdRpc = produtoIdsSelecionados.length === 1 ? produtoIdsSelecionados[0] : null;
+  const periodoFiltrosInvalido = Boolean(dataInicioIso && dataFimIso && dataInicioIso > dataFimIso);
+
+  const {
+    data: paretoItens = [],
+    isLoading: paretoLoading,
+    isFetching: paretoFetching,
+    error: paretoError,
+  } = useQuery({
+    queryKey: [
+      'dashboard-linha-pareto',
+      {
+        dataInicioIso: dataInicioIso ?? null,
+        dataFimIso: dataFimIso ?? null,
+        linhaIdRpc,
+        turnoIdRpc,
+        produtoIdRpc,
+        lancamentoId,
+        limite: LIMITE_PARETO_CARD,
+      },
+    ],
+    queryFn: async (): Promise<ParetoCardItem[]> => {
+      if (!dataInicioIso || !dataFimIso) {
+        return [];
+      }
+
+      const { data, error } = await supabase.rpc('fn_calcular_pareto_paradas_linha', {
+        p_data_inicio: dataInicioIso,
+        p_data_fim: dataFimIso,
+        p_turno_id: turnoIdRpc,
+        p_produto_id: produtoIdRpc,
+        p_linhaproducao_id: linhaIdRpc,
+        p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+        p_oeeturno_id: lancamentoId,
+        p_limite: LIMITE_PARETO_CARD,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return ((data || []) as ParetoLinhaRpcRow[]).map((item) => {
+        const parada = (item.parada || '').trim();
+        const percentual = Math.min(Math.max(parseNumero(item.percentual), 0), 100);
+        const percentualAcumulado = Math.min(
+          Math.max(parseNumero(item.percentual_acumulado), 0),
+          100,
+        );
+        const tempoParadaHoras =
+          typeof item.tempo_parada_horas === 'string' && item.tempo_parada_horas.trim().length > 0
+            ? item.tempo_parada_horas.trim()
+            : formatarTempoParadaHorasMinutos(Math.max(0, parseNumero(item.tempo_parada_horas)));
+
+        return {
+          parada: parada || 'Parada não informada',
+          quantidade: Math.max(0, Math.round(parseNumero(item.quantidade))),
+          tempoParadaHoras,
+          percentual,
+          percentualAcumulado,
+        } satisfies ParetoCardItem;
+      });
+    },
+    enabled: Boolean(dataInicioIso && dataFimIso && !periodoFiltrosInvalido),
+    staleTime: 60_000,
+  });
 
   const {
     linhas: linhasResumoBase,
@@ -367,6 +487,62 @@ export default function DashboardLinha() {
     resumoProdutivoLoading,
   ]);
 
+  const statusPareto = useMemo(() => {
+    if (periodoFiltrosInvalido) {
+      return 'Período inválido';
+    }
+
+    if (!dataInicioIso || !dataFimIso) {
+      return 'Selecione período';
+    }
+
+    if (paretoError) {
+      return 'Erro ao carregar';
+    }
+
+    if (paretoLoading) {
+      return 'Carregando...';
+    }
+
+    if (paretoItens.length === 0) {
+      return 'Sem dados';
+    }
+
+    if (paretoFetching) {
+      return 'Atualizando...';
+    }
+
+    return undefined;
+  }, [
+    dataFimIso,
+    dataInicioIso,
+    paretoError,
+    paretoFetching,
+    paretoItens.length,
+    paretoLoading,
+    periodoFiltrosInvalido,
+  ]);
+
+  const mensagemParetoVazio = useMemo(() => {
+    if (periodoFiltrosInvalido) {
+      return 'Período inválido para consulta.';
+    }
+
+    if (!dataInicioIso || !dataFimIso) {
+      return 'Selecione um período válido.';
+    }
+
+    if (paretoError) {
+      return 'Não foi possível carregar o Pareto.';
+    }
+
+    if (paretoLoading) {
+      return 'Carregando Pareto...';
+    }
+
+    return 'Sem paradas grandes no período.';
+  }, [dataFimIso, dataInicioIso, paretoError, paretoLoading, periodoFiltrosInvalido]);
+
   const tituloLinha =
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
       ? routeState.linhaNome
@@ -402,7 +578,11 @@ export default function DashboardLinha() {
 
             {/* COLUMN 2 */}
             <div className="col col-2">
-              <ParetoCard />
+              <ParetoCard
+                itens={paretoItens}
+                statusTexto={statusPareto}
+                mensagemVazia={mensagemParetoVazio}
+              />
               <ManutencaoCard />
             </div>
 

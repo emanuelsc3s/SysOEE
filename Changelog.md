@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- ParetoCard (DashboardLinha): aumentado o espaçamento horizontal entre os valores `p-val1` (horas) e `p-val2` (percentual) para melhorar legibilidade no card.
+- ParetoCard (DashboardLinha): percentual ajustado para exibir 2 casas decimais no formato pt-BR (ex.: `30,10%`).
+- RPC `fn_calcular_pareto_paradas_linha`: campo `tempo_parada_horas` alterado para formato textual `HHH:MM` com separador de milhar em ponto (ex.: `2.452:59`, `125:30`, `1.365:01`); `DashboardLinha` ajustado para consumir o novo formato no `ParetoCard`.
+- DashboardLinha: card `ParetoCard` integrado à RPC `fn_calcular_pareto_paradas_linha`, carregando dados reais com filtros aplicados (período, linha, turno, produto e lançamento), além de estados de carregamento/erro/sem dados.
+- Criada a RPC `fn_calcular_pareto_paradas_linha` em `database/rpc-function/`, alinhada ao `fn_resumo_oee_turno` (parada estratégica por classe, filtro de produto por `COALESCE` e regra de paradas grandes `> 10 min`) para alimentar o Pareto no Dashboard de Linha.
 - VelocidadeCard: reduzida altura dos mini-cards — grid row 1.3fr→0.9fr, padding vertical 0.8→0.45cqi, espaçamentos compactados (sem alterar tamanho das fontes).
 - VelocidadeCard: aumentado espaçamento entre título (vel-mini-title) e valor (vel-mini-value) nos mini-cards — line-height 1→1.2 e margin-top 0.16cqi→0.4cqi.
 - VelocidadeCard: título (h2) centralizado na horizontal.
