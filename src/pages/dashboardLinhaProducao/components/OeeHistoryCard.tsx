@@ -95,7 +95,7 @@ export function OeeHistoryCard({
                   bottom: `${metaNormalizada}%`,
                   borderTop: '2px dashed rgba(34, 197, 94, 0.8)',
                   pointerEvents: 'none',
-                  zIndex: 0,
+                  zIndex: 2,
                 }}
               />
 
