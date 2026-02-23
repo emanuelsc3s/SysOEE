@@ -47,7 +47,7 @@ export function StatusCard({ status, criadoEm, produto, lote }: StatusCardProps)
         </div>
         <div className="s-block">
           <div className="s-light-label">Produto</div>
-          <div className="s-highlight blue-text">{produtoExibicao}</div>
+          <div className="s-highlight s-highlight-product blue-text">{produtoExibicao}</div>
           <div className="s-light-label">Lote</div>
           <div className="s-highlight blue-text">{loteExibicao}</div>
         </div>

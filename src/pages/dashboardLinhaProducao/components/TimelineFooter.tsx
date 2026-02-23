@@ -143,18 +143,46 @@ export function TimelineFooter({
             produto: '',
           } satisfies TimelineFooterSegmento,
         ];
+  const largurasRotulosLotes = (() => {
+    const largurasBase = lotesRenderizados.map((lote) => limitarPercentual(lote.larguraPct));
+
+    if (lotes.length === 0 || largurasBase.length === 0) {
+      return largurasBase;
+    }
+
+    const somaLarguras = largurasBase.reduce((acumulado, largura) => acumulado + largura, 0);
+    const sobraPct = Math.max(0, 100 - somaLarguras);
+
+    if (sobraPct <= 0) {
+      return largurasBase;
+    }
+
+    // Usa a sobra apenas no último rótulo para aproveitar o espaço vazio da timeline
+    // sem alterar a proporção visual da barra de segmentos.
+    const indiceUltimo = largurasBase.length - 1;
+    largurasBase[indiceUltimo] = limitarPercentual(largurasBase[indiceUltimo] + sobraPct);
+
+    return largurasBase;
+  })();
 
   return (
     <footer className="footer-timeline">
       <div className="timeline-labels">
         {lotesRenderizados.map((lote, indice) => {
-          const larguraPct = limitarPercentual(lote.larguraPct);
-          const mostrarConteudo = larguraPct >= 5;
-          const mostrarDireita = larguraPct >= 12;
+          const larguraPctBase = limitarPercentual(lote.larguraPct);
+          const larguraPctRotulo = largurasRotulosLotes[indice] ?? larguraPctBase;
+          const mostrarConteudo = larguraPctRotulo >= 5;
+          const mostrarDireita = larguraPctRotulo >= 12;
           const loteLabel = normalizarRotuloLote(lote.lote);
           const produtoLabel = lote.produto?.trim() || 'Produto não informado';
           const maxCharsBase =
-            larguraPct >= 30 ? 28 : larguraPct >= 20 ? 18 : larguraPct >= 12 ? 12 : 8;
+            larguraPctRotulo >= 30
+              ? 28
+              : larguraPctRotulo >= 20
+                ? 18
+                : larguraPctRotulo >= 12
+                  ? 12
+                  : 8;
           const produzidoTexto =
             lote.produzido > 0 ? formatadorQuantidadeTimeline.format(lote.produzido) : placeholder.detalhe;
 
@@ -162,7 +190,7 @@ export function TimelineFooter({
             <div
               key={`${lote.lote}-${lote.produto}-${lote.inicio}-${indice}`}
               className="t-block"
-              style={{ width: `${larguraPct}%` }}
+              style={{ width: `${larguraPctRotulo}%` }}
               title={`${loteLabel} | ${produtoLabel} | Produzido: ${formatadorQuantidadeTimeline.format(
                 lote.produzido,
               )}${lote.inicioHora && lote.fimHora ? ` | ${lote.inicioHora} - ${lote.fimHora}` : ''}`}

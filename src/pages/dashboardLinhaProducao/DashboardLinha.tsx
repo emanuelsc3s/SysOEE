@@ -23,6 +23,7 @@ import { ParetoCard } from './components/ParetoCard';
 import type { ParetoCardItem } from './components/ParetoCard';
 import { ManutencaoCard } from './components/ManutencaoCard';
 import { FifoCard } from './components/FifoCard';
+import type { FifoCardItem } from './components/FifoCard';
 import { VelocidadeCard } from './components/VelocidadeCard';
 import type { MiniCardProdutivo } from './components/VelocidadeCard';
 import { StatusCard } from './components/StatusCard';
@@ -128,6 +129,8 @@ type UltimoLoteLinhaRow = {
   data?: string | Date | null;
   hora_inicio?: string | null;
   hora_fim?: string | null;
+  qtd_produzida?: number | string | null;
+  total_producao?: number | string | null;
   oeeturno_id?: number | string | null;
   turno?: UltimoLoteLinhaJoin | UltimoLoteLinhaJoin[] | null;
 };
@@ -139,6 +142,7 @@ type StatusCardProdutoLote = {
 
 const LIMITE_PARETO_CARD = 7;
 const LIMITE_OEE_HISTORICO_CARD = 20;
+const LIMITE_FIFO_CARD = 3;
 const TEMPO_DISPONIVEL_PADRAO = 12;
 const JANELA_TIMELINE_HORAS = 24;
 
@@ -883,6 +887,117 @@ export default function DashboardLinha() {
     staleTime: 60_000,
   });
 
+  const {
+    data: fifoItens = [],
+    isLoading: fifoLoading,
+    isFetching: fifoFetching,
+    error: fifoError,
+  } = useQuery({
+    queryKey: [
+      'dashboard-linha-fifo-lotes',
+      {
+        linhaIdRpc,
+        limite: LIMITE_FIFO_CARD,
+      },
+    ],
+    queryFn: async (): Promise<FifoCardItem[]> => {
+      if (!linhaIdRpc) {
+        return [];
+      }
+
+      let query = supabase
+        .from('tboee_turno_lote')
+        .select(
+          `
+            oeeturnolote_id,
+            lote,
+            data,
+            hora_inicio,
+            hora_fim,
+            qtd_produzida,
+            total_producao,
+            oeeturno_id,
+            turno:tboee_turno!inner(
+              oeeturno_id,
+              produto,
+              produto_id,
+              linhaproducao_id,
+              turno_id,
+              data,
+              deletado
+            )
+          `,
+        )
+        .eq('deletado', 'N')
+        .eq('turno.deletado', 'N')
+        .order('data', { ascending: false })
+        .order('hora_fim', { ascending: false })
+        .order('hora_inicio', { ascending: false })
+        .order('oeeturnolote_id', { ascending: false });
+
+      if (linhaIdRpc) {
+        query = query.eq('turno.linhaproducao_id', linhaIdRpc);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      const agregadosPorLote = new Map<string, FifoCardItem>();
+
+      for (const registro of (data || []) as UltimoLoteLinhaRow[]) {
+        const turnoRelacionado = Array.isArray(registro.turno) ? registro.turno[0] ?? null : registro.turno;
+        const lote =
+          typeof registro.lote === 'string' && registro.lote.trim().length > 0
+            ? registro.lote.trim()
+            : 'Lote não informado';
+        const produto =
+          typeof turnoRelacionado?.produto === 'string' && turnoRelacionado.produto.trim().length > 0
+            ? turnoRelacionado.produto.trim()
+            : 'Produto não informado';
+        const produtoId =
+          turnoRelacionado?.produto_id === null || turnoRelacionado?.produto_id === undefined
+            ? null
+            : String(turnoRelacionado.produto_id).trim() || null;
+        const temTotalProducao =
+          registro.total_producao !== null && registro.total_producao !== undefined;
+        const quantidadeProduzida = Math.max(
+          0,
+          temTotalProducao ? parseNumero(registro.total_producao) : parseNumero(registro.qtd_produzida),
+        );
+        const chaveLote = lote.toLocaleUpperCase('pt-BR');
+        const existente = agregadosPorLote.get(chaveLote);
+
+        if (existente) {
+          existente.quantidadeProduzida += quantidadeProduzida;
+
+          // Preserva a primeira ocorrência (mais recente pela ordenação da query), mas completa campos vazios.
+          if ((!existente.produto || existente.produto === 'Produto não informado') && produto) {
+            existente.produto = produto;
+          }
+          if (!existente.produtoId && produtoId) {
+            existente.produtoId = produtoId;
+          }
+
+          continue;
+        }
+
+        agregadosPorLote.set(chaveLote, {
+          lote,
+          produto,
+          produtoId,
+          quantidadeProduzida,
+        } satisfies FifoCardItem);
+      }
+
+      return Array.from(agregadosPorLote.values()).slice(0, LIMITE_FIFO_CARD);
+    },
+    enabled: Boolean(linhaIdRpc),
+    staleTime: 60_000,
+  });
+
   const oeeHistoricoItens = useMemo<OeeHistoryCardItem[]>(() => {
     if (oeeHistoricoLinhas.length === 0) {
       return [];
@@ -1131,6 +1246,36 @@ export default function DashboardLinha() {
     resumoProdutivoLoading,
   ]);
 
+  const statusFifo = useMemo(() => {
+    if (!linhaIdRpc) {
+      return 'Selecione linha';
+    }
+
+    if (fifoError) {
+      return 'Erro ao carregar';
+    }
+
+    if (fifoLoading) {
+      return 'Carregando...';
+    }
+
+    if (fifoItens.length === 0) {
+      return 'Sem dados';
+    }
+
+    if (fifoFetching) {
+      return 'Atualizando...';
+    }
+
+    return undefined;
+  }, [
+    fifoError,
+    fifoFetching,
+    fifoItens.length,
+    fifoLoading,
+    linhaIdRpc,
+  ]);
+
   const statusPareto = useMemo(() => {
     if (periodoFiltrosInvalido) {
       return 'Período inválido';
@@ -1234,6 +1379,22 @@ export default function DashboardLinha() {
     timelineFetching,
     timelineLoading,
   ]);
+
+  const mensagemFifoVazia = useMemo(() => {
+    if (!linhaIdRpc) {
+      return 'Selecione uma linha válida.';
+    }
+
+    if (fifoError) {
+      return 'Não foi possível carregar os últimos lotes.';
+    }
+
+    if (fifoLoading) {
+      return 'Carregando últimos lotes...';
+    }
+
+    return 'Sem lotes no período selecionado.';
+  }, [fifoError, fifoLoading, linhaIdRpc]);
 
   const mensagemParetoVazio = useMemo(() => {
     if (periodoFiltrosInvalido) {
@@ -1346,7 +1507,11 @@ export default function DashboardLinha() {
                   <VelocidadeCard miniCards={miniCardsProdutivos} statusTexto={statusMiniCards} />
                 </div>
                 <div className="col-3-4-fifo">
-                  <FifoCard />
+                  <FifoCard
+                    itens={fifoItens}
+                    statusTexto={statusFifo}
+                    mensagemVazia={mensagemFifoVazia}
+                  />
                 </div>
                 <div className="col-3-4-status">
                   <StatusCard

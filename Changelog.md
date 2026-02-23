@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- StatusCard: produto permite até 2 linhas (line-clamp: 2), não 3.
+- StatusCard: mesma largura e altura do FifoCard — flex 2→1.2, min-width: 0, height: 100%, overflow no conteúdo; col-3-4-fifo/status com align-items: stretch e cards com min-height: 0.
 - StatusCard: espaçamento entre linhas no bloco Produto/Lote aumentado (s-block gap 0.12cqi → 0.5cqi).
 - StatusCard: div do lote padronizada — mesmo estilo do label "Produto" (s-light-label) e valor em s-highlight blue-text, mantendo estrutura consistente no bloco.
 - StatusCard: removida div SKU_Status (SKU: 000001) do bloco de produto.
