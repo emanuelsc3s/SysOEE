@@ -896,6 +896,44 @@ export default function DashboardLinha() {
     resumoPeriodoInvalido,
   ]);
 
+  const statusCardDados = useMemo(() => {
+    const linhasOrdenadas = [...linhasResumoFiltradas].sort((a, b) => {
+      const dataA = typeof a.data === 'string' ? a.data : '';
+      const dataB = typeof b.data === 'string' ? b.data : '';
+
+      if (dataA !== dataB) {
+        return dataB.localeCompare(dataA);
+      }
+
+      return (b.oeeturno_id ?? -1) - (a.oeeturno_id ?? -1);
+    });
+
+    for (const linha of linhasOrdenadas) {
+      const statusTurno = linha.status_turno_registrado?.trim();
+      if (statusTurno) {
+        return {
+          status: statusTurno,
+          criadoEm: linha.turno_created_at?.trim() || null,
+        };
+      }
+    }
+
+    for (const linha of linhasOrdenadas) {
+      const statusLinha = linha.status_linha?.trim();
+      if (statusLinha) {
+        return {
+          status: statusLinha,
+          criadoEm: linha.turno_created_at?.trim() || null,
+        };
+      }
+    }
+
+    return {
+      status: null,
+      criadoEm: linhasOrdenadas[0]?.turno_created_at?.trim() || null,
+    };
+  }, [linhasResumoFiltradas]);
+
   const statusMiniCards = useMemo(() => {
     if (resumoPeriodoInvalido) {
       return 'Período inválido';
@@ -1150,7 +1188,10 @@ export default function DashboardLinha() {
                   <FifoCard />
                 </div>
                 <div className="col-3-4-status">
-                  <StatusCard />
+                  <StatusCard
+                    status={statusCardDados.status}
+                    criadoEm={statusCardDados.criadoEm}
+                  />
                 </div>
               </div>
             </div>

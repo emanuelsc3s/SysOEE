@@ -170,7 +170,7 @@ export function TimelineFooter({
               {mostrarConteudo ? (
                 <>
                   <div className="t-l1">{truncarTexto(loteLabel, maxCharsBase)}</div>
-                  <div className="t-l2 green-text">{truncarTexto(produtoLabel, maxCharsBase)}</div>
+                  <div className="t-l2 green-text">{produtoLabel}</div>
                   {mostrarDireita ? (
                     <>
                       <div className="t-r1">PRODUZIDO</div>

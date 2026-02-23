@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- TimelineFooter (DashboardLinha): removido truncamento fixo do nome do produto na linha `t-l2`; agora o texto usa o nome completo e só é abreviado quando faltar espaço visual no bloco (via CSS).
 - RPC `fn_calcular_oee_timeline`: corrigida a comparação do filtro de status para converter `t.status` (enum `oee_turno_status`) em texto antes do `COALESCE`, evitando erro `22P02 invalid input value for enum`.
 - Criada a RPC `fn_calcular_oee_timeline` em `database/rpc-function/`, retornando payload pronto para timeline do Dashboard de Linha (janela, marcas de hora, segmentos por status e blocos de lote), com filtros de período, linha, turno, produto, status e lançamento.
 - ManutencaoCard (DashboardLinha): removido subtítulo "Últimos 30 dias" (.subtitle) do h2.

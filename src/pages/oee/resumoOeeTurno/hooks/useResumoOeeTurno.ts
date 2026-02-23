@@ -168,11 +168,12 @@ export const useResumoOeeTurno = ({
       )
       const turnoPorOee = new Map<number, string>()
       const turnoIdPorOee = new Map<number, number>()
+      const turnoCreatedAtPorOee = new Map<number, string>()
 
       if (oeeturnoIds.length > 0) {
         const { data: turnosData, error: turnosError } = await supabase
           .from('tboee_turno')
-          .select('oeeturno_id, turno, turno_id')
+          .select('oeeturno_id, turno, turno_id, created_at')
           .in('oeeturno_id', oeeturnoIds)
           .eq('deletado', 'N')
 
@@ -188,6 +189,9 @@ export const useResumoOeeTurno = ({
             if (typeof registro.turno_id === 'number') {
               turnoIdPorOee.set(registro.oeeturno_id, registro.turno_id)
             }
+            if (typeof registro.created_at === 'string' && registro.created_at.trim().length > 0) {
+              turnoCreatedAtPorOee.set(registro.oeeturno_id, registro.created_at.trim())
+            }
           })
         }
       }
@@ -199,10 +203,16 @@ export const useResumoOeeTurno = ({
         const turnoIdLinha =
           linha.turno_id ??
           (linha.oeeturno_id != null ? turnoIdPorOee.get(linha.oeeturno_id) ?? null : null)
+        const turnoCreatedAtLinha =
+          linha.turno_created_at ??
+          (linha.oeeturno_id != null
+            ? turnoCreatedAtPorOee.get(linha.oeeturno_id) ?? null
+            : null)
         return {
           ...linha,
           turno: turnoNome,
           turno_id: turnoIdLinha,
+          turno_created_at: turnoCreatedAtLinha,
         }
       })
     },
