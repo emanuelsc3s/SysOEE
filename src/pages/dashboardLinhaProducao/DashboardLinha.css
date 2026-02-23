@@ -899,6 +899,8 @@
   display: flex;
   flex-direction: column;
   padding: 0 0.5cqi;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .dashboard-linha-wrapper .t-l1,
@@ -912,6 +914,15 @@
 .dashboard-linha-wrapper .t-r2 {
   font-size: 0.8cqi;
   font-weight: 700;
+}
+
+.dashboard-linha-wrapper .t-l1,
+.dashboard-linha-wrapper .t-l2,
+.dashboard-linha-wrapper .t-r1,
+.dashboard-linha-wrapper .t-r2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dashboard-linha-wrapper .t-r1,

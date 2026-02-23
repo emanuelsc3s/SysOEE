@@ -27,6 +27,10 @@ import { VelocidadeCard } from './components/VelocidadeCard';
 import type { MiniCardProdutivo } from './components/VelocidadeCard';
 import { StatusCard } from './components/StatusCard';
 import { TimelineFooter } from './components/TimelineFooter';
+import type {
+  TimelineFooterLote,
+  TimelineFooterSegmento,
+} from './components/TimelineFooter';
 
 type DashboardLinhaRouteState = {
   linhaId?: string;
@@ -92,9 +96,34 @@ type OeeDiarioNormalizado = {
   tempoParadasGrandesHoras: number;
 };
 
+type OeeTimelineRpcRow = {
+  janela_inicio?: string | Date | null;
+  janela_fim?: string | Date | null;
+  timeline_times?: unknown;
+  segmentos?: unknown;
+  lotes?: unknown;
+};
+
+type OeeTimelineNormalizado = {
+  janelaInicioIso: string | null;
+  janelaFimIso: string | null;
+  timelineTimes: string[];
+  segmentos: TimelineFooterSegmento[];
+  lotes: TimelineFooterLote[];
+};
+
 const LIMITE_PARETO_CARD = 7;
 const LIMITE_OEE_HISTORICO_CARD = 20;
 const TEMPO_DISPONIVEL_PADRAO = 12;
+const JANELA_TIMELINE_HORAS = 24;
+
+const TIMELINE_VAZIA: OeeTimelineNormalizado = {
+  janelaInicioIso: null,
+  janelaFimIso: null,
+  timelineTimes: [],
+  segmentos: [],
+  lotes: [],
+};
 
 const CONFIG_MINI_CARDS_PRODUTIVOS: ConfigMiniCardProdutivo[] = [
   {
@@ -232,6 +261,92 @@ const parseNumero = (valor: unknown): number => {
   const parsed = Number(valor);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+const parseArrayJsonb = (valor: unknown): unknown[] => {
+  if (Array.isArray(valor)) {
+    return valor;
+  }
+
+  if (typeof valor === 'string') {
+    try {
+      const parsed = JSON.parse(valor) as unknown;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const normalizarTextoTimeline = (valor: unknown, fallback = ''): string => {
+  if (typeof valor === 'string') {
+    const texto = valor.trim();
+    return texto || fallback;
+  }
+
+  if (valor === null || valor === undefined) {
+    return fallback;
+  }
+
+  const texto = String(valor).trim();
+  return texto || fallback;
+};
+
+const normalizarTimelineTimes = (valor: unknown): string[] =>
+  parseArrayJsonb(valor)
+    .map((item) => normalizarTextoTimeline(item))
+    .filter((item) => item.length > 0);
+
+const normalizarSegmentosTimeline = (valor: unknown): TimelineFooterSegmento[] =>
+  parseArrayJsonb(valor)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const registro = item as Record<string, unknown>;
+
+      return {
+        inicio: normalizarTextoTimeline(registro.inicio),
+        fim: normalizarTextoTimeline(registro.fim),
+        inicioHora: normalizarTextoTimeline(registro.inicio_hora),
+        fimHora: normalizarTextoTimeline(registro.fim_hora),
+        duracaoMinutos: Math.max(0, parseNumero(registro.duracao_minutos)),
+        larguraPct: Math.max(0, parseNumero(registro.largura_pct)),
+        statusTimeline: normalizarTextoTimeline(registro.status_timeline, 'SEM_APONTAMENTO'),
+        classeCss: normalizarTextoTimeline(registro.classe_css, 'white-fill'),
+        oeeturnoId:
+          registro.oeeturno_id === null || registro.oeeturno_id === undefined
+            ? null
+            : normalizarTextoTimeline(registro.oeeturno_id),
+        produto: normalizarTextoTimeline(registro.produto),
+      } satisfies TimelineFooterSegmento;
+    })
+    .filter((item): item is TimelineFooterSegmento => item !== null);
+
+const normalizarLotesTimeline = (valor: unknown): TimelineFooterLote[] =>
+  parseArrayJsonb(valor)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const registro = item as Record<string, unknown>;
+
+      return {
+        lote: normalizarTextoTimeline(registro.lote, 'LOTE N/I'),
+        produto: normalizarTextoTimeline(registro.produto, 'Produto não informado'),
+        produzido: Math.max(0, parseNumero(registro.produzido)),
+        inicio: normalizarTextoTimeline(registro.inicio),
+        fim: normalizarTextoTimeline(registro.fim),
+        inicioHora: normalizarTextoTimeline(registro.inicio_hora),
+        fimHora: normalizarTextoTimeline(registro.fim_hora),
+        duracaoMinutos: Math.max(0, parseNumero(registro.duracao_minutos)),
+        larguraPct: Math.max(0, parseNumero(registro.largura_pct)),
+      } satisfies TimelineFooterLote;
+    })
+    .filter((item): item is TimelineFooterLote => item !== null);
 
 const formatarTempoParadaHorasMinutos = (horasDecimais: number): string => {
   const totalMinutos = Math.max(0, Math.round(horasDecimais * 60));
@@ -582,6 +697,62 @@ export default function DashboardLinha() {
     staleTime: 60_000,
   });
 
+  const {
+    data: timelineDados = TIMELINE_VAZIA,
+    isLoading: timelineLoading,
+    isFetching: timelineFetching,
+    error: timelineError,
+  } = useQuery({
+    queryKey: [
+      'dashboard-linha-timeline',
+      {
+        dataInicioIso: dataInicioIso ?? null,
+        dataFimIso: dataFimIso ?? null,
+        linhaIdRpc,
+        turnoIdRpc,
+        produtoIdRpc,
+        lancamentoId,
+        statuses: filtrosAplicados.statuses,
+        janelaHoras: JANELA_TIMELINE_HORAS,
+      },
+    ],
+    queryFn: async (): Promise<OeeTimelineNormalizado> => {
+      if (!dataInicioIso || !dataFimIso) {
+        return TIMELINE_VAZIA;
+      }
+
+      const { data, error } = await supabase.rpc('fn_calcular_oee_timeline', {
+        p_data_inicio: dataInicioIso,
+        p_data_fim: dataFimIso,
+        p_turno_id: turnoIdRpc,
+        p_produto_id: produtoIdRpc,
+        p_linhaproducao_id: linhaIdRpc,
+        p_oeeturno_id: lancamentoId,
+        p_statuses: filtrosAplicados.statuses.length > 0 ? filtrosAplicados.statuses : null,
+        p_janela_horas: JANELA_TIMELINE_HORAS,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const linha = ((data || []) as OeeTimelineRpcRow[])[0];
+      if (!linha) {
+        return TIMELINE_VAZIA;
+      }
+
+      return {
+        janelaInicioIso: extrairDataIso(linha.janela_inicio),
+        janelaFimIso: extrairDataIso(linha.janela_fim),
+        timelineTimes: normalizarTimelineTimes(linha.timeline_times),
+        segmentos: normalizarSegmentosTimeline(linha.segmentos),
+        lotes: normalizarLotesTimeline(linha.lotes),
+      } satisfies OeeTimelineNormalizado;
+    },
+    enabled: Boolean(dataInicioIso && dataFimIso && !periodoFiltrosInvalido),
+    staleTime: 60_000,
+  });
+
   const oeeHistoricoItens = useMemo<OeeHistoryCardItem[]>(() => {
     if (oeeHistoricoLinhas.length === 0) {
       return [];
@@ -828,6 +999,43 @@ export default function DashboardLinha() {
     oeeHistoricoLoading,
   ]);
 
+  const statusTimeline = useMemo(() => {
+    if (periodoFiltrosInvalido) {
+      return 'Período inválido';
+    }
+
+    if (!dataInicioIso || !dataFimIso) {
+      return 'Selecione período';
+    }
+
+    if (timelineError) {
+      return 'Erro ao carregar';
+    }
+
+    if (timelineLoading) {
+      return 'Carregando...';
+    }
+
+    if (timelineDados.segmentos.length === 0 && timelineDados.lotes.length === 0) {
+      return 'Sem dados';
+    }
+
+    if (timelineFetching) {
+      return 'Atualizando...';
+    }
+
+    return undefined;
+  }, [
+    dataFimIso,
+    dataInicioIso,
+    periodoFiltrosInvalido,
+    timelineDados.lotes.length,
+    timelineDados.segmentos.length,
+    timelineError,
+    timelineFetching,
+    timelineLoading,
+  ]);
+
   const mensagemParetoVazio = useMemo(() => {
     if (periodoFiltrosInvalido) {
       return 'Período inválido para consulta.';
@@ -863,6 +1071,26 @@ export default function DashboardLinha() {
 
     return 'Sem histórico de OEE no período.';
   }, [dataFimHistoricoIso, dataInicioHistoricoIso, oeeHistoricoError, oeeHistoricoLoading]);
+
+  const mensagemTimelineVazia = useMemo(() => {
+    if (periodoFiltrosInvalido) {
+      return 'Período inválido para consulta.';
+    }
+
+    if (!dataInicioIso || !dataFimIso) {
+      return 'Selecione um período válido.';
+    }
+
+    if (timelineError) {
+      return 'Não foi possível carregar a timeline.';
+    }
+
+    if (timelineLoading) {
+      return 'Carregando timeline...';
+    }
+
+    return 'Sem apontamentos na janela selecionada.';
+  }, [dataFimIso, dataInicioIso, periodoFiltrosInvalido, timelineError, timelineLoading]);
 
   const tituloLinha =
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
@@ -929,7 +1157,13 @@ export default function DashboardLinha() {
           </main>
 
           {/* TIMELINE */}
-          <TimelineFooter />
+          <TimelineFooter
+            timelineTimes={timelineDados.timelineTimes}
+            segmentos={timelineDados.segmentos}
+            lotes={timelineDados.lotes}
+            statusTexto={statusTimeline}
+            mensagemVazia={mensagemTimelineVazia}
+          />
         </div>
 
         {/* MODAL DE FILTROS */}
