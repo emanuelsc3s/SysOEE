@@ -22,7 +22,7 @@ export function VelocidadeCard({ miniCards, statusTexto }: VelocidadeCardProps) 
   return (
     <div className="card card-velocidade">
       <h2>
-        Dados Produtivos
+        PRODUÇÃO
         {statusTexto ? <span className="subtitle subtitle-right">{statusTexto}</span> : null}
       </h2>
 

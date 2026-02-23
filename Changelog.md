@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+- VelocidadeCard: reduzida altura dos mini-cards — grid row 1.3fr→0.9fr, padding vertical 0.8→0.45cqi, espaçamentos compactados (sem alterar tamanho das fontes).
+- VelocidadeCard: aumentado espaçamento entre título (vel-mini-title) e valor (vel-mini-value) nos mini-cards — line-height 1→1.2 e margin-top 0.16cqi→0.4cqi.
+- VelocidadeCard: título (h2) centralizado na horizontal.
+- VelocidadeCard: alterado título do h2 de "Dados Produtivos" para "PRODUÇÃO".
+- VelocidadeCard: valores (vel-mini-value) alinhados à direita.
+- VelocidadeCard: valores (vel-mini-value) com mesmo tamanho e peso em todos os mini-cards (blue, red, orange, gray), igual ao timer do StatusCard (2.2cqi, 700).
+- DashboardLinha (col-3-4-grid): grid-template-rows alterado de `auto 1fr` para `minmax(230px, 1.2fr) 1fr`, dando mais altura ao VelocidadeCard e reduzindo espaço vazio no FifoCard.
+- DashboardLinha (col-3-4-grid): aumento da margem vertical entre o card de produção (Velocidade) e os cards Fifo/Status (row-gap 1.2cqi → 1.8cqi).
+- FifoCard: removido item PRODUTO 4 (456789 | 004) da lista ÚLTIMOS LOTES.
+- FifoCard e StatusCard: altura máxima limitada a 280px (max-height).
+- DashboardLinha: layout col-3+4 reorganizado — VelocidadeCard ocupa toda a largura no topo; FifoCard e StatusCard alinhados na mesma altura abaixo, com VelocidadeCard mais largo.
 - VelocidadeCard: mini-cards (Produzido, Perdas, Total, Grandes Paradas, Paradas Estratégicas) com mesmo design do fifo-item — padding 0.8cqi, border-radius 0.4cqi, sem borda explícita; fundo var(--fifo-bg) preservado.
 - StatusCard: reduzido espaçamento entre linhas (status-content, s-block, s-small, s-timer).
 - StatusCard: removida seção LEAD TIME (s-label-bold, Start, Current Status, Lead Time e Holding Time).
@@ -27,7 +38,6 @@
 - TimelineFooter: legendas centralizadas horizontalmente (justify-content: center).
 - TimelineFooter: removido item "SETUP" da legenda (não utilizado).
 - TimelineFooter: alterado texto da legenda de "INDISPONÍVEL" para "PARADA ESTRATÉGICA".
-- FifoCard: adicionado item PRODUTO 4 (456789 | 004, 45.2h) na lista FIFO do Dashboard de Linha.
 - Removido o card Setup (SetupCard) do `DashboardLinha`.
 - Ajustado o tamanho da logomarca no `DashboardLinha` para usar unidades relativas (`cqi`), permitindo o dimensionamento proporcional à resolução da tela.
 - Removidas as linhas de meta de velocidade (`.vel-line`) do gráfico do card de Velocidade no `DashboardLinha`.

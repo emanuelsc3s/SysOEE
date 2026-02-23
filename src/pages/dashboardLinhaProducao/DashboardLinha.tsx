@@ -406,15 +406,19 @@ export default function DashboardLinha() {
               <ManutencaoCard />
             </div>
 
-            {/* COLUMN 3 */}
-            <div className="col col-3">
-              <VelocidadeCard miniCards={miniCardsProdutivos} statusTexto={statusMiniCards} />
-              <FifoCard />
-            </div>
-
-            {/* COLUMN 4 */}
-            <div className="col col-4">
-              <StatusCard />
+            {/* COLUMN 3 + 4: VelocidadeCard largo no topo, Fifo e Status na mesma altura embaixo */}
+            <div className="col col-3-4">
+              <div className="col-3-4-grid">
+                <div className="col-3-4-velocidade">
+                  <VelocidadeCard miniCards={miniCardsProdutivos} statusTexto={statusMiniCards} />
+                </div>
+                <div className="col-3-4-fifo">
+                  <FifoCard />
+                </div>
+                <div className="col-3-4-status">
+                  <StatusCard />
+                </div>
+              </div>
             </div>
           </main>
 

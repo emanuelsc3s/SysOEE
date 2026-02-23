@@ -239,12 +239,39 @@
   flex: 1;
 }
 
-.dashboard-linha-wrapper .col-3 {
-  flex: 1;
+.dashboard-linha-wrapper .col-3-4 {
+  flex: 1.8; /* soma de col-3 (1) + col-4 (0.8) para manter proporção total */
+  min-width: 0;
 }
 
-.dashboard-linha-wrapper .col-4 {
-  flex: 0.8;
+/* Grid interno: VelocidadeCard ocupa toda a largura no topo; Fifo e Status lado a lado na mesma altura */
+.dashboard-linha-wrapper .col-3-4-grid {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr; /* proporção antiga col-3 : col-4 */
+  grid-template-rows: minmax(0, 0.9fr) minmax(0, 1fr); /* velocidade mais compacto */
+  row-gap: 1.8cqi; /* margem maior entre card de produção (Velocidade) e cards Fifo/Status */
+  column-gap: 1.2cqi;
+  flex: 1;
+  min-height: 0;
+}
+
+.dashboard-linha-wrapper .col-3-4-velocidade {
+  grid-column: 1 / -1; /* VelocidadeCard ocupa toda a largura */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-linha-wrapper .col-3-4-fifo,
+.dashboard-linha-wrapper .col-3-4-status {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-linha-wrapper .col-3-4-fifo .card,
+.dashboard-linha-wrapper .col-3-4-status .card {
+  flex: 1;
 }
 
 .dashboard-linha-wrapper .card {
@@ -284,14 +311,21 @@
 
 .dashboard-linha-wrapper .card-fifo {
   flex: 1.2;
+  max-height: 280px;
 }
 
 .dashboard-linha-wrapper .card-velocidade {
   flex: 1;
 }
 
+.dashboard-linha-wrapper .card-velocidade h2 {
+  justify-content: center;
+  text-align: center;
+}
+
 .dashboard-linha-wrapper .card-status {
   flex: 2;
+  max-height: 280px;
 }
 
 .dashboard-linha-wrapper .card-setup {
@@ -640,7 +674,7 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 0.55cqi;
+  gap: 0.4cqi;
 }
 
 /* Primeira linha: 3 cards (Produzido, Perdas, Total) — cada um ~33% */
@@ -657,44 +691,56 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0.8cqi;
+  padding: 0.45cqi 0.8cqi;
   border-radius: 0.4cqi;
   background-color: var(--fifo-bg);
   overflow: hidden;
+}
+
+/* Garante mesmo tamanho e peso em todos os vel-mini-value (blue, red, orange, gray) */
+.dashboard-linha-wrapper .vel-mini-card .vel-mini-value {
+  font-size: 2.2cqi !important;
+  font-weight: 700 !important;
 }
 
 .dashboard-linha-wrapper .vel-mini-card--gray .vel-mini-value {
   color: var(--text-main) !important;
 }
 
+/* Accent cinza com contraste adequado para não parecer mais fino que blue/red/orange */
+.dashboard-linha-wrapper .vel-mini-card--gray .vel-mini-accent.gray-fill {
+  background-color: var(--text-muted) !important;
+}
+
 .dashboard-linha-wrapper .vel-mini-accent {
   display: block;
   width: 2cqi;
   max-width: 100%;
-  height: 0.17cqi;
+  height: 0.15cqi;
   border-radius: 999px;
-  margin-bottom: 0.35cqi;
+  margin-bottom: 0.2cqi;
   flex-shrink: 0;
 }
 
 .dashboard-linha-wrapper .vel-mini-title {
-  font-size: 0.56cqi;
-  line-height: 1;
+  font-size: 1cqi;
+  line-height: 1.2;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04cqi;
-  color: var(--text-muted);
+  color: var(--text-main);
   min-height: auto;
 }
 
 .dashboard-linha-wrapper .vel-mini-value {
-  margin-top: 0.16cqi;
-  font-size: 1.1cqi;
+  margin-top: 0.4cqi;
+  font-size: 2.2cqi;
   line-height: 1.05;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: right;
 }
 
 .dashboard-linha-wrapper .vel-mini-detail {
