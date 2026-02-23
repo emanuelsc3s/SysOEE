@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardLinha (debug): removida a instrumentação temporária de diagnóstico de layout após validação da correção em runtime.
+- DashboardLinha (layout): removida a limitação fixa de `max-height: 280px` dos cards `FifoCard` e `StatusCard`; aplicado `overflow: hidden` para evitar vazamento visual em telas maiores.
+- FifoCard (layout): `.fifo-list` ajustada para `flex: 1`, `min-height: 0` e rolagem vertical (`overflow-y: auto`) para manter o conteúdo dentro do card em resoluções altas.
 - StatusCard: produto permite até 2 linhas (line-clamp: 2), não 3.
 - StatusCard: mesma largura e altura do FifoCard — flex 2→1.2, min-width: 0, height: 100%, overflow no conteúdo; col-3-4-fifo/status com align-items: stretch e cards com min-height: 0.
 - StatusCard: espaçamento entre linhas no bloco Produto/Lote aumentado (s-block gap 0.12cqi → 0.5cqi).

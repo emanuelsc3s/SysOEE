@@ -319,8 +319,8 @@
 .dashboard-linha-wrapper .card-fifo,
 .dashboard-linha-wrapper .card-status {
   flex: 1.2;
-  max-height: 280px;
   min-width: 0; /* evita que conteúdo expanda além da coluna do grid */
+  overflow: hidden; /* impede vazamento visual do conteúdo em resoluções maiores */
 }
 
 .dashboard-linha-wrapper .card-velocidade {
@@ -652,6 +652,10 @@
   flex-direction: column;
   gap: 0.8cqi;
   margin-top: 0.5cqi;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dashboard-linha-wrapper .fifo-item {
