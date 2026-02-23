@@ -38,7 +38,6 @@ export function StatusCard({ status, criadoEm }: StatusCardProps) {
         <div className="s-block">
           <div className="s-highlight blue-text">{statusExibicao}</div>
           <div className="s-small">Em: {criadoEmExibicao}</div>
-          <div className="s-timer blue-text">00:01:11</div>
         </div>
         <div className="s-block">
           <div className="s-light-label">Produto</div>
