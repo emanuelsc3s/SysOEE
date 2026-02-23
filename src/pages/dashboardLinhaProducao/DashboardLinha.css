@@ -29,7 +29,7 @@
   --circle-text: #fff;
   --bar-val: #fff;
   --border-color: #444;
-  --p-label-bg: #2b3a4a;
+  --p-label-bg: var(--c-blue);
   --m-marker: #ffffff;
   --fifo-bg: #2e2e2e;
   --lg-item-color: var(--lg-item-color, #475569);
@@ -71,7 +71,7 @@
   --circle-text: #0f172a;
   --bar-val: #0f172a;
   --border-color: #cbd5e1;
-  --p-label-bg: #e0f2fe;
+  --p-label-bg: var(--c-blue);
   --m-marker: #000;
   --fifo-bg: #f8fafc;
   --lg-item-color: #475569;
@@ -294,6 +294,10 @@
 
 .dashboard-linha-wrapper .card-oee-history {
   flex: 1;
+}
+
+.dashboard-linha-wrapper .card-oee-history .subtitle {
+  font-size: 11px;
 }
 
 .dashboard-linha-wrapper .card-pareto {

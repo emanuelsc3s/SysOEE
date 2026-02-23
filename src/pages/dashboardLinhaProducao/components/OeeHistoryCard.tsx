@@ -1,7 +1,7 @@
 export function OeeHistoryCard() {
   return (
     <div className="card card-oee-history">
-      <h2>OEE Histórico <span className="subtitle">Últimos 30 dias</span> <span className="subtitle-right">Meta <span className="blue-text">50.0%</span> Média <span className="green-text">30.1%</span></span></h2>
+      <h2>OEE Histórico <span className="subtitle">Últimos 30 dias</span></h2>
       <div className="chart-placeholder">
         <div className="bar-chart-container">
           {Array.from({ length: 16 }).map((_, i) => {

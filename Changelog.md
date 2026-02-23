@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- OeeHistoryCard (DashboardLinha): subtítulo "Últimos 30 dias" (.subtitle) com font-size fixo em 11px para melhor legibilidade.
+- OeeHistoryCard (DashboardLinha): removido subtítulo "Meta X% Média X%" (subtitle-right) do h2.
 - ParetoCard (DashboardLinha): aumentado o espaçamento horizontal entre os valores `p-val1` (horas) e `p-val2` (percentual) para melhorar legibilidade no card.
 - ParetoCard (DashboardLinha): percentual ajustado para exibir 2 casas decimais no formato pt-BR (ex.: `30,10%`).
 - RPC `fn_calcular_pareto_paradas_linha`: campo `tempo_parada_horas` alterado para formato textual `HHH:MM` com separador de milhar em ponto (ex.: `2.452:59`, `125:30`, `1.365:01`); `DashboardLinha` ajustado para consumir o novo formato no `ParetoCard`.
