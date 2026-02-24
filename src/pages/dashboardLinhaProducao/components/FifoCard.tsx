@@ -47,9 +47,11 @@ export function FifoCard({ itens, statusTexto, mensagemVazia }: FifoCardProps) {
                 <span className="f-num">{indice + 1}</span>
                 <div className="f-info">
                   <span className="f-produto">{produto.toLocaleUpperCase('pt-BR')}</span>
-                  <b>{lote}</b>
+                  <div className="f-lote-qtd">
+                    <b>{lote}</b>
+                    <span className="f-val">{quantidadeFormatada}</span>
+                  </div>
                 </div>
-                <div className="f-val">{quantidadeFormatada}</div>
               </div>
             );
           })}

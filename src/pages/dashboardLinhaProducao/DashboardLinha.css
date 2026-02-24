@@ -689,19 +689,28 @@
   white-space: nowrap;
 }
 
+.dashboard-linha-wrapper .f-lote-qtd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6cqi;
+  margin-top: 0.15cqi;
+}
+
 .dashboard-linha-wrapper .f-info b {
-  display: block;
   font-size: 1cqi;
   color: var(--bar-val);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .dashboard-linha-wrapper .f-val {
-  flex-shrink: 0; /* evita que a quantidade seja comprimida ou sobreposta pelo produto */
+  flex-shrink: 0;
   font-size: 1cqi;
   font-weight: 700;
+  color: #fff;
 }
 
 /* Velocidade */

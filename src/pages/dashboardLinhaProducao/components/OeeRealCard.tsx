@@ -91,7 +91,7 @@ export function OeeRealCard({
 
   return (
     <div className="card card-oee-real">
-      <h2>OEE REAL</h2>
+      <h2>OEE</h2>
       <div className="oee-real-content">
         <div className="bars-col">
           {indicadores.map((indicador) => (

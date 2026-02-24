@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- OeeRealCard (DashboardLinha): título alterado de "OEE REAL" para "OEE".
+- FifoCard (DashboardLinha): lote e quantidade na mesma linha; produto sozinho na linha superior; cor branca na quantidade (f-val).
 - ParetoCard (DashboardLinha): removido sufixo "h" do valor de tempo de parada (p-val1).
 - OeeHistoryCard (DashboardLinha): linha verde de meta no gráfico histórico renderizada acima das barras (ajuste de camada/z-index).
 - DashboardLinha (debug): removida a instrumentação temporária de diagnóstico de layout após validação da correção em runtime.
