@@ -29,7 +29,7 @@ export function ParetoCard({ itens, statusTexto, mensagemVazia }: ParetoCardProp
   return (
     <div className="card card-pareto">
       <h2>
-        PARETO
+        PARADAS
         {statusTexto ? <span className="subtitle subtitle-right">{statusTexto}</span> : null}
       </h2>
 

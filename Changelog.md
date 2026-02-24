@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- ParetoCard (DashboardLinha): alterado título do h2 de "PARETO" para "PARADAS".
+- FifoCard (DashboardLinha): removida a barra de rolagem vertical da lista de lotes e compactado o espaçamento interno para manter os 3 itens visíveis no card.
 - OeeRealCard (DashboardLinha): título alterado de "OEE REAL" para "OEE".
 - FifoCard (DashboardLinha): lote e quantidade na mesma linha; produto sozinho na linha superior; cor branca na quantidade (f-val).
 - ParetoCard (DashboardLinha): removido sufixo "h" do valor de tempo de parada (p-val1).

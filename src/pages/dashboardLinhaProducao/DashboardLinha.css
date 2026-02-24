@@ -650,11 +650,11 @@
 .dashboard-linha-wrapper .fifo-list {
   display: flex;
   flex-direction: column;
-  gap: 0.8cqi;
-  margin-top: 0.5cqi;
+  gap: 0.6cqi;
+  margin-top: 0.35cqi;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
 }
 
@@ -662,7 +662,7 @@
   display: flex;
   align-items: center;
   background-color: var(--fifo-bg);
-  padding: 0.8cqi;
+  padding: 0.65cqi 0.8cqi;
   border-radius: 0.4cqi;
 }
 
