@@ -24,7 +24,6 @@ export function OeeHistoryCard({
   itens,
   statusTexto,
   mensagemVazia,
-  limiteDias = 30,
   metaPercentual = 65,
 }: OeeHistoryCardProps) {
   const metaNormalizada = clampPercentual(metaPercentual);
@@ -41,14 +40,14 @@ export function OeeHistoryCard({
           Math.min(6, (ocupacaoTotalPct - gapPct * (totalBarras - 1)) / totalBarras),
         )
       : 4;
-  const metaTexto = `Meta ${metaNormalizada.toLocaleString('pt-BR', {
+  const metaTexto = `META ${metaNormalizada.toLocaleString('pt-BR', {
     maximumFractionDigits: 0,
   })}%`;
 
   return (
     <div className="card card-oee-history">
       <h2>
-        OEE Histórico <span className="subtitle">Últimos {limiteDias} dias</span>
+        OEE - ÚLTIMOS 7 DIAS
         <span className="subtitle subtitle-right">
           <span className="green-text">{metaTexto}</span>
           {statusTexto ? ` · ${statusTexto}` : null}

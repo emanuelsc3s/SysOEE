@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- StatusCard (DashboardLinha): título h2 "STATUS" centralizado na horizontal.
+- FifoCard (DashboardLinha): título h2 "ÚLTIMOS LOTES" centralizado na horizontal.
+- ManutencaoCard (DashboardLinha): título h2 "MANUTENÇÃO" centralizado na horizontal.
 - ParetoCard (DashboardLinha): alterado título do h2 de "PARETO" para "PARADAS".
 - FifoCard (DashboardLinha): removida a barra de rolagem vertical da lista de lotes e compactado o espaçamento interno para manter os 3 itens visíveis no card.
 - OeeRealCard (DashboardLinha): título alterado de "OEE REAL" para "OEE".

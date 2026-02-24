@@ -303,6 +303,13 @@
   font-size: 11px;
 }
 
+.dashboard-linha-wrapper .card-oee-history h2 .subtitle-right .green-text {
+  font-family: inherit;
+  font-size: 1.2cqi;
+  font-weight: 600;
+  color: var(--c-green) !important;
+}
+
 .dashboard-linha-wrapper .card-pareto {
   flex: 1.4;
 }
@@ -316,11 +323,22 @@
   flex: 0.8;
 }
 
+.dashboard-linha-wrapper .card-manutencao h2 {
+  justify-content: center;
+  text-align: center;
+}
+
 .dashboard-linha-wrapper .card-fifo,
 .dashboard-linha-wrapper .card-status {
   flex: 1.2;
   min-width: 0; /* evita que conteúdo expanda além da coluna do grid */
   overflow: hidden; /* impede vazamento visual do conteúdo em resoluções maiores */
+}
+
+.dashboard-linha-wrapper .card-fifo h2,
+.dashboard-linha-wrapper .card-status h2 {
+  justify-content: center;
+  text-align: center;
 }
 
 .dashboard-linha-wrapper .card-velocidade {

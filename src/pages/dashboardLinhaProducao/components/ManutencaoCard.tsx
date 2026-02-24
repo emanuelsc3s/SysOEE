@@ -1,7 +1,7 @@
 export function ManutencaoCard() {
   return (
     <div className="card card-manutencao">
-      <h2>Manutenção</h2>
+      <h2>MANUTENÇÃO</h2>
       <div className="m-content">
         <div className="m-item">
           <div className="m-label">MTTR</div>
