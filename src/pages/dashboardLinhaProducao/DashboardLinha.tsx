@@ -721,6 +721,7 @@ export default function DashboardLinha() {
   const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(() =>
     clonarFiltrosDashboardLinha(filtrosRecebidosDoDashboard),
   );
+  const [refreshDadosEmAndamento, setRefreshDadosEmAndamento] = useState(false);
 
   useEffect(() => {
     setFiltrosAplicados(clonarFiltrosDashboardLinha(filtrosRecebidosDoDashboard));
@@ -771,6 +772,7 @@ export default function DashboardLinha() {
     isLoading: paretoLoading,
     isFetching: paretoFetching,
     error: paretoError,
+    refetch: refetchPareto,
   } = useQuery({
     queryKey: [
       'dashboard-linha-pareto',
@@ -834,6 +836,7 @@ export default function DashboardLinha() {
     isLoading: oeeHistoricoLoading,
     isFetching: oeeHistoricoFetching,
     error: oeeHistoricoError,
+    refetch: refetchOeeHistorico,
   } = useQuery({
     queryKey: [
       'dashboard-linha-oee-historico',
@@ -903,6 +906,7 @@ export default function DashboardLinha() {
     isLoading: timelineLoading,
     isFetching: timelineFetching,
     error: timelineError,
+    refetch: refetchTimeline,
   } = useQuery({
     queryKey: [
       'dashboard-linha-timeline',
@@ -948,7 +952,11 @@ export default function DashboardLinha() {
     staleTime: 60_000,
   });
 
-  const { data: statusCardProdutoLoteBanco = STATUS_CARD_PRODUTO_LOTE_VAZIO } = useQuery({
+  const {
+    data: statusCardProdutoLoteBanco = STATUS_CARD_PRODUTO_LOTE_VAZIO,
+    isFetching: statusCardProdutoLoteFetching,
+    refetch: refetchStatusCardProdutoLote,
+  } = useQuery({
     queryKey: [
       'dashboard-linha-status-produto-lote',
       {
@@ -1053,6 +1061,7 @@ export default function DashboardLinha() {
     isLoading: fifoLoading,
     isFetching: fifoFetching,
     error: fifoError,
+    refetch: refetchFifo,
   } = useQuery({
     queryKey: [
       'dashboard-linha-fifo-lotes',
@@ -1245,6 +1254,7 @@ export default function DashboardLinha() {
     isLoading: resumoProdutivoLoading,
     isFetching: resumoProdutivoFetching,
     erroConsulta: erroResumoProdutivo,
+    refetch: refetchResumoProdutivo,
   } = useResumoOeeTurno({
     dataInicioIso,
     dataFimIso,
@@ -1299,7 +1309,11 @@ export default function DashboardLinha() {
     ],
   );
 
-  const { data: componentesOeeReal } = useQuery({
+  const {
+    data: componentesOeeReal,
+    isFetching: oeeRealFetching,
+    refetch: refetchOeeReal,
+  } = useQuery({
     queryKey: [
       'dashboard-linha-oee-real',
       {
@@ -1384,6 +1398,42 @@ export default function DashboardLinha() {
     enabled: Boolean(dataInicioIso && dataFimIso && !periodoFiltrosInvalido),
     staleTime: 60_000,
   });
+
+  const dashboardConsultasEmFetching =
+    paretoFetching ||
+    oeeHistoricoFetching ||
+    timelineFetching ||
+    statusCardProdutoLoteFetching ||
+    fifoFetching ||
+    resumoProdutivoFetching ||
+    oeeRealFetching;
+
+  const handleAtualizarDados = async () => {
+    if (refreshDadosEmAndamento || dashboardConsultasEmFetching) {
+      return;
+    }
+
+    setRefreshDadosEmAndamento(true);
+
+    try {
+      const consultasParaAtualizar: Promise<unknown>[] = [
+        refetchPareto(),
+        refetchOeeHistorico(),
+        refetchTimeline(),
+        refetchStatusCardProdutoLote(),
+        refetchFifo(),
+        refetchOeeReal(),
+      ];
+
+      if (resumoParametrosValidos && !resumoPeriodoInvalido) {
+        consultasParaAtualizar.push(refetchResumoProdutivo());
+      }
+
+      await Promise.allSettled(consultasParaAtualizar);
+    } finally {
+      setRefreshDadosEmAndamento(false);
+    }
+  };
 
   const miniCardsProdutivos = useMemo<MiniCardProdutivo[]>(() => {
     if (!resumoParametrosValidos || resumoPeriodoInvalido || erroResumoProdutivo) {
@@ -1736,6 +1786,8 @@ export default function DashboardLinha() {
             titulo={tituloLinha}
             onBack={() => navigate(-1)}
             onFilter={() => setFiltrosAbertos(true)}
+            onRefreshDados={handleAtualizarDados}
+            refreshDadosEmAndamento={refreshDadosEmAndamento || dashboardConsultasEmFetching}
           />
 
           {/* MAIN GRID */}
