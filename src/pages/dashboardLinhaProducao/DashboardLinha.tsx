@@ -907,29 +907,23 @@ export default function DashboardLinha() {
     queryKey: [
       'dashboard-linha-timeline',
       {
-        dataInicioIso: dataInicioIso ?? null,
-        dataFimIso: dataFimIso ?? null,
         linhaIdRpc,
-        turnoIdRpc,
-        produtoIdRpc,
-        lancamentoId,
-        statuses: filtrosAplicados.statuses,
         janelaHoras: JANELA_TIMELINE_HORAS,
       },
     ],
     queryFn: async (): Promise<OeeTimelineNormalizado> => {
-      if (!dataInicioIso || !dataFimIso) {
+      if (!linhaIdRpc) {
         return TIMELINE_VAZIA;
       }
 
       const { data, error } = await supabase.rpc('fn_calcular_oee_timeline', {
-        p_data_inicio: dataInicioIso,
-        p_data_fim: dataFimIso,
-        p_turno_id: turnoIdRpc,
-        p_produto_id: produtoIdRpc,
+        p_data_inicio: null,
+        p_data_fim: null,
+        p_turno_id: null,
+        p_produto_id: null,
         p_linhaproducao_id: linhaIdRpc,
-        p_oeeturno_id: lancamentoId,
-        p_statuses: filtrosAplicados.statuses.length > 0 ? filtrosAplicados.statuses : null,
+        p_oeeturno_id: null,
+        p_statuses: null,
         p_janela_horas: JANELA_TIMELINE_HORAS,
       });
 
@@ -950,7 +944,7 @@ export default function DashboardLinha() {
         lotes: normalizarLotesTimeline(linha.lotes),
       } satisfies OeeTimelineNormalizado;
     },
-    enabled: Boolean(dataInicioIso && dataFimIso && !periodoFiltrosInvalido),
+    enabled: Boolean(linhaIdRpc),
     staleTime: 60_000,
   });
 
@@ -1621,12 +1615,8 @@ export default function DashboardLinha() {
   ]);
 
   const statusTimeline = useMemo(() => {
-    if (periodoFiltrosInvalido) {
-      return 'Período inválido';
-    }
-
-    if (!dataInicioIso || !dataFimIso) {
-      return 'Selecione período';
+    if (!linhaIdRpc) {
+      return 'Selecione linha';
     }
 
     if (timelineError) {
@@ -1647,9 +1637,7 @@ export default function DashboardLinha() {
 
     return undefined;
   }, [
-    dataFimIso,
-    dataInicioIso,
-    periodoFiltrosInvalido,
+    linhaIdRpc,
     timelineDados.lotes.length,
     timelineDados.segmentos.length,
     timelineError,
@@ -1710,12 +1698,8 @@ export default function DashboardLinha() {
   }, [dataFimHistoricoIso, dataInicioHistoricoIso, oeeHistoricoError, oeeHistoricoLoading]);
 
   const mensagemTimelineVazia = useMemo(() => {
-    if (periodoFiltrosInvalido) {
-      return 'Período inválido para consulta.';
-    }
-
-    if (!dataInicioIso || !dataFimIso) {
-      return 'Selecione um período válido.';
+    if (!linhaIdRpc) {
+      return 'Selecione uma linha válida.';
     }
 
     if (timelineError) {
@@ -1726,8 +1710,8 @@ export default function DashboardLinha() {
       return 'Carregando timeline...';
     }
 
-    return 'Sem apontamentos na janela selecionada.';
-  }, [dataFimIso, dataInicioIso, periodoFiltrosInvalido, timelineError, timelineLoading]);
+    return 'Sem apontamentos nas últimas 24 horas da linha.';
+  }, [linhaIdRpc, timelineError, timelineLoading]);
 
   const tituloLinha =
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
