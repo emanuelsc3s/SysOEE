@@ -3,6 +3,11 @@
 -- Retorna payload pronto para alimentar a timeline do Dashboard de Linha
 -- em uma janela movel (padrao: ultimas 24 horas), respeitando os filtros.
 --
+-- Changelog:
+-- 2026-02-24 07:41:17 - Corrigida a ancoragem temporal de eventos e lotes para turnos
+--   que cruzam meia-noite (ex.: 18:00-06:00), usando a data do tboee_turno e
+--   deslocando apontamentos da madrugada para o dia seguinte do turno.
+--
 -- Saida:
 -- - janela_inicio / janela_fim
 -- - timeline_times (marcas de horario)
@@ -125,6 +130,8 @@ BEGIN
       t.oeeturno_id,
       t.data,
       t.turno_id,
+      t.turno_hi::TIME AS turno_hi,
+      t.turno_hf::TIME AS turno_hf,
       t.linhaproducao_id,
       t.produto_id,
       t.produto,
@@ -153,6 +160,8 @@ BEGIN
       tf.oeeturno_id,
       tf.data,
       tf.turno_id,
+      tf.turno_hi,
+      tf.turno_hf,
       tf.linhaproducao_id,
       tf.produto_id,
       tf.produto,
@@ -167,6 +176,8 @@ BEGIN
       tf.oeeturno_id,
       tf.data,
       tf.turno_id,
+      tf.turno_hi,
+      tf.turno_hf,
       tf.linhaproducao_id,
       tf.produto_id,
       tf.produto,
@@ -182,6 +193,8 @@ BEGIN
       tf.oeeturno_id,
       tf.data,
       tf.turno_id,
+      tf.turno_hi,
+      tf.turno_hf,
       tf.linhaproducao_id,
       tf.produto_id,
       tf.produto,
@@ -199,6 +212,8 @@ BEGIN
       tf.oeeturno_id,
       tf.data,
       tf.turno_id,
+      tf.turno_hi,
+      tf.turno_hf,
       tf.linhaproducao_id,
       tf.produto_id,
       tf.produto,
@@ -216,6 +231,8 @@ BEGIN
       tf.oeeturno_id,
       tf.data,
       tf.turno_id,
+      tf.turno_hi,
+      tf.turno_hf,
       tf.linhaproducao_id,
       tf.produto_id,
       tf.produto,
@@ -233,6 +250,8 @@ BEGIN
       tpm.oeeturno_id,
       tpm.data,
       tpm.turno_id,
+      tpm.turno_hi,
+      tpm.turno_hf,
       tpm.linhaproducao_id,
       tpm.produto_id,
       tpm.produto,
@@ -243,7 +262,10 @@ BEGIN
   producao_eventos_base AS (
     SELECT
       te.oeeturno_id,
-      COALESCE(prd.data, te.data) AS data_base,
+      COALESCE(prd.data, te.data) AS data_registro,
+      te.data AS data_turno,
+      te.turno_hi,
+      te.turno_hf,
       prd.hora_inicio::TIME AS hora_inicio,
       prd.hora_final::TIME AS hora_fim,
       COALESCE(NULLIF(TRIM(prd.produto), ''), NULLIF(TRIM(te.produto), ''), 'Produto nao informado') AS produto,
@@ -260,7 +282,10 @@ BEGIN
   parada_eventos_base AS (
     SELECT
       te.oeeturno_id,
-      COALESCE(par.data, te.data) AS data_base,
+      COALESCE(par.data, te.data) AS data_registro,
+      te.data AS data_turno,
+      te.turno_hi,
+      te.turno_hf,
       par.hora_inicio::TIME AS hora_inicio,
       par.hora_fim::TIME AS hora_fim,
       COALESCE(NULLIF(TRIM(par.produto), ''), NULLIF(TRIM(te.produto), ''), 'Produto nao informado') AS produto,
@@ -310,22 +335,45 @@ BEGIN
       eb.classe_css,
       eb.prioridade,
       GREATEST(
-        (eb.data_base::TIMESTAMP + eb.hora_inicio),
+        ts.inicio_evento_bruto,
         j.janela_inicio
       ) AS inicio_evento,
       LEAST(
         CASE
-          WHEN eb.hora_inicio IS NULL THEN j.janela_fim
           WHEN eb.hora_fim IS NULL THEN j.janela_fim
-          WHEN eb.hora_fim > eb.hora_inicio THEN (eb.data_base::TIMESTAMP + eb.hora_fim)
-          WHEN eb.hora_fim = eb.hora_inicio THEN (eb.data_base::TIMESTAMP + eb.hora_fim)
-          ELSE (eb.data_base::TIMESTAMP + eb.hora_fim + INTERVAL '1 day')
+          WHEN ts.fim_evento_bruto IS NULL THEN j.janela_fim
+          WHEN ts.inicio_evento_bruto IS NOT NULL AND ts.fim_evento_bruto < ts.inicio_evento_bruto
+            THEN ts.fim_evento_bruto + INTERVAL '1 day'
+          ELSE ts.fim_evento_bruto
         END,
         j.janela_fim
       ) AS fim_evento
     FROM eventos_base eb
     CROSS JOIN janela_final j
-    WHERE eb.data_base IS NOT NULL
+    CROSS JOIN LATERAL (
+      SELECT
+        CASE
+          WHEN eb.hora_inicio IS NULL OR COALESCE(eb.data_turno, eb.data_registro) IS NULL THEN NULL
+          WHEN eb.data_turno IS NOT NULL
+            AND eb.turno_hi IS NOT NULL
+            AND eb.turno_hf IS NOT NULL
+            AND eb.turno_hf <= eb.turno_hi
+            AND eb.hora_inicio < eb.turno_hf
+              THEN (eb.data_turno::TIMESTAMP + eb.hora_inicio + INTERVAL '1 day')
+          ELSE (COALESCE(eb.data_turno, eb.data_registro)::TIMESTAMP + eb.hora_inicio)
+        END AS inicio_evento_bruto,
+        CASE
+          WHEN eb.hora_fim IS NULL OR COALESCE(eb.data_turno, eb.data_registro) IS NULL THEN NULL
+          WHEN eb.data_turno IS NOT NULL
+            AND eb.turno_hi IS NOT NULL
+            AND eb.turno_hf IS NOT NULL
+            AND eb.turno_hf <= eb.turno_hi
+            AND eb.hora_fim < eb.turno_hf
+              THEN (eb.data_turno::TIMESTAMP + eb.hora_fim + INTERVAL '1 day')
+          ELSE (COALESCE(eb.data_turno, eb.data_registro)::TIMESTAMP + eb.hora_fim)
+        END AS fim_evento_bruto
+    ) ts
+    WHERE COALESCE(eb.data_turno, eb.data_registro) IS NOT NULL
       AND eb.hora_inicio IS NOT NULL
   ),
 
@@ -484,7 +532,10 @@ BEGIN
   lotes_base AS (
     SELECT
       lt.oeeturno_id,
-      COALESCE(lt.data, te.data) AS data_base,
+      COALESCE(lt.data, te.data) AS data_registro,
+      te.data AS data_turno,
+      te.turno_hi,
+      te.turno_hf,
       lt.hora_inicio::TIME AS hora_inicio,
       lt.hora_fim::TIME AS hora_fim,
       COALESCE(NULLIF(TRIM(lt.lote), ''), 'LOTE N/I') AS lote,
@@ -506,20 +557,43 @@ BEGIN
       lb.lote,
       lb.produto,
       lb.produzido,
-      GREATEST((lb.data_base::TIMESTAMP + COALESCE(lb.hora_inicio, TIME '00:00')), j.janela_inicio) AS inicio_evento,
+      GREATEST(ts.inicio_evento_bruto, j.janela_inicio) AS inicio_evento,
       LEAST(
         CASE
           WHEN lb.hora_fim IS NULL THEN j.janela_fim
-          WHEN lb.hora_inicio IS NULL THEN (lb.data_base::TIMESTAMP + lb.hora_fim)
-          WHEN lb.hora_fim > lb.hora_inicio THEN (lb.data_base::TIMESTAMP + lb.hora_fim)
-          WHEN lb.hora_fim = lb.hora_inicio THEN (lb.data_base::TIMESTAMP + lb.hora_fim)
-          ELSE (lb.data_base::TIMESTAMP + lb.hora_fim + INTERVAL '1 day')
+          WHEN ts.fim_evento_bruto IS NULL THEN j.janela_fim
+          WHEN ts.inicio_evento_bruto IS NOT NULL AND ts.fim_evento_bruto < ts.inicio_evento_bruto
+            THEN ts.fim_evento_bruto + INTERVAL '1 day'
+          ELSE ts.fim_evento_bruto
         END,
         j.janela_fim
       ) AS fim_evento
     FROM lotes_base lb
     CROSS JOIN janela_final j
-    WHERE lb.data_base IS NOT NULL
+    CROSS JOIN LATERAL (
+      SELECT
+        CASE
+          WHEN COALESCE(lb.data_turno, lb.data_registro) IS NULL THEN NULL
+          WHEN lb.data_turno IS NOT NULL
+            AND lb.turno_hi IS NOT NULL
+            AND lb.turno_hf IS NOT NULL
+            AND lb.turno_hf <= lb.turno_hi
+            AND COALESCE(lb.hora_inicio, TIME '00:00') < lb.turno_hf
+              THEN (lb.data_turno::TIMESTAMP + COALESCE(lb.hora_inicio, TIME '00:00') + INTERVAL '1 day')
+          ELSE (COALESCE(lb.data_turno, lb.data_registro)::TIMESTAMP + COALESCE(lb.hora_inicio, TIME '00:00'))
+        END AS inicio_evento_bruto,
+        CASE
+          WHEN lb.hora_fim IS NULL OR COALESCE(lb.data_turno, lb.data_registro) IS NULL THEN NULL
+          WHEN lb.data_turno IS NOT NULL
+            AND lb.turno_hi IS NOT NULL
+            AND lb.turno_hf IS NOT NULL
+            AND lb.turno_hf <= lb.turno_hi
+            AND lb.hora_fim < lb.turno_hf
+              THEN (lb.data_turno::TIMESTAMP + lb.hora_fim + INTERVAL '1 day')
+          ELSE (COALESCE(lb.data_turno, lb.data_registro)::TIMESTAMP + lb.hora_fim)
+        END AS fim_evento_bruto
+    ) ts
+    WHERE COALESCE(lb.data_turno, lb.data_registro) IS NOT NULL
   ),
 
   lotes_clip AS (
