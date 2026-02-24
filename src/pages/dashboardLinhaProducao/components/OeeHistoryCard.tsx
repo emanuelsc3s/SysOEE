@@ -29,15 +29,23 @@ export function OeeHistoryCard({
   const metaNormalizada = clampPercentual(metaPercentual);
   const totalBarras = Math.max(itens.length, 1);
   const gapPct =
-    totalBarras >= 20 ? 0.7 : totalBarras >= 14 ? 0.85 : totalBarras >= 10 ? 1 : 1.2;
+    totalBarras >= 20
+      ? 0.7
+      : totalBarras >= 14
+        ? 0.85
+        : totalBarras >= 10
+          ? 1
+          : totalBarras >= 7
+            ? 1.6
+            : 2.2;
   const ocupacaoTotalPct =
-    totalBarras >= 20 ? 94 : totalBarras >= 14 ? 95 : totalBarras >= 10 ? 96 : 97;
+    totalBarras >= 20 ? 94 : totalBarras >= 14 ? 95 : totalBarras >= 10 ? 96 : 98;
   const margemLateralPct = Math.max((100 - ocupacaoTotalPct) / 2, 1.5);
   const larguraBarraPct =
     itens.length > 0
       ? Math.max(
           2.2,
-          Math.min(6, (ocupacaoTotalPct - gapPct * (totalBarras - 1)) / totalBarras),
+          (ocupacaoTotalPct - gapPct * (totalBarras - 1)) / totalBarras,
         )
       : 4;
   const metaTexto = `META ${metaNormalizada.toLocaleString('pt-BR', {

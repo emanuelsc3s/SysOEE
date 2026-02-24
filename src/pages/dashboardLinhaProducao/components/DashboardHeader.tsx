@@ -5,6 +5,7 @@ interface DashboardHeaderProps {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   titulo?: string;
+  rotuloAuto?: string;
   onBack?: () => void;
   onFilter?: () => void;
   onRefreshDados?: () => void | Promise<void>;
@@ -15,6 +16,7 @@ export function DashboardHeader({
   theme,
   toggleTheme,
   titulo = 'EQUIPAMENTO',
+  rotuloAuto = 'AUTO',
   onBack,
   onFilter,
   onRefreshDados,
@@ -69,7 +71,7 @@ export function DashboardHeader({
       <h1 className="main-title">{titulo}</h1>
       <div className="header-actions">
         <div className="header-quick-actions">
-          <div className="auto-badge">AUTO</div>
+          <div className="auto-badge">{rotuloAuto}</div>
           <button
             type="button"
             className={`header-menu-btn header-refresh-btn${refreshDadosEmAndamento ? ' is-loading' : ''}`}

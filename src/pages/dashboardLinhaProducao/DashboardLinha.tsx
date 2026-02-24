@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/hooks/useTheme';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -174,11 +174,16 @@ type StatusCardProdutoLote = {
   lote: string | null;
 };
 
+type LinhaProducaoTipoRow = {
+  tipo?: string | null;
+};
+
 const LIMITE_PARETO_CARD = 7;
-const LIMITE_OEE_HISTORICO_CARD = 20;
+const LIMITE_OEE_HISTORICO_CARD = 7;
 const LIMITE_FIFO_CARD = 3;
 const TEMPO_DISPONIVEL_PADRAO = 12;
 const JANELA_TIMELINE_HORAS = 24;
+const DURACAO_CONTAGEM_AUTO_SEGUNDOS = 5 * 60;
 
 const TIMELINE_VAZIA: OeeTimelineNormalizado = {
   janelaInicioIso: null,
@@ -225,6 +230,18 @@ const CONFIG_MINI_CARDS_PRODUTIVOS: ConfigMiniCardProdutivo[] = [
     variante: 'gray',
   },
 ];
+
+const MAPA_IDS_MINI_CARDS_PRODUTIVOS_EMBALAGEM: Record<string, string> = {
+  qtd_envase: 'qtd_embalagem',
+  perdas_envase: 'perdas_embalagem',
+  envasado: 'embalado',
+};
+
+const MAPA_DETALHES_MINI_CARDS_PRODUTIVOS_EMBALAGEM: Record<string, string> = {
+  qtd_envase: 'unidades processadas',
+  perdas_envase: 'unidades perdidas',
+  envasado: 'unidades embaladas',
+};
 
 const clonarFiltrosDashboardLinha = (filtros: FiltrosDashboardLinha): FiltrosDashboardLinha => ({
   dataInicio: filtros.dataInicio,
@@ -422,6 +439,14 @@ const formatarTempoParadaHorasMinutos = (horasDecimais: number): string => {
   const minutos = totalMinutos % 60;
 
   return `${horas.toLocaleString('pt-BR')}:${String(minutos).padStart(2, '0')}`;
+};
+
+const formatarTempoRestanteAuto = (totalSegundos: number): string => {
+  const segundosNormalizados = Math.max(0, Math.floor(totalSegundos));
+  const minutos = Math.floor(segundosNormalizados / 60);
+  const segundos = segundosNormalizados % 60;
+
+  return `${minutos}:${String(segundos).padStart(2, '0')}`;
 };
 
 const extrairDataIso = (valor: unknown): string | null => {
@@ -722,10 +747,45 @@ export default function DashboardLinha() {
     clonarFiltrosDashboardLinha(filtrosRecebidosDoDashboard),
   );
   const [refreshDadosEmAndamento, setRefreshDadosEmAndamento] = useState(false);
+  const [segundosRestantesAuto, setSegundosRestantesAuto] = useState(
+    DURACAO_CONTAGEM_AUTO_SEGUNDOS,
+  );
+  const refreshDadosEmAndamentoRef = useRef(refreshDadosEmAndamento);
+  const dashboardConsultasEmFetchingRef = useRef(false);
+  const handleAtualizarDadosRef = useRef<() => Promise<void>>(async () => undefined);
 
   useEffect(() => {
     setFiltrosAplicados(clonarFiltrosDashboardLinha(filtrosRecebidosDoDashboard));
   }, [filtrosRecebidosDoDashboard]);
+
+  useEffect(() => {
+    refreshDadosEmAndamentoRef.current = refreshDadosEmAndamento;
+  }, [refreshDadosEmAndamento]);
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => {
+      setSegundosRestantesAuto((segundosAtuais) => {
+        if (segundosAtuais > 1) {
+          return segundosAtuais - 1;
+        }
+
+        const podeExecutarAtualizacaoAutomatica =
+          !refreshDadosEmAndamentoRef.current && !dashboardConsultasEmFetchingRef.current;
+
+        if (!podeExecutarAtualizacaoAutomatica) {
+          // Mantém em 1s para tentar novamente no próximo tick sem perder o ciclo automático.
+          return 1;
+        }
+
+        void handleAtualizarDadosRef.current();
+        return DURACAO_CONTAGEM_AUTO_SEGUNDOS;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalo);
+    };
+  }, []);
 
   const dataInicioIso = useMemo(
     () => converterDataBrParaIso(filtrosAplicados.dataInicio),
@@ -737,7 +797,10 @@ export default function DashboardLinha() {
   );
   const dataFimHistoricoIso = dataFimIso;
   const dataInicioHistoricoIso = useMemo(
-    () => (dataFimIso ? deslocarDataIso(dataFimIso, -LIMITE_OEE_HISTORICO_CARD) : null),
+    () =>
+      dataFimIso
+        ? deslocarDataIso(dataFimIso, -(Math.max(LIMITE_OEE_HISTORICO_CARD - 1, 0)))
+        : null,
     [dataFimIso],
   );
 
@@ -766,6 +829,37 @@ export default function DashboardLinha() {
   const turnoIdRpc = turnoIdsSelecionados.length === 1 ? turnoIdsSelecionados[0] : null;
   const produtoIdRpc = produtoIdsSelecionados.length === 1 ? produtoIdsSelecionados[0] : null;
   const periodoFiltrosInvalido = Boolean(dataInicioIso && dataFimIso && dataInicioIso > dataFimIso);
+
+  const { data: tipoLinhaSelecionada = null } = useQuery({
+    queryKey: [
+      'dashboard-linha-tipo',
+      {
+        linhaIdRpc,
+      },
+    ],
+    queryFn: async (): Promise<string | null> => {
+      if (!linhaIdRpc) {
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('tblinhaproducao')
+        .select('tipo')
+        .eq('linhaproducao_id', linhaIdRpc)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      const registro = data as LinhaProducaoTipoRow | null;
+      const tipo = typeof registro?.tipo === 'string' ? registro.tipo.trim() : '';
+      return tipo.length > 0 ? tipo : null;
+    },
+    enabled: Boolean(linhaIdRpc),
+    staleTime: 5 * 60_000,
+  });
 
   const {
     data: paretoItens = [],
@@ -1408,7 +1502,11 @@ export default function DashboardLinha() {
     resumoProdutivoFetching ||
     oeeRealFetching;
 
-  const handleAtualizarDados = async () => {
+  useEffect(() => {
+    dashboardConsultasEmFetchingRef.current = dashboardConsultasEmFetching;
+  }, [dashboardConsultasEmFetching]);
+
+  const handleAtualizarDados = useCallback(async () => {
     if (refreshDadosEmAndamento || dashboardConsultasEmFetching) {
       return;
     }
@@ -1433,7 +1531,23 @@ export default function DashboardLinha() {
     } finally {
       setRefreshDadosEmAndamento(false);
     }
-  };
+  }, [
+    dashboardConsultasEmFetching,
+    refetchFifo,
+    refetchOeeHistorico,
+    refetchOeeReal,
+    refetchPareto,
+    refetchResumoProdutivo,
+    refetchStatusCardProdutoLote,
+    refetchTimeline,
+    refreshDadosEmAndamento,
+    resumoParametrosValidos,
+    resumoPeriodoInvalido,
+  ]);
+
+  useEffect(() => {
+    handleAtualizarDadosRef.current = handleAtualizarDados;
+  }, [handleAtualizarDados]);
 
   const miniCardsProdutivos = useMemo<MiniCardProdutivo[]>(() => {
     if (!resumoParametrosValidos || resumoPeriodoInvalido || erroResumoProdutivo) {
@@ -1443,15 +1557,23 @@ export default function DashboardLinha() {
     const totaisProdutivos = somarTotaisResumoOeeTurno(linhasResumoFiltradas);
     const cardsResumo = criarCardsResumo(totaisProdutivos);
     const cardsPorId = new Map(cardsResumo.map((card) => [card.id, card]));
+    const usarDadosEmbalagem =
+      tipoLinhaSelecionada?.trim().toLocaleLowerCase('pt-BR') === 'embalagem';
 
     return CONFIG_MINI_CARDS_PRODUTIVOS.map((config) => {
-      const card = cardsPorId.get(config.id);
+      const idCardFonte = usarDadosEmbalagem
+        ? MAPA_IDS_MINI_CARDS_PRODUTIVOS_EMBALAGEM[config.id] ?? config.id
+        : config.id;
+      const detalhePadrao = usarDadosEmbalagem
+        ? MAPA_DETALHES_MINI_CARDS_PRODUTIVOS_EMBALAGEM[config.id] ?? config.detalhePadrao
+        : config.detalhePadrao;
+      const card = cardsPorId.get(idCardFonte);
 
       return {
         id: config.id,
         titulo: config.titulo,
         valor: card?.valor ?? '--',
-        detalhe: card?.detalhe ?? config.detalhePadrao,
+        detalhe: card?.detalhe ?? detalhePadrao,
         variante: config.variante,
       };
     });
@@ -1460,6 +1582,7 @@ export default function DashboardLinha() {
     linhasResumoFiltradas,
     resumoParametrosValidos,
     resumoPeriodoInvalido,
+    tipoLinhaSelecionada,
   ]);
 
   const statusCardDados = useMemo(() => {
@@ -1767,6 +1890,10 @@ export default function DashboardLinha() {
     typeof routeState?.linhaNome === 'string' && routeState.linhaNome.trim().length > 0
       ? routeState.linhaNome
       : 'EQUIPAMENTO';
+  const rotuloAuto = useMemo(
+    () => formatarTempoRestanteAuto(segundosRestantesAuto),
+    [segundosRestantesAuto],
+  );
 
   const dadosOeeLinha = {
     oee: componentesOeeReal?.oee,
@@ -1784,6 +1911,7 @@ export default function DashboardLinha() {
             theme={theme}
             toggleTheme={toggleTheme}
             titulo={tituloLinha}
+            rotuloAuto={rotuloAuto}
             onBack={() => navigate(-1)}
             onFilter={() => setFiltrosAbertos(true)}
             onRefreshDados={handleAtualizarDados}

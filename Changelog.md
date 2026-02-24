@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardLinha (Produção): quando a linha selecionada é do tipo `Embalagem`, os mini-cards "Produzido", "Perdas" e "Total" passam a usar respectivamente `qtd_embalagem`, `perdas_embalagem` e `embalado`, mantendo os demais indicadores inalterados.
+- DashboardLinha (AUTO): ao zerar o contador regressivo do badge (`m:ss`), o fluxo do botão "Atualizar dados" é executado automaticamente e o contador reinicia em 5 minutos, repetindo em loop contínuo; quando já há atualização em andamento, o timer mantém 1s e tenta novamente até conseguir executar o refresh.
+- DashboardHeader/DashboardLinha (Dashboard de Linha): badge AUTO do header alterado para contador regressivo de 5 minutos em formato `m:ss` (ex.: `4:59`, `4:58`), com atualização a cada segundo e reinício automático ao fim da janela.
 - DashboardHeader (DashboardLinha): elementos de header-quick-actions (badge AUTO, botão atualizar, menu) exibidos em linha horizontal — `flex-direction: row`, `flex-wrap: nowrap` e `flex-shrink: 0` nos filhos; removida declaração órfã de CSS.
 - StatusCard (DashboardLinha): título h2 "STATUS" centralizado na horizontal.
 - FifoCard (DashboardLinha): título h2 "ÚLTIMOS LOTES" centralizado na horizontal.
