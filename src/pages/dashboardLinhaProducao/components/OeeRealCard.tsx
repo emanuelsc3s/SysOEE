@@ -55,21 +55,38 @@ const formatarPercentual = (valor: number) =>
     maximumFractionDigits: 2,
   });
 
+const formatarPercentualOuPlaceholder = (valor?: number) =>
+  Number.isFinite(valor) ? `${formatarPercentual(valor as number)}%` : '--';
+
 export function OeeRealCard({
-  oee = 70,
-  disponibilidade = 82,
-  performance = 88,
-  qualidade = 97,
+  oee,
+  disponibilidade,
+  performance,
+  qualidade,
 }: OeeRealCardProps) {
-  const oeeNormalizado = clampPercentual(oee);
-  const disponibilidadeNormalizada = clampPercentual(disponibilidade);
-  const performanceNormalizada = clampPercentual(performance);
-  const qualidadeNormalizada = clampPercentual(qualidade);
+  const oeeNormalizado = clampPercentual(Number.isFinite(oee) ? (oee as number) : 0);
+  const disponibilidadeNormalizada = clampPercentual(
+    Number.isFinite(disponibilidade) ? (disponibilidade as number) : 0,
+  );
+  const performanceNormalizada = clampPercentual(
+    Number.isFinite(performance) ? (performance as number) : 0,
+  );
+  const qualidadeNormalizada = clampPercentual(Number.isFinite(qualidade) ? (qualidade as number) : 0);
   const corOee = getColorByPercentage(oeeNormalizado);
   const indicadores = [
-    { id: 'disponibilidade', rotulo: 'Disponibilidade', valor: disponibilidadeNormalizada },
-    { id: 'performance', rotulo: 'Performance', valor: performanceNormalizada },
-    { id: 'qualidade', rotulo: 'Qualidade', valor: qualidadeNormalizada },
+    {
+      id: 'disponibilidade',
+      rotulo: 'Disponibilidade',
+      valor: disponibilidadeNormalizada,
+      valorBruto: disponibilidade,
+    },
+    {
+      id: 'performance',
+      rotulo: 'Performance',
+      valor: performanceNormalizada,
+      valorBruto: performance,
+    },
+    { id: 'qualidade', rotulo: 'Qualidade', valor: qualidadeNormalizada, valorBruto: qualidade },
   ];
 
   return (
@@ -80,7 +97,7 @@ export function OeeRealCard({
           {indicadores.map((indicador) => (
             <div className="bar-item" key={indicador.id}>
               <div className="bar-header">
-                <span className="bar-value">{formatarPercentual(indicador.valor)}%</span>
+                <span className="bar-value">{formatarPercentualOuPlaceholder(indicador.valorBruto)}</span>
               </div>
               <div className="progress-bg">
                 <div
@@ -139,7 +156,7 @@ export function OeeRealCard({
             </svg>
             <div className="circular-chart-overlay">
               <div className="circular-chart-center">
-                <span className="circular-chart-value">{formatarPercentual(oeeNormalizado)}%</span>
+                <span className="circular-chart-value">{formatarPercentualOuPlaceholder(oee)}</span>
               </div>
             </div>
           </div>

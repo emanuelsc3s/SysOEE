@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
 import { useTheme } from '@/hooks/useTheme'
-import { isPerfilAdministrador } from '@/utils/perfil.utils'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { ParetoParadasChart, type ParetoParadaChartItem } from '@/components/charts/ParetoParadasChart'
 import { DashboardDialogContent } from '@/pages/dashboard/components/DashboardDialogContent'
@@ -486,8 +485,6 @@ export default function Dashboard() {
   const { toast } = useToast()
   const { theme, toggleTheme, forceLightForNextPage } = useTheme()
   const navigate = useNavigate()
-  const usuarioPodeAbrirDashboardLinha = isPerfilAdministrador(user?.perfil)
-
   const [linhas, setLinhas] = useState<LinhaOption[]>([])
   const [produtos, setProdutos] = useState<ProdutoOption[]>([])
   const [turnos, setTurnos] = useState<TurnoOption[]>([])
@@ -1926,21 +1923,10 @@ export default function Dashboard() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className={`h-8 w-8 text-muted-foreground hover:text-foreground ${
-                            usuarioPodeAbrirDashboardLinha ? '' : 'cursor-not-allowed opacity-60'
-                          }`}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
                           onClick={(event) => {
                             event.preventDefault()
                             event.stopPropagation()
-
-                            if (!usuarioPodeAbrirDashboardLinha) {
-                              toast({
-                                title: 'Acesso restrito',
-                                description: 'O dashboard por linha está disponível apenas para usuários Administradores.',
-                                variant: 'destructive'
-                              })
-                              return
-                            }
 
                             navigate('/dashboard-linha', {
                               state: {
@@ -1963,17 +1949,8 @@ export default function Dashboard() {
                           onKeyDown={(event) => {
                             event.stopPropagation()
                           }}
-                          aria-disabled={!usuarioPodeAbrirDashboardLinha}
-                          title={
-                            usuarioPodeAbrirDashboardLinha
-                              ? `Abrir dashboard da linha ${linha.linhaproducao || ''}`
-                              : 'Acesso restrito a usuários Administradores'
-                          }
-                          aria-label={
-                            usuarioPodeAbrirDashboardLinha
-                              ? `Abrir dashboard da linha ${linha.linhaproducao || 'selecionada'}`
-                              : 'Dashboard por linha restrito a usuários Administradores'
-                          }
+                          title={`Abrir dashboard da linha ${linha.linhaproducao || ''}`}
+                          aria-label={`Abrir dashboard da linha ${linha.linhaproducao || 'selecionada'}`}
                         >
                           <LayoutDashboard className="h-4 w-4" />
                         </Button>

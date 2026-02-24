@@ -84,6 +84,40 @@ type OeeDiarioRpcRow = {
   oee?: number | string | null;
 };
 
+type ComponentesOeeRpc = {
+  oeeturno_id?: number | string | null;
+  linhaproducao_id?: number | string | null;
+  unidades_produzidas?: number | string | null;
+  unidades_perdas?: number | string | null;
+  unidades_boas?: number | string | null;
+  tempo_operacional_liquido?: number | string | null;
+  tempo_valioso?: number | string | null;
+  tempo_disponivel_horas?: number | string | null;
+  tempo_estrategico_horas?: number | string | null;
+  tempo_paradas_grandes_horas?: number | string | null;
+  tempo_operacao_horas?: number | string | null;
+  disponibilidade?: number | string | null;
+  performance?: number | string | null;
+  qualidade?: number | string | null;
+  oee?: number | string | null;
+};
+
+type ComponentesOeeDetalhe = {
+  unidadesProduzidas: number;
+  unidadesPerdas: number;
+  unidadesBoas: number;
+  tempoOperacionalLiquido: number;
+  tempoValioso: number;
+  tempoDisponivelHoras: number;
+  tempoEstrategicoHoras: number;
+  tempoParadasGrandesHoras: number;
+  tempoOperacaoHoras: number;
+  disponibilidade: number;
+  performance: number;
+  qualidade: number;
+  oee: number;
+};
+
 type OeeDiarioNormalizado = {
   dataIso: string;
   linhaproducaoId: number | null;
@@ -474,6 +508,139 @@ const calcularOeePorComponentes = (item: {
 
   const oee = disponibilidade * performance * qualidade * 100;
   return Number.isFinite(oee) ? Math.min(Math.max(oee, 0), 100) : 0;
+};
+
+const mapearComponentesOeeDashboard = (registro: ComponentesOeeRpc | null): ComponentesOeeDetalhe | null => {
+  if (!registro) {
+    return null;
+  }
+
+  const unidadesProduzidas = parseNumero(registro.unidades_produzidas);
+  const unidadesPerdas = parseNumero(registro.unidades_perdas);
+  const unidadesBoas =
+    registro.unidades_boas === null || registro.unidades_boas === undefined
+      ? Math.max(unidadesProduzidas - unidadesPerdas, 0)
+      : parseNumero(registro.unidades_boas);
+
+  const tempoDisponivelHoras = parseNumero(registro.tempo_disponivel_horas);
+  const tempoEstrategicoHoras = parseNumero(registro.tempo_estrategico_horas);
+  const tempoParadasGrandesHoras = parseNumero(registro.tempo_paradas_grandes_horas);
+  const tempoOperacaoHoras =
+    registro.tempo_operacao_horas === null || registro.tempo_operacao_horas === undefined
+      ? Math.max(tempoDisponivelHoras - tempoEstrategicoHoras - tempoParadasGrandesHoras, 0)
+      : parseNumero(registro.tempo_operacao_horas);
+
+  const tempoOperacionalLiquido = parseNumero(registro.tempo_operacional_liquido);
+  const tempoValioso =
+    registro.tempo_valioso === null || registro.tempo_valioso === undefined
+      ? (unidadesProduzidas > 0 ? (unidadesBoas / unidadesProduzidas) * tempoOperacionalLiquido : 0)
+      : parseNumero(registro.tempo_valioso);
+
+  const disponibilidade =
+    registro.disponibilidade === null || registro.disponibilidade === undefined
+      ? tempoDisponivelHoras - tempoEstrategicoHoras > 0
+        ? (tempoOperacaoHoras / (tempoDisponivelHoras - tempoEstrategicoHoras)) * 100
+        : 0
+      : parseNumero(registro.disponibilidade);
+
+  const performance =
+    registro.performance === null || registro.performance === undefined
+      ? tempoOperacaoHoras > 0
+        ? Math.min((tempoOperacionalLiquido / tempoOperacaoHoras) * 100, 100)
+        : 0
+      : parseNumero(registro.performance);
+
+  const qualidade =
+    registro.qualidade === null || registro.qualidade === undefined
+      ? unidadesProduzidas > 0
+        ? (unidadesBoas / unidadesProduzidas) * 100
+        : 100
+      : parseNumero(registro.qualidade);
+
+  const oee =
+    registro.oee === null || registro.oee === undefined
+      ? (disponibilidade / 100) * (performance / 100) * (qualidade / 100) * 100
+      : parseNumero(registro.oee);
+
+  return {
+    unidadesProduzidas,
+    unidadesPerdas,
+    unidadesBoas,
+    tempoOperacionalLiquido,
+    tempoValioso,
+    tempoDisponivelHoras,
+    tempoEstrategicoHoras,
+    tempoParadasGrandesHoras,
+    tempoOperacaoHoras,
+    disponibilidade,
+    performance,
+    qualidade,
+    oee,
+  };
+};
+
+const agregarComponentesOeeDashboard = (
+  registros: ComponentesOeeRpc[],
+): ComponentesOeeDetalhe | null => {
+  if (registros.length === 0) {
+    return null;
+  }
+
+  if (registros.length === 1) {
+    return mapearComponentesOeeDashboard(registros[0]);
+  }
+
+  const acumulado = {
+    unidadesProduzidas: 0,
+    unidadesPerdas: 0,
+    unidadesBoas: 0,
+    tempoOperacionalLiquido: 0,
+    tempoValioso: 0,
+    tempoDisponivelHoras: 0,
+    tempoEstrategicoHoras: 0,
+    tempoParadasGrandesHoras: 0,
+    tempoOperacaoHoras: 0,
+  };
+  let possuiUnidadesBoas = false;
+  let possuiTempoValioso = false;
+  let possuiTempoOperacaoHoras = false;
+
+  for (const registro of registros) {
+    acumulado.unidadesProduzidas += parseNumero(registro.unidades_produzidas);
+    acumulado.unidadesPerdas += parseNumero(registro.unidades_perdas);
+    if (registro.unidades_boas !== null && registro.unidades_boas !== undefined) {
+      acumulado.unidadesBoas += parseNumero(registro.unidades_boas);
+      possuiUnidadesBoas = true;
+    }
+    acumulado.tempoOperacionalLiquido += parseNumero(registro.tempo_operacional_liquido);
+    if (registro.tempo_valioso !== null && registro.tempo_valioso !== undefined) {
+      acumulado.tempoValioso += parseNumero(registro.tempo_valioso);
+      possuiTempoValioso = true;
+    }
+    acumulado.tempoDisponivelHoras += parseNumero(registro.tempo_disponivel_horas);
+    acumulado.tempoEstrategicoHoras += parseNumero(registro.tempo_estrategico_horas);
+    acumulado.tempoParadasGrandesHoras += parseNumero(registro.tempo_paradas_grandes_horas);
+    if (registro.tempo_operacao_horas !== null && registro.tempo_operacao_horas !== undefined) {
+      acumulado.tempoOperacaoHoras += parseNumero(registro.tempo_operacao_horas);
+      possuiTempoOperacaoHoras = true;
+    }
+  }
+
+  return mapearComponentesOeeDashboard({
+    unidades_produzidas: acumulado.unidadesProduzidas,
+    unidades_perdas: acumulado.unidadesPerdas,
+    unidades_boas: possuiUnidadesBoas ? acumulado.unidadesBoas : null,
+    tempo_operacional_liquido: acumulado.tempoOperacionalLiquido,
+    tempo_valioso: possuiTempoValioso ? acumulado.tempoValioso : null,
+    tempo_disponivel_horas: acumulado.tempoDisponivelHoras,
+    tempo_estrategico_horas: acumulado.tempoEstrategicoHoras,
+    tempo_paradas_grandes_horas: acumulado.tempoParadasGrandesHoras,
+    tempo_operacao_horas: possuiTempoOperacaoHoras ? acumulado.tempoOperacaoHoras : null,
+    disponibilidade: null,
+    performance: null,
+    qualidade: null,
+    oee: null,
+  });
 };
 
 const filtrarLinhasResumo = (
@@ -1114,6 +1281,116 @@ export default function DashboardLinha() {
     ],
   );
 
+  const oeeturnoIdsFiltradosParaOeeReal = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          linhasResumoFiltradas
+            .map((linha) => linha.oeeturno_id)
+            .filter((id): id is number => typeof id === 'number' && Number.isFinite(id)),
+        ),
+      ),
+    [linhasResumoFiltradas],
+  );
+
+  const oeeRealExigeConsultaPorLancamento = useMemo(
+    () =>
+      statusSelecionadosNormalizados.length > 0 ||
+      turnoIdsSelecionados.length > 1 ||
+      produtoIdsSelecionados.length > 1,
+    [
+      produtoIdsSelecionados.length,
+      statusSelecionadosNormalizados.length,
+      turnoIdsSelecionados.length,
+    ],
+  );
+
+  const { data: componentesOeeReal } = useQuery({
+    queryKey: [
+      'dashboard-linha-oee-real',
+      {
+        dataInicioIso: dataInicioIso ?? null,
+        dataFimIso: dataFimIso ?? null,
+        linhaIdRpc,
+        turnoIdRpc,
+        produtoIdRpc,
+        lancamentoId,
+        linhaIdsSelecionados,
+        oeeturnoIdsFiltradosParaOeeReal: oeeRealExigeConsultaPorLancamento
+          ? oeeturnoIdsFiltradosParaOeeReal
+          : [],
+        oeeRealExigeConsultaPorLancamento,
+      },
+    ],
+    queryFn: async (): Promise<ComponentesOeeDetalhe | null> => {
+      if (!dataInicioIso || !dataFimIso || periodoFiltrosInvalido) {
+        return null;
+      }
+
+      if (oeeRealExigeConsultaPorLancamento) {
+        if (oeeturnoIdsFiltradosParaOeeReal.length === 0) {
+          return null;
+        }
+
+        const respostas = await Promise.all(
+          oeeturnoIdsFiltradosParaOeeReal.map(async (oeeturnoId) => {
+            const { data, error } = await supabase.rpc('fn_calcular_oee_dashboard', {
+              p_data_inicio: dataInicioIso,
+              p_data_fim: dataFimIso,
+              p_turno_id: null,
+              p_produto_id: null,
+              p_linhaproducao_id: null,
+              p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+              p_oeeturno_id: oeeturnoId,
+            });
+
+            if (error) {
+              throw error;
+            }
+
+            const registros = (Array.isArray(data) ? data : data ? [data] : []) as ComponentesOeeRpc[];
+            return registros[0] ?? null;
+          }),
+        );
+
+        return agregarComponentesOeeDashboard(
+          respostas.filter((registro): registro is ComponentesOeeRpc => registro !== null),
+        );
+      }
+
+      const { data, error } = await supabase.rpc('fn_calcular_oee_dashboard', {
+        p_data_inicio: dataInicioIso,
+        p_data_fim: dataFimIso,
+        p_turno_id: turnoIdRpc,
+        p_produto_id: produtoIdRpc,
+        p_linhaproducao_id: linhaIdRpc,
+        p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+        p_oeeturno_id: lancamentoId,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const registros = (Array.isArray(data) ? data : data ? [data] : []) as ComponentesOeeRpc[];
+      const linhaIdsSet = linhaIdsSelecionados.length > 0 ? new Set(linhaIdsSelecionados) : null;
+      const registrosFiltrados = linhaIdsSet
+        ? registros.filter((registro) => {
+            const linhaId =
+              registro.linhaproducao_id === null || registro.linhaproducao_id === undefined
+                ? Number.NaN
+                : Number.parseInt(String(registro.linhaproducao_id), 10);
+
+            return Number.isFinite(linhaId) && linhaIdsSet.has(linhaId);
+          })
+        : registros;
+
+      return agregarComponentesOeeDashboard(registrosFiltrados);
+    },
+    enabled: Boolean(dataInicioIso && dataFimIso && !periodoFiltrosInvalido),
+    staleTime: 60_000,
+  });
+
   const miniCardsProdutivos = useMemo<MiniCardProdutivo[]>(() => {
     if (!resumoParametrosValidos || resumoPeriodoInvalido || erroResumoProdutivo) {
       return montarMiniCardsProdutivosPlaceholder();
@@ -1458,10 +1735,10 @@ export default function DashboardLinha() {
       : 'EQUIPAMENTO';
 
   const dadosOeeLinha = {
-    oee: routeState?.oee,
-    disponibilidade: routeState?.disponibilidade,
-    performance: routeState?.performance,
-    qualidade: routeState?.qualidade,
+    oee: componentesOeeReal?.oee,
+    disponibilidade: componentesOeeReal?.disponibilidade,
+    performance: componentesOeeReal?.performance,
+    qualidade: componentesOeeReal?.qualidade,
   };
 
   return (
