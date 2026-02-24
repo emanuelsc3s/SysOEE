@@ -57,7 +57,7 @@ export function ParetoCard({ itens, statusTexto, mensagemVazia }: ParetoCardProp
                 >
                   {parada.toLocaleUpperCase('pt-BR')}
                 </div>
-                <div className="p-val1">{horasFormatadas}h</div>
+                <div className="p-val1">{horasFormatadas}</div>
                 <div className="p-val2">{percentualFormatado}%</div>
               </div>
             );

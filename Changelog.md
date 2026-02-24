@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- ParetoCard (DashboardLinha): removido sufixo "h" do valor de tempo de parada (p-val1).
 - OeeHistoryCard (DashboardLinha): linha verde de meta no gráfico histórico renderizada acima das barras (ajuste de camada/z-index).
 - DashboardLinha (debug): removida a instrumentação temporária de diagnóstico de layout após validação da correção em runtime.
 - DashboardLinha (layout): removida a limitação fixa de `max-height: 280px` dos cards `FifoCard` e `StatusCard`; aplicado `overflow: hidden` para evitar vazamento visual em telas maiores.
