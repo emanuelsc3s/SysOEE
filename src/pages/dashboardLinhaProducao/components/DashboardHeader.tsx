@@ -69,6 +69,7 @@ export function DashboardHeader({
       <h1 className="main-title">{titulo}</h1>
       <div className="header-actions">
         <div className="header-quick-actions">
+          <div className="auto-badge">AUTO</div>
           <button
             type="button"
             className={`header-menu-btn header-refresh-btn${refreshDadosEmAndamento ? ' is-loading' : ''}`}

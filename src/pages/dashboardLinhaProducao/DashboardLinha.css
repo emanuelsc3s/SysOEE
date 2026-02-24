@@ -1064,8 +1064,27 @@
 /* === MENU DE AÇÕES (BURGER + SUBMENU) === */
 .dashboard-linha-wrapper .header-quick-actions {
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5cqi;
+}
+
+.dashboard-linha-wrapper .header-quick-actions .auto-badge,
+.dashboard-linha-wrapper .header-quick-actions .header-menu-btn,
+.dashboard-linha-wrapper .header-quick-actions .header-menu {
+  flex-shrink: 0;
+}
+
+.dashboard-linha-wrapper .auto-badge {
+  background-color: var(--c-green);
+  color: #000;
+  font-weight: 700;
+  font-size: 0.9cqi;
+  padding: 0.3cqi 1cqi;
+  border-radius: 1cqi;
+  text-transform: uppercase;
+  user-select: none;
 }
 
 .dashboard-linha-wrapper .header-quick-actions .header-menu {

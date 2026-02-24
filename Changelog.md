@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardHeader (DashboardLinha): elementos de header-quick-actions (badge AUTO, botão atualizar, menu) exibidos em linha horizontal — `flex-direction: row`, `flex-wrap: nowrap` e `flex-shrink: 0` nos filhos; removida declaração órfã de CSS.
 - StatusCard (DashboardLinha): título h2 "STATUS" centralizado na horizontal.
 - FifoCard (DashboardLinha): título h2 "ÚLTIMOS LOTES" centralizado na horizontal.
 - ManutencaoCard (DashboardLinha): título h2 "MANUTENÇÃO" centralizado na horizontal.
