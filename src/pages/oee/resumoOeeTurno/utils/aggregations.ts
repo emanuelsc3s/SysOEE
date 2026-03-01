@@ -209,11 +209,14 @@ export const agruparLinhasResumo = (
         ]
       })()
 
+      const statusUltimoTurno = turnosExibicao[turnosExibicao.length - 1]?.status
+
       return {
         id: linha.id,
         linhaId: linha.linhaId,
         linha: linha.linha,
-        status: obterStatusPrioritario(linha.statusLista),
+        // O status da linha deve refletir o último registro exibido no drill-down em ordem cronológica.
+        status: statusUltimoTurno || obterStatusPrioritario(linha.statusLista),
         qtdeTurnos: linha.turnosSet.size,
         qtdEnvase: linha.qtdEnvase,
         qtdEmbalagem: linha.qtdEmbalagem,

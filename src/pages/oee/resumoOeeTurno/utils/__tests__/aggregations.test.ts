@@ -122,4 +122,26 @@ describe('agruparLinhasResumo', () => {
     expect(turno.qtdEnvase).toBe(300)
     expect(turno.produtos).toEqual(['Produto A', 'Produto B'])
   })
+
+  it('deve usar no status da linha o último status do drill-down em ordem cronológica', () => {
+    const linhas = [
+      criarLinha({
+        data: '2026-02-27',
+        oeeturno_id: 3056,
+        status_linha: 'Parada',
+      }),
+      criarLinha({
+        data: '2026-02-28',
+        oeeturno_id: 3057,
+        status_linha: 'EM_PRODUCAO',
+      }),
+    ]
+
+    const agrupadas = agruparLinhasResumo(linhas)
+
+    expect(agrupadas).toHaveLength(1)
+    expect(agrupadas[0].turnos.map((turno) => turno.oeeturnoId)).toEqual([3056, 3057])
+    expect(agrupadas[0].turnos[1].status).toBe('EM_PRODUCAO')
+    expect(agrupadas[0].status).toBe('EM_PRODUCAO')
+  })
 })
