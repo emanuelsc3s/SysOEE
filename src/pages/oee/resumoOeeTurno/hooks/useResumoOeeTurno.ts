@@ -40,6 +40,8 @@ const TURNOS_COMPARATIVO_PADRAO: ComparativoTurno[] = [
   { id: 3, nome: 'Turno 3', producao: 0, perdas: 0 },
 ]
 
+const LIMITE_PAGINA_RPC = 1000
+
 const normalizarLinhas = (linhas: ResumoOeeTurnoRow[]): ResumoOeeTurnoLinhaNormalizada[] => {
   return linhas.map((linha) => {
     const skuProduzidos = normalizarNumero(linha.sku_produzidos)
@@ -158,7 +160,38 @@ export const useResumoOeeTurno = ({
       if (error) {
         throw error
       }
-      const linhasNormalizadas = normalizarLinhas((data || []) as ResumoOeeTurnoRow[])
+      const linhasBrutas = (data || []) as ResumoOeeTurnoRow[]
+
+      let linhasCompletas = linhasBrutas
+
+      if (linhasBrutas.length >= LIMITE_PAGINA_RPC) {
+        const linhasAcumuladas = [...linhasBrutas]
+
+        for (let offset = LIMITE_PAGINA_RPC; ; offset += LIMITE_PAGINA_RPC) {
+          const { data: loteExtra, error: erroLoteExtra } = await supabase
+            .rpc('fn_resumo_oee_turno', parametrosBase)
+            .range(offset, offset + LIMITE_PAGINA_RPC - 1)
+
+          if (erroLoteExtra) {
+            throw erroLoteExtra
+          }
+
+          const loteNormalizado = (loteExtra || []) as ResumoOeeTurnoRow[]
+          if (loteNormalizado.length === 0) {
+            break
+          }
+
+          linhasAcumuladas.push(...loteNormalizado)
+
+          if (loteNormalizado.length < LIMITE_PAGINA_RPC) {
+            break
+          }
+        }
+
+        linhasCompletas = linhasAcumuladas
+      }
+
+      const linhasNormalizadas = normalizarLinhas(linhasCompletas)
       const oeeturnoIds = Array.from(
         new Set(
           linhasNormalizadas

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- ResumoOeeTurno: corrigida a consolidação dos cards de KPI para períodos longos ao paginar o retorno da RPC `fn_resumo_oee_turno` além de 1000 linhas (loop com `.range(...)`), garantindo totais consistentes até a data final filtrada.
 - DashboardLinha (Produção): quando a linha selecionada é do tipo `Embalagem`, os mini-cards "Produzido", "Perdas" e "Total" passam a usar respectivamente `qtd_embalagem`, `perdas_embalagem` e `embalado`, mantendo os demais indicadores inalterados.
 - DashboardLinha (AUTO): ao zerar o contador regressivo do badge (`m:ss`), o fluxo do botão "Atualizar dados" é executado automaticamente e o contador reinicia em 5 minutos, repetindo em loop contínuo; quando já há atualização em andamento, o timer mantém 1s e tenta novamente até conseguir executar o refresh.
 - DashboardHeader/DashboardLinha (Dashboard de Linha): badge AUTO do header alterado para contador regressivo de 5 minutos em formato `m:ss` (ex.: `4:59`, `4:58`), com atualização a cada segundo e reinício automático ao fim da janela.
