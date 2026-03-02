@@ -29,7 +29,7 @@
 
   2. INTEGRAÇÃO COM TOTVS/SICFAR:
      sync VARCHAR(1),
-     sync_data TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'America/Fortaleza'),
+     sync_data TIMESTAMP WITHOUT TIME ZONE DEFAULT0 (now() AT TIME ZONE 'America/Fortaleza'),
 
   3. AUDITORIA BÁSICA (ALCOA+):
      created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() AT TIME ZONE 'America/Fortaleza'),

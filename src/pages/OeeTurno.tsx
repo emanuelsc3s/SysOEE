@@ -1216,24 +1216,39 @@ export default function OeeTurno() {
     setMenuStatusAberto(false)
   }
 
-  const registrarVisualizacaoTurno = (turno: OeeTurnoFormData): void => {
-    const oeeturnoId = Number(turno.id)
-
+  const obterAuthUserIdParaLog = async (): Promise<string | null> => {
     if (authUser?.id) {
-      void registrarLogTurno({
-        log: `Visualização do Turno #${turno.id}. Linha: ${formatarLinhaProducao(turno)}, Produto: ${turno.produto || 'N/A'}, Status: ${turno.status || 'N/A'}`,
-        operacao: 'Visualização',
-        tabela: 'tboee_turno',
-        registroId: Number.isFinite(oeeturnoId) ? oeeturnoId : null,
-        userId: authUser.id
-      })
-    } else {
-      console.warn('⚠️ Log de visualização não registrado: authUser ausente.')
+      return authUser.id
     }
+
+    const { data, error } = await supabase.auth.getUser()
+    if (error || !data?.user?.id) {
+      console.warn('⚠️ Log de visualização não registrado: usuário auth não disponível.', error || 'Sem usuário na sessão.')
+      return null
+    }
+
+    return data.user.id
+  }
+
+  const registrarVisualizacaoTurno = async (turno: OeeTurnoFormData): Promise<void> => {
+    const oeeturnoId = Number(turno.id)
+    const authUserId = await obterAuthUserIdParaLog()
+
+    if (!authUserId) {
+      return
+    }
+
+    void registrarLogTurno({
+      log: `Visualização do Turno #${turno.id}. Linha: ${formatarLinhaProducao(turno)}, Produto: ${turno.produto || 'N/A'}, Status: ${turno.status || 'N/A'}`,
+      operacao: 'Visualização',
+      tabela: 'tboee_turno',
+      registroId: Number.isFinite(oeeturnoId) ? oeeturnoId : null,
+      userId: authUserId
+    })
   }
 
   const handleVisualizar = (turno: OeeTurnoFormData) => {
-    registrarVisualizacaoTurno(turno)
+    void registrarVisualizacaoTurno(turno)
 
     // Navega para a página de apontamento OEE com o ID do turno (preserva página para voltar)
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}`, { state: { returnPage: currentPage } })
@@ -1379,7 +1394,7 @@ export default function OeeTurno() {
 
   const handleConfirmarVisualizacaoFechado = () => {
     if (turnoParaVisualizar) {
-      registrarVisualizacaoTurno(turnoParaVisualizar)
+      void registrarVisualizacaoTurno(turnoParaVisualizar)
       // Redireciona para consulta (SEM edit=true), preserva página para voltar
       navigate(`/apontamento-oee?oeeturno_id=${turnoParaVisualizar.id}`, { state: { returnPage: currentPage } })
     }

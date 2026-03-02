@@ -30,9 +30,19 @@ export async function registrarLogTurno(params: RegistrarLogTurnoParams): Promis
       })
 
     if (error) {
-      console.warn('⚠️ Falha ao registrar log operacional do turno:', error)
+      console.warn('⚠️ Falha ao registrar log operacional do turno:', {
+        error,
+        tabela: params.tabela,
+        operacao: params.operacao,
+        registroId: params.registroId,
+      })
     }
   } catch (error) {
-    console.warn('⚠️ Erro inesperado ao registrar log operacional do turno:', error)
+    console.warn('⚠️ Erro inesperado ao registrar log operacional do turno:', {
+      error,
+      tabela: params.tabela,
+      operacao: params.operacao,
+      registroId: params.registroId,
+    })
   }
 }
