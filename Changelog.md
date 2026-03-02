@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeLinhaMetaCad: campo "Linha de Produção" migrado de `Select` para o padrão do `ApontamentoOEE` (input somente leitura + botão de busca + modal `ModalBuscaLinhaProducao`), mantendo seleção por clique no campo e no ícone de lupa; seleção de linha inativa bloqueada com feedback em toast.
 - Meta por Linha OEE: adicionadas páginas de listagem (`OeeLinhaMeta`) e cadastro/edição (`OeeLinhaMetaCad`) para CRUD da `tblinhaproducao_meta` com soft delete (`deleted_at/deleted_by`), validações de formulário, formatação pt-BR (datas/meta), integração Supabase via novo hook `useOeeLinhaMeta`, novas rotas protegidas (`/oee-linha-meta`, `/oee-linha-meta-cad`, `/oee-linha-meta-cad/:id`) e novo card de navegação na Home para acesso ao módulo.
 - OeeTurnoAuditoria: removido o bloco visual do ícone (container com fundo destacado) à esquerda do título "Trilha de Auditoria OEE" no cabeçalho da página.
 - OeeTurnoAuditoria: adicionado botão "Filtrar" entre "Voltar" e "Atualizar"; ao clicar, a barra `FiltrosAuditoriaBar` alterna visibilidade (inicia oculta).

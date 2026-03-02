@@ -5,18 +5,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,18 +23,20 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { AppHeader } from '@/components/layout/AppHeader'
+import {
+  ModalBuscaLinhaProducao,
+  type LinhaProducaoSelecionada,
+} from '@/components/modal/modalBuscaLinhaProducao'
 import { useOeeLinhaMeta } from '@/hooks/useOeeLinhaMeta'
 import { useAuth } from '@/hooks/useAuth'
-import { supabase } from '@/lib/supabase'
 import {
   OEE_LINHA_META_INITIAL_VALUES,
-  OeeLinhaMetaFormData,
-  LinhaProducaoMetaOption
+  OeeLinhaMetaFormData
 } from '@/types/oee-linha-meta'
 import { toast } from '@/hooks/use-toast'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowLeft, Save, Trash2, Calendar as CalendarIcon } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Calendar as CalendarIcon, Search } from 'lucide-react'
 
 type OeeLinhaMetaCadLocationState = {
   returnSearchTerm?: string
@@ -169,34 +164,7 @@ export default function OeeLinhaMetaCad() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [calendarioInicioAberto, setCalendarioInicioAberto] = useState(false)
   const [calendarioFimAberto, setCalendarioFimAberto] = useState(false)
-
-  const { data: linhasDisponiveis = [], isLoading: isLoadingLinhas } = useQuery({
-    queryKey: ['linhas-producao-meta-opcoes'],
-    queryFn: async (): Promise<LinhaProducaoMetaOption[]> => {
-      const { data, error } = await supabase
-        .from('tblinhaproducao')
-        .select('linhaproducao_id, linhaproducao, bloqueado, deleted_at')
-        .is('deleted_at', null)
-        .or('bloqueado.eq.Não,bloqueado.is.null')
-        .order('linhaproducao', { ascending: true })
-
-      if (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao carregar linhas',
-          description: error.message
-        })
-        throw error
-      }
-
-      return (data || []).map((linha) => ({
-        linhaproducao_id: linha.linhaproducao_id,
-        linhaproducao: linha.linhaproducao
-      }))
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000
-  })
+  const [modalBuscaLinhaAberto, setModalBuscaLinhaAberto] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!id) {
@@ -224,23 +192,6 @@ export default function OeeLinhaMetaCad() {
       loadData()
     }
   }, [id, loadData])
-
-  const linhaSelecionadaInexistente = useMemo(() => {
-    if (!formData.linhaProducaoId) return null
-
-    const existeNaLista = linhasDisponiveis.some(
-      (linha) => linha.linhaproducao_id === formData.linhaProducaoId
-    )
-
-    if (existeNaLista) return null
-
-    const linhaFallback: LinhaProducaoMetaOption = {
-      linhaproducao_id: formData.linhaProducaoId,
-      linhaproducao: formData.linhaProducaoNome || `Linha ${formData.linhaProducaoId}`
-    }
-
-    return linhaFallback
-  }, [formData.linhaProducaoId, formData.linhaProducaoNome, linhasDisponiveis])
 
   const handleSave = async () => {
     try {
@@ -390,9 +341,41 @@ export default function OeeLinhaMetaCad() {
     })
   }
 
+  const abrirModalBuscaLinha = () => {
+    setModalBuscaLinhaAberto(true)
+  }
+
+  const handleSelecionarLinhaModal = (linha: LinhaProducaoSelecionada) => {
+    if (linha.ativo === 'N') {
+      toast({
+        variant: 'destructive',
+        title: 'Linha inativa',
+        description: `A linha ${linha.linhaproducao_id} - ${linha.linhaproducao || 'Sem descrição'} está inativa e não pode ser selecionada.`
+      })
+      return
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      linhaProducaoId: linha.linhaproducao_id,
+      linhaProducaoNome: linha.linhaproducao || `Linha ${linha.linhaproducao_id}`
+    }))
+
+    setModalBuscaLinhaAberto(false)
+  }
+
   const isActionDisabled = isFetchingData || isSaving || isDeleting
   const dataInicioSelecionada = useMemo(() => parseDataParaDate(formData.dataInicio), [formData.dataInicio])
   const dataFimSelecionada = useMemo(() => parseDataParaDate(formData.dataFim), [formData.dataFim])
+  const linhaProducaoExibicao = useMemo(() => {
+    const linhaId = formData.linhaProducaoId
+    const linhaNome = formData.linhaProducaoNome.trim()
+
+    if (!linhaId && !linhaNome) return ''
+    if (linhaId && linhaNome) return `${linhaId} - ${linhaNome}`
+    if (linhaNome) return linhaNome
+    return `Linha ${linhaId}`
+  }, [formData.linhaProducaoId, formData.linhaProducaoNome])
 
   if (id && isFetchingData && !formData.id) {
     return (
@@ -488,47 +471,32 @@ export default function OeeLinhaMetaCad() {
                     <Label htmlFor="linhaproducao">
                       Linha de Produção <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                      value={formData.linhaProducaoId ? String(formData.linhaProducaoId) : 'NONE'}
-                      onValueChange={(value) => {
-                        if (value === 'NONE') {
-                          setFormData((prev) => ({
-                            ...prev,
-                            linhaProducaoId: null,
-                            linhaProducaoNome: ''
-                          }))
-                          return
-                        }
-
-                        const linhaSelecionada = linhasDisponiveis.find(
-                          (linha) => String(linha.linhaproducao_id) === value
-                        ) || linhaSelecionadaInexistente
-
-                        setFormData((prev) => ({
-                          ...prev,
-                          linhaProducaoId: Number(value),
-                          linhaProducaoNome: linhaSelecionada?.linhaproducao || `Linha ${value}`
-                        }))
-                      }}
-                      disabled={isLoadingLinhas || isActionDisabled}
-                    >
-                      <SelectTrigger id="linhaproducao">
-                        <SelectValue placeholder="Selecione a linha de produção" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NONE">Selecione uma linha</SelectItem>
-                        {linhaSelecionadaInexistente && (
-                          <SelectItem value={String(linhaSelecionadaInexistente.linhaproducao_id)}>
-                            {linhaSelecionadaInexistente.linhaproducao}
-                          </SelectItem>
-                        )}
-                        {linhasDisponiveis.map((linha) => (
-                          <SelectItem key={linha.linhaproducao_id} value={String(linha.linhaproducao_id)}>
-                            {linha.linhaproducao || `Linha ${linha.linhaproducao_id}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Input
+                        id="linhaproducao"
+                        type="text"
+                        value={linhaProducaoExibicao}
+                        readOnly
+                        disabled={isActionDisabled}
+                        onClick={() => {
+                          if (isActionDisabled) return
+                          abrirModalBuscaLinha()
+                        }}
+                        placeholder="Selecione uma linha de produção"
+                        className={`flex-1 min-h-11 md:min-h-10 ${isActionDisabled ? 'bg-muted/50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={abrirModalBuscaLinha}
+                        disabled={isActionDisabled}
+                        title="Buscar linha de produção"
+                        className="flex-none h-11 w-11 md:h-10 md:w-10"
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -658,6 +626,12 @@ export default function OeeLinhaMetaCad() {
               </div>
             </div>
           </div>
+
+          <ModalBuscaLinhaProducao
+            aberto={modalBuscaLinhaAberto}
+            onFechar={() => setModalBuscaLinhaAberto(false)}
+            onSelecionarLinha={handleSelecionarLinhaModal}
+          />
 
           {id && (
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
