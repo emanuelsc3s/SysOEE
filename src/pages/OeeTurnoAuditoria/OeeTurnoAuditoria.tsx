@@ -173,10 +173,9 @@ export default function OeeTurnoAuditoria() {
             </div>
             <Button
               variant="outline"
-              size="sm"
               onClick={recarregar}
               disabled={loading}
-              className="gap-2 self-start sm:self-auto"
+              className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4 self-start sm:self-auto sm:w-auto"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               Atualizar

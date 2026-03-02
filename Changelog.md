@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeTurnoAuditoria: botão "Atualizar" do cabeçalho ajustado para o mesmo design do botão "Novo Apontamento" do `OeeTurno` (estilo primário, texto branco, hover e alturas responsivas).
 - OeeTurnoAuditoria: aplicado o `AppHeader` padrão da aplicação (mesmo de `OeeTurno`) no topo da página, com título "SICFAR OEE - Apontamentos por Turno" e dados do usuário autenticado no menu.
 - OeeTurnoAuditoria: removida a instrumentação temporária de debug (`agent log`) em `OeeTurnoAuditoria.tsx` e `useOeeTurnoLog.ts` após confirmação de correção do loop de carregamento.
 - ResumoOeeTurno: corrigida a consolidação dos cards de KPI para períodos longos ao paginar o retorno da RPC `fn_resumo_oee_turno` além de 1000 linhas (loop com `.range(...)`), garantindo totais consistentes até a data final filtrada.
