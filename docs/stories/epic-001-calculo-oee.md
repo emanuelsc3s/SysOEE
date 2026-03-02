@@ -169,7 +169,7 @@ Criar serviço de API (oee.api.ts) com endpoints para buscar dados históricos d
 
 ---
 
-**Status:** 📝 Pronto para desenvolvimento
+**Status:** ✅ Concluído
 **Prioridade:** 🔴 Alta (MVP Crítico)
 **Validado por:** Sarah (PO)
 **Data:** 2025-11-16

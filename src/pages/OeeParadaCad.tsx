@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -47,12 +47,14 @@ export default function OeeParadaCad() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const locationState = location.state as OeeParadaCadLocationState | null
   const queryClient = useQueryClient()
   const { fetchParada, saveParada, deleteParada } = useOeeParada()
   const returnSearchTerm = typeof locationState?.returnSearchTerm === 'string'
     ? locationState.returnSearchTerm || ''
     : ''
+  const isModoVisualizacao = Boolean(id) && searchParams.get('view') === 'true'
 
   // Hook de autenticação
   const { user: authUser } = useAuth()
@@ -103,6 +105,10 @@ export default function OeeParadaCad() {
 
   const handleSave = async () => {
     try {
+      if (isModoVisualizacao) {
+        return
+      }
+
       if (isSaving) {
         return
       }
@@ -149,6 +155,10 @@ export default function OeeParadaCad() {
 
   const handleDelete = async () => {
     try {
+      if (isModoVisualizacao) {
+        return
+      }
+
       if (isDeleting) {
         return
       }
@@ -193,7 +203,7 @@ export default function OeeParadaCad() {
     })
   }
 
-  const isActionDisabled = isFetchingData || isSaving || isDeleting
+  const isActionDisabled = isFetchingData || isSaving || isDeleting || isModoVisualizacao
 
   // Exibir loading enquanto carrega dados em modo edição
   if (id && isFetchingData && !formData.id) {
@@ -231,10 +241,12 @@ export default function OeeParadaCad() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="space-y-1">
               <h1 className="text-2xl font-bold text-[#1f2937]">
-                {id ? 'Editar Parada' : 'Nova Parada'}
+                {id ? (isModoVisualizacao ? 'Visualizar Parada' : 'Editar Parada') : 'Nova Parada'}
               </h1>
               <p className="text-sm text-gray-500">
-                {id ? `Editando parada #${id}` : 'Cadastrar novo tipo de parada para OEE'}
+                {id
+                  ? (isModoVisualizacao ? `Visualizando parada #${id}` : `Editando parada #${id}`)
+                  : 'Cadastrar novo tipo de parada para OEE'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -247,7 +259,7 @@ export default function OeeParadaCad() {
                 <ArrowLeft className="h-4 w-4" />
                 Voltar
               </Button>
-              {id && (
+              {id && !isModoVisualizacao && (
                 <Button
                   variant="destructive"
                   onClick={() => setIsDeleteDialogOpen(true)}
@@ -258,15 +270,17 @@ export default function OeeParadaCad() {
                   {isDeleting ? 'Excluindo...' : 'Excluir'}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
-                onClick={handleSave}
-                disabled={isActionDisabled}
-              >
-                <Save className="h-4 w-4" />
-                {isSaving ? 'Salvando...' : 'Salvar'}
-              </Button>
+              {!isModoVisualizacao && (
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-10 px-4"
+                  onClick={handleSave}
+                  disabled={isActionDisabled}
+                >
+                  <Save className="h-4 w-4" />
+                  {isSaving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              )}
             </div>
           </div>
 
@@ -300,6 +314,7 @@ export default function OeeParadaCad() {
                       onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                       placeholder="Ex: P001, PAR-001"
                       maxLength={20}
+                      readOnly={isModoVisualizacao}
                     />
                   </div>
 
@@ -312,6 +327,7 @@ export default function OeeParadaCad() {
                       onChange={(e) => setFormData({ ...formData, parada: e.target.value })}
                       placeholder="Ex: Troca de Turno, Manutenção Preventiva"
                       maxLength={100}
+                      readOnly={isModoVisualizacao}
                     />
                   </div>
                 </div>
@@ -340,6 +356,7 @@ export default function OeeParadaCad() {
                     <Label htmlFor="componente">Componente OEE</Label>
                     <Select
                       value={formData.componente || 'NONE'}
+                      disabled={isModoVisualizacao}
                       onValueChange={(value) => setFormData({ ...formData, componente: value === 'NONE' ? '' : value })}
                     >
                       <SelectTrigger id="componente">
@@ -364,6 +381,7 @@ export default function OeeParadaCad() {
                     <Label htmlFor="classe">Classe</Label>
                     <Select
                       value={formData.classe || 'NONE'}
+                      disabled={isModoVisualizacao}
                       onValueChange={(value) => setFormData({ ...formData, classe: value === 'NONE' ? '' : value })}
                     >
                       <SelectTrigger id="classe">
@@ -392,6 +410,7 @@ export default function OeeParadaCad() {
                       onChange={(e) => setFormData({ ...formData, natureza: e.target.value })}
                       placeholder="Ex: Mecânica, Elétrica, Setup"
                       maxLength={50}
+                      readOnly={isModoVisualizacao}
                     />
                     <p className="text-xs text-gray-500">
                       Tipo ou origem da parada
@@ -436,6 +455,7 @@ export default function OeeParadaCad() {
                     placeholder="Descreva detalhadamente o tipo de parada, quando deve ser utilizada, procedimentos associados, etc."
                     rows={4}
                     maxLength={500}
+                    readOnly={isModoVisualizacao}
                   />
                   <p className="text-xs text-gray-500">
                     {formData.descricao?.length || 0}/500 caracteres
@@ -446,27 +466,29 @@ export default function OeeParadaCad() {
           </div>
 
           {/* Dialog de confirmação de exclusão */}
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tem certeza que deseja excluir a parada <strong>{formData.codigo}</strong>?
-                  Esta ação não pode ser desfeita.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {isDeleting ? 'Excluindo...' : 'Excluir'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {!isModoVisualizacao && (
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir a parada <strong>{formData.codigo}</strong>?
+                    Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? 'Excluindo...' : 'Excluir'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
     </>

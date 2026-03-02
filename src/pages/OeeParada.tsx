@@ -37,6 +37,7 @@ import { toast } from '@/hooks/use-toast'
 import { OeeParadaFormData, CLASSE_PARADA_OPTIONS, COMPONENTE_OEE_OPTIONS } from '@/types/oee-parada'
 import {
   Search,
+  Eye,
   Pencil,
   Trash2,
   RefreshCw,
@@ -234,6 +235,12 @@ export default function OeeParada() {
 
   const handleEditar = (parada: OeeParadaFormData) => {
     navigate(`/oee-parada-cad/${parada.id}`, {
+      state: { returnSearchTerm: searchTerm }
+    })
+  }
+
+  const handleVisualizar = (parada: OeeParadaFormData) => {
+    navigate(`/oee-parada-cad/${parada.id}?view=true`, {
       state: { returnSearchTerm: searchTerm }
     })
   }
@@ -527,6 +534,15 @@ export default function OeeParada() {
                             variant="outline"
                             size="sm"
                             className="flex-1 min-w-[120px]"
+                            onClick={() => handleVisualizar(parada)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Visualizar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 min-w-[120px]"
                             onClick={() => handleEditar(parada)}
                           >
                             <Pencil className="h-4 w-4 mr-1" />
@@ -599,6 +615,15 @@ export default function OeeParada() {
                           >
                             <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                               <div className="flex justify-start gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-[#242f65]"
+                                  title="Visualizar"
+                                  onClick={() => handleVisualizar(parada)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
