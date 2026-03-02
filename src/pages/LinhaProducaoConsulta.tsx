@@ -80,6 +80,8 @@ export default function LinhaProducaoConsulta() {
 
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const paginationRef = useRef<HTMLDivElement | null>(null)
+  const prevSearchTermRef = useRef(searchTerm)
+  const prevAppliedFiltersRef = useRef(appliedFilters)
   const { user: authUser } = useAuth()
 
   const user = {
@@ -91,10 +93,8 @@ export default function LinhaProducaoConsulta() {
   useEffect(() => {
     const p = Number(searchParams.get('page'))
     const nextPage = Number.isFinite(p) && p > 0 ? p : 1
-    if (nextPage !== currentPage) {
-      setCurrentPage(nextPage)
-    }
-  }, [searchParams, currentPage])
+    setCurrentPage((prev) => (prev === nextPage ? prev : nextPage))
+  }, [searchParams])
 
   useEffect(() => {
     try {
@@ -140,6 +140,18 @@ export default function LinhaProducaoConsulta() {
   const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   useEffect(() => {
+    const prevFilters = prevAppliedFiltersRef.current
+    const filtersChanged =
+      prevFilters.apenasAtivos !== appliedFilters.apenasAtivos ||
+      prevFilters.tipo !== appliedFilters.tipo
+    const searchChanged = prevSearchTermRef.current !== searchTerm
+
+    if (!filtersChanged && !searchChanged) {
+      return
+    }
+
+    prevSearchTermRef.current = searchTerm
+    prevAppliedFiltersRef.current = appliedFilters
     setCurrentPage(1)
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev)
