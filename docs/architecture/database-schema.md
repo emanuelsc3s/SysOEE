@@ -56,7 +56,7 @@ CREATE TYPE status_insumo_enum AS ENUM ('EM_ESTOQUE', 'EM_USO', 'ESGOTADO', 'BLO
 **tbcodigoparada:** Book de paradas (hierarquia 5 níveis)
 **tbturno:** Turnos de trabalho
 **tbusuario:** Usuários do sistema (com FK para tbfuncionario)
-**tbmetaoee:** Metas com histórico de vigência
+**tblinhaproducao_meta:** Metas de OEE por linha com histórico de vigência (data_inicio / data_fim, linhaproducao_id INTEGER)
 
 ⚠️ **LIMITAÇÕES CRÍTICAS IDENTIFICADAS:**
 - `tbvelocidadenominal` não possui controle de vigências (`data_inicio_vigencia`, `data_fim_vigencia`)

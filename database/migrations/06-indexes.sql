@@ -49,10 +49,10 @@ CREATE INDEX idx_usuario_linha ON tbusuario(linha_id) WHERE ativo = TRUE;
 CREATE INDEX idx_usuario_departamento ON tbusuario(departamento_id) WHERE ativo = TRUE;
 CREATE INDEX idx_usuario_tipo ON tbusuario(tipo_usuario) WHERE ativo = TRUE;
 
--- tbmetaoee
-CREATE INDEX idx_meta_oee_linha_vigencia ON tbmetaoee(linha_id, data_inicio_vigencia, data_fim_vigencia);
-CREATE INDEX idx_meta_oee_vigente ON tbmetaoee(linha_id, data_inicio_vigencia)
-  WHERE data_fim_vigencia IS NULL AND ativo = TRUE;
+-- tblinhaproducao_meta
+CREATE INDEX idx_meta_linha_vigencia ON tblinhaproducao_meta(linhaproducao_id, data_inicio, data_fim);
+CREATE INDEX idx_meta_vigente ON tblinhaproducao_meta(linhaproducao_id, data_inicio)
+  WHERE data_fim IS NULL;
 
 -- =====================================================
 -- INDEXES EM TRANSAÇÕES (CRÍTICO PARA PERFORMANCE!)

@@ -139,12 +139,12 @@ BEGIN
   LIMIT 1;
 
   -- Buscar meta VIGENTE (ou padrão 85%)
-  SELECT meta_oee INTO v_meta
-  FROM tbmetaoee
-  WHERE linha_id = p_linhaproducao_id
-    AND p_data_referencia BETWEEN data_inicio_vigencia
-      AND COALESCE(data_fim_vigencia, '9999-12-31'::DATE)
-  ORDER BY data_inicio_vigencia DESC
+  SELECT meta INTO v_meta
+  FROM tblinhaproducao_meta
+  WHERE linhaproducao_id = p_linhaproducao_id
+    AND p_data_referencia BETWEEN data_inicio
+      AND COALESCE(data_fim, '9999-12-31'::DATE)
+  ORDER BY data_inicio DESC
   LIMIT 1;
 
   IF v_meta IS NULL THEN

@@ -130,13 +130,12 @@ SELECT
   ) AS velocidade_nominal,
 
   (
-    SELECT meta_oee
-    FROM tbmetaoee m
-    WHERE m.linha_id = lp.linhaproducao_id
-      AND l.data_producao BETWEEN m.data_inicio_vigencia
-          AND COALESCE(m.data_fim_vigencia, '9999-12-31'::DATE)
-      AND m.deletado = 'N'
-    ORDER BY m.data_inicio_vigencia DESC
+    SELECT m.meta
+    FROM tblinhaproducao_meta m
+    WHERE m.linhaproducao_id = lp.linhaproducao_id
+      AND l.data_producao BETWEEN m.data_inicio
+          AND COALESCE(m.data_fim, '9999-12-31'::DATE)
+    ORDER BY m.data_inicio DESC
     LIMIT 1
   ) AS meta_oee_vigente,
 

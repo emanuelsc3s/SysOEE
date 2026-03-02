@@ -132,6 +132,11 @@ export default function OeeTurnoAuditoria() {
     setPagina(1)
   }, [])
 
+  const ultimaAtualizacaoMaisRecente = useMemo(
+    () => logs[0]?.created_at ?? null,
+    [logs]
+  )
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
@@ -162,7 +167,11 @@ export default function OeeTurnoAuditoria() {
         </div>
 
         {/* Cards de estatísticas */}
-        <StatsAuditoria stats={stats} loading={loading} />
+        <StatsAuditoria
+          stats={stats}
+          loading={loading}
+          ultimaAtualizacao={ultimaAtualizacaoMaisRecente}
+        />
 
         {/* Filtros */}
         <FiltrosAuditoriaBar

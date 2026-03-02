@@ -46,33 +46,27 @@ COMMENT ON FUNCTION get_velocidade_nominal IS 'Retorna velocidade nominal vigent
 -- Busca meta OEE vigente para linha
 -- ----------------------------------------------------
 CREATE OR REPLACE FUNCTION get_meta_oee(
-  p_linha_id UUID,
+  p_linha_id INTEGER,
   p_data_referencia DATE
 )
-RETURNS DECIMAL(5,2) AS $$
+RETURNS NUMERIC(10,2) AS $$
 DECLARE
-  v_meta DECIMAL(5,2);
+  v_meta NUMERIC(10,2);
 BEGIN
-  SELECT meta_oee
+  SELECT meta
   INTO v_meta
-  FROM tbmetaoee
-  WHERE linha_id = p_linha_id
-    AND data_inicio_vigencia <= p_data_referencia
-    AND (data_fim_vigencia IS NULL OR data_fim_vigencia >= p_data_referencia)
-    AND ativo = TRUE
-  ORDER BY data_inicio_vigencia DESC
+  FROM tblinhaproducao_meta
+  WHERE linhaproducao_id = p_linha_id
+    AND data_inicio <= p_data_referencia
+    AND (data_fim IS NULL OR data_fim >= p_data_referencia)
+  ORDER BY data_inicio DESC
   LIMIT 1;
-
-  -- Se não encontrar meta específica, usar padrão da linha
-  IF v_meta IS NULL THEN
-  SELECT meta_oee_padrao INTO v_meta FROM tblinha WHERE id = p_linha_id;
-  END IF;
 
   RETURN COALESCE(v_meta, 85.00);  -- Default: 85%
 END;
 $$ LANGUAGE plpgsql STABLE;
 
-COMMENT ON FUNCTION get_meta_oee IS 'Retorna meta OEE vigente para linha na data especificada';
+COMMENT ON FUNCTION get_meta_oee IS 'Retorna meta OEE vigente para linha na data especificada (tabela tblinhaproducao_meta)';
 
 -- ----------------------------------------------------
 -- Function: update_updated_at_column()

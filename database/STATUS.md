@@ -48,7 +48,7 @@
 - ✅ `tbcodigoparada` - Book de paradas (hierarquia 5 níveis)
 - ✅ `tbturno` - Turnos de trabalho
 - ✅ `tbusuario` - Usuários (integrado Supabase Auth)
-- ✅ `tbmetaoee` - Metas com histórico
+- ✅ `tblinhaproducao_meta` - Metas de OEE por linha com histórico de vigência (data_inicio / data_fim)
 
 **Transações (4 tabelas):**
 - ✅ `tblote` - Lotes de produção (origem: TOTVS OP)

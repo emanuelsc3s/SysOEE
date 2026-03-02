@@ -473,7 +473,7 @@ CREATE TYPE status_insumo_enum AS ENUM ('EM_ESTOQUE', 'EM_USO', 'ESGOTADO', 'BLO
 **tbcodigoparada:** Book de paradas (hierarquia 5 níveis)
 **tbturno:** Turnos de trabalho
 **tbusuario:** Usuários (vinculado a auth.users)
-**tbmetaoee:** Metas com histórico de vigência
+**tblinhaproducao_meta:** Metas de OEE por linha com histórico de vigência (data_inicio / data_fim, linhaproducao_id INTEGER)
 
 ### 3.3. Tabelas Transacionais
 

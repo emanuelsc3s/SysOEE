@@ -37,7 +37,7 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON tbturno
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON tbusuario
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON tbmetaoee
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON tblinhaproducao_meta
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON tblote
