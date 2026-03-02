@@ -5,6 +5,8 @@ import { Shield, RefreshCw, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataPagination } from '@/components/ui/data-pagination'
+import { AppHeader } from '@/components/layout/AppHeader'
+import { useAuth } from '@/hooks/useAuth'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useOeeTurnoLog } from './hooks/useOeeTurnoLog'
 import { StatsAuditoria } from './components/StatsAuditoria'
@@ -78,10 +80,17 @@ function renderizarLog(texto: string) {
 }
 
 export default function OeeTurnoAuditoria() {
+  const { user: authUser } = useAuth()
   const [filtros, setFiltros] = useState<FiltrosAuditoria>(FILTROS_AUDITORIA_PADRAO)
   const [buscaInput, setBuscaInput] = useState('')
   const [pagina, setPagina] = useState(PAGINA_PADRAO)
   const [itensPorPagina, setItensPorPagina] = useState(ITENS_PAGINA_PADRAO)
+
+  const user = {
+    name: authUser?.usuario || authUser?.email?.split('@')[0] || 'Usuário',
+    initials: (authUser?.usuario || authUser?.email)?.substring(0, 2).toUpperCase() || 'U',
+    role: authUser?.perfil || 'Operador',
+  }
 
   const buscaDebounced = useDebounce(buscaInput, 400)
 
@@ -138,174 +147,183 @@ export default function OeeTurnoAuditoria() {
   )
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+    <>
+      <AppHeader
+        title="SICFAR OEE - Apontamentos por Turno"
+        userName={user.name}
+        userInitials={user.initials}
+        userRole={user.role}
+      />
 
-        {/* Cabeçalho */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-brand-primary/10">
-              <Shield className="h-6 w-6 text-brand-primary" />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+
+          {/* Cabeçalho */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-brand-primary/10">
+                <Shield className="h-6 w-6 text-brand-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Trilha de Auditoria OEE</h1>
+                <p className="text-sm text-muted-foreground">
+                  Registro de operações conforme padrão ALCOA+
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Trilha de Auditoria OEE</h1>
-              <p className="text-sm text-muted-foreground">
-                Registro de operações conforme padrão ALCOA+
-              </p>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={recarregar}
+              disabled={loading}
+              className="gap-2 self-start sm:self-auto"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={recarregar}
-            disabled={loading}
-            className="gap-2 self-start sm:self-auto"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </Button>
-        </div>
 
-        {/* Cards de estatísticas */}
-        <StatsAuditoria
-          stats={stats}
-          loading={loading}
-          ultimaAtualizacao={ultimaAtualizacaoMaisRecente}
-        />
+          {/* Cards de estatísticas */}
+          <StatsAuditoria
+            stats={stats}
+            loading={loading}
+            ultimaAtualizacao={ultimaAtualizacaoMaisRecente}
+          />
 
-        {/* Filtros */}
-        <FiltrosAuditoriaBar
-          filtros={filtros}
-          buscaInput={buscaInput}
-          onBuscaChange={handleBuscaChange}
-          onFiltroChange={handleFiltroChange}
-          onLimpar={handleLimparFiltros}
-          operacoesDisponiveis={operacoesDisponiveis}
-          tabelasDisponiveis={tabelasDisponiveis}
-          usuariosDisponiveis={usuariosDisponiveis}
-        />
+          {/* Filtros */}
+          <FiltrosAuditoriaBar
+            filtros={filtros}
+            buscaInput={buscaInput}
+            onBuscaChange={handleBuscaChange}
+            onFiltroChange={handleFiltroChange}
+            onLimpar={handleLimparFiltros}
+            operacoesDisponiveis={operacoesDisponiveis}
+            tabelasDisponiveis={tabelasDisponiveis}
+            usuariosDisponiveis={usuariosDisponiveis}
+          />
 
-        {/* Tabela de logs */}
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          {/* Erro */}
-          {erro && !loading && (
-            <div className="p-8 text-center text-destructive text-sm">{erro}</div>
-          )}
+          {/* Tabela de logs */}
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            {/* Erro */}
+            {erro && !loading && (
+              <div className="p-8 text-center text-destructive text-sm">{erro}</div>
+            )}
 
-          {/* Tabela */}
-          {!erro && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted/50 border-b border-border">
-                    <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      Data / Hora
-                    </th>
-                    <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      Operação
-                    </th>
-                    <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      Tabela
-                    </th>
-                    <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      Reg. ID
-                    </th>
-                    <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
-                      Responsável
-                    </th>
-                    <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Descrição do Log
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-2">
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                          Carregando registros...
-                        </div>
-                      </td>
+            {/* Tabela */}
+            {!erro && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead>
+                    <tr className="bg-muted/50 border-b border-border">
+                      <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        Data / Hora
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        Operação
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        Tabela
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        Reg. ID
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+                        Responsável
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Descrição do Log
+                      </th>
                     </tr>
-                  )}
+                  </thead>
+                  <tbody>
+                    {loading && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Carregando registros...
+                          </div>
+                        </td>
+                      </tr>
+                    )}
 
-                  {!loading && logs.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                        Nenhum registro encontrado para os filtros selecionados.
-                      </td>
-                    </tr>
-                  )}
+                    {!loading && logs.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                          Nenhum registro encontrado para os filtros selecionados.
+                        </td>
+                      </tr>
+                    )}
 
-                  {!loading &&
-                    logs.map((log) => {
-                      const { data, hora } = formatarDataHora(log.created_at)
-                      return (
-                        <tr
-                          key={log.oeeturnolog_id}
-                          className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
-                        >
-                          {/* Data/Hora */}
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="font-medium text-foreground">{data}</div>
-                            <div className="text-xs text-muted-foreground">{hora}</div>
-                          </td>
+                    {!loading &&
+                      logs.map((log) => {
+                        const { data, hora } = formatarDataHora(log.created_at)
+                        return (
+                          <tr
+                            key={log.oeeturnolog_id}
+                            className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                          >
+                            {/* Data/Hora */}
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="font-medium text-foreground">{data}</div>
+                              <div className="text-xs text-muted-foreground">{hora}</div>
+                            </td>
 
-                          {/* Operação */}
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {badgeOperacao(log.operacao)}
-                          </td>
+                            {/* Operação */}
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {badgeOperacao(log.operacao)}
+                            </td>
 
-                          {/* Tabela */}
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="font-mono text-xs bg-muted px-2 py-1 rounded border border-border text-muted-foreground">
-                              {tabelaSemPrefixo(log.tabela)}
-                            </span>
-                          </td>
+                            {/* Tabela */}
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="font-mono text-xs bg-muted px-2 py-1 rounded border border-border text-muted-foreground">
+                                {tabelaSemPrefixo(log.tabela)}
+                              </span>
+                            </td>
 
-                          {/* Registro ID */}
-                          <td className="px-4 py-3 whitespace-nowrap font-mono text-amber-600 font-semibold">
-                            {log.registro_id != null ? `#${log.registro_id}` : '—'}
-                          </td>
+                            {/* Registro ID */}
+                            <td className="px-4 py-3 whitespace-nowrap font-mono text-amber-600 font-semibold">
+                              {log.registro_id != null ? `#${log.registro_id}` : '—'}
+                            </td>
 
-                          {/* Responsável */}
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <div className="h-6 w-6 rounded-full bg-muted border border-border flex items-center justify-center flex-shrink-0">
-                                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            {/* Responsável */}
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-muted border border-border flex items-center justify-center flex-shrink-0">
+                                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                </div>
+                                <span className="text-sm text-foreground">{log.usuario_nome}</span>
                               </div>
-                              <span className="text-sm text-foreground">{log.usuario_nome}</span>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Log */}
-                          <td className="px-4 py-3 max-w-[400px] leading-relaxed text-foreground">
-                            {renderizarLog(log.log)}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                            {/* Log */}
+                            <td className="px-4 py-3 max-w-[400px] leading-relaxed text-foreground">
+                              {renderizarLog(log.log)}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          {/* Paginação */}
-          {!erro && totalItens > 0 && (
-            <DataPagination
-              currentPage={pagina}
-              totalPages={totalPaginas}
-              onPageChange={handlePaginaChange}
-              itemsPerPage={itensPorPagina}
-              totalItems={totalItens}
-              showInfo
-              pageSizeOptions={OPCOES_PAGINA}
-              onItemsPerPageChange={handleItensPorPaginaChange}
-            />
-          )}
+            {/* Paginação */}
+            {!erro && totalItens > 0 && (
+              <DataPagination
+                currentPage={pagina}
+                totalPages={totalPaginas}
+                onPageChange={handlePaginaChange}
+                itemsPerPage={itensPorPagina}
+                totalItems={totalItens}
+                showInfo
+                pageSizeOptions={OPCOES_PAGINA}
+                onItemsPerPageChange={handleItensPorPaginaChange}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
