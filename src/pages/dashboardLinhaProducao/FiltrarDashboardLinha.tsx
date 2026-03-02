@@ -485,7 +485,16 @@ export function FiltrarDashboardLinha({
                         setDraft((prev) => ({ ...prev, dataInicio: formatarDataDigitada(e.target.value) }))
                       }
                     />
-                    <Popover open={calendarioInicioAberto} onOpenChange={setCalendarioInicioAberto}>
+                    <Popover
+                      modal
+                      open={calendarioInicioAberto}
+                      onOpenChange={(open) => {
+                        setCalendarioInicioAberto(open)
+                        if (open) {
+                          setCalendarioFimAberto(false)
+                        }
+                      }}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
@@ -497,7 +506,12 @@ export function FiltrarDashboardLinha({
                           <CalendarIcon className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                      <PopoverContent
+                        className="w-auto overflow-hidden p-0"
+                        align="start"
+                        side="bottom"
+                        collisionPadding={8}
+                      >
                         <Calendar
                           mode="single"
                           selected={dataInicioDate}
@@ -525,7 +539,16 @@ export function FiltrarDashboardLinha({
                         setDraft((prev) => ({ ...prev, dataFim: formatarDataDigitada(e.target.value) }))
                       }
                     />
-                    <Popover open={calendarioFimAberto} onOpenChange={setCalendarioFimAberto}>
+                    <Popover
+                      modal
+                      open={calendarioFimAberto}
+                      onOpenChange={(open) => {
+                        setCalendarioFimAberto(open)
+                        if (open) {
+                          setCalendarioInicioAberto(false)
+                        }
+                      }}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
@@ -537,7 +560,12 @@ export function FiltrarDashboardLinha({
                           <CalendarIcon className="h-4 w-4" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                      <PopoverContent
+                        className="w-auto overflow-hidden p-0"
+                        align="end"
+                        side="bottom"
+                        collisionPadding={8}
+                      >
                         <Calendar
                           mode="single"
                           selected={dataFimDate}

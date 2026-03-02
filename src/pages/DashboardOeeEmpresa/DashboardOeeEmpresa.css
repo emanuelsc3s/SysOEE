@@ -24,10 +24,6 @@
   --bg: #f1f5f9;
 }
 
-.dashboard-oee-empresa-page[data-theme='dark'] .brand-title {
-  color: #e5e7eb;
-}
-
 .dashboard-oee-empresa-page .wrapper {
   position: relative;
   z-index: 1;
@@ -36,48 +32,153 @@
   padding: 48px 32px;
 }
 
-.dashboard-oee-empresa-page header {
+.dashboard-oee-empresa-page .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 48px;
+  gap: 16px;
+  margin-bottom: 20px;
   animation: oeeEmpresaFadeDown 0.6s ease both;
+  position: relative;
+  z-index: 20;
 }
 
-.dashboard-oee-empresa-page .brand {
+.dashboard-oee-empresa-page .logo-container {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
-.dashboard-oee-empresa-page .brand-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 3px;
-  color: var(--accent);
-  text-transform: uppercase;
+.dashboard-oee-empresa-page .logo-icon {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
 }
 
-.dashboard-oee-empresa-page .brand-title {
+.dashboard-oee-empresa-page .main-title {
+  flex: 1;
+  margin: 0;
+  text-align: center;
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 52px;
+  font-size: 56px;
   line-height: 1;
   letter-spacing: 2px;
   color: var(--text);
 }
 
-.dashboard-oee-empresa-page .period-badge {
+.dashboard-oee-empresa-page .header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.dashboard-oee-empresa-page .header-quick-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.dashboard-oee-empresa-page .auto-badge {
+  background-color: #22c55e;
+  color: #08120c;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.dashboard-oee-empresa-page .header-menu {
+  position: relative;
+  z-index: 25;
+}
+
+.dashboard-oee-empresa-page .header-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dashboard-oee-empresa-page .header-menu-btn:hover {
+  border-color: rgba(0, 0, 0, 0.18);
+  background: var(--surface2);
+}
+
+.dashboard-oee-empresa-page .header-menu-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-oee-empresa-page .header-menu-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dashboard-oee-empresa-page .header-refresh-btn.is-loading svg {
+  animation: oeeEmpresaRefreshSpin 0.9s linear infinite;
+}
+
+.dashboard-oee-empresa-page .header-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 30;
+}
+
+.dashboard-oee-empresa-page .header-menu-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+.dashboard-oee-empresa-page .header-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
   border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-oee-empresa-page .header-menu-item:hover {
+  border-color: var(--border);
+  background: var(--surface2);
+}
+
+.dashboard-oee-empresa-page .period-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 12px 20px;
   font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 28px;
 }
 
 .dashboard-oee-empresa-page .period-badge .dot {
@@ -90,6 +191,15 @@
 
 .dashboard-oee-empresa-page .period-badge strong {
   color: var(--text);
+}
+
+.dashboard-oee-empresa-page .period-badge small {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .dashboard-oee-empresa-page .oee-hero {
@@ -581,6 +691,12 @@
   }
 }
 
+@keyframes oeeEmpresaRefreshSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard-oee-empresa-page .oee-hero {
     grid-template-columns: 1fr;
@@ -602,12 +718,26 @@
     font-size: 80px;
   }
 
-  .dashboard-oee-empresa-page header {
+  .dashboard-oee-empresa-page .header {
     flex-direction: column;
     gap: 16px;
+    margin-bottom: 16px;
   }
 
-  .dashboard-oee-empresa-page .brand-title {
+  .dashboard-oee-empresa-page .main-title {
     font-size: 36px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .dashboard-oee-empresa-page .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .dashboard-oee-empresa-page .period-badge {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-bottom: 20px;
   }
 }

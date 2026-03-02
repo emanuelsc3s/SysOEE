@@ -1,8 +1,14 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format, subDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { OeeEmpresaHeader } from './components/OeeEmpresaHeader'
+import { useTheme } from '@/hooks/useTheme'
+import { converterDataBrParaIso } from '@/pages/oee/resumoOeeTurno/utils/date'
+import { DashboardHeader } from '@/pages/dashboardLinhaProducao/components/DashboardHeader'
+import { FiltrarDashboardLinha } from '@/pages/dashboardLinhaProducao/FiltrarDashboardLinha'
+import { FILTROS_DASHBOARD_PADRAO } from '@/pages/dashboardLinhaProducao/filtrosDashboardLinha'
+import type { FiltrosDashboardLinha } from '@/pages/dashboardLinhaProducao/filtrosDashboardLinha'
 import { OeeHeroSection } from './components/OeeHeroSection'
 import { OeeRingCard } from './components/OeeRingCard'
 import { OeeKpiTriplet } from './components/OeeKpiTriplet'
@@ -10,11 +16,11 @@ import { OeeTimeDistribution } from './components/OeeTimeDistribution'
 import { OeeHoursGrid } from './components/OeeHoursGrid'
 import { OeeProductionLosses } from './components/OeeProductionLosses'
 import { OeeEmpresaFooter } from './components/OeeEmpresaFooter'
-import { useTheme } from '@/hooks/useTheme'
 import type { DashboardOeeEmpresaData } from './types'
 import './DashboardOeeEmpresa.css'
 
 const TEMPO_DISPONIVEL_PADRAO = 12
+const DURACAO_CONTAGEM_AUTO_SEGUNDOS = 5 * 60
 
 type OeeEmpresaRpcRow = {
   data_inicio?: string | Date | null
@@ -51,6 +57,44 @@ type PeriodoConsulta = {
   fimIso: string
   inicioBr: string
   fimBr: string
+}
+
+const clonarFiltros = (filtros: FiltrosDashboardLinha): FiltrosDashboardLinha => ({
+  dataInicio: filtros.dataInicio,
+  dataFim: filtros.dataFim,
+  linhaIds: [...filtros.linhaIds],
+  turnoIds: [...filtros.turnoIds],
+  produtoIds: [...filtros.produtoIds],
+  statuses: [...filtros.statuses],
+  lancamento: filtros.lancamento,
+})
+
+const criarFiltrosPadraoEmpresa = (): FiltrosDashboardLinha => {
+  const hoje = new Date()
+  const inicio = subDays(hoje, 6)
+
+  return {
+    ...clonarFiltros(FILTROS_DASHBOARD_PADRAO),
+    dataInicio: format(inicio, 'dd/MM/yyyy'),
+    dataFim: format(hoje, 'dd/MM/yyyy'),
+  }
+}
+
+const parseIdsNumericos = (ids: string[]): number[] => {
+  const idsValidos = ids
+    .map((id) => Number.parseInt(id.trim(), 10))
+    .filter((id) => Number.isFinite(id))
+  return Array.from(new Set(idsValidos))
+}
+
+const parseLancamentoNumerico = (lancamento: string): number | null => {
+  const valor = lancamento.trim()
+  if (!valor || !/^\d+$/.test(valor)) {
+    return null
+  }
+
+  const numero = Number.parseInt(valor, 10)
+  return Number.isFinite(numero) ? numero : null
 }
 
 const parseNumero = (valor: unknown): number => {
@@ -101,6 +145,13 @@ const formatarDecimal = (valor: number, casasDecimais = 2): string =>
     minimumFractionDigits: casasDecimais,
     maximumFractionDigits: casasDecimais,
   })
+
+const formatarTempoRestanteAuto = (totalSegundos: number): string => {
+  const segundosNormalizados = Math.max(0, Math.floor(totalSegundos))
+  const minutos = Math.floor(segundosNormalizados / 60)
+  const segundos = segundosNormalizados % 60
+  return `${minutos}:${String(segundos).padStart(2, '0')}`
+}
 
 const criarDashboardPadrao = (
   periodo: PeriodoConsulta,
@@ -393,37 +444,133 @@ const mapearRpcParaDashboard = (
 }
 
 export default function DashboardOeeEmpresa() {
-  const { theme } = useTheme()
+  const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
+  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(() =>
+    criarFiltrosPadraoEmpresa()
+  )
+  const [refreshDadosEmAndamento, setRefreshDadosEmAndamento] = useState(false)
+  const [segundosRestantesAuto, setSegundosRestantesAuto] = useState(
+    DURACAO_CONTAGEM_AUTO_SEGUNDOS
+  )
+  const refreshDadosEmAndamentoRef = useRef(refreshDadosEmAndamento)
+  const dashboardConsultasEmFetchingRef = useRef(false)
+  const handleAtualizarDadosRef = useRef<() => Promise<void>>(async () => undefined)
+
+  useEffect(() => {
+    refreshDadosEmAndamentoRef.current = refreshDadosEmAndamento
+  }, [refreshDadosEmAndamento])
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => {
+      setSegundosRestantesAuto((segundosAtuais) => {
+        if (segundosAtuais > 1) {
+          return segundosAtuais - 1
+        }
+
+        const podeExecutarAtualizacaoAutomatica =
+          !refreshDadosEmAndamentoRef.current && !dashboardConsultasEmFetchingRef.current
+
+        if (!podeExecutarAtualizacaoAutomatica) {
+          return 1
+        }
+
+        void handleAtualizarDadosRef.current()
+        return DURACAO_CONTAGEM_AUTO_SEGUNDOS
+      })
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalo)
+    }
+  }, [])
+
+  const linhaIdsSelecionados = useMemo(
+    () => parseIdsNumericos(filtrosAplicados.linhaIds),
+    [filtrosAplicados.linhaIds]
+  )
+  const turnoIdsSelecionados = useMemo(
+    () => parseIdsNumericos(filtrosAplicados.turnoIds),
+    [filtrosAplicados.turnoIds]
+  )
+  const produtoIdsSelecionados = useMemo(
+    () => parseIdsNumericos(filtrosAplicados.produtoIds),
+    [filtrosAplicados.produtoIds]
+  )
+  const lancamentoId = useMemo(
+    () => parseLancamentoNumerico(filtrosAplicados.lancamento),
+    [filtrosAplicados.lancamento]
+  )
+
   const periodoConsulta = useMemo<PeriodoConsulta>(() => {
     const hoje = new Date()
     const inicio = subDays(hoje, 6)
+    const inicioBrPadrao = format(inicio, 'dd/MM/yyyy')
+    const fimBrPadrao = format(hoje, 'dd/MM/yyyy')
+
+    const inicioBr = filtrosAplicados.dataInicio || inicioBrPadrao
+    const fimBr = filtrosAplicados.dataFim || fimBrPadrao
+    const inicioIso = converterDataBrParaIso(inicioBr) ?? format(inicio, 'yyyy-MM-dd')
+    const fimIso = converterDataBrParaIso(fimBr) ?? format(hoje, 'yyyy-MM-dd')
 
     return {
-      inicioIso: format(inicio, 'yyyy-MM-dd'),
-      fimIso: format(hoje, 'yyyy-MM-dd'),
-      inicioBr: format(inicio, 'dd/MM/yyyy'),
-      fimBr: format(hoje, 'dd/MM/yyyy'),
+      inicioIso,
+      fimIso,
+      inicioBr,
+      fimBr,
     }
-  }, [])
+  }, [filtrosAplicados.dataFim, filtrosAplicados.dataInicio])
+
+  const linhaIdRpc = linhaIdsSelecionados.length === 1 ? linhaIdsSelecionados[0] : null
+  const turnoIdRpc = turnoIdsSelecionados.length === 1 ? turnoIdsSelecionados[0] : null
+  const produtoIdRpc = produtoIdsSelecionados.length === 1 ? produtoIdsSelecionados[0] : null
 
   const {
     data: dadosDashboard,
     isLoading,
+    isFetching,
     error,
+    refetch,
   } = useQuery({
-    queryKey: ['dashboard-oee-empresa', periodoConsulta],
+    queryKey: [
+      'dashboard-oee-empresa',
+      periodoConsulta,
+      {
+        linhaIdRpc,
+        turnoIdRpc,
+        produtoIdRpc,
+        lancamentoId,
+        statusesSelecionados: filtrosAplicados.statuses,
+      },
+    ],
     queryFn: async () => {
       const { data, error: erroRpc } = await supabase.rpc('fn_calcular_oee_empresa', {
         p_data_inicio: periodoConsulta.inicioIso,
         p_data_fim: periodoConsulta.fimIso,
-        p_turno_id: null,
-        p_produto_id: null,
-        p_linhaproducao_id: null,
+        p_turno_id: turnoIdRpc,
+        p_produto_id: produtoIdRpc,
+        p_linhaproducao_id: linhaIdRpc,
         p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
-        p_oeeturno_id: null,
+        p_oeeturno_id: lancamentoId,
       })
 
       if (erroRpc) {
+        console.error('[DashboardOeeEmpresa] Erro ao chamar fn_calcular_oee_empresa', {
+          code: erroRpc.code,
+          message: erroRpc.message,
+          details: erroRpc.details,
+          hint: erroRpc.hint,
+          parametros: {
+            p_data_inicio: periodoConsulta.inicioIso,
+            p_data_fim: periodoConsulta.fimIso,
+            p_turno_id: turnoIdRpc,
+            p_produto_id: produtoIdRpc,
+            p_linhaproducao_id: linhaIdRpc,
+            p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
+            p_oeeturno_id: lancamentoId,
+          },
+        })
         throw erroRpc
       }
 
@@ -432,6 +579,28 @@ export default function DashboardOeeEmpresa() {
     },
     staleTime: 60_000,
   })
+
+  const dashboardConsultasEmFetching = isFetching
+  useEffect(() => {
+    dashboardConsultasEmFetchingRef.current = dashboardConsultasEmFetching
+  }, [dashboardConsultasEmFetching])
+
+  const handleAtualizarDados = useCallback(async () => {
+    if (refreshDadosEmAndamento || dashboardConsultasEmFetching) {
+      return
+    }
+
+    setRefreshDadosEmAndamento(true)
+    try {
+      await refetch()
+    } finally {
+      setRefreshDadosEmAndamento(false)
+    }
+  }, [dashboardConsultasEmFetching, refetch, refreshDadosEmAndamento])
+
+  useEffect(() => {
+    handleAtualizarDadosRef.current = handleAtualizarDados
+  }, [handleAtualizarDados])
 
   const data = useMemo(() => {
     if (dadosDashboard) {
@@ -452,14 +621,53 @@ export default function DashboardOeeEmpresa() {
     return criarDashboardPadrao(periodoConsulta, 'Sem dados de apontamento no período selecionado.')
   }, [dadosDashboard, error, isLoading, periodoConsulta])
 
+  const statusDados = useMemo(() => {
+    if (error) {
+      return 'Erro ao carregar'
+    }
+    if (isLoading) {
+      return 'Carregando...'
+    }
+    if (dashboardConsultasEmFetching || refreshDadosEmAndamento) {
+      return 'Atualizando...'
+    }
+    if (filtrosAplicados.statuses.length > 0) {
+      return 'Filtro de status aplica-se ao Dashboard Linha'
+    }
+    return 'Atualizado'
+  }, [
+    dashboardConsultasEmFetching,
+    error,
+    filtrosAplicados.statuses.length,
+    isLoading,
+    refreshDadosEmAndamento,
+  ])
+
+  const rotuloAuto = useMemo(
+    () => formatarTempoRestanteAuto(segundosRestantesAuto),
+    [segundosRestantesAuto]
+  )
+
   return (
     <div className="dashboard-oee-empresa-page" data-theme={theme}>
       <div className="wrapper">
-        <OeeEmpresaHeader
-          rotuloDashboard={data.rotuloDashboard}
-          tituloLinha={data.tituloLinha}
-          periodo={data.periodo}
+        <DashboardHeader
+          theme={theme}
+          toggleTheme={toggleTheme}
+          titulo={data.tituloLinha}
+          rotuloAuto={rotuloAuto}
+          onBack={() => navigate(-1)}
+          onFilter={() => setFiltrosAbertos(true)}
+          onRefreshDados={handleAtualizarDados}
+          refreshDadosEmAndamento={refreshDadosEmAndamento || dashboardConsultasEmFetching}
         />
+        <div className="period-badge">
+          <div className="dot" />
+          <span>
+            <strong>{data.periodo.inicio}</strong> &nbsp;→&nbsp; <strong>{data.periodo.fim}</strong>
+          </span>
+          <small>{statusDados}</small>
+        </div>
 
         <div className="oee-hero">
           <OeeHeroSection
@@ -485,6 +693,16 @@ export default function DashboardOeeEmpresa() {
           percentualOee={data.oeeGlobal.percentual}
         />
       </div>
+
+      <FiltrarDashboardLinha
+        aberto={filtrosAbertos}
+        onFechar={() => setFiltrosAbertos(false)}
+        filtrosAplicados={filtrosAplicados}
+        onAplicar={(novosFiltros) => {
+          setFiltrosAplicados(clonarFiltros(novosFiltros))
+          setFiltrosAbertos(false)
+        }}
+      />
     </div>
   )
 }

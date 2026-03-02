@@ -11,6 +11,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -33,13 +41,56 @@ import {
   OEE_LINHA_META_INITIAL_VALUES,
   OeeLinhaMetaFormData
 } from '@/types/oee-linha-meta'
+import { supabase } from '@/lib/supabase'
 import { toast } from '@/hooks/use-toast'
-import { format } from 'date-fns'
+import { differenceInCalendarDays, endOfMonth, format, isSameDay, subDays, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowLeft, Save, Trash2, Calendar as CalendarIcon, Search } from 'lucide-react'
+import { ArrowLeft, Save, Trash2, Calendar as CalendarIcon, Search, Sparkles, Loader2 } from 'lucide-react'
 
 type OeeLinhaMetaCadLocationState = {
   returnSearchTerm?: string
+}
+
+type ResumoOeeTurnoSugestaoRow = {
+  oeeturno_id?: number | null
+  qtd_envase?: number | string | null
+  envasado?: number | string | null
+  embalado?: number | string | null
+  qtd_embalagem?: number | string | null
+  perdas_envase?: number | string | null
+  perdas_embalagem?: number | string | null
+  paradas_grandes_minutos?: number | string | null
+  paradas_pequenas_minutos?: number | string | null
+  paradas_totais_minutos?: number | string | null
+  paradas_estrategicas_minutos?: number | string | null
+}
+
+type TurnoOeeResumo = {
+  oeeturno_id: number
+  turno_id: number | null
+}
+
+type TurnoBaseResumo = {
+  turno_id: number
+  hora_inicio: string | null
+  hora_fim: string | null
+}
+
+type SugestaoMetaHistorica = {
+  metaSugerida: number
+  oeeMedioEstimado: number
+  disponibilidadeMedia: number
+  performanceMedia: number
+  qualidadeMedia: number
+  periodoAtualInicio: string
+  periodoAtualFim: string
+  periodoAnteriorInicio: string
+  periodoAnteriorFim: string
+  quantidadeTurnos: number
+  totalProduzido: number
+  totalPerdas: number
+  totalParadasMinutos: number
+  totalTempoPlanejadoMinutos: number
 }
 
 const formatarDataDigitada = (valor: string): string => {
@@ -136,6 +187,103 @@ const formatarMetaParaExibicao = (valor: string): string => {
   })
 }
 
+const normalizarNumero = (valor: number | string | null | undefined): number => {
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? valor : 0
+  }
+
+  if (typeof valor !== 'string') {
+    return 0
+  }
+
+  const texto = valor.trim()
+  if (!texto) {
+    return 0
+  }
+
+  const numero = texto.includes(',')
+    ? Number(texto.replace(/\./g, '').replace(',', '.'))
+    : Number(texto)
+
+  return Number.isFinite(numero) ? numero : 0
+}
+
+const formatarNumeroPtBr = (valor: number, casas = 2): string => {
+  if (!Number.isFinite(valor)) return '0'
+  return valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas
+  })
+}
+
+const formatarMinutosParaHHMM = (valor: number): string => {
+  const minutos = Math.max(0, Math.round(valor))
+  const horas = Math.floor(minutos / 60)
+  const minutosRestantes = minutos % 60
+
+  return `${horas.toLocaleString('pt-BR')}:${String(minutosRestantes).padStart(2, '0')}`
+}
+
+const extrairMinutosHorario = (horario: string | null | undefined): number | null => {
+  if (!horario) return null
+  const texto = horario.trim()
+  const match = texto.match(/^(\d{2}):(\d{2})/)
+  if (!match) return null
+
+  const horas = Number(match[1])
+  const minutos = Number(match[2])
+  if (!Number.isFinite(horas) || !Number.isFinite(minutos)) return null
+  if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) return null
+
+  return horas * 60 + minutos
+}
+
+const calcularDuracaoTurnoMinutos = (
+  horaInicio: string | null | undefined,
+  horaFim: string | null | undefined
+): number | null => {
+  const inicio = extrairMinutosHorario(horaInicio)
+  const fim = extrairMinutosHorario(horaFim)
+
+  if (inicio === null || fim === null) {
+    return null
+  }
+
+  if (fim > inicio) {
+    return fim - inicio
+  }
+
+  if (fim === inicio) {
+    return 0
+  }
+
+  return (24 * 60 - inicio) + fim
+}
+
+const obterPeriodoAnteriorEquivalente = (
+  inicio: Date,
+  fim: Date
+): { inicioAnterior: Date; fimAnterior: Date } => {
+  const ehMesCompleto =
+    inicio.getDate() === 1 &&
+    inicio.getMonth() === fim.getMonth() &&
+    inicio.getFullYear() === fim.getFullYear() &&
+    isSameDay(fim, endOfMonth(fim))
+
+  if (ehMesCompleto) {
+    const mesAnterior = subMonths(inicio, 1)
+    const inicioAnterior = new Date(mesAnterior.getFullYear(), mesAnterior.getMonth(), 1)
+    const fimAnterior = endOfMonth(mesAnterior)
+    return { inicioAnterior, fimAnterior }
+  }
+
+  const diasPeriodo = differenceInCalendarDays(fim, inicio) + 1
+  const fimAnterior = subDays(inicio, 1)
+  const inicioAnterior = subDays(fimAnterior, diasPeriodo - 1)
+
+  return { inicioAnterior, fimAnterior }
+}
+
 export default function OeeLinhaMetaCad() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -165,6 +313,9 @@ export default function OeeLinhaMetaCad() {
   const [calendarioInicioAberto, setCalendarioInicioAberto] = useState(false)
   const [calendarioFimAberto, setCalendarioFimAberto] = useState(false)
   const [modalBuscaLinhaAberto, setModalBuscaLinhaAberto] = useState(false)
+  const [isCalculandoSugestaoMeta, setIsCalculandoSugestaoMeta] = useState(false)
+  const [modalSugestaoMetaAberto, setModalSugestaoMetaAberto] = useState(false)
+  const [sugestaoMetaHistorica, setSugestaoMetaHistorica] = useState<SugestaoMetaHistorica | null>(null)
 
   const loadData = useCallback(async () => {
     if (!id) {
@@ -364,6 +515,248 @@ export default function OeeLinhaMetaCad() {
     setModalBuscaLinhaAberto(false)
   }
 
+  const handleSugerirMetaPeriodoAnterior = async () => {
+    if (isCalculandoSugestaoMeta) {
+      return
+    }
+
+    if (!formData.linhaProducaoId) {
+      toast({
+        variant: 'destructive',
+        title: 'Validação',
+        description: 'Selecione a linha de produção antes de gerar a sugestão.'
+      })
+      return
+    }
+
+    const dataInicioObj = parseDataParaDate(formData.dataInicio)
+    if (!dataInicioObj) {
+      toast({
+        variant: 'destructive',
+        title: 'Validação',
+        description: 'Informe uma data de início válida para calcular a sugestão.'
+      })
+      return
+    }
+
+    const dataFimObj = formData.dataFim.trim() ? parseDataParaDate(formData.dataFim) : dataInicioObj
+    if (!dataFimObj) {
+      toast({
+        variant: 'destructive',
+        title: 'Validação',
+        description: 'Informe uma data de fim válida para calcular a sugestão.'
+      })
+      return
+    }
+
+    if (dataFimObj.getTime() < dataInicioObj.getTime()) {
+      toast({
+        variant: 'destructive',
+        title: 'Validação',
+        description: 'A data de fim não pode ser anterior à data de início.'
+      })
+      return
+    }
+
+    const { inicioAnterior, fimAnterior } = obterPeriodoAnteriorEquivalente(dataInicioObj, dataFimObj)
+
+    try {
+      setIsCalculandoSugestaoMeta(true)
+
+      const { data, error } = await supabase.rpc('fn_resumo_oee_turno', {
+        p_data_inicio: format(inicioAnterior, 'yyyy-MM-dd'),
+        p_data_fim: format(fimAnterior, 'yyyy-MM-dd'),
+        p_turno_id: null,
+        p_produto_id: null,
+        p_linhaproducao_id: formData.linhaProducaoId,
+        p_oeeturno_id: null
+      })
+
+      if (error) {
+        throw error
+      }
+
+      const linhasResumo = (data || []) as ResumoOeeTurnoSugestaoRow[]
+      const linhasComTurno = linhasResumo.filter(
+        (linha): linha is ResumoOeeTurnoSugestaoRow & { oeeturno_id: number } =>
+          typeof linha.oeeturno_id === 'number'
+      )
+
+      if (linhasComTurno.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Sem histórico para sugestão',
+          description: 'Não há dados no período anterior para calcular a meta sugerida.'
+        })
+        return
+      }
+
+      const oeeturnoIds = Array.from(new Set(linhasComTurno.map((linha) => linha.oeeturno_id)))
+
+      const { data: turnosOeeData, error: turnosOeeError } = await supabase
+        .from('tboee_turno')
+        .select('oeeturno_id, turno_id')
+        .in('oeeturno_id', oeeturnoIds)
+        .eq('deletado', 'N')
+
+      if (turnosOeeError) {
+        throw turnosOeeError
+      }
+
+      const turnosOee = (turnosOeeData || []) as TurnoOeeResumo[]
+      const turnoIdPorOee = new Map<number, number | null>()
+      for (const turno of turnosOee) {
+        turnoIdPorOee.set(turno.oeeturno_id, turno.turno_id ?? null)
+      }
+
+      const turnoIds = Array.from(
+        new Set(
+          turnosOee
+            .map((turno) => turno.turno_id)
+            .filter((turnoId): turnoId is number => typeof turnoId === 'number')
+        )
+      )
+
+      const duracaoPorTurnoId = new Map<number, number>()
+      if (turnoIds.length > 0) {
+        const { data: turnosBaseData, error: turnosBaseError } = await supabase
+          .from('tbturno')
+          .select('turno_id, hora_inicio, hora_fim')
+          .in('turno_id', turnoIds)
+
+        if (turnosBaseError) {
+          throw turnosBaseError
+        }
+
+        for (const turnoBase of (turnosBaseData || []) as TurnoBaseResumo[]) {
+          const duracao = calcularDuracaoTurnoMinutos(turnoBase.hora_inicio, turnoBase.hora_fim)
+          if (duracao !== null && duracao > 0) {
+            duracaoPorTurnoId.set(turnoBase.turno_id, duracao)
+          }
+        }
+      }
+
+      const totais = linhasComTurno.reduce(
+        (acc, linha) => {
+          acc.qtdEnvase += normalizarNumero(linha.qtd_envase)
+          acc.envasado += normalizarNumero(linha.envasado)
+          acc.embalado += normalizarNumero(linha.embalado)
+          acc.qtdEmbalagem += normalizarNumero(linha.qtd_embalagem)
+          acc.perdasEnvase += normalizarNumero(linha.perdas_envase)
+          acc.perdasEmbalagem += normalizarNumero(linha.perdas_embalagem)
+          acc.paradasGrandes += normalizarNumero(linha.paradas_grandes_minutos)
+          acc.paradasPequenas += normalizarNumero(linha.paradas_pequenas_minutos)
+          acc.paradasTotais += normalizarNumero(linha.paradas_totais_minutos)
+          acc.paradasEstrategicas += normalizarNumero(linha.paradas_estrategicas_minutos)
+          return acc
+        },
+        {
+          qtdEnvase: 0,
+          envasado: 0,
+          embalado: 0,
+          qtdEmbalagem: 0,
+          perdasEnvase: 0,
+          perdasEmbalagem: 0,
+          paradasGrandes: 0,
+          paradasPequenas: 0,
+          paradasTotais: 0,
+          paradasEstrategicas: 0
+        }
+      )
+
+      const totalProduzido = Math.max(totais.qtdEnvase + totais.qtdEmbalagem, 0)
+      if (totalProduzido <= 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Sem produção no período anterior',
+          description: 'Não foi possível calcular a sugestão porque não houve produção suficiente no período base.'
+        })
+        return
+      }
+
+      let totalTempoPlanejadoMinutos = 0
+      for (const oeeturnoId of oeeturnoIds) {
+        const turnoId = turnoIdPorOee.get(oeeturnoId) ?? null
+        const duracaoTurno = turnoId !== null ? duracaoPorTurnoId.get(turnoId) : undefined
+        totalTempoPlanejadoMinutos += duracaoTurno ?? 480
+      }
+
+      const tempoDisponivelMinutos = Math.max(totalTempoPlanejadoMinutos - totais.paradasEstrategicas, 0)
+      const tempoOperacaoMinutos = Math.max(tempoDisponivelMinutos - totais.paradasGrandes, 0)
+      const tempoProdutivoMinutos = Math.max(tempoOperacaoMinutos - totais.paradasPequenas, 0)
+
+      const disponibilidadeMedia = tempoDisponivelMinutos > 0
+        ? Math.max(0, Math.min(tempoOperacaoMinutos / tempoDisponivelMinutos, 1))
+        : 0
+      const performanceMedia = tempoOperacaoMinutos > 0
+        ? Math.max(0, Math.min(tempoProdutivoMinutos / tempoOperacaoMinutos, 1))
+        : 0
+
+      const totalBoas = Math.max(totais.envasado + totais.embalado, 0)
+      const qualidadeMedia = totalProduzido > 0
+        ? Math.max(0, Math.min(totalBoas / totalProduzido, 1))
+        : 0
+
+      const oeeMedioEstimado = Math.max(
+        0,
+        Math.min(disponibilidadeMedia * performanceMedia * qualidadeMedia * 100, 100)
+      )
+      const metaSugerida = Number(oeeMedioEstimado.toFixed(2))
+
+      if (!Number.isFinite(metaSugerida) || metaSugerida <= 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Cálculo indisponível',
+          description: 'Não foi possível calcular uma meta sugerida válida com os dados encontrados.'
+        })
+        return
+      }
+
+      setSugestaoMetaHistorica({
+        metaSugerida,
+        oeeMedioEstimado,
+        disponibilidadeMedia,
+        performanceMedia,
+        qualidadeMedia,
+        periodoAtualInicio: format(dataInicioObj, 'dd/MM/yyyy'),
+        periodoAtualFim: format(dataFimObj, 'dd/MM/yyyy'),
+        periodoAnteriorInicio: format(inicioAnterior, 'dd/MM/yyyy'),
+        periodoAnteriorFim: format(fimAnterior, 'dd/MM/yyyy'),
+        quantidadeTurnos: oeeturnoIds.length,
+        totalProduzido,
+        totalPerdas: Math.max(totais.perdasEnvase + totais.perdasEmbalagem, 0),
+        totalParadasMinutos: Math.max(totais.paradasTotais, 0),
+        totalTempoPlanejadoMinutos: Math.max(totalTempoPlanejadoMinutos, 0)
+      })
+      setModalSugestaoMetaAberto(true)
+    } catch (error) {
+      console.error('Erro ao calcular sugestão de meta por linha:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao sugerir meta',
+        description: 'Não foi possível gerar a sugestão de meta com base no período anterior.'
+      })
+    } finally {
+      setIsCalculandoSugestaoMeta(false)
+    }
+  }
+
+  const handleAplicarMetaSugerida = () => {
+    if (!sugestaoMetaHistorica) return
+
+    setFormData((prev) => ({
+      ...prev,
+      meta: formatarMetaParaExibicao(String(sugestaoMetaHistorica.metaSugerida))
+    }))
+
+    setModalSugestaoMetaAberto(false)
+
+    toast({
+      title: 'Meta sugerida aplicada',
+      description: `A meta ${formatarNumeroPtBr(sugestaoMetaHistorica.metaSugerida)}% foi aplicada no formulário.`
+    })
+  }
+
   const isActionDisabled = isFetchingData || isSaving || isDeleting
   const dataInicioSelecionada = useMemo(() => parseDataParaDate(formData.dataInicio), [formData.dataInicio])
   const dataFimSelecionada = useMemo(() => parseDataParaDate(formData.dataFim), [formData.dataFim])
@@ -376,6 +769,11 @@ export default function OeeLinhaMetaCad() {
     if (linhaNome) return linhaNome
     return `Linha ${linhaId}`
   }, [formData.linhaProducaoId, formData.linhaProducaoNome])
+  const justificativaSugestaoMeta = useMemo(() => {
+    if (!sugestaoMetaHistorica) return ''
+
+    return `A sugestão usa o período anterior (${sugestaoMetaHistorica.periodoAnteriorInicio} a ${sugestaoMetaHistorica.periodoAnteriorFim}) da linha selecionada para estimar a média de OEE a partir de disponibilidade, performance e qualidade. Foram considerados ${sugestaoMetaHistorica.quantidadeTurnos} turnos, ${formatarNumeroPtBr(sugestaoMetaHistorica.totalProduzido, 0)} unidades produzidas, ${formatarNumeroPtBr(sugestaoMetaHistorica.totalPerdas, 0)} unidades de perdas e ${formatarMinutosParaHHMM(sugestaoMetaHistorica.totalParadasMinutos)} de paradas no total.`
+  }, [sugestaoMetaHistorica])
 
   if (id && isFetchingData && !formData.id) {
     return (
@@ -577,18 +975,44 @@ export default function OeeLinhaMetaCad() {
                     <Label htmlFor="meta">
                       Meta <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="meta"
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="Ex.: 85,00"
-                      value={formData.meta}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, meta: formatarMetaDigitada(e.target.value) }))}
-                      onBlur={() => setFormData((prev) => ({ ...prev, meta: formatarMetaParaExibicao(prev.meta) }))}
-                      readOnly={isActionDisabled}
-                    />
+                    <div className="flex flex-col md:flex-row md:items-center gap-2">
+                      <Input
+                        id="meta"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Ex.: 85,00"
+                        value={formData.meta}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, meta: formatarMetaDigitada(e.target.value) }))}
+                        onBlur={() => setFormData((prev) => ({ ...prev, meta: formatarMetaParaExibicao(prev.meta) }))}
+                        readOnly={isActionDisabled}
+                        className="md:flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleSugerirMetaPeriodoAnterior}
+                        disabled={isActionDisabled || isCalculandoSugestaoMeta}
+                        className="min-h-10 whitespace-nowrap"
+                        title="Sugerir meta com base no período anterior"
+                      >
+                        {isCalculandoSugestaoMeta ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Calculando...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Sugerir Meta
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     <p className="text-xs text-gray-500">
                       Informe a meta com até 2 casas decimais (padrão brasileiro).
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      A sugestão considera a média estimada do período anterior com a mesma janela de datas.
                     </p>
                   </div>
                 </div>
@@ -632,6 +1056,108 @@ export default function OeeLinhaMetaCad() {
             onFechar={() => setModalBuscaLinhaAberto(false)}
             onSelecionarLinha={handleSelecionarLinhaModal}
           />
+
+          <Dialog open={modalSugestaoMetaAberto} onOpenChange={setModalSugestaoMetaAberto}>
+            <DialogContent className="sm:max-w-[640px]">
+              <DialogHeader>
+                <DialogTitle>Sugestão de Meta por Histórico</DialogTitle>
+                <DialogDescription>
+                  Período atual: <strong>{sugestaoMetaHistorica?.periodoAtualInicio}</strong> até{' '}
+                  <strong>{sugestaoMetaHistorica?.periodoAtualFim}</strong>
+                </DialogDescription>
+              </DialogHeader>
+
+              {sugestaoMetaHistorica && (
+                <div className="space-y-4">
+                  <div className="rounded-md border border-brand-primary/30 bg-brand-primary/5 p-4">
+                    <p className="text-xs uppercase tracking-wide text-brand-primary/80 font-semibold">
+                      Meta sugerida
+                    </p>
+                    <p className="text-3xl font-bold text-brand-primary">
+                      {formatarNumeroPtBr(sugestaoMetaHistorica.metaSugerida)}%
+                    </p>
+                    <p className="text-xs text-brand-primary/80 mt-1">
+                      Base: {sugestaoMetaHistorica.periodoAnteriorInicio} até {sugestaoMetaHistorica.periodoAnteriorFim}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Disponibilidade média</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {formatarNumeroPtBr(sugestaoMetaHistorica.disponibilidadeMedia * 100)}%
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Performance média</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {formatarNumeroPtBr(sugestaoMetaHistorica.performanceMedia * 100)}%
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Qualidade média</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {formatarNumeroPtBr(sugestaoMetaHistorica.qualidadeMedia * 100)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Turnos considerados</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {sugestaoMetaHistorica.quantidadeTurnos}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Tempo planejado</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {formatarMinutosParaHHMM(sugestaoMetaHistorica.totalTempoPlanejadoMinutos)}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Total produzido</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {formatarNumeroPtBr(sugestaoMetaHistorica.totalProduzido, 0)}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-gray-200 p-3">
+                      <p className="text-xs text-gray-500">Paradas totais</p>
+                      <p className="text-base font-semibold text-gray-800">
+                        {formatarMinutosParaHHMM(sugestaoMetaHistorica.totalParadasMinutos)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                    <p className="text-xs font-semibold text-gray-700 mb-1">Justificativa</p>
+                    <p className="text-sm text-gray-600">{justificativaSugestaoMeta}</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      OEE estimado no período base: {formatarNumeroPtBr(sugestaoMetaHistorica.oeeMedioEstimado)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setModalSugestaoMetaAberto(false)}
+                >
+                  Manter valor atual
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAplicarMetaSugerida}
+                  disabled={!sugestaoMetaHistorica}
+                  className="!bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90"
+                >
+                  Aplicar {sugestaoMetaHistorica ? `${formatarNumeroPtBr(sugestaoMetaHistorica.metaSugerida)}%` : ''}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {id && (
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

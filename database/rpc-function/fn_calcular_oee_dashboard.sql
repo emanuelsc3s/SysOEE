@@ -136,9 +136,14 @@ BEGIN
       tf.linhaproducao_id,
       CASE
         WHEN p.hora_inicio IS NULL OR p.hora_fim IS NULL THEN 0
+        WHEN BTRIM(p.hora_inicio::text) !~ '^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$'
+          OR BTRIM(p.hora_fim::text) !~ '^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$'
+          THEN 0
         -- Parada diurna
         WHEN EXTRACT(EPOCH FROM p.hora_fim::time) > EXTRACT(EPOCH FROM p.hora_inicio::time)
           THEN (EXTRACT(EPOCH FROM p.hora_fim::time) - EXTRACT(EPOCH FROM p.hora_inicio::time)) / 60.0
+        WHEN EXTRACT(EPOCH FROM p.hora_fim::time) = EXTRACT(EPOCH FROM p.hora_inicio::time)
+          THEN 0
         -- Parada noturna (cruza meia-noite)
         ELSE
           ((86400 - EXTRACT(EPOCH FROM p.hora_inicio::time)) + EXTRACT(EPOCH FROM p.hora_fim::time)) / 60.0

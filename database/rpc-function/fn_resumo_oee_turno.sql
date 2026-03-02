@@ -302,6 +302,9 @@ BEGIN
       tf.linhaproducao_id,
       CASE
         WHEN tt.hora_inicio IS NULL OR tt.hora_fim IS NULL THEN NULL::numeric
+        WHEN BTRIM(tt.hora_inicio::text) !~ '^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$'
+          OR BTRIM(tt.hora_fim::text) !~ '^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$'
+          THEN NULL::numeric
         WHEN EXTRACT(EPOCH FROM tt.hora_fim::time) > EXTRACT(EPOCH FROM tt.hora_inicio::time)
           THEN (EXTRACT(EPOCH FROM tt.hora_fim::time) - EXTRACT(EPOCH FROM tt.hora_inicio::time)) / 60.0
         WHEN EXTRACT(EPOCH FROM tt.hora_fim::time) = EXTRACT(EPOCH FROM tt.hora_inicio::time)
@@ -406,8 +409,13 @@ BEGIN
       END AS produto_key,
       CASE
         WHEN pr.hora_inicio IS NULL OR pr.hora_fim IS NULL THEN 0
+        WHEN BTRIM(pr.hora_inicio::text) !~ '^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$'
+          OR BTRIM(pr.hora_fim::text) !~ '^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$'
+          THEN 0
         WHEN EXTRACT(EPOCH FROM pr.hora_fim::time) > EXTRACT(EPOCH FROM pr.hora_inicio::time)
           THEN (EXTRACT(EPOCH FROM pr.hora_fim::time) - EXTRACT(EPOCH FROM pr.hora_inicio::time)) / 60.0
+        WHEN EXTRACT(EPOCH FROM pr.hora_fim::time) = EXTRACT(EPOCH FROM pr.hora_inicio::time)
+          THEN 0
         ELSE
           ((86400 - EXTRACT(EPOCH FROM pr.hora_inicio::time)) + EXTRACT(EPOCH FROM pr.hora_fim::time)) / 60.0
       END AS duracao_minutos,
