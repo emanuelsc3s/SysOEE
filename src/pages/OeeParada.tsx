@@ -124,6 +124,10 @@ export default function OeeParada() {
     natureza: '',
   })
 
+  // Referências para evitar reset de página em mudanças irrelevantes (ex.: query string)
+  const prevSearchTermRef = useRef(searchTerm)
+  const prevAppliedFiltersRef = useRef(appliedFilters)
+
   // Contagem de filtros aplicados para badge
   const appliedCount = (() => {
     let count = 0
@@ -170,6 +174,10 @@ export default function OeeParada() {
   const paradasPaginadas = paradasData?.data || []
   const totalItems = paradasData?.count || 0
   const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const totalPagesValidas = Math.max(totalPages, 1)
+  const paginaAtualExibida = Math.min(currentPage, totalPagesValidas)
+  const inicioFaixaItens = totalItems === 0 ? 0 : (paginaAtualExibida - 1) * itemsPerPage + 1
+  const fimFaixaItens = totalItems === 0 ? 0 : Math.min(paginaAtualExibida * itemsPerPage, totalItems)
   const shouldRefreshFromNavigation = Boolean(locationState?.shouldRefresh)
 
   useEffect(() => {
@@ -180,8 +188,21 @@ export default function OeeParada() {
     }
   }, [shouldRefreshFromNavigation, refetch, navigate, location.pathname, location.search])
 
-  // Resetar página para 1 quando searchTerm ou filtros mudarem
+  // Resetar página para 1 somente quando searchTerm ou filtros realmente mudarem
   useEffect(() => {
+    const prevFilters = prevAppliedFiltersRef.current
+    const filtersChanged =
+      prevFilters.componente !== appliedFilters.componente ||
+      prevFilters.classe !== appliedFilters.classe ||
+      prevFilters.natureza !== appliedFilters.natureza
+    const searchChanged = prevSearchTermRef.current !== searchTerm
+
+    if (!filtersChanged && !searchChanged) {
+      return
+    }
+
+    prevSearchTermRef.current = searchTerm
+    prevAppliedFiltersRef.current = appliedFilters
     setCurrentPage(1)
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev)
@@ -189,6 +210,26 @@ export default function OeeParada() {
       return newParams
     })
   }, [searchTerm, appliedFilters, setSearchParams])
+
+  // Segurança adicional: mantém o estado da página dentro do total calculado.
+  // Só corrige quando já temos resposta do servidor (paradasData definido).
+  useEffect(() => {
+    if (!paradasData) return
+    if (currentPage <= totalPagesValidas) {
+      return
+    }
+
+    setCurrentPage(totalPagesValidas)
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (totalPagesValidas > 1) {
+        params.set('page', String(totalPagesValidas))
+      } else {
+        params.delete('page')
+      }
+      return params
+    }, { replace: true })
+  }, [currentPage, totalPagesValidas, setSearchParams, paradasData])
 
   // Handler para mudança de página (sincroniza com query string)
   const handlePageChange = (page: number) => {
@@ -202,6 +243,19 @@ export default function OeeParada() {
         params.delete('page')
       }
       setSearchParams(params, { replace: true })
+    } catch { /* noop */ }
+  }
+
+  const handleItemsPerPageChange = (size: number) => {
+    setItemsPerPage(size)
+    setCurrentPage(1)
+    try {
+      const params = new URLSearchParams(searchParams)
+      params.delete('page')
+      setSearchParams(params, { replace: true })
+    } catch { /* noop */ }
+    try {
+      localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size))
     } catch { /* noop */ }
   }
 
@@ -345,7 +399,21 @@ export default function OeeParada() {
                     Total de {totalItems} paradas cadastradas
                   </p>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex flex-col items-start gap-2 md:items-end md:self-center">
+                  <div className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 sm:hidden">
+                    Página {paginaAtualExibida} de {totalPagesValidas}
+                  </div>
+                  <div className="hidden sm:flex sm:items-center sm:gap-3 sm:flex-wrap md:justify-end">
+                    <DataPagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                      itemsPerPage={itemsPerPage}
+                      totalItems={totalItems}
+                      showInfo={false}
+                      className="!border-0 !bg-transparent !px-0 !py-0 !justify-end"
+                    />
+                  </div>
                   {isLoading && (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -687,29 +755,63 @@ export default function OeeParada() {
               </div>
             </div>
 
-            {/* Componente de Paginação */}
-            <DataPagination
-              containerRef={paginationRef}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              itemsPerPage={itemsPerPage}
-              totalItems={totalItems}
-              showInfo={true}
-              pageSizeOptions={PAGE_SIZE_OPTIONS as unknown as number[]}
-              onItemsPerPageChange={(size) => {
-                setItemsPerPage(size)
-                setCurrentPage(1)
-                try {
-                  const params = new URLSearchParams(searchParams)
-                  params.delete('page')
-                  setSearchParams(params, { replace: true })
-                } catch { /* noop */ }
-                try {
-                  localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size))
-                } catch { /* noop */ }
-              }}
-            />
+            <div className="sm:hidden border-t border-gray-200 bg-white px-4 py-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-600">
+                  Mostrando {inicioFaixaItens} a {fimFaixaItens} de {totalItems}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="itens-por-pagina-mobile-paradas" className="text-xs text-gray-500">Por página</Label>
+                  <select
+                    id="itens-por-pagina-mobile-paradas"
+                    value={String(itemsPerPage)}
+                    className="h-9 rounded-md border border-gray-200 bg-white px-2.5 text-xs text-gray-700"
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                  >
+                    {PAGE_SIZE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => handlePageChange(paginaAtualExibida - 1)}
+                  disabled={paginaAtualExibida <= 1}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => handlePageChange(paginaAtualExibida + 1)}
+                  disabled={paginaAtualExibida >= totalPagesValidas}
+                >
+                  Próxima
+                </Button>
+              </div>
+              <p className="text-center text-xs text-gray-500">
+                Página {paginaAtualExibida} de {totalPagesValidas}
+              </p>
+            </div>
+
+            <div className="hidden sm:block">
+              <DataPagination
+                containerRef={paginationRef}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                itemsPerPage={itemsPerPage}
+                totalItems={totalItems}
+                showInfo={true}
+                pageSizeOptions={PAGE_SIZE_OPTIONS as unknown as number[]}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            </div>
           </div>
 
           {/* Dialog de confirmação de exclusão */}
