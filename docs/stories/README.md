@@ -219,5 +219,46 @@ Após todas as stories, validar:
 
 ---
 
+## Épico 010: Compliance & Trilha de Auditoria (ALCOA+)
+
+**Status:** 📝 Pronto para desenvolvimento
+**Prioridade:** 🔴 Alta (pré-requisito para conformidade ALCOA+ em auditorias ANVISA)
+**Esforço Total:** ~5-7 dias úteis
+
+### Épico
+- [Epic 010: Compliance & Trilha de Auditoria (ALCOA+)](./epic-010-compliance-auditoria.md)
+
+### Stories
+
+#### Story 010.001: Migration — Corrigir tbauditlog e audit_trigger_func()
+- **Arquivo:** [010.001.migration-fix-auditlog.md](./010.001.migration-fix-auditlog.md)
+- **Esforço:** 1-2 dias | **Prioridade:** P0 (Bloqueador)
+- **Descrição:** Recriar `tbauditlog` com schema correto e corrigir `audit_trigger_func()` eliminando bugs que impedem auditoria de INSERTs e DELETEs
+
+#### Story 010.002: Migration — Ampliar Cobertura de Triggers de Auditoria
+- **Arquivo:** [010.002.migration-ampliar-triggers.md](./010.002.migration-ampliar-triggers.md)
+- **Esforço:** 1 dia | **Prioridade:** P0
+- **Descrição:** Adicionar triggers de auditoria nas tabelas sem cobertura (módulos OEE, PMP, Funcionários, Linhas, Departamentos)
+
+#### Story 010.003: Frontend — Enviar Contexto de Auditoria nas Requisições
+- **Arquivo:** [010.003.frontend-contexto-auditoria.md](./010.003.frontend-contexto-auditoria.md)
+- **Esforço:** 1 dia | **Prioridade:** P1
+- **Descrição:** Configurar o cliente Supabase para enviar `app.current_user_id` e `app.device_info` após login, garantindo atribuibilidade (ALCOA+)
+
+#### Story 010.004: Frontend — Tela de Consulta do Audit Log
+- **Arquivo:** [010.004.frontend-tela-auditlog.md](./010.004.frontend-tela-auditlog.md)
+- **Esforço:** 2-3 dias | **Prioridade:** P2
+- **Descrição:** Criar página `/auditoria` com tabela de histórico, filtros, visualização de antes/depois e exportação CSV
+
+### Sequência Recomendada
+```
+010.001 (Corrigir tbauditlog + audit_trigger_func)   ← Bloqueador
+    └─ 010.002 (Ampliar triggers para tabelas novas)
+    └─ 010.003 (Frontend: enviar contexto de sessão)
+         └─ 010.004 (Tela de consulta do Audit Log)
+```
+
+---
+
 **Última Atualização:** 2026-03-01
 **Validado por:** Sarah (Product Owner)
