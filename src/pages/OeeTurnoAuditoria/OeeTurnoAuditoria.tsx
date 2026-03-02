@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowLeft, Filter, Shield, RefreshCw, User } from 'lucide-react'
+import { ArrowLeft, Filter, RefreshCw, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -164,9 +164,6 @@ export default function OeeTurnoAuditoria() {
           {/* Cabeçalho */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-brand-primary/10">
-                <Shield className="h-6 w-6 text-brand-primary" />
-              </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Trilha de Auditoria OEE</h1>
                 <p className="text-sm text-muted-foreground">

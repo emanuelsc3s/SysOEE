@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- OeeTurnoAuditoria: removido o bloco visual do ícone (container com fundo destacado) à esquerda do título "Trilha de Auditoria OEE" no cabeçalho da página.
 - OeeTurnoAuditoria: adicionado botão "Filtrar" entre "Voltar" e "Atualizar"; ao clicar, a barra `FiltrosAuditoriaBar` alterna visibilidade (inicia oculta).
 - OeeTurnoAuditoria: adicionado botão "Voltar" à esquerda do botão "Atualizar" no cabeçalho, com o mesmo estilo/estrutura do `OeeTurno` e navegação para a Home.
 - OeeTurnoAuditoria: botão "Atualizar" do cabeçalho ajustado para o mesmo design do botão "Novo Apontamento" do `OeeTurno` (estilo primário, texto branco, hover e alturas responsivas).
