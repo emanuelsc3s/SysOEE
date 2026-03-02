@@ -73,6 +73,7 @@ import {
   buildPresenceActivityState,
   useOeeTurnoPresence,
 } from '@/pages/oee/apontamento-oee/realtime-presence'
+import { registrarLogTurno } from '@/pages/oee/apontamento-oee/services/turnoLog.service'
 
 // Tipo para os formulários disponíveis
 type FormularioAtivo = 'production-form' | 'quality-form' | 'downtime-form'
@@ -371,6 +372,125 @@ const normalizarNumeroPtBrInput = (
 const normalizarQuantidadeProduzidaPtBr = (valor: string): NormalizacaoNumeroPtBr => {
   // Na quantidade produzida, só entra em casas decimais quando o usuário digita vírgula.
   return normalizarNumeroPtBrInput(valor, 4, 15, false)
+}
+
+const CAMPOS_CONTROLE_LOG = new Set([
+  'created_at',
+  'created_by',
+  'updated_at',
+  'updated_by',
+  'deleted_at',
+  'deleted_by',
+  'deletado'
+])
+
+const CAMPOS_LOG_ALTERACAO_PRODUCAO = [
+  'quantidade',
+  'hora_inicio',
+  'hora_final',
+  'produto',
+  'velocidade'
+] as const
+
+const formatarValorLogTurno = (valor: unknown): string => {
+  if (valor === null || valor === undefined) {
+    return ''
+  }
+
+  if (valor instanceof Date) {
+    return Number.isNaN(valor.getTime()) ? '' : format(valor, 'dd/MM/yyyy')
+  }
+
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? valor.toLocaleString('pt-BR') : ''
+  }
+
+  if (typeof valor === 'string') {
+    const texto = valor.trim()
+    if (!texto) {
+      return ''
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+      const dataIso = parseISO(texto)
+      if (!Number.isNaN(dataIso.getTime())) {
+        return format(dataIso, 'dd/MM/yyyy')
+      }
+    }
+
+    if (/^-?\d+([.,]\d+)?$/.test(texto)) {
+      const numero = converterNumeroParaCalculo(texto)
+      if (Number.isFinite(numero)) {
+        return numero.toLocaleString('pt-BR')
+      }
+    }
+
+    return texto
+  }
+
+  return String(valor)
+}
+
+const normalizarValorComparacaoLog = (valor: unknown): string => {
+  if (valor === null || valor === undefined) {
+    return ''
+  }
+
+  if (valor instanceof Date) {
+    return Number.isNaN(valor.getTime()) ? '' : format(valor, 'yyyy-MM-dd')
+  }
+
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? String(valor) : ''
+  }
+
+  if (typeof valor === 'string') {
+    const texto = valor.trim()
+    if (!texto) {
+      return ''
+    }
+
+    if (/^-?\d+([.,]\d+)?$/.test(texto)) {
+      const numero = converterNumeroParaCalculo(texto)
+      return Number.isFinite(numero) ? String(numero) : texto
+    }
+
+    return texto
+  }
+
+  if (typeof valor === 'boolean') {
+    return valor ? 'true' : 'false'
+  }
+
+  return JSON.stringify(valor)
+}
+
+const montarCamposAlteradosLog = (
+  anterior: Record<string, unknown> | null | undefined,
+  atual: Record<string, unknown>,
+  camposPermitidos?: readonly string[]
+): string => {
+  const chavesBase = camposPermitidos
+    ? [...camposPermitidos]
+    : Array.from(new Set([
+      ...Object.keys(anterior || {}),
+      ...Object.keys(atual),
+    ]))
+
+  return chavesBase
+    .filter((campo) => !CAMPOS_CONTROLE_LOG.has(campo))
+    .map((campo) => {
+      const valorAnterior = anterior ? anterior[campo] : undefined
+      const valorAtual = atual[campo]
+
+      if (normalizarValorComparacaoLog(valorAnterior) === normalizarValorComparacaoLog(valorAtual)) {
+        return null
+      }
+
+      return `${campo}: '${formatarValorLogTurno(valorAnterior)}' → '${formatarValorLogTurno(valorAtual)}'`
+    })
+    .filter((item): item is string => Boolean(item))
+    .join(', ')
 }
 
 export default function ApontamentoOEE() {
@@ -2069,13 +2189,50 @@ export default function ApontamentoOEE() {
         updated_by: usuario.id
       }
 
+      const obterSnapshotAnteriorProducao = (registroId: number): Record<string, unknown> | null => {
+        const registroAnterior = historicoProducao.find((registro) => registro.id === String(registroId))
+        if (!registroAnterior) {
+          return null
+        }
+
+        return {
+          quantidade: registroAnterior.quantidadeProduzida,
+          hora_inicio: normalizarHora(registroAnterior.horaInicio),
+          hora_final: normalizarHora(registroAnterior.horaFim),
+          produto: registroAnterior.skuCodigo,
+          velocidade: registroAnterior.velocidade ?? null,
+        }
+      }
+
+      const montarAlteracoesProducaoLog = (registroId: number): string => {
+        const snapshotAnterior = obterSnapshotAnteriorProducao(registroId)
+        const camposAlterados = montarCamposAlteradosLog(
+          snapshotAnterior,
+          payload as unknown as Record<string, unknown>,
+          CAMPOS_LOG_ALTERACAO_PRODUCAO
+        )
+
+        if (camposAlterados) {
+          return camposAlterados
+        }
+
+        if (snapshotAnterior) {
+          return 'sem mudanças detectadas'
+        }
+
+        return CAMPOS_LOG_ALTERACAO_PRODUCAO
+          .map((campo) => `${campo}: '' → '${formatarValorLogTurno(payload[campo])}'`)
+          .join(', ')
+      }
+
       let registroSalvo: ProducaoSupabase | null = null
 
       if (linhaApontamento.apontamentoId) {
+        const registroIdAtualizado = parseInt(linhaApontamento.apontamentoId)
         const { data: registroAtualizado, error } = await supabase
           .from('tboee_turno_producao')
           .update(payload)
-          .eq('oeeturnoproducao_id', parseInt(linhaApontamento.apontamentoId))
+          .eq('oeeturnoproducao_id', registroIdAtualizado)
           .select('*')
           .single()
 
@@ -2084,6 +2241,16 @@ export default function ApontamentoOEE() {
         }
 
         registroSalvo = registroAtualizado as ProducaoSupabase
+
+        const registroLogId = registroAtualizado?.oeeturnoproducao_id ?? registroIdAtualizado
+        const camposAlterados = montarAlteracoesProducaoLog(registroLogId)
+        void registrarLogTurno({
+          tabela: 'tboee_turno_producao',
+          operacao: 'Alteração',
+          registroId: registroLogId,
+          userId: usuario.id,
+          log: `Produção #${registroLogId} alterada no Turno #${turnoAtualId}. Alterações: ${camposAlterados}`,
+        })
       } else {
         // Upsert no front: evita duplicata verificando se já existe registro para mesma janela (oeeturno_id + hora_inicio)
         const horaInicioNorm = normalizarHora(linhaApontamento.horaInicio)
@@ -2108,6 +2275,16 @@ export default function ApontamentoOEE() {
           }
 
           registroSalvo = registroAtualizado as ProducaoSupabase
+
+          const registroLogId = registroAtualizado?.oeeturnoproducao_id ?? existente.oeeturnoproducao_id
+          const camposAlterados = montarAlteracoesProducaoLog(registroLogId)
+          void registrarLogTurno({
+            tabela: 'tboee_turno_producao',
+            operacao: 'Alteração',
+            registroId: registroLogId,
+            userId: usuario.id,
+            log: `Produção #${registroLogId} alterada no Turno #${turnoAtualId}. Alterações: ${camposAlterados}`,
+          })
         } else {
           const { data: registroCriado, error } = await supabase
             .from('tboee_turno_producao')
@@ -2125,6 +2302,15 @@ export default function ApontamentoOEE() {
           }
 
           registroSalvo = registroCriado as ProducaoSupabase
+
+          const registroLogId = registroCriado?.oeeturnoproducao_id ?? null
+          void registrarLogTurno({
+            tabela: 'tboee_turno_producao',
+            operacao: 'Inclusão',
+            registroId: registroLogId,
+            userId: usuario.id,
+            log: `Produção #${registroLogId ?? '-'} incluída no Turno #${turnoAtualId}. quantidade=${quantidadeProduzida.toLocaleString('pt-BR')}, hora=${linhaApontamento.horaInicio}-${linhaApontamento.horaFim}, produto=${payload.produto}`,
+          })
         }
       }
 
@@ -4114,6 +4300,11 @@ export default function ApontamentoOEE() {
       // Não existe, criar novo registro com status 'Aberto'
       console.log('📝 Criando novo registro de turno OEE...')
 
+      const usuarioAuth = await obterUsuarioAutenticado()
+      if (!usuarioAuth) {
+        return null
+      }
+
       const usuarioInternoId = await obterUsuarioInternoId()
       if (!usuarioInternoId) {
         return null
@@ -4148,6 +4339,18 @@ export default function ApontamentoOEE() {
         console.error('❌ Erro ao inserir turno OEE:', inserirError)
         throw inserirError
       }
+
+      const dataLogTurno = data
+        ? format(data, 'dd/MM/yyyy')
+        : (dataFormatada ? format(parseISO(dataFormatada), 'dd/MM/yyyy') : '')
+
+      void registrarLogTurno({
+        tabela: 'tboee_turno',
+        operacao: 'Inclusão',
+        registroId: turnoInserido.oeeturno_id,
+        userId: usuarioAuth.id,
+        log: `Turno #${turnoInserido.oeeturno_id} aberto. Linha: ${linhaProducaoNome}, Produto: ${novoTurno.produto}, Turno: ${novoTurno.turno} (${novoTurno.turno_hi || '--'}-${novoTurno.turno_hf || '--'}), Data: ${dataLogTurno}`,
+      })
 
       console.log('✅ Turno OEE criado com sucesso:', turnoInserido)
       return turnoInserido.oeeturno_id
@@ -4331,9 +4534,10 @@ export default function ApontamentoOEE() {
     // Atualizar status no banco de dados
     if (oeeTurnoId) {
       try {
+        const timestampAtual = gerarTimestampLocal()
         console.log('📝 Iniciando encerramento do turno OEE:', {
           oeeTurnoId,
-          timestamp: new Date().toISOString()
+          timestamp: timestampAtual
         })
 
         // Usar .select() para confirmar que a atualização foi feita e retornar dados
@@ -4341,7 +4545,7 @@ export default function ApontamentoOEE() {
           .from('tboee_turno')
           .update({
             status: 'Fechado',
-            updated_at: new Date().toISOString()
+            updated_at: timestampAtual
             // updated_by: TODO - adicionar quando autenticação estiver implementada
           })
           .eq('oeeturno_id', oeeTurnoId)
@@ -4369,6 +4573,18 @@ export default function ApontamentoOEE() {
         }
 
         console.log('✅ Status do turno OEE atualizado para Fechado:', updatedData[0])
+
+        if (user?.id) {
+          void registrarLogTurno({
+            tabela: 'tboee_turno',
+            operacao: 'Alteração',
+            registroId: oeeTurnoId,
+            userId: user.id,
+            log: `Turno #${oeeTurnoId} encerrado. Status: 'Aberto' → 'Fechado'`,
+          })
+        } else {
+          console.warn('⚠️ Log de encerramento de turno não registrado: usuário ausente no contexto auth.')
+        }
 
         // Atualizar estado local após sucesso confirmado no banco
         setStatusTurno('ENCERRADO')
@@ -4562,6 +4778,38 @@ export default function ApontamentoOEE() {
         throw atualizarErro
       }
 
+      const cabecalhoAtualLog: Record<string, unknown> = {
+        data,
+        turno: turnoFormatado,
+        turno_hi: turnoHoraInicialNormalizada || null,
+        turno_hf: turnoHoraFinalNormalizada || null,
+        linhaproducao: linhaProducaoSelecionada.linhaproducao,
+        produto: skuCodigo,
+        produto_id: produtoAtualId,
+      }
+
+      const cabecalhoAnteriorLog: Record<string, unknown> = cabecalhoOriginal
+        ? {
+            data: cabecalhoOriginal.data,
+            turno: cabecalhoOriginal.turnoNome || cabecalhoOriginal.turnoCodigo || cabecalhoOriginal.turno,
+            turno_hi: cabecalhoOriginal.turnoHoraInicial || null,
+            turno_hf: cabecalhoOriginal.turnoHoraFinal || null,
+            linhaproducao: cabecalhoOriginal.linhaProducaoSelecionada?.linhaproducao || cabecalhoOriginal.linhaNome,
+            produto: cabecalhoOriginal.skuCodigo,
+            produto_id: cabecalhoOriginal.produtoId,
+          }
+        : cabecalhoAtualLog
+
+      const camposAlteradosCabecalho = montarCamposAlteradosLog(cabecalhoAnteriorLog, cabecalhoAtualLog)
+
+      void registrarLogTurno({
+        tabela: 'tboee_turno',
+        operacao: 'Alteração',
+        registroId: oeeTurnoId,
+        userId: usuario.id,
+        log: `Turno #${oeeTurnoId} cabeçalho alterado. Alterações: ${camposAlteradosCabecalho || 'sem mudanças detectadas'}`,
+      })
+
       // Recarregar histórico de paradas do Supabase (dados já estão no banco)
       const historicoParadasAtualizado = await carregarHistoricoParadasSupabase(oeeTurnoId)
       setHistoricoParadas(historicoParadasAtualizado)
@@ -4710,6 +4958,15 @@ export default function ApontamentoOEE() {
         throw erroAtualizacao
       }
 
+      const turnoReferencia = qualidadeEmEdicao.oeeTurnoId ?? oeeTurnoId ?? '-'
+      void registrarLogTurno({
+        tabela: 'tboee_turno_perda',
+        operacao: 'Alteração',
+        registroId: oeeturnoperdaId,
+        userId: usuario.id,
+        log: `Perda #${oeeturnoperdaId} alterada no Turno #${turnoReferencia}. perda: '${formatarValorLogTurno(qualidadeEmEdicao.quantidade)}' → '${formatarValorLogTurno(perdaNormalizada)}'`,
+      })
+
       // Recarregar histórico de qualidade do Supabase
       const historicoAtualizado = await carregarHistoricoQualidadeSupabase(oeeTurnoId)
       setHistoricoQualidade(historicoAtualizado)
@@ -4823,6 +5080,14 @@ export default function ApontamentoOEE() {
       if (!perdaCriada?.oeeturnoperda_id) {
         throw new Error('ID da perda não retornado pelo banco.')
       }
+
+      void registrarLogTurno({
+        tabela: 'tboee_turno_perda',
+        operacao: 'Inclusão',
+        registroId: perdaCriada.oeeturnoperda_id,
+        userId: usuario.id,
+        log: `Perda #${perdaCriada.oeeturnoperda_id} incluída no Turno #${oeeTurnoId}. perda=${formatarValorLogTurno(perdaNormalizada)}`,
+      })
 
       // =================================================================
       // RECARREGAR HISTÓRICO DO SUPABASE
@@ -5032,6 +5297,16 @@ export default function ApontamentoOEE() {
       if (!paradaCriada?.oeeturnoparada_id) {
         throw new Error('ID da parada não retornado pelo banco.')
       }
+
+      const descricaoParadaLog = paradaSelecionada.parada || paradaSelecionada.descricao || 'Parada'
+      const naturezaParadaLog = paradaSelecionada.natureza || 'Não informada'
+      void registrarLogTurno({
+        tabela: 'tboee_turno_parada',
+        operacao: 'Inclusão',
+        registroId: paradaCriada.oeeturnoparada_id,
+        userId: usuario.id,
+        log: `Parada #${paradaCriada.oeeturnoparada_id} incluída no Turno #${oeeTurnoId}. parada=${descricaoParadaLog}, natureza=${naturezaParadaLog}, hora=${horaInicioFormatada}-${horaFimFormatada}`,
+      })
 
       console.log('Parada registrada no Supabase:', paradaCriada.oeeturnoparada_id)
 

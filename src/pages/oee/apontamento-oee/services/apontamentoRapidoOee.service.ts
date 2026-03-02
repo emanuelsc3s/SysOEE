@@ -2,6 +2,7 @@ import type { ParadaGeral } from '@/components/apontamento/ModalBuscaParadas'
 import { supabase } from '@/lib/supabase'
 import { gerarTimestampLocal } from '@/utils/datahora.utils'
 import { normalizarHoraBancoOEE } from '../utils/apontamentoRapidoOee.utils'
+import { registrarLogTurno } from './turnoLog.service'
 import type {
   ContextoTurnoRapidoOEE,
   RegistrarParadaRapidaOEEInput,
@@ -60,6 +61,16 @@ const normalizarNumero = (valor: number | string | null | undefined): number | n
   }
 
   return null
+}
+
+const formatarNumeroLogPtBr = (valor: number | string): string => {
+  const numero = typeof valor === 'number' ? valor : Number(valor)
+
+  if (Number.isFinite(numero)) {
+    return numero.toLocaleString('pt-BR')
+  }
+
+  return String(valor)
 }
 
 const buscarVelocidadeNominal = async (linhaProducaoId: number, produtoId: number): Promise<number | null> => {
@@ -233,13 +244,27 @@ export async function registrarProducaoRapidaOEE(input: RegistrarProducaoRapidaO
     deletado: 'N'
   }
 
-  const { error } = await supabase
+  const { data: registroCriado, error } = await supabase
     .from('tboee_turno_producao')
     .insert(payload)
+    .select('oeeturnoproducao_id')
+    .single<{ oeeturnoproducao_id: number }>()
 
   if (error) {
     throw new Error(obterMensagemErro(error, 'Não foi possível registrar a produção rápida.'))
   }
+
+  if (!registroCriado?.oeeturnoproducao_id) {
+    throw new Error('ID da produção rápida não retornado pelo banco.')
+  }
+
+  void registrarLogTurno({
+    tabela: 'tboee_turno_producao',
+    operacao: 'Inclusão',
+    registroId: registroCriado.oeeturnoproducao_id,
+    userId: usuarioAuthId,
+    log: `Produção incluída (apontamento rápido) no Turno #${contexto.oeeturnoId}. quantidade=${formatarNumeroLogPtBr(quantidade)}, hora=${horaInicio}-${horaFim}`,
+  })
 }
 
 export async function registrarPerdaRapidaOEE(input: RegistrarPerdaRapidaOEEInput): Promise<void> {
@@ -255,7 +280,7 @@ export async function registrarPerdaRapidaOEE(input: RegistrarPerdaRapidaOEEInpu
 
   const usuarioAuthId = await obterUsuarioAuthId()
 
-  const { error } = await supabase
+  const { data: perdaCriada, error } = await supabase
     .from('tboee_turno_perda')
     .insert({
       oeeturno_id: contexto.oeeturnoId,
@@ -264,10 +289,24 @@ export async function registrarPerdaRapidaOEE(input: RegistrarPerdaRapidaOEEInpu
       created_at: gerarTimestampLocal(),
       created_by: usuarioAuthId
     })
+    .select('oeeturnoperda_id')
+    .single<{ oeeturnoperda_id: number }>()
 
   if (error) {
     throw new Error(obterMensagemErro(error, 'Não foi possível registrar a perda rápida.'))
   }
+
+  if (!perdaCriada?.oeeturnoperda_id) {
+    throw new Error('ID da perda rápida não retornado pelo banco.')
+  }
+
+  void registrarLogTurno({
+    tabela: 'tboee_turno_perda',
+    operacao: 'Inclusão',
+    registroId: perdaCriada.oeeturnoperda_id,
+    userId: usuarioAuthId,
+    log: `Perda #${perdaCriada.oeeturnoperda_id} incluída no Turno #${contexto.oeeturnoId}. perda=${formatarNumeroLogPtBr(perdaNormalizada)}`,
+  })
 }
 
 export async function registrarParadaRapidaOEE(input: RegistrarParadaRapidaOEEInput): Promise<void> {
@@ -290,7 +329,7 @@ export async function registrarParadaRapidaOEE(input: RegistrarParadaRapidaOEEIn
 
   const usuarioAuthId = await obterUsuarioAuthId()
 
-  const { error } = await supabase
+  const { data: paradaCriada, error } = await supabase
     .from('tboee_turno_parada')
     .insert({
       oeeturno_id: contexto.oeeturnoId,
@@ -306,8 +345,25 @@ export async function registrarParadaRapidaOEE(input: RegistrarParadaRapidaOEEIn
       created_by: usuarioAuthId,
       deletado: 'N'
     })
+    .select('oeeturnoparada_id')
+    .single<{ oeeturnoparada_id: number }>()
 
   if (error) {
     throw new Error(obterMensagemErro(error, 'Não foi possível registrar a parada rápida.'))
   }
+
+  if (!paradaCriada?.oeeturnoparada_id) {
+    throw new Error('ID da parada rápida não retornado pelo banco.')
+  }
+
+  const descricaoParada = parada.parada || parada.descricao || paradaSelecionada.parada || 'Parada'
+  const naturezaParada = parada.natureza || paradaSelecionada.natureza || 'Não informada'
+
+  void registrarLogTurno({
+    tabela: 'tboee_turno_parada',
+    operacao: 'Inclusão',
+    registroId: paradaCriada.oeeturnoparada_id,
+    userId: usuarioAuthId,
+    log: `Parada #${paradaCriada.oeeturnoparada_id} incluída no Turno #${contexto.oeeturnoId}. parada=${descricaoParada}, natureza=${naturezaParada}, hora=${horaInicioBanco}-${horaFinalBanco}`,
+  })
 }

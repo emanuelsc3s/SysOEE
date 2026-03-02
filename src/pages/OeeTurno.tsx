@@ -50,6 +50,7 @@ import { isPerfilAdministrador } from '@/utils/perfil.utils'
 import { OeeTurnoFormData, OeeTurnoStatus } from '@/types/apontamento-oee'
 import { ModalApontamentoRapidoOEE } from '@/pages/oee/apontamento-oee/components/ModalApontamentoRapidoOEE'
 import type { ContextoTurnoRapidoOEE } from '@/pages/oee/apontamento-oee/types/apontamentoRapidoOee.types'
+import { registrarLogTurno } from '@/pages/oee/apontamento-oee/services/turnoLog.service'
 import {
   Search,
   Check,
@@ -1215,7 +1216,25 @@ export default function OeeTurno() {
     setMenuStatusAberto(false)
   }
 
+  const registrarVisualizacaoTurno = (turno: OeeTurnoFormData): void => {
+    const oeeturnoId = Number(turno.id)
+
+    if (authUser?.id) {
+      void registrarLogTurno({
+        log: `Visualização do Turno #${turno.id}. Linha: ${formatarLinhaProducao(turno)}, Produto: ${turno.produto || 'N/A'}, Status: ${turno.status || 'N/A'}`,
+        operacao: 'Visualização',
+        tabela: 'tboee_turno',
+        registroId: Number.isFinite(oeeturnoId) ? oeeturnoId : null,
+        userId: authUser.id
+      })
+    } else {
+      console.warn('⚠️ Log de visualização não registrado: authUser ausente.')
+    }
+  }
+
   const handleVisualizar = (turno: OeeTurnoFormData) => {
+    registrarVisualizacaoTurno(turno)
+
     // Navega para a página de apontamento OEE com o ID do turno (preserva página para voltar)
     navigate(`/apontamento-oee?oeeturno_id=${turno.id}`, { state: { returnPage: currentPage } })
   }
@@ -1360,6 +1379,7 @@ export default function OeeTurno() {
 
   const handleConfirmarVisualizacaoFechado = () => {
     if (turnoParaVisualizar) {
+      registrarVisualizacaoTurno(turnoParaVisualizar)
       // Redireciona para consulta (SEM edit=true), preserva página para voltar
       navigate(`/apontamento-oee?oeeturno_id=${turnoParaVisualizar.id}`, { state: { returnPage: currentPage } })
     }
