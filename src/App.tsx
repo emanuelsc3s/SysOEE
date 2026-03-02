@@ -15,6 +15,8 @@ import Turnos from './pages/Turnos'
 import TurnosCad from './pages/TurnosCad'
 import OeeTurno from './pages/OeeTurno'
 import OeeLinhaVelocidade from './pages/OeeLinhaVelocidade'
+import OeeLinhaMeta from './pages/OeeLinhaMeta'
+import OeeLinhaMetaCad from './pages/OeeLinhaMetaCad'
 import OeeParada from './pages/OeeParada'
 import OeeParadaCad from './pages/OeeParadaCad'
 import Manutencao from './pages/Manutencao'
@@ -23,7 +25,7 @@ import DashboardOEE from './pages/dashboard/DashboardOEE'
 import Usuarios from './pages/Usuarios'
 import UsuariosCad from './pages/UsuariosCad'
 import Placeholder from './pages/Placeholder'
-import OeeEmpresaRedirect from './pages/OeeEmpresaRedirect'
+import DashboardOeeEmpresa from './pages/DashboardOeeEmpresa/DashboardOeeEmpresa'
 import Login from './pages/Login'
 import DashboardLinha from './pages/dashboardLinhaProducao/DashboardLinha'
 import OeeTurnoAuditoria from './pages/OeeTurnoAuditoria/OeeTurnoAuditoria'
@@ -61,8 +63,8 @@ function App() {
         {/* Dashboard OEE Premium - Monitoramento em tempo real */}
         <Route path="/dashboard-oee" element={<ProtectedRoute><DashboardOEE /></ProtectedRoute>} />
 
-        {/* Dashboard OEE Total Empresa (página estática; redirecionamento com reload para o HTML carregar) */}
-        <Route path="/oee-empresa" element={<ProtectedRoute><OeeEmpresaRedirect /></ProtectedRoute>} />
+        {/* Dashboard OEE Total Empresa */}
+        <Route path="/oee-empresa" element={<ProtectedRoute><DashboardOeeEmpresa /></ProtectedRoute>} />
 
         {/* Página de Operação - Kanban de OPs */}
         <Route path="/operacao" element={<ProtectedRoute requireAdmin><Operacao /></ProtectedRoute>} />
@@ -90,6 +92,11 @@ function App() {
 
         {/* Página de Cadastro de Velocidade Nominal por Linha e Produto */}
         <Route path="/oee-linha-velocidade" element={<ProtectedRoute requireAdmin><OeeLinhaVelocidade /></ProtectedRoute>} />
+
+        {/* Páginas de Cadastro de Meta OEE por Linha */}
+        <Route path="/oee-linha-meta" element={<ProtectedRoute requireAdmin><OeeLinhaMeta /></ProtectedRoute>} />
+        <Route path="/oee-linha-meta-cad" element={<ProtectedRoute requireAdmin><OeeLinhaMetaCad /></ProtectedRoute>} />
+        <Route path="/oee-linha-meta-cad/:id" element={<ProtectedRoute requireAdmin><OeeLinhaMetaCad /></ProtectedRoute>} />
 
         {/* Páginas de Cadastro de Paradas OEE */}
         <Route path="/oee-parada" element={<ProtectedRoute requireAdmin><OeeParada /></ProtectedRoute>} />

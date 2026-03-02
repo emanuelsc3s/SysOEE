@@ -1,0 +1,613 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;600&display=swap');
+
+.dashboard-oee-empresa-page {
+  --bg: #1a1a1a;
+  --surface: #ffffff;
+  --surface2: #e8eaee;
+  --border: rgba(0, 0, 0, 0.08);
+  --accent: #00a870;
+  --accent2: #0075d4;
+  --accent3: #e05a20;
+  --warn: #d97706;
+  --text: #111827;
+  --muted: #6b7280;
+
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.dashboard-oee-empresa-page[data-theme='light'] {
+  --bg: #f1f5f9;
+}
+
+.dashboard-oee-empresa-page[data-theme='dark'] .brand-title {
+  color: #e5e7eb;
+}
+
+.dashboard-oee-empresa-page .wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+
+.dashboard-oee-empresa-page header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 48px;
+  animation: oeeEmpresaFadeDown 0.6s ease both;
+}
+
+.dashboard-oee-empresa-page .brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-oee-empresa-page .brand-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.dashboard-oee-empresa-page .brand-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  line-height: 1;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+.dashboard-oee-empresa-page .period-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-oee-empresa-page .period-badge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: oeeEmpresaPulse 2s infinite;
+}
+
+.dashboard-oee-empresa-page .period-badge strong {
+  color: var(--text);
+}
+
+.dashboard-oee-empresa-page .oee-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  animation: oeeEmpresaFadeUp 0.6s ease 0.1s both;
+}
+
+.dashboard-oee-empresa-page .oee-main-card {
+  background: var(--surface);
+  border: 1px solid rgba(0, 168, 112, 0.25);
+  border-radius: 20px;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 24px rgba(0, 168, 112, 0.08);
+}
+
+.dashboard-oee-empresa-page .oee-main-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 20% 80%, rgba(0, 168, 112, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.dashboard-oee-empresa-page .oee-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.dashboard-oee-empresa-page .oee-value-huge {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 120px;
+  line-height: 1;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+
+.dashboard-oee-empresa-page .oee-value-huge span {
+  font-size: 48px;
+}
+
+.dashboard-oee-empresa-page .oee-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 8px;
+  font-weight: 300;
+}
+
+.dashboard-oee-empresa-page .oee-highlights-wrapper {
+  margin-top: 32px;
+}
+
+.dashboard-oee-empresa-page .oee-highlights {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard-oee-empresa-page .oee-highlight-card {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+.dashboard-oee-empresa-page .oee-highlight-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.dashboard-oee-empresa-page .oee-highlight-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dashboard-oee-empresa-page .oee-highlight-unit {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.dashboard-oee-empresa-page .ring-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-oee-empresa-page .ring-wrapper {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.dashboard-oee-empresa-page .ring-wrapper svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.dashboard-oee-empresa-page .ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-oee-empresa-page .ring-center-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.dashboard-oee-empresa-page .ring-center-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.dashboard-oee-empresa-page .ring-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.dashboard-oee-empresa-page .ring-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dashboard-oee-empresa-page .ring-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dashboard-oee-empresa-page .ring-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.dashboard-oee-empresa-page .ring-item-name {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dashboard-oee-empresa-page .ring-item-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dashboard-oee-empresa-page .kpi-triplet {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+  animation: oeeEmpresaFadeUp 0.6s ease 0.2s both;
+}
+
+.dashboard-oee-empresa-page .kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-oee-empresa-page .kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-oee-empresa-page .kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--kpi-color);
+  opacity: 0.8;
+}
+
+.dashboard-oee-empresa-page .kpi-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.dashboard-oee-empresa-page .kpi-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 52px;
+  line-height: 1;
+  color: var(--kpi-color);
+}
+
+.dashboard-oee-empresa-page .kpi-num span {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+.dashboard-oee-empresa-page .kpi-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.dashboard-oee-empresa-page .kpi-bar-bg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-oee-empresa-page .kpi-bar-fill {
+  height: 100%;
+  background: var(--kpi-color);
+  opacity: 0.5;
+  transition: width 1s ease;
+}
+
+.dashboard-oee-empresa-page .section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-oee-empresa-page .section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.dashboard-oee-empresa-page .section-label-tight {
+  margin-bottom: 16px;
+}
+
+.dashboard-oee-empresa-page .time-bar-section {
+  margin-bottom: 24px;
+  animation: oeeEmpresaFadeUp 0.6s ease 0.35s both;
+}
+
+.dashboard-oee-empresa-page .time-bar {
+  height: 28px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.dashboard-oee-empresa-page .time-segment {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.dashboard-oee-empresa-page .time-segment:hover {
+  opacity: 0.85;
+}
+
+.dashboard-oee-empresa-page .time-bar-legend {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.dashboard-oee-empresa-page .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashboard-oee-empresa-page .legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.dashboard-oee-empresa-page .hours-section {
+  animation: oeeEmpresaFadeUp 0.6s ease 0.3s both;
+}
+
+.dashboard-oee-empresa-page .hours-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dashboard-oee-empresa-page .hour-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-oee-empresa-page .hour-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.dashboard-oee-empresa-page .hour-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.dashboard-oee-empresa-page .hour-value-suffix {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.dashboard-oee-empresa-page .bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  animation: oeeEmpresaFadeUp 0.6s ease 0.4s both;
+}
+
+.dashboard-oee-empresa-page .prod-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-oee-empresa-page .prod-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-oee-empresa-page .prod-row:last-child {
+  border-bottom: none;
+}
+
+.dashboard-oee-empresa-page .prod-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dashboard-oee-empresa-page .prod-row-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dashboard-oee-empresa-page .prod-row-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dashboard-oee-empresa-page .prod-row-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.dashboard-oee-empresa-page .prod-row-value small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.dashboard-oee-empresa-page .badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.dashboard-oee-empresa-page .badge-red {
+  border-color: transparent;
+  background: rgba(255, 107, 53, 0.15);
+  color: var(--accent3);
+}
+
+.dashboard-oee-empresa-page .oee-empresa-footer {
+  margin-top: 40px;
+  text-align: center;
+  animation: oeeEmpresaFadeUp 0.6s ease 0.5s both;
+}
+
+.dashboard-oee-empresa-page .footer-line {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+@keyframes oeeEmpresaFadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes oeeEmpresaFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes oeeEmpresaPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-oee-empresa-page .oee-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-oee-empresa-page .kpi-triplet {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-oee-empresa-page .hours-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-oee-empresa-page .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-oee-empresa-page .oee-value-huge {
+    font-size: 80px;
+  }
+
+  .dashboard-oee-empresa-page header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .dashboard-oee-empresa-page .brand-title {
+    font-size: 36px;
+  }
+}

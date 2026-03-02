@@ -15,7 +15,8 @@ import {
   BarChart3,
   ChevronDown,
   LogOut,
-  Gauge
+  Gauge,
+  Target
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { BrandingSection } from '@/components/branding/BrandingSection'
@@ -247,6 +248,13 @@ export default function Home() {
       icon: <Gauge className={iconClassName} />,
       path: '/oee-linha-velocidade',
       description: 'Cadastro de velocidades nominais por linha e produto',
+      adminOnly: true
+    },
+    {
+      title: 'Meta por Linha',
+      icon: <Target className={iconClassName} />,
+      path: '/oee-linha-meta',
+      description: 'Cadastro de metas de OEE por linha de produção',
       adminOnly: true
     },
     {
