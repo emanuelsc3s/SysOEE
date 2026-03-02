@@ -445,3 +445,11 @@ Executar testes de stress (100 usuários simultâneos, sessões 8h+, offline/onl
 [Ver detalhes do Epic 8](./epic-8-testes-validacao.md)
 
 ---
+
+**Epic 9: PMP — Plano Mestre de Produção**
+
+Criar módulo de Planejamento Mestre de Produção permitindo que o Gestor PCP registre e revise o plano mensal por linha e SKU, com cálculo automático de horas planejadas (via velocidades nominais), gestão de headcount planejado vs atual (via `tbfuncionario`) e dashboard de aderência planejado × realizado integrado ao OEE executado. Exportação em Excel e PDF para reunião semanal de revisão.
+
+[Ver detalhes do Epic 9](./epic-9-pmp-plano-mestre-producao.md)
+
+---

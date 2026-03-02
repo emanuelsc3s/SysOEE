@@ -168,5 +168,56 @@ Após todas as stories, validar:
 
 ---
 
-**Última Atualização:** 2025-11-16
+## Épico 009: PMP — Plano Mestre de Produção
+
+**Status:** 📝 Pronto para desenvolvimento
+**Prioridade:** 🟡 Média (sem prazo definido — iniciar após estabilização do MVP OEE)
+**Esforço Total:** ~20-25 dias úteis
+
+### Épico
+- [Epic 009: PMP — Plano Mestre de Produção](./epic-009-pmp-plano-mestre-producao.md)
+
+### Stories
+
+#### Story 009.001: Migration — Tabelas tbpmp_plano, tbpmp_item, tbpmp_headcount
+- **Arquivo:** [009.001.migration-tbpmp.md](./009.001.migration-tbpmp.md)
+- **Esforço:** 1-2 dias | **Prioridade:** P0 (Bloqueador)
+- **Descrição:** Criar as 3 tabelas do módulo PMP seguindo padrão de auditoria do projeto
+
+#### Story 009.002: API TypeScript — PMP
+- **Arquivo:** [009.002.api-pmp.md](./009.002.api-pmp.md)
+- **Esforço:** 2-3 dias | **Prioridade:** P0 (Bloqueador para frontend)
+- **Descrição:** Criar pmp.api.ts com CRUD, cálculo de horas planejadas e headcount atual
+
+#### Story 009.003: Frontend — Cadastro e Revisão de Plano Mensal
+- **Arquivo:** [009.003.frontend-cadastro-plano.md](./009.003.frontend-cadastro-plano.md)
+- **Esforço:** 4-5 dias | **Prioridade:** P1
+- **Descrição:** Tela /pmp para criar e revisar plano mensal por linha/SKU/semana
+
+#### Story 009.004: Frontend — Configuração de Headcount por Linha
+- **Arquivo:** [009.004.frontend-headcount.md](./009.004.frontend-headcount.md)
+- **Esforço:** 2-3 dias | **Prioridade:** P1
+- **Descrição:** Seção de headcount com lotação + cargo + desejado vs atual em tempo real
+
+#### Story 009.005: Frontend — Dashboard PMP (Planejado × Realizado)
+- **Arquivo:** [009.005.frontend-dashboard-pmp.md](./009.005.frontend-dashboard-pmp.md)
+- **Esforço:** 4-5 dias | **Prioridade:** P2
+- **Descrição:** Dashboard /pmp/dashboard com tabela comparativa e KPIs de aderência
+
+#### Story 009.006: Exportação Excel e PDF
+- **Arquivo:** [009.006.exportacao-pmp.md](./009.006.exportacao-pmp.md)
+- **Esforço:** 2-3 dias | **Prioridade:** P2
+- **Descrição:** Exportação do plano e comparativo para reunião semanal de sexta-feira
+
+### Sequência Recomendada
+```
+009.001 (Migration)
+  └─ 009.002 (API)
+       ├─ 009.003 (Cadastro Plano)
+       └─ 009.004 (Headcount)     ──► 009.005 (Dashboard) ──► 009.006 (Exportação)
+```
+
+---
+
+**Última Atualização:** 2026-03-01
 **Validado por:** Sarah (Product Owner)
