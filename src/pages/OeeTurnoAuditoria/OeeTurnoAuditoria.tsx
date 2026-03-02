@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Shield, RefreshCw, User } from 'lucide-react'
+import { ArrowLeft, Filter, Shield, RefreshCw, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataPagination } from '@/components/ui/data-pagination'
@@ -81,10 +82,12 @@ function renderizarLog(texto: string) {
 
 export default function OeeTurnoAuditoria() {
   const { user: authUser } = useAuth()
+  const navigate = useNavigate()
   const [filtros, setFiltros] = useState<FiltrosAuditoria>(FILTROS_AUDITORIA_PADRAO)
   const [buscaInput, setBuscaInput] = useState('')
   const [pagina, setPagina] = useState(PAGINA_PADRAO)
   const [itensPorPagina, setItensPorPagina] = useState(ITENS_PAGINA_PADRAO)
+  const [filtrosVisiveis, setFiltrosVisiveis] = useState(false)
 
   const user = {
     name: authUser?.usuario || authUser?.email?.split('@')[0] || 'Usuário',
@@ -171,15 +174,33 @@ export default function OeeTurnoAuditoria() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={recarregar}
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4 self-start sm:self-auto sm:w-auto"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
+            <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center">
+              <Button
+                variant="outline"
+                className="flex w-full items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </Button>
+              <Button
+                variant="outline"
+                className="flex w-full items-center justify-center gap-2 !bg-white !text-brand-primary !border-brand-primary hover:!bg-gray-50 hover:!border-brand-primary hover:!text-brand-primary min-h-11 sm:min-h-10 px-4"
+                onClick={() => setFiltrosVisiveis((prev) => !prev)}
+              >
+                <Filter className="h-4 w-4" />
+                Filtrar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={recarregar}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 !bg-brand-primary !text-white !border-brand-primary hover:!bg-brand-primary/90 hover:!border-brand-primary/90 hover:!text-white min-h-11 sm:min-h-10 px-4"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </div>
           </div>
 
           {/* Cards de estatísticas */}
@@ -190,16 +211,18 @@ export default function OeeTurnoAuditoria() {
           />
 
           {/* Filtros */}
-          <FiltrosAuditoriaBar
-            filtros={filtros}
-            buscaInput={buscaInput}
-            onBuscaChange={handleBuscaChange}
-            onFiltroChange={handleFiltroChange}
-            onLimpar={handleLimparFiltros}
-            operacoesDisponiveis={operacoesDisponiveis}
-            tabelasDisponiveis={tabelasDisponiveis}
-            usuariosDisponiveis={usuariosDisponiveis}
-          />
+          {filtrosVisiveis && (
+            <FiltrosAuditoriaBar
+              filtros={filtros}
+              buscaInput={buscaInput}
+              onBuscaChange={handleBuscaChange}
+              onFiltroChange={handleFiltroChange}
+              onLimpar={handleLimparFiltros}
+              operacoesDisponiveis={operacoesDisponiveis}
+              tabelasDisponiveis={tabelasDisponiveis}
+              usuariosDisponiveis={usuariosDisponiveis}
+            />
+          )}
 
           {/* Tabela de logs */}
           <div className="bg-card border border-border rounded-lg overflow-hidden">

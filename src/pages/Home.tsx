@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ModalSelecaoOperacao } from '@/components/operacao/ModalSelecaoOperacao'
 import { ModalSelecaoApontamentoOee } from '@/components/apontamento/ModalSelecaoApontamentoOee'
+import { ModalSelecaoDashboard } from '@/components/dashboard/ModalSelecaoDashboard'
 import { ModalPerfilUsuario } from '@/components/auth/ModalPerfilUsuario'
 import { isPerfilAdministrador, isPerfilOperador } from '@/utils/perfil.utils'
 
@@ -74,6 +75,9 @@ export default function Home() {
   // Estado para controlar o modal de seleção de operação
   const [modalOperacaoAberto, setModalOperacaoAberto] = useState(false)
 
+  // Estado para controlar o modal de seleção do dashboard
+  const [modalDashboardAberto, setModalDashboardAberto] = useState(false)
+
   // Estado para controlar o modal de seleção do apontamento OEE
   const [modalApontamentoOeeAberto, setModalApontamentoOeeAberto] = useState(false)
 
@@ -104,6 +108,20 @@ export default function Home() {
    */
   const handleAbrirModalOperacao = () => {
     setModalOperacaoAberto(true)
+  }
+
+  /**
+   * Abre o modal de seleção do dashboard (por linha / por empresa).
+   */
+  const handleAbrirModalDashboard = () => {
+    setModalDashboardAberto(true)
+  }
+
+  /**
+   * Fecha o modal de seleção do dashboard.
+   */
+  const handleFecharModalDashboard = () => {
+    setModalDashboardAberto(false)
   }
 
   /**
@@ -174,7 +192,9 @@ export default function Home() {
       title: 'Dashboard',
       icon: <LayoutDashboard className={iconClassName} />,
       path: '/dashboard',
-      description: 'Visualização de OEE e gráficos principais'
+      description: 'Visualização de OEE e gráficos principais',
+      // Intercepta o clique para abrir o modal de seleção
+      onClick: handleAbrirModalDashboard
     },
     {
       title: 'Análise Paradas OEE',
@@ -408,6 +428,12 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      {/* Modal de Seleção do Dashboard */}
+      <ModalSelecaoDashboard
+        aberto={modalDashboardAberto}
+        onFechar={handleFecharModalDashboard}
+      />
 
       {/* Modal de Seleção de Tipo de Operação */}
       <ModalSelecaoOperacao

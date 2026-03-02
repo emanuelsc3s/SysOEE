@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- OeeTurnoAuditoria: adicionado botão "Filtrar" entre "Voltar" e "Atualizar"; ao clicar, a barra `FiltrosAuditoriaBar` alterna visibilidade (inicia oculta).
+- OeeTurnoAuditoria: adicionado botão "Voltar" à esquerda do botão "Atualizar" no cabeçalho, com o mesmo estilo/estrutura do `OeeTurno` e navegação para a Home.
 - OeeTurnoAuditoria: botão "Atualizar" do cabeçalho ajustado para o mesmo design do botão "Novo Apontamento" do `OeeTurno` (estilo primário, texto branco, hover e alturas responsivas).
 - OeeTurnoAuditoria: aplicado o `AppHeader` padrão da aplicação (mesmo de `OeeTurno`) no topo da página, com título "SICFAR OEE - Apontamentos por Turno" e dados do usuário autenticado no menu.
 - OeeTurnoAuditoria: removida a instrumentação temporária de debug (`agent log`) em `OeeTurnoAuditoria.tsx` e `useOeeTurnoLog.ts` após confirmação de correção do loop de carregamento.
