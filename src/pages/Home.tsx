@@ -259,7 +259,7 @@ export default function Home() {
     {
       title: 'Auditoria',
       icon: <Shield className={iconClassName} />,
-      path: '/auditoria',
+      path: '/oee-turno-auditoria',
       description: 'Audit trail e rastreabilidade',
       adminOnly: true
     },

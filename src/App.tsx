@@ -26,6 +26,7 @@ import Placeholder from './pages/Placeholder'
 import OeeEmpresaRedirect from './pages/OeeEmpresaRedirect'
 import Login from './pages/Login'
 import DashboardLinha from './pages/dashboardLinhaProducao/DashboardLinha'
+import OeeTurnoAuditoria from './pages/OeeTurnoAuditoria/OeeTurnoAuditoria'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Toaster } from '@/components/ui/toaster'
 import { AuthProvider } from '@/providers/AuthProvider'
@@ -160,13 +161,10 @@ function App() {
           }
         />
         <Route
-          path="/auditoria"
+          path="/oee-turno-auditoria"
           element={
             <ProtectedRoute requireAdmin>
-              <Placeholder
-                title="Auditoria"
-                description="Audit trail completo, rastreabilidade de alterações e conformidade ALCOA+."
-              />
+              <OeeTurnoAuditoria />
             </ProtectedRoute>
           }
         />
