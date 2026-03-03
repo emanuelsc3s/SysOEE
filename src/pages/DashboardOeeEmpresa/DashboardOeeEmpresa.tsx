@@ -1,708 +1,465 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { format, subDays } from 'date-fns'
-import { supabase } from '@/lib/supabase'
-import { usePageTheme } from '@/hooks/usePageTheme'
-import { converterDataBrParaIso } from '@/pages/oee/resumoOeeTurno/utils/date'
-import { DashboardHeader } from '@/pages/dashboardLinhaProducao/components/DashboardHeader'
-import { FiltrarDashboardLinha } from '@/pages/dashboardLinhaProducao/FiltrarDashboardLinha'
-import { FILTROS_DASHBOARD_PADRAO } from '@/pages/dashboardLinhaProducao/filtrosDashboardLinha'
-import type { FiltrosDashboardLinha } from '@/pages/dashboardLinhaProducao/filtrosDashboardLinha'
-import { OeeHeroSection } from './components/OeeHeroSection'
-import { OeeRingCard } from './components/OeeRingCard'
-import { OeeKpiTriplet } from './components/OeeKpiTriplet'
-import { OeeTimeDistribution } from './components/OeeTimeDistribution'
-import { OeeHoursGrid } from './components/OeeHoursGrid'
-import { OeeProductionLosses } from './components/OeeProductionLosses'
-import { OeeEmpresaFooter } from './components/OeeEmpresaFooter'
-import type { DashboardOeeEmpresaData } from './types'
-import './DashboardOeeEmpresa.css'
+import { useMemo, useState } from 'react';
+import '@/pages/dashboardLinhaProducao/DashboardLinha.css';
 
-const TEMPO_DISPONIVEL_PADRAO = 12
-const DURACAO_CONTAGEM_AUTO_SEGUNDOS = 5 * 60
+type UnidadeCorporativa = {
+  id: string;
+  codigo: string;
+  local: string;
+  unidade: string;
+  disponibilidade: number;
+  performance: number;
+  qualidade: number;
+  oee: number;
+  status: string;
+};
 
-type OeeEmpresaRpcRow = {
-  data_inicio?: string | Date | null
-  data_fim?: string | Date | null
-  turnos_apontados?: number | string | null
-  linhas_com_apontamento?: number | string | null
-  sku_produzidos?: number | string | null
-  qtd_envase?: number | string | null
-  envasado?: number | string | null
-  qtd_embalagem?: number | string | null
-  embalado?: number | string | null
-  perdas_envase?: number | string | null
-  perdas_embalagem?: number | string | null
-  perdas_total?: number | string | null
-  unidades_produzidas?: number | string | null
-  unidades_perdas?: number | string | null
-  unidades_boas?: number | string | null
-  tempo_operacional_liquido?: number | string | null
-  tempo_valioso?: number | string | null
-  tempo_disponivel_horas?: number | string | null
-  tempo_estrategico_horas?: number | string | null
-  tempo_paradas_grandes_horas?: number | string | null
-  tempo_operacao_horas?: number | string | null
-  paradas_pequenas_horas?: number | string | null
-  paradas_totais_horas?: number | string | null
-  disponibilidade?: number | string | null
-  performance?: number | string | null
-  qualidade?: number | string | null
-  oee?: number | string | null
-}
+type ItemPareto = {
+  nome: string;
+  horas: number;
+  percentual: number;
+};
 
-type PeriodoConsulta = {
-  inicioIso: string
-  fimIso: string
-  inicioBr: string
-  fimBr: string
-}
+const CIRCUNFERENCIA_OEE = 339.292;
 
-const clonarFiltros = (filtros: FiltrosDashboardLinha): FiltrosDashboardLinha => ({
-  dataInicio: filtros.dataInicio,
-  dataFim: filtros.dataFim,
-  linhaIds: [...filtros.linhaIds],
-  turnoIds: [...filtros.turnoIds],
-  produtoIds: [...filtros.produtoIds],
-  statuses: [...filtros.statuses],
-  lancamento: filtros.lancamento,
-})
+const UNIDADES: UnidadeCorporativa[] = [
+  {
+    id: '1',
+    codigo: '01',
+    local: 'CONCENTRADO PARA HEMODIALISE',
+    unidade: 'CPHD',
+    disponibilidade: 78,
+    performance: 85,
+    qualidade: 95,
+    oee: 72.5,
+    status: 'Operação Normal',
+  },
+  {
+    id: '2',
+    codigo: '04',
+    local: 'SOLUÇÕES PARENTERAIS',
+    unidade: 'SPEP 3',
+    disponibilidade: 76,
+    performance: 82,
+    qualidade: 93,
+    oee: 68.2,
+    status: 'Operação Normal',
+  },
+  {
+    id: '3',
+    codigo: '0102',
+    local: 'SOLUÇÕES PARENTERAIS - VIDROS',
+    unidade: 'SPPV',
+    disponibilidade: 69,
+    performance: 77,
+    qualidade: 91,
+    oee: 59.8,
+    status: 'Atenção Setup',
+  },
+  {
+    id: '4',
+    codigo: '0103',
+    local: 'GENÉRICOS',
+    unidade: 'LÍQUIDOS ORAIS',
+    disponibilidade: 62,
+    performance: 74,
+    qualidade: 88,
+    oee: 51.4,
+    status: 'Parada Manutenção',
+  },
+];
 
-const criarFiltrosPadraoEmpresa = (): FiltrosDashboardLinha => {
-  const hoje = new Date()
-  const inicio = subDays(hoje, 6)
+const HISTORICO_OEE: Array<{ mes: string; valor: number }> = [
+  { mes: 'Jan', valor: 57 },
+  { mes: 'Fev', valor: 58 },
+  { mes: 'Mar', valor: 56 },
+  { mes: 'Abr', valor: 55 },
+  { mes: 'Mai', valor: 58 },
+  { mes: 'Jun', valor: 59 },
+  { mes: 'Jul', valor: 60 },
+  { mes: 'Ago', valor: 62 },
+  { mes: 'Set', valor: 61 },
+  { mes: 'Out', valor: 62 },
+  { mes: 'Nov', valor: 63 },
+  { mes: 'Dez', valor: 64 },
+];
 
-  return {
-    ...clonarFiltros(FILTROS_DASHBOARD_PADRAO),
-    dataInicio: format(inicio, 'dd/MM/yyyy'),
-    dataFim: format(hoje, 'dd/MM/yyyy'),
-  }
-}
+const MICROPARADAS: ItemPareto[] = [
+  { nome: 'FALTA DE CARTUCHO', horas: 45.2, percentual: 35 },
+  { nome: 'ERRO LEITURA DATAMATRIX', horas: 32.3, percentual: 25 },
+  { nome: 'ENROSCO BULA', horas: 25.8, percentual: 20 },
+  { nome: 'QUEDA DE BLISTER', horas: 19.4, percentual: 15 },
+  { nome: 'FALHA SELAGEM', horas: 6.4, percentual: 5 },
+];
 
-const parseIdsNumericos = (ids: string[]): number[] => {
-  const idsValidos = ids
-    .map((id) => Number.parseInt(id.trim(), 10))
-    .filter((id) => Number.isFinite(id))
-  return Array.from(new Set(idsValidos))
-}
+const GRANDES_PARADAS: ItemPareto[] = [
+  { nome: 'SETUP E PROCESSOS', horas: 795, percentual: 35 },
+  { nome: 'QUEBRA FALHA', horas: 568, percentual: 25 },
+  { nome: 'UTILIDADES', horas: 454, percentual: 20 },
+  { nome: 'INÍCIO E FIM PRODUÇÃO', horas: 227, percentual: 10 },
+  { nome: 'GESTÃO DE PESSOAS', horas: 227, percentual: 10 },
+];
 
-const parseLancamentoNumerico = (lancamento: string): number | null => {
-  const valor = lancamento.trim()
-  if (!valor || !/^\d+$/.test(valor)) {
-    return null
-  }
+const APONTAMENTOS: ItemPareto[] = [
+  { nome: 'TROCA FORMATO/PRODUTO', horas: 568, percentual: 25 },
+  { nome: 'FALTA ENERGIA', horas: 340, percentual: 15 },
+  { nome: 'LIMPEZA PLANEJADA', horas: 340, percentual: 15 },
+  { nome: 'ESTAÇÃO MOLDAGEM', horas: 340, percentual: 15 },
+  { nome: 'ÁGUA GELADA', horas: 227, percentual: 10 },
+  { nome: 'FALTA VAPOR', horas: 227, percentual: 10 },
+  { nome: 'ESTEIRA ENTRADA', horas: 227, percentual: 10 },
+];
 
-  const numero = Number.parseInt(valor, 10)
-  return Number.isFinite(numero) ? numero : null
-}
-
-const parseNumero = (valor: unknown): number => {
-  if (typeof valor === 'number') {
-    return Number.isFinite(valor) ? valor : 0
-  }
-
-  if (typeof valor === 'string') {
-    const limpo = valor.trim().replace('%', '').replace(/\s+/g, '')
-    if (!limpo) {
-      return 0
-    }
-
-    if (limpo.includes(',') && limpo.includes('.')) {
-      const normalizado = limpo.replace(/\./g, '').replace(',', '.')
-      const numero = Number.parseFloat(normalizado)
-      return Number.isFinite(numero) ? numero : 0
-    }
-
-    if (limpo.includes(',')) {
-      const numero = Number.parseFloat(limpo.replace(',', '.'))
-      return Number.isFinite(numero) ? numero : 0
-    }
-
-    const numero = Number.parseFloat(limpo)
-    return Number.isFinite(numero) ? numero : 0
-  }
-
-  if (valor === null || valor === undefined) {
-    return 0
-  }
-
-  const numero = Number(valor)
-  return Number.isFinite(numero) ? numero : 0
-}
-
-const limitarPercentual = (valor: number): number => Math.min(Math.max(valor, 0), 100)
-
-const formatarHorasParaHHMM = (horasDecimais: number): string => {
-  const minutosTotais = Math.max(0, Math.round(horasDecimais * 60))
-  const horas = Math.floor(minutosTotais / 60)
-  const minutos = minutosTotais % 60
-  return `${horas}:${String(minutos).padStart(2, '0')}`
-}
-
-const formatarDecimal = (valor: number, casasDecimais = 2): string =>
+const formatarPercentual = (valor: number): string =>
   valor.toLocaleString('pt-BR', {
-    minimumFractionDigits: casasDecimais,
-    maximumFractionDigits: casasDecimais,
-  })
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 
-const formatarTempoRestanteAuto = (totalSegundos: number): string => {
-  const segundosNormalizados = Math.max(0, Math.floor(totalSegundos))
-  const minutos = Math.floor(segundosNormalizados / 60)
-  const segundos = segundosNormalizados % 60
-  return `${minutos}:${String(segundos).padStart(2, '0')}`
-}
-
-const criarDashboardPadrao = (
-  periodo: PeriodoConsulta,
-  descricao: string
-): DashboardOeeEmpresaData => ({
-  rotuloDashboard: 'Dashboard OEE',
-  tituloLinha: 'TOTAL EMPRESA',
-  periodo: {
-    inicio: periodo.inicioBr,
-    fim: periodo.fimBr,
-  },
-  oeeGlobal: {
-    percentual: 0,
-    descricao,
-  },
-  indicadoresHero: [
-    {
-      id: 'envazado',
-      titulo: 'Envazado',
-      valor: 0,
-      unidade: 'un',
-      cor: '#00a870',
-      fundo: 'rgba(0,168,112,0.08)',
-      borda: 'rgba(0,168,112,0.2)',
-    },
-    {
-      id: 'embalado',
-      titulo: 'Embalado',
-      valor: 0,
-      unidade: 'un',
-      cor: '#0075d4',
-      fundo: 'rgba(0,117,212,0.08)',
-      borda: 'rgba(0,117,212,0.2)',
-    },
-  ],
-  ring: {
-    arcos: [
-      { id: 'oee', nome: 'OEE', percentual: 0, cor: '#00a870', raio: 80 },
-      { id: 'disponibilidade', nome: 'Disponibilidade', percentual: 0, cor: '#0075d4', raio: 62 },
-      { id: 'performance', nome: 'Performance', percentual: 0, cor: '#7c3aed', raio: 44 },
-    ],
-    legenda: [
-      { id: 'oee', nome: 'OEE', percentual: 0, cor: '#00a870' },
-      { id: 'disponibilidade', nome: 'Disponibilidade', percentual: 0, cor: '#0075d4' },
-      { id: 'performance', nome: 'Performance', percentual: 0, cor: '#7c3aed' },
-      { id: 'qualidade', nome: 'Qualidade', percentual: 0, cor: '#059669' },
-    ],
-  },
-  kpis: [
-    {
-      id: 'disponibilidade',
-      nome: 'Disponibilidade',
-      percentual: 0,
-      subtitulo: 'Horas disponíveis: 0:00 h',
-      cor: '#0097ff',
-    },
-    {
-      id: 'performance',
-      nome: 'Performance',
-      percentual: 0,
-      subtitulo: 'Horas trabalhadas: 0:00 h',
-      cor: '#a78bfa',
-    },
-    {
-      id: 'qualidade',
-      nome: 'Qualidade',
-      percentual: 0,
-      subtitulo: 'Perdas totais: 0 un',
-      cor: '#34d399',
-    },
-  ],
-  distribuicaoHoras: [
-    {
-      id: 'trabalhadas',
-      valor: '0:00h',
-      larguraPercentual: 0,
-      gradiente: 'linear-gradient(90deg,#0075d4,#0053a0)',
-      corTexto: '#ffffff',
-      legenda: 'Horas Trabalhadas (0:00)',
-      corLegenda: '#0075d4',
-    },
-    {
-      id: 'indisponiveis',
-      valor: '0:00h',
-      larguraPercentual: 0,
-      gradiente: 'linear-gradient(90deg,#e05a20,#b84010)',
-      corTexto: '#ffffff',
-      legenda: 'Paradas Indisponíveis (0:00)',
-      corLegenda: '#e05a20',
-    },
-    {
-      id: 'estrategicas',
-      valor: '0:00h',
-      larguraPercentual: 0,
-      gradiente: 'linear-gradient(90deg,#d1d5db,#b0b7c2)',
-      corTexto: '#6b7280',
-      legenda: 'Paradas Estratégicas (0:00)',
-      corLegenda: '#d1d5db',
-      bordaLegenda: '#b0b7c2',
-    },
-  ],
-  horasPeriodo: [
-    { id: 'horas-disponiveis', rotulo: 'Horas Disponíveis', valor: '0:00', cor: '#0097ff' },
-    { id: 'horas-trabalhadas', rotulo: 'Horas Trabalhadas', valor: '0:00', cor: '#e8ecf0' },
-    { id: 'paradas-indisponiveis', rotulo: 'Paradas Indisponíveis', valor: '0:00', cor: '#ff6b35' },
-    { id: 'paradas-estrategicas', rotulo: 'Paradas Estratégicas', valor: '0:00', cor: '#6b7280' },
-  ],
-  producao: [
-    {
-      id: 'envazado',
-      titulo: 'Envazado',
-      subtitulo: 'Unidades processadas',
-      valor: 0,
-      unidade: 'unidades',
-      corValor: 'var(--accent)',
-    },
-    {
-      id: 'embalado',
-      titulo: 'Embalado',
-      subtitulo: 'Unidades embaladas',
-      valor: 0,
-      unidade: 'unidades',
-      corValor: 'var(--accent2)',
-    },
-    {
-      id: 'horas-producao',
-      titulo: 'Horas com produção',
-      subtitulo: 'Produção > zero',
-      valor: '0:00',
-      unidade: 'horas',
-    },
-  ],
-  perdas: [
-    {
-      id: 'perdas-envase',
-      titulo: 'Perdas no Envase',
-      subtitulo: 'Unidades não conformes',
-      valor: 0,
-      corValor: 'var(--accent3)',
-      badge: 'ENVASE',
-    },
-    {
-      id: 'perdas-embalagem',
-      titulo: 'Perdas na Embalagem',
-      subtitulo: 'Unidades não conformes',
-      valor: 0,
-      corValor: 'var(--accent3)',
-      badge: 'EMBALAGEM',
-    },
-    {
-      id: 'perdas-total',
-      titulo: 'Total de Perdas',
-      subtitulo: 'Impacto na qualidade: 0,00%',
-      valor: 0,
-      corValor: 'var(--warn)',
-      unidade: 'unidades',
-    },
-  ],
-})
-
-const mapearRpcParaDashboard = (
-  registro: OeeEmpresaRpcRow | null,
-  periodo: PeriodoConsulta
-): DashboardOeeEmpresaData => {
-  const base = criarDashboardPadrao(periodo, 'Sem dados de apontamento no período selecionado.')
-  if (!registro) {
-    return base
+const formatarCompacto = (valor: number): string => {
+  if (valor >= 1_000_000) {
+    return `${(valor / 1_000_000).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}M`;
   }
 
-  const oee = limitarPercentual(parseNumero(registro.oee))
-  const disponibilidade = limitarPercentual(parseNumero(registro.disponibilidade))
-  const performance = limitarPercentual(parseNumero(registro.performance))
-  const qualidade = limitarPercentual(parseNumero(registro.qualidade))
-
-  const envasado = Math.max(0, parseNumero(registro.envasado))
-  const embalado = Math.max(0, parseNumero(registro.embalado))
-  const perdasEnvase = Math.max(0, parseNumero(registro.perdas_envase))
-  const perdasEmbalagem = Math.max(0, parseNumero(registro.perdas_embalagem))
-  const perdasTotalBruto = parseNumero(registro.perdas_total)
-  const perdasTotal = Math.max(
-    0,
-    perdasTotalBruto > 0 ? perdasTotalBruto : perdasEnvase + perdasEmbalagem
-  )
-
-  const tempoOperacionalLiquido = Math.max(0, parseNumero(registro.tempo_operacional_liquido))
-  const tempoDisponivelHoras = Math.max(0, parseNumero(registro.tempo_disponivel_horas))
-  const tempoEstrategicoHoras = Math.max(0, parseNumero(registro.tempo_estrategico_horas))
-  const tempoParadasGrandesHoras = Math.max(0, parseNumero(registro.tempo_paradas_grandes_horas))
-  const tempoOperacaoCalculado = Math.max(
-    tempoDisponivelHoras - tempoEstrategicoHoras - tempoParadasGrandesHoras,
-    0
-  )
-  const tempoOperacaoHorasRpc = parseNumero(registro.tempo_operacao_horas)
-  const tempoOperacaoHoras =
-    tempoOperacaoHorasRpc > 0 ? tempoOperacaoHorasRpc : tempoOperacaoCalculado
-  const tempoDisponivelAjustado = Math.max(tempoDisponivelHoras - tempoEstrategicoHoras, 0)
-
-  const totalDistribuicao = tempoOperacaoHoras + tempoParadasGrandesHoras + tempoEstrategicoHoras
-  const larguraTrabalhadas = totalDistribuicao > 0 ? (tempoOperacaoHoras / totalDistribuicao) * 100 : 0
-  const larguraIndisponiveis =
-    totalDistribuicao > 0 ? (tempoParadasGrandesHoras / totalDistribuicao) * 100 : 0
-  const larguraEstrategicas =
-    totalDistribuicao > 0 ? (tempoEstrategicoHoras / totalDistribuicao) * 100 : 0
-
-  const impactoQualidade = Math.max(0, 100 - qualidade)
-  const turnosApontados = Math.max(0, Math.round(parseNumero(registro.turnos_apontados)))
-
-  return {
-    ...base,
-    oeeGlobal: {
-      percentual: oee,
-      descricao: `${formatarDecimal(tempoOperacionalLiquido, 2)} horas com produção > zero registradas no período`,
-    },
-    indicadoresHero: [
-      { ...base.indicadoresHero[0], valor: envasado },
-      { ...base.indicadoresHero[1], valor: embalado },
-    ],
-    ring: {
-      arcos: [
-        { ...base.ring.arcos[0], percentual: oee },
-        { ...base.ring.arcos[1], percentual: disponibilidade },
-        { ...base.ring.arcos[2], percentual: performance },
-      ],
-      legenda: [
-        { ...base.ring.legenda[0], percentual: oee },
-        { ...base.ring.legenda[1], percentual: disponibilidade },
-        { ...base.ring.legenda[2], percentual: performance },
-        { ...base.ring.legenda[3], percentual: qualidade },
-      ],
-    },
-    kpis: [
-      {
-        ...base.kpis[0],
-        percentual: disponibilidade,
-        subtitulo: `Horas disponíveis: ${formatarHorasParaHHMM(tempoDisponivelAjustado)} h`,
-      },
-      {
-        ...base.kpis[1],
-        percentual: performance,
-        subtitulo: `Horas trabalhadas: ${formatarHorasParaHHMM(tempoOperacaoHoras)} h`,
-      },
-      {
-        ...base.kpis[2],
-        percentual: qualidade,
-        subtitulo: `Perdas totais: ${Math.round(perdasTotal).toLocaleString('pt-BR')} un`,
-      },
-    ],
-    distribuicaoHoras: [
-      {
-        ...base.distribuicaoHoras[0],
-        valor: `${formatarHorasParaHHMM(tempoOperacaoHoras)}h`,
-        larguraPercentual: larguraTrabalhadas,
-        legenda: `Horas Trabalhadas (${formatarHorasParaHHMM(tempoOperacaoHoras)})`,
-      },
-      {
-        ...base.distribuicaoHoras[1],
-        valor: `${formatarHorasParaHHMM(tempoParadasGrandesHoras)}h`,
-        larguraPercentual: larguraIndisponiveis,
-        legenda: `Paradas Indisponíveis (${formatarHorasParaHHMM(tempoParadasGrandesHoras)})`,
-      },
-      {
-        ...base.distribuicaoHoras[2],
-        valor: `${formatarHorasParaHHMM(tempoEstrategicoHoras)}h`,
-        larguraPercentual: larguraEstrategicas,
-        legenda: `Paradas Estratégicas (${formatarHorasParaHHMM(tempoEstrategicoHoras)})`,
-      },
-    ],
-    horasPeriodo: [
-      { ...base.horasPeriodo[0], valor: formatarHorasParaHHMM(tempoDisponivelAjustado) },
-      { ...base.horasPeriodo[1], valor: formatarHorasParaHHMM(tempoOperacaoHoras) },
-      { ...base.horasPeriodo[2], valor: formatarHorasParaHHMM(tempoParadasGrandesHoras) },
-      { ...base.horasPeriodo[3], valor: formatarHorasParaHHMM(tempoEstrategicoHoras) },
-    ],
-    producao: [
-      { ...base.producao[0], valor: envasado },
-      { ...base.producao[1], valor: embalado },
-      { ...base.producao[2], valor: formatarHorasParaHHMM(tempoOperacionalLiquido) },
-    ],
-    perdas: [
-      { ...base.perdas[0], valor: Math.round(perdasEnvase) },
-      { ...base.perdas[1], valor: Math.round(perdasEmbalagem) },
-      {
-        ...base.perdas[2],
-        valor: Math.round(perdasTotal),
-        subtitulo: `Impacto na qualidade: ${formatarDecimal(impactoQualidade, 2)}%`,
-      },
-    ],
-    tituloLinha: `TOTAL EMPRESA (${turnosApontados} turnos)`,
+  if (valor >= 1_000) {
+    return `${Math.round(valor / 1_000).toLocaleString('pt-BR')}K`;
   }
-}
+
+  return Math.round(valor).toLocaleString('pt-BR');
+};
+
+const obterClasseCorOee = (oee: number): string => {
+  if (oee >= 70) {
+    return 'green-text';
+  }
+  if (oee >= 58) {
+    return 'orange-text';
+  }
+  return 'red-text';
+};
 
 export default function DashboardOeeEmpresa() {
-  const navigate = useNavigate()
-  const { theme, toggleTheme } = usePageTheme('oee-empresa')
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false)
-  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(() =>
-    criarFiltrosPadraoEmpresa()
-  )
-  const [refreshDadosEmAndamento, setRefreshDadosEmAndamento] = useState(false)
-  const [segundosRestantesAuto, setSegundosRestantesAuto] = useState(
-    DURACAO_CONTAGEM_AUTO_SEGUNDOS
-  )
-  const refreshDadosEmAndamentoRef = useRef(refreshDadosEmAndamento)
-  const dashboardConsultasEmFetchingRef = useRef(false)
-  const handleAtualizarDadosRef = useRef<() => Promise<void>>(async () => undefined)
+  const [isDark, setIsDark] = useState(true);
+  const [seedHistorico, setSeedHistorico] = useState(0);
 
-  useEffect(() => {
-    refreshDadosEmAndamentoRef.current = refreshDadosEmAndamento
-  }, [refreshDadosEmAndamento])
-
-  useEffect(() => {
-    const intervalo = window.setInterval(() => {
-      setSegundosRestantesAuto((segundosAtuais) => {
-        if (segundosAtuais > 1) {
-          return segundosAtuais - 1
-        }
-
-        const podeExecutarAtualizacaoAutomatica =
-          !refreshDadosEmAndamentoRef.current && !dashboardConsultasEmFetchingRef.current
-
-        if (!podeExecutarAtualizacaoAutomatica) {
-          return 1
-        }
-
-        void handleAtualizarDadosRef.current()
-        return DURACAO_CONTAGEM_AUTO_SEGUNDOS
-      })
-    }, 1000)
-
-    return () => {
-      window.clearInterval(intervalo)
-    }
-  }, [])
-
-  const linhaIdsSelecionados = useMemo(
-    () => parseIdsNumericos(filtrosAplicados.linhaIds),
-    [filtrosAplicados.linhaIds]
-  )
-  const turnoIdsSelecionados = useMemo(
-    () => parseIdsNumericos(filtrosAplicados.turnoIds),
-    [filtrosAplicados.turnoIds]
-  )
-  const produtoIdsSelecionados = useMemo(
-    () => parseIdsNumericos(filtrosAplicados.produtoIds),
-    [filtrosAplicados.produtoIds]
-  )
-  const lancamentoId = useMemo(
-    () => parseLancamentoNumerico(filtrosAplicados.lancamento),
-    [filtrosAplicados.lancamento]
-  )
-
-  const periodoConsulta = useMemo<PeriodoConsulta>(() => {
-    const hoje = new Date()
-    const inicio = subDays(hoje, 6)
-    const inicioBrPadrao = format(inicio, 'dd/MM/yyyy')
-    const fimBrPadrao = format(hoje, 'dd/MM/yyyy')
-
-    const inicioBr = filtrosAplicados.dataInicio || inicioBrPadrao
-    const fimBr = filtrosAplicados.dataFim || fimBrPadrao
-    const inicioIso = converterDataBrParaIso(inicioBr) ?? format(inicio, 'yyyy-MM-dd')
-    const fimIso = converterDataBrParaIso(fimBr) ?? format(hoje, 'yyyy-MM-dd')
+  const indicadores = useMemo(() => {
+    const total = UNIDADES.length || 1;
+    const disponibilidade =
+      UNIDADES.reduce((soma, unidade) => soma + unidade.disponibilidade, 0) / total;
+    const performance =
+      UNIDADES.reduce((soma, unidade) => soma + unidade.performance, 0) / total;
+    const qualidade =
+      UNIDADES.reduce((soma, unidade) => soma + unidade.qualidade, 0) / total;
+    const oee = UNIDADES.reduce((soma, unidade) => soma + unidade.oee, 0) / total;
 
     return {
-      inicioIso,
-      fimIso,
-      inicioBr,
-      fimBr,
-    }
-  }, [filtrosAplicados.dataFim, filtrosAplicados.dataInicio])
+      disponibilidade,
+      performance,
+      qualidade,
+      oee,
+    };
+  }, []);
 
-  const linhaIdRpc = linhaIdsSelecionados.length === 1 ? linhaIdsSelecionados[0] : null
-  const turnoIdRpc = turnoIdsSelecionados.length === 1 ? turnoIdsSelecionados[0] : null
-  const produtoIdRpc = produtoIdsSelecionados.length === 1 ? produtoIdsSelecionados[0] : null
+  const historico = useMemo(
+    () =>
+      HISTORICO_OEE.map((item, indice) => ({
+        ...item,
+        altura: Math.max(
+          30,
+          Math.min(
+            90,
+            item.valor + (((seedHistorico + indice) % 5) - 2) * 1.4,
+          ),
+        ),
+      })),
+    [seedHistorico],
+  );
 
-  const {
-    data: dadosDashboard,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: [
-      'dashboard-oee-empresa',
-      periodoConsulta,
-      {
-        linhaIdRpc,
-        turnoIdRpc,
-        produtoIdRpc,
-        lancamentoId,
-        statusesSelecionados: filtrosAplicados.statuses,
-      },
-    ],
-    queryFn: async () => {
-      const { data, error: erroRpc } = await supabase.rpc('fn_calcular_oee_empresa', {
-        p_data_inicio: periodoConsulta.inicioIso,
-        p_data_fim: periodoConsulta.fimIso,
-        p_turno_id: turnoIdRpc,
-        p_produto_id: produtoIdRpc,
-        p_linhaproducao_id: linhaIdRpc,
-        p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
-        p_oeeturno_id: lancamentoId,
-      })
+  const unidadesOrdenadas = useMemo(
+    () => [...UNIDADES].sort((a, b) => b.oee - a.oee),
+    [],
+  );
 
-      if (erroRpc) {
-        console.error('[DashboardOeeEmpresa] Erro ao chamar fn_calcular_oee_empresa', {
-          code: erroRpc.code,
-          message: erroRpc.message,
-          details: erroRpc.details,
-          hint: erroRpc.hint,
-          parametros: {
-            p_data_inicio: periodoConsulta.inicioIso,
-            p_data_fim: periodoConsulta.fimIso,
-            p_turno_id: turnoIdRpc,
-            p_produto_id: produtoIdRpc,
-            p_linhaproducao_id: linhaIdRpc,
-            p_tempo_disponivel_padrao: TEMPO_DISPONIVEL_PADRAO,
-            p_oeeturno_id: lancamentoId,
-          },
-        })
-        throw erroRpc
-      }
-
-      const linhas = (Array.isArray(data) ? data : []) as OeeEmpresaRpcRow[]
-      return mapearRpcParaDashboard(linhas[0] ?? null, periodoConsulta)
-    },
-    staleTime: 60_000,
-  })
-
-  const dashboardConsultasEmFetching = isFetching
-  useEffect(() => {
-    dashboardConsultasEmFetchingRef.current = dashboardConsultasEmFetching
-  }, [dashboardConsultasEmFetching])
-
-  const handleAtualizarDados = useCallback(async () => {
-    if (refreshDadosEmAndamento || dashboardConsultasEmFetching) {
-      return
-    }
-
-    setRefreshDadosEmAndamento(true)
-    try {
-      await refetch()
-    } finally {
-      setRefreshDadosEmAndamento(false)
-    }
-  }, [dashboardConsultasEmFetching, refetch, refreshDadosEmAndamento])
-
-  useEffect(() => {
-    handleAtualizarDadosRef.current = handleAtualizarDados
-  }, [handleAtualizarDados])
-
-  const data = useMemo(() => {
-    if (dadosDashboard) {
-      return dadosDashboard
-    }
-
-    if (error) {
-      return criarDashboardPadrao(
-        periodoConsulta,
-        'Não foi possível carregar o consolidado da empresa no momento.'
-      )
-    }
-
-    if (isLoading) {
-      return criarDashboardPadrao(periodoConsulta, 'Carregando consolidado da empresa...')
-    }
-
-    return criarDashboardPadrao(periodoConsulta, 'Sem dados de apontamento no período selecionado.')
-  }, [dadosDashboard, error, isLoading, periodoConsulta])
-
-  const statusDados = useMemo(() => {
-    if (error) {
-      return 'Erro ao carregar'
-    }
-    if (isLoading) {
-      return 'Carregando...'
-    }
-    if (dashboardConsultasEmFetching || refreshDadosEmAndamento) {
-      return 'Atualizando...'
-    }
-    if (filtrosAplicados.statuses.length > 0) {
-      return 'Filtro de status aplica-se ao Dashboard Linha'
-    }
-    return 'Atualizado'
-  }, [
-    dashboardConsultasEmFetching,
-    error,
-    filtrosAplicados.statuses.length,
-    isLoading,
-    refreshDadosEmAndamento,
-  ])
-
-  const rotuloAuto = useMemo(
-    () => formatarTempoRestanteAuto(segundosRestantesAuto),
-    [segundosRestantesAuto]
-  )
+  const totalEnvasado = 1_450_000;
+  const perdasEnvase = 12_000;
+  const totalEmbalado = 1_400_000;
+  const perdasEmbalagem = 28_000;
+  const theme = isDark ? 'dark' : 'light';
 
   return (
-    <div className="dashboard-oee-empresa-page" data-theme={theme}>
-      <div className="wrapper">
-        <DashboardHeader
-          theme={theme}
-          toggleTheme={toggleTheme}
-          titulo={data.tituloLinha}
-          rotuloAuto={rotuloAuto}
-          onBack={() => navigate(-1)}
-          onFilter={() => setFiltrosAbertos(true)}
-          onRefreshDados={handleAtualizarDados}
-          refreshDadosEmAndamento={refreshDadosEmAndamento || dashboardConsultasEmFetching}
-        />
-        <div className="period-badge">
-          <div className="dot" />
-          <span>
-            <strong>{data.periodo.inicio}</strong> &nbsp;→&nbsp; <strong>{data.periodo.fim}</strong>
-          </span>
-          <small>{statusDados}</small>
+    <div className="dashboard-linha-fullscreen" data-theme={theme}>
+      <div className="dashboard-linha-wrapper" data-theme={theme}>
+        <div className="dashboard-container">
+          <header className="header">
+            <div className="logo-container">
+              <img src="/logo-farmace.png" alt="Farmace Logo" className="logo-icon" />
+            </div>
+            <h1 className="main-title">FARMACE</h1>
+            <div className="header-actions" style={{ gap: '0.6cqi' }}>
+              <button
+                type="button"
+                title="Alternar tema"
+                className="theme-toggle-btn"
+                onClick={() => setIsDark((valorAtual) => !valorAtual)}
+              >
+                {isDark ? '☀️' : '🌙'}
+              </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ width: '1.2cqi', height: '1.2cqi' }}
+              >
+                <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                <circle cx="12" cy="20" r="1" fill="currentColor" />
+              </svg>
+              <div className="auto-badge" style={{ cursor: 'pointer' }} onClick={() => setSeedHistorico((valorAtual) => valorAtual + 1)}>
+                GLOBAL
+              </div>
+            </div>
+          </header>
+
+          <main className="main-grid">
+            <div className="col col-1">
+              <div className="card card-oee-real">
+                <h2>OEE</h2>
+                <div className="oee-real-content">
+                  <div className="bars-col">
+                    <div className="bar-item">
+                      <div className="bar-header">
+                        <span className="bar-value blue-text">
+                          {formatarPercentual(indicadores.disponibilidade)}%
+                        </span>
+                      </div>
+                      <div className="progress-bg">
+                        <div
+                          className="progress-fill blue-fill"
+                          style={{ width: `${indicadores.disponibilidade}%` }}
+                        />
+                      </div>
+                      <span className="bar-name">Disponibilidade</span>
+                    </div>
+
+                    <div className="bar-item">
+                      <div className="bar-header">
+                        <span className="bar-value orange-text">
+                          {formatarPercentual(indicadores.performance)}%
+                        </span>
+                      </div>
+                      <div className="progress-bg">
+                        <div
+                          className="progress-fill orange-fill"
+                          style={{ width: `${indicadores.performance}%` }}
+                        />
+                      </div>
+                      <span className="bar-name">Performance</span>
+                    </div>
+
+                    <div className="bar-item">
+                      <div className="bar-header">
+                        <span className="bar-value green-text">
+                          {formatarPercentual(indicadores.qualidade)}%
+                        </span>
+                      </div>
+                      <div className="progress-bg">
+                        <div
+                          className="progress-fill green-fill"
+                          style={{ width: `${indicadores.qualidade}%` }}
+                        />
+                      </div>
+                      <span className="bar-name">Qualidade</span>
+                    </div>
+                  </div>
+
+                  <div className="circle-col">
+                    <div className="circular-chart">
+                      <svg className="circular-svg" viewBox="0 0 120 120">
+                        <circle className="circular-track" cx="60" cy="60" fill="none" r="54" strokeWidth="12" />
+                        <circle
+                          cx="60"
+                          cy="60"
+                          fill="none"
+                          r="54"
+                          strokeDasharray={CIRCUNFERENCIA_OEE}
+                          strokeDashoffset={
+                            CIRCUNFERENCIA_OEE - (CIRCUNFERENCIA_OEE * indicadores.oee) / 100
+                          }
+                          strokeLinecap="round"
+                          strokeWidth="12"
+                          stroke="var(--c-blue)"
+                        />
+                      </svg>
+                      <div className="circular-chart-overlay">
+                        <div className="circular-chart-center">
+                          <span className="circular-chart-value">
+                            {formatarPercentual(indicadores.oee)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card card-oee-history">
+                <h2>
+                  OEE Histórico <span className="subtitle">Últimos 12 meses</span>
+                </h2>
+                <div className="chart-placeholder">
+                  <div className="bar-chart-container">
+                    {historico.map((item) => (
+                      <div key={item.mes} className="bar-wrapper" style={{ width: '6%' }}>
+                        <div className="bar-val">{Math.round(item.altura)}</div>
+                        <div className="bar-fill purple-fill" style={{ height: `${item.altura}%` }} />
+                        <div className="bar-date">{item.mes}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col col-2">
+              <div className="card card-fifo">
+                <h2>DEPARTAMENTOS</h2>
+                <div className="fifo-list">
+                  {unidadesOrdenadas.map((unidade, indice) => (
+                    <div key={unidade.id} className="fifo-item">
+                      <span className="f-num">{indice + 1}</span>
+                      <div className="f-info">
+                        {unidade.codigo} | {unidade.local}
+                        <br />
+                        <b>{unidade.unidade}</b>
+                      </div>
+                      <div className={`f-val ${obterClasseCorOee(unidade.oee)}`}>
+                        {formatarPercentual(unidade.oee)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="card card-pareto">
+                <h2>
+                  Microparadas <span className="subtitle">Embalagem Secundária</span>
+                </h2>
+                <div className="pareto-list">
+                  {MICROPARADAS.map((item) => (
+                    <div key={item.nome} className="pareto-item">
+                      <div className="p-label">
+                        <span className="bluedot" style={{ backgroundColor: '#facc15' }} /> {item.nome}
+                      </div>
+                      <div className="p-val1">{item.horas.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h</div>
+                      <div className="p-val2">{formatarPercentual(item.percentual)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="col" style={{ flex: 1 }}>
+              <div className="card card-status" style={{ flex: 0.3, marginBottom: '0.6cqi' }}>
+                <h2 style={{ textAlign: 'left', justifyContent: 'flex-start' }}>ENVASADO</h2>
+                <div
+                  className="status-content"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.2cqi 0',
+                    gap: '1cqi',
+                  }}
+                >
+                  <div className="s-block" style={{ flex: 1 }}>
+                    <div className="s-light-label">Envasado</div>
+                    <div className="s-highlight green-text">
+                      {formatarCompacto(totalEnvasado)}{' '}
+                      <span style={{ fontSize: '0.8cqi', fontWeight: 'normal' }}>un</span>
+                    </div>
+                  </div>
+                  <div className="s-block" style={{ flex: 1, textAlign: 'right' }}>
+                    <div className="s-light-label">Perdas</div>
+                    <div className="s-highlight red-text">
+                      {formatarCompacto(perdasEnvase)}{' '}
+                      <span style={{ fontSize: '0.8cqi', fontWeight: 'normal' }}>un</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card card-pareto" style={{ flex: 1 }}>
+                <h2>
+                  Grandes Paradas <span className="subtitle">Agrupamento</span>
+                </h2>
+                <div className="pareto-list">
+                  {GRANDES_PARADAS.map((item) => (
+                    <div key={item.nome} className="pareto-item">
+                      <div className="p-label">
+                        <span className="bluedot" /> {item.nome}
+                      </div>
+                      <div className="p-val1">{item.horas.toLocaleString('pt-BR')}h</div>
+                      <div className="p-val2">{formatarPercentual(item.percentual)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="col" style={{ flex: 0.8 }}>
+              <div className="card card-status" style={{ flex: 0.3, marginBottom: '0.6cqi' }}>
+                <h2 style={{ textAlign: 'left', justifyContent: 'flex-start' }}>EMBALADO</h2>
+                <div
+                  className="status-content"
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.2cqi 0',
+                    gap: '1cqi',
+                  }}
+                >
+                  <div className="s-block" style={{ flex: 1 }}>
+                    <div className="s-light-label">Embalado</div>
+                    <div className="s-highlight blue-text">
+                      {formatarCompacto(totalEmbalado)}{' '}
+                      <span style={{ fontSize: '0.8cqi', fontWeight: 'normal' }}>un</span>
+                    </div>
+                  </div>
+                  <div className="s-block" style={{ flex: 1, textAlign: 'right' }}>
+                    <div className="s-light-label">Perdas</div>
+                    <div className="s-highlight red-text">
+                      {formatarCompacto(perdasEmbalagem)}{' '}
+                      <span style={{ fontSize: '0.8cqi', fontWeight: 'normal' }}>un</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card card-pareto" style={{ flex: 1 }}>
+                <h2>
+                  Apontamento <span className="subtitle">Detalhe Ocorrência</span>
+                </h2>
+                <div className="pareto-list">
+                  {APONTAMENTOS.map((item) => (
+                    <div key={item.nome} className="pareto-item">
+                      <div className="p-label">
+                        <span className="bluedot" style={{ backgroundColor: '#ef4444' }} /> {item.nome}
+                      </div>
+                      <div className="p-val1">{item.horas.toLocaleString('pt-BR')}h</div>
+                      <div className="p-val2">{formatarPercentual(item.percentual)}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
-
-        <div className="oee-hero">
-          <OeeHeroSection
-            percentualOee={data.oeeGlobal.percentual}
-            descricao={data.oeeGlobal.descricao}
-            indicadores={data.indicadoresHero}
-          />
-          <OeeRingCard
-            arcos={data.ring.arcos}
-            legenda={data.ring.legenda}
-            percentualCentro={data.oeeGlobal.percentual}
-          />
-        </div>
-
-        <OeeKpiTriplet kpis={data.kpis} />
-        <OeeTimeDistribution segmentos={data.distribuicaoHoras} />
-        <OeeHoursGrid horas={data.horasPeriodo} />
-        <OeeProductionLosses producao={data.producao} perdas={data.perdas} />
-
-        <OeeEmpresaFooter
-          periodo={data.periodo}
-          tituloLinha={data.tituloLinha}
-          percentualOee={data.oeeGlobal.percentual}
-        />
       </div>
-
-      <FiltrarDashboardLinha
-        aberto={filtrosAbertos}
-        onFechar={() => setFiltrosAbertos(false)}
-        filtrosAplicados={filtrosAplicados}
-        onAplicar={(novosFiltros) => {
-          setFiltrosAplicados(clonarFiltros(novosFiltros))
-          setFiltrosAbertos(false)
-        }}
-      />
     </div>
-  )
+  );
 }

@@ -1,6 +1,21 @@
 # Changelog
 
 ## [Unreleased]
+- DashboardOeeEmpresa: alterado o nome da quarta unidade no card Departamentos de "UNIDADE CENTRO" para "LÍQUIDOS ORAIS".
+- DashboardOeeEmpresa: removido o footer (footer-timeline) com timeline de status das unidades.
+- DashboardOeeEmpresa: título do card Embalagem alterado para "EMBALADO" e alinhado à esquerda.
+- DashboardOeeEmpresa: removido o span "Produção Acumulada" (subtitle) do título do card Embalagem.
+- DashboardOeeEmpresa: título do card Envase alterado para "ENVASE" e alinhado à esquerda.
+- DashboardOeeEmpresa: removido o span "Produção Acumulada" (subtitle) do título do card Envase.
+- DashboardOeeEmpresa: alterado o nome da primeira unidade no card Departamentos de "UNIDADE SUL" para "CPHD".
+- DashboardOeeEmpresa: removida a div "GERAL" (subtitle) abaixo do gráfico circular no card OEE.
+- DashboardOeeEmpresa: removido o span "Meta 65,0% Média X%" (subtitle-right) do título do card OEE Histórico.
+- DashboardOeeEmpresa: alterado o título do card de "Top Unidades" para "DEPARTAMENTOS".
+- DashboardOeeEmpresa: removida a div fixa com os links "Voltar para Início" e "Ver Equipamento (Local)" no canto inferior direito.
+- DashboardOeeEmpresa: alterado o título do card de OEE real de "OEE Real Corporativo" para "OEE".
+- DashboardOeeEmpresa: removido o `span.subtitle` com o texto "Visão Global" do título "OEE Real Corporativo" no card de OEE real.
+- DashboardOeeEmpresa: removido o `span.logo-text` com o texto "FARMACE" do container de logomarca no cabeçalho.
+- DashboardOeeEmpresa: removido o texto destacado "Melhor: UNIDADE SUL" (span `.subtitle-right.blue-text`) do título do card "Top Unidades".
 - AnaliseParadasOEE: removido o parágrafo explicativo "Ajuste os filtros para comparar tendências e causas com maior impacto operacional." da seção "Recorte da análise".
 - AnaliseParadasOEE (FiltrosAnaliseParadas): removido o parágrafo explicativo "Combine período, linha, turno e SKU para priorizar as causas críticas de paradas." do cabeçalho dos filtros.
 - AnaliseParadasOEE (KpiParadasCards): removidos os spans com ícone circular dos cards de indicadores executivos de paradas.
