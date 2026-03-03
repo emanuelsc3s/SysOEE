@@ -1,4 +1,5 @@
 {
+  "files.eol": "\r\n",
   "chat.agent.enabled": true,
   "chat.agent.maxRequests": 15,
   "github.copilot.chat.agent.runTasks": true,
