@@ -24,7 +24,8 @@
       "Bash(if not exist \"C:\\\\Dev\\\\SysOEE\\\\database\\\\rbac\" mkdir \"C:\\\\Dev\\\\SysOEE\\\\database\\\\rbac\")",
       "Bash(tree:*)",
       "Bash(npx vite build)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(\"/c/Users/Emanuel Silva/AppData/Local/Programs/Python/Python313/python.exe\":*)"
     ],
     "deny": [],
     "ask": []
