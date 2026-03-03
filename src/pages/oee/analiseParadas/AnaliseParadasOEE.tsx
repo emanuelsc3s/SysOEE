@@ -230,9 +230,6 @@ export default function AnaliseParadasOEE() {
               <h3 className="text-sm font-semibold uppercase tracking-[0.1em] text-gray-500">
                 Recorte da análise
               </h3>
-              <p className="max-w-[68ch] text-sm text-gray-500">
-                Ajuste os filtros para comparar tendências e causas com maior impacto operacional.
-              </p>
             </div>
             <FiltrosAnaliseParadas
               dataInicio={filtrosRascunho.dataInicio}

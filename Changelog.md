@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- AnaliseParadasOEE: removido o parágrafo explicativo "Ajuste os filtros para comparar tendências e causas com maior impacto operacional." da seção "Recorte da análise".
+- AnaliseParadasOEE (FiltrosAnaliseParadas): removido o parágrafo explicativo "Combine período, linha, turno e SKU para priorizar as causas críticas de paradas." do cabeçalho dos filtros.
 - AnaliseParadasOEE (KpiParadasCards): removidos os spans com ícone circular dos cards de indicadores executivos de paradas.
 - OeeLinhaMetaCad: adicionado botão "Sugerir Meta" ao lado do campo `Meta`, com cálculo automático baseado no período anterior equivalente da mesma `linhaproducao_id` via RPC `fn_resumo_oee_turno`; a sugestão abre em modal com média estimada de OEE (Disponibilidade × Performance × Qualidade), resumo dos dados considerados e ação para aplicar o valor sugerido no formulário.
 - OeeLinhaMetaCad: campo "Linha de Produção" migrado de `Select` para o padrão do `ApontamentoOEE` (input somente leitura + botão de busca + modal `ModalBuscaLinhaProducao`), mantendo seleção por clique no campo e no ícone de lupa; seleção de linha inativa bloqueada com feedback em toast.

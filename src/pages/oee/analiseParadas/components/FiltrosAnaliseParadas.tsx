@@ -84,9 +84,6 @@ export function FiltrosAnaliseParadas({
           <Filter className="h-3.5 w-3.5" aria-hidden="true" />
           Filtros de análise
         </div>
-        <p className="text-sm text-gray-500">
-          Combine período, linha, turno e SKU para priorizar as causas críticas de paradas.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
