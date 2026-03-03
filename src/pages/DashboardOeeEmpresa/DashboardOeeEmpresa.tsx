@@ -24,8 +24,8 @@ const CIRCUNFERENCIA_OEE = 339.292;
 const UNIDADES: UnidadeCorporativa[] = [
   {
     id: '1',
-    codigo: '01',
-    local: 'CONCENTRADO PARA HEMODIALISE',
+    codigo: '0105',
+    local: 'HEMODIALISE',
     unidade: 'CPHD',
     disponibilidade: 78,
     performance: 85,
@@ -47,25 +47,14 @@ const UNIDADES: UnidadeCorporativa[] = [
   {
     id: '3',
     codigo: '0102',
-    local: 'SOLUÇÕES PARENTERAIS - VIDROS',
+    local: 'INJETÁVEIS - VIDROS',
     unidade: 'SPPV',
     disponibilidade: 69,
     performance: 77,
     qualidade: 91,
     oee: 59.8,
     status: 'Atenção Setup',
-  },
-  {
-    id: '4',
-    codigo: '0103',
-    local: 'GENÉRICOS',
-    unidade: 'LÍQUIDOS ORAIS',
-    disponibilidade: 62,
-    performance: 74,
-    qualidade: 88,
-    oee: 51.4,
-    status: 'Parada Manutenção',
-  },
+  }
 ];
 
 const HISTORICO_OEE: Array<{ mes: string; valor: number }> = [
@@ -328,7 +317,7 @@ export default function DashboardOeeEmpresa() {
               <div className="card card-fifo">
                 <h2>DEPARTAMENTOS</h2>
                 <div className="fifo-list">
-                  {unidadesOrdenadas.map((unidade, indice) => (
+                  {unidadesOrdenadas.slice(0, 3).map((unidade, indice) => (
                     <div key={unidade.id} className="fifo-item">
                       <span className="f-num">{indice + 1}</span>
                       <div className="f-info">
