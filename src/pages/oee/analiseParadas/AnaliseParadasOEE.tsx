@@ -141,29 +141,11 @@ export default function AnaliseParadasOEE() {
 
         <main className="mx-auto max-w-[1600px] space-y-6">
           <section className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-            <div
-              className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-primary/15 blur-3xl"
-              aria-hidden="true"
-            />
-            <div
-              className="pointer-events-none absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-brand-secondary/20 blur-2xl"
-              aria-hidden="true"
-            />
-
-            <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0 space-y-4">
-                <Badge
-                  variant="secondary"
-                  className="rounded-full border border-brand-primary/25 bg-brand-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-brand-primary"
-                >
-                  Análise avançada de paradas
-                </Badge>
-
-                <div className="space-y-2">
-                  <h2 className="max-w-[26ch] text-xl font-semibold leading-tight text-gray-800 sm:text-2xl">
-                    Dashboard executivo de paradas OEE
-                  </h2>
-                </div>
+            <div className="relative flex flex-wrap items-center justify-between gap-4">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+                <h2 className="shrink-0 text-xl font-semibold leading-tight text-gray-700 sm:text-2xl">
+                  OEE - Análise de Paradas
+                </h2>
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
@@ -193,7 +175,7 @@ export default function AnaliseParadasOEE() {
                 </div>
               </div>
 
-              <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {filtrosAtivos > 0 && (
                   <Badge className="rounded-full border border-brand-primary/30 bg-brand-primary/10 px-2.5 py-1 text-sm font-semibold text-brand-primary">
                     {filtrosAtivos} filtro{filtrosAtivos !== 1 ? 's' : ''} ativo{filtrosAtivos !== 1 ? 's' : ''}
@@ -235,7 +217,6 @@ export default function AnaliseParadasOEE() {
                       key={`${mensagem}-${index}`}
                       className="flex items-start gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-600 shadow-sm"
                     >
-                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-primary/70" aria-hidden="true" />
                       <span className="break-words">{mensagem}</span>
                     </div>
                   ))}

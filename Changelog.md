@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- AnaliseParadasOEE (KpiParadasCards): removidos os spans com ícone circular dos cards de indicadores executivos de paradas.
 - OeeLinhaMetaCad: adicionado botão "Sugerir Meta" ao lado do campo `Meta`, com cálculo automático baseado no período anterior equivalente da mesma `linhaproducao_id` via RPC `fn_resumo_oee_turno`; a sugestão abre em modal com média estimada de OEE (Disponibilidade × Performance × Qualidade), resumo dos dados considerados e ação para aplicar o valor sugerido no formulário.
 - OeeLinhaMetaCad: campo "Linha de Produção" migrado de `Select` para o padrão do `ApontamentoOEE` (input somente leitura + botão de busca + modal `ModalBuscaLinhaProducao`), mantendo seleção por clique no campo e no ícone de lupa; seleção de linha inativa bloqueada com feedback em toast.
 - Meta por Linha OEE: adicionadas páginas de listagem (`OeeLinhaMeta`) e cadastro/edição (`OeeLinhaMetaCad`) para CRUD da `tblinhaproducao_meta` com soft delete (`deleted_at/deleted_by`), validações de formulário, formatação pt-BR (datas/meta), integração Supabase via novo hook `useOeeLinhaMeta`, novas rotas protegidas (`/oee-linha-meta`, `/oee-linha-meta-cad`, `/oee-linha-meta-cad/:id`) e novo card de navegação na Home para acesso ao módulo.
