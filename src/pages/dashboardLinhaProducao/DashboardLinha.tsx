@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useTheme } from '@/hooks/useTheme';
+import { usePageTheme } from '@/hooks/usePageTheme';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import {
@@ -732,7 +732,7 @@ const montarMiniCardsProdutivosPlaceholder = (): MiniCardProdutivo[] =>
   }));
 
 export default function DashboardLinha() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = usePageTheme('dashboard-linha');
   const location = useLocation();
   const navigate = useNavigate();
   const routeState = (location.state as DashboardLinhaRouteState | null) ?? null;

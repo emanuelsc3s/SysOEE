@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format, subDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { useTheme } from '@/hooks/useTheme'
+import { usePageTheme } from '@/hooks/usePageTheme'
 import { converterDataBrParaIso } from '@/pages/oee/resumoOeeTurno/utils/date'
 import { DashboardHeader } from '@/pages/dashboardLinhaProducao/components/DashboardHeader'
 import { FiltrarDashboardLinha } from '@/pages/dashboardLinhaProducao/FiltrarDashboardLinha'
@@ -445,7 +445,7 @@ const mapearRpcParaDashboard = (
 
 export default function DashboardOeeEmpresa() {
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useTheme()
+  const { theme, toggleTheme } = usePageTheme('oee-empresa')
   const [filtrosAbertos, setFiltrosAbertos] = useState(false)
   const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosDashboardLinha>(() =>
     criarFiltrosPadraoEmpresa()
