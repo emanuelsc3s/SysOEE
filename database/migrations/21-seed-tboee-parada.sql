@@ -991,7 +991,7 @@ USING (
     "descricao": "Parada não planejada acima de 10 Minutos na Punção Externas das BP460 e BP321, reponsável pelo \ndestacamento da rebarba e divisão das cartelas envasadas. Envolve: Punção Externa e Destacador"
   },
   {
-    "codigo": "22.1",
+    "codigo": "22.9",
     "impacto": "Disponibilidade",
     "classe": "Indisponibilidade Não Planejadas",
     "natureza": "Paradas Não Planejadas",
